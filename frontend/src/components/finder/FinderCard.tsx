@@ -5,33 +5,17 @@
  */
 import { Fragment, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, CircleDot, X, Copy, Users } from 'lucide-react';
-import { Tag, type Tone } from '../ui/Tag';
+import { Check, Copy, Users } from 'lucide-react';
+import { Tag } from '../ui/Tag';
 import { LinkText } from '../ui/LinkText';
 import { IconButton } from '../primitives/IconButton';
 import { TIMEZONES, LANGUAGES } from '../../gamedata';
 import { GOAL_CATEGORY_LABELS } from './discoveryOptions';
-import { reasonText, unknownScheduleTimeText } from './reasonCopy';
+import { unknownScheduleTimeText } from './reasonCopy';
+import { ReasonRows } from './ReasonRows';
+import { TIER_CONFIG, RECRUITMENT_TONE } from './tierConfig';
 import { JoinAction } from './JoinAction';
 import { ROLE_CHIP_LABELS, type FinderItem, type RoleKey } from './types';
-
-const TIER_CONFIG: Record<string, { label: string; tone: Tone }> = {
-  strong: { label: 'Strong fit', tone: 'success' },
-  good: { label: 'Good fit', tone: 'info' },
-  partial: { label: 'Partial fit', tone: 'warning' },
-  weak: { label: 'Weak fit', tone: 'error' },
-  unknown: { label: 'Not enough info', tone: 'muted' },
-};
-
-const REASON_ICON: Record<'match' | 'partial' | 'conflict', { Icon: typeof Check; className: string }> = {
-  match: { Icon: Check, className: 'text-status-success' },
-  partial: { Icon: CircleDot, className: 'text-status-warning' },
-  conflict: { Icon: X, className: 'text-status-error' },
-};
-
-const RECRUITMENT_TONE: Record<string, Tone> = {
-  open: 'success', selective: 'warning', limited: 'warning', paused: 'muted', closed: 'error',
-};
 
 // Mirrors V1's CONTACT_LABELS (pages/Discover.tsx) — kept local rather than
 // moved into discoveryOptions.ts, since pages/Discover.tsx is touchable only
@@ -195,17 +179,7 @@ export function FinderCard({ item, onRequestJoin }: { item: FinderItem; onReques
 
       {(reasons.length > 0 || yourTimeText) && (
         <div className="flex flex-col gap-1">
-          {reasons.map((reason, i) => {
-            const text = reasonText(reason, nights);
-            if (!text) return null;
-            const { Icon, className } = REASON_ICON[reason.status];
-            return (
-              <div key={i} className="flex items-center gap-1.5 text-xs text-text-secondary">
-                <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${className}`} aria-label={reason.status} />
-                <span>{text}</span>
-              </div>
-            );
-          })}
+          <ReasonRows reasons={reasons} nights={nights} subject="you" />
           {yourTimeText && <p className="text-xs text-text-muted">{yourTimeText}</p>}
         </div>
       )}

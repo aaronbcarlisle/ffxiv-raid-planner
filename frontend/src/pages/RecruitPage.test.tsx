@@ -14,10 +14,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mocks = vi.hoisted(() => ({
   group: null as Record<string, unknown> | null,
   canEdit: true,
-  pendingCount: 0,
+  applicants: null as { groupId: string; items: unknown[]; pendingCount: number } | null,
   updateGroup: vi.fn(),
   clearGroupError: vi.fn(),
-  fetchGroupRequests: vi.fn(),
   toastError: vi.fn(),
 }));
 
@@ -33,10 +32,17 @@ vi.mock('../hooks/useStaticPermissions', () => ({
 }));
 vi.mock('../stores/joinRequestStore', () => ({
   useJoinRequestStore: (sel: (s: Record<string, unknown>) => unknown) =>
-    sel({ pendingCount: mocks.pendingCount, fetchGroupRequests: mocks.fetchGroupRequests }),
+    sel({ applicants: mocks.applicants }),
 }));
 vi.mock('../stores/toastStore', () => ({
   toast: { error: mocks.toastError, success: vi.fn() },
+}));
+// RecruitPage's own tests cover the frame (guard/tabs/header); the
+// Applicants tab's fetch, ordering and empty-state behavior have their own
+// suite (ApplicantsTab.test.tsx). A stub here proves it is mounted for the
+// current group and never for a member/stale/unloaded one.
+vi.mock('../components/recruit/ApplicantsTab', () => ({
+  ApplicantsTab: ({ group }: { group: { id: string } }) => <div data-testid="applicants-tab">{group.id}</div>,
 }));
 
 import { RecruitPage } from './RecruitPage';
@@ -80,10 +86,9 @@ const path = () => screen.getByTestId('location').getAttribute('data-path');
 beforeEach(() => {
   mocks.group = makeGroup({ enabled: true, recruitmentStatus: 'open' });
   mocks.canEdit = true;
-  mocks.pendingCount = 0;
+  mocks.applicants = null;
   mocks.updateGroup.mockReset().mockResolvedValue(undefined);
   mocks.clearGroupError.mockReset();
-  mocks.fetchGroupRequests.mockReset();
   mocks.toastError.mockReset();
   useSettingsPanelStore.setState({
     isOpen: false, tab: 'general', recruitmentSection: undefined, highlightCreateInvite: false, recruitRedirect: null,
@@ -99,7 +104,7 @@ beforeEach(() => {
 });
 
 describe('RecruitPage guard (R-RH-G)', () => {
-  it('a manager sees the header, the three tabs and the status select, and the waiting count is fetched once', () => {
+  it('a manager sees the header, the three tabs, the status select and the mounted Applicants tab', () => {
     renderAt(['/group/abc/recruit']);
     expect(screen.getByRole('heading', { name: 'Recruiting' })).toBeInTheDocument();
     const tablist = screen.getByRole('tablist', { name: 'Recruiting sections' });
@@ -109,9 +114,7 @@ describe('RecruitPage guard (R-RH-G)', () => {
     expect(tablist).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Applicants' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('combobox', { name: 'Recruitment status' })).toBeInTheDocument();
-    expect(screen.getByText('No one has asked yet')).toBeInTheDocument();
-    expect(mocks.fetchGroupRequests).toHaveBeenCalledTimes(1);
-    expect(mocks.fetchGroupRequests).toHaveBeenCalledWith('g1');
+    expect(screen.getByTestId('applicants-tab')).toHaveTextContent('g1');
   });
 
   it('a member is replace-redirected to the static; the inbox never mounts; Back is one step', () => {
@@ -120,7 +123,7 @@ describe('RecruitPage guard (R-RH-G)', () => {
     expect(path()).toBe('/group/abc');
     expect(screen.getByTestId('static-home')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Recruiting' })).toBeNull();
-    expect(mocks.fetchGroupRequests).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('applicants-tab')).toBeNull();
     // History length: the recruit entry was replaced, so one step back is /profile.
     act(() => { fireEvent.click(screen.getByTestId('back')); });
     expect(path()).toBe('/profile');
@@ -144,7 +147,7 @@ describe('RecruitPage guard (R-RH-G)', () => {
     renderAt(['/group/abc/recruit']);
     expect(screen.queryByRole('heading', { name: 'Recruiting' })).toBeNull();
     expect(path()).toBe('/group/abc/recruit');
-    expect(mocks.fetchGroupRequests).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('applicants-tab')).toBeNull();
   });
 
   it('a stale group for another static → skeleton (no flash of its inbox), even for a member', () => {
@@ -153,6 +156,7 @@ describe('RecruitPage guard (R-RH-G)', () => {
     renderAt(['/group/abc/recruit']);
     expect(screen.queryByRole('heading', { name: 'Recruiting' })).toBeNull();
     expect(path()).toBe('/group/abc/recruit');
+    expect(screen.queryByTestId('applicants-tab')).toBeNull();
   });
 });
 
@@ -210,9 +214,16 @@ describe('RecruitHeader (R-RH-L)', () => {
     [undefined, true, 0, 'Listing off · Open'],
   ])('discovery %j, public %s, pending %i → subtitle "%s"', (discovery, isPublic, pending, subtitle) => {
     mocks.group = makeGroup(discovery as Record<string, unknown> | undefined, { isPublic });
-    mocks.pendingCount = pending;
+    mocks.applicants = { groupId: 'g1', items: [], pendingCount: pending };
     renderAt(['/group/abc/recruit']);
     expect(screen.getByText(subtitle)).toBeInTheDocument();
+  });
+
+  it('a stale applicants slice for another static reads as 0 waiting', () => {
+    mocks.group = makeGroup({ enabled: true, recruitmentStatus: 'open' });
+    mocks.applicants = { groupId: 'other-group', items: [], pendingCount: 9 };
+    renderAt(['/group/abc/recruit']);
+    expect(screen.getByText('Live · Open')).toBeInTheDocument();
   });
 
   it('a stored limited shows the Selective option', () => {

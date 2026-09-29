@@ -90,6 +90,15 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): RH1b — recruit route, page frame and the settings seam',
         internal: true,
       },
+      {
+        category: 'improvement',
+        title: 'The Recruiting home gets an Applicants tab',
+        description:
+          'V2 preview plumbing: the Recruiting page\'s Applicants tab lists pending and under-review requests with their live Static Finder fit (reasons in the static\'s own clock), the applicant\'s message, availability and Discord, one-click Accept, a double-click Decline, Mark under review, and "Full details" opening the existing review dossier; resolved requests sit behind a collapsed toggle, and each listing state (off, paused, closed, no listing) gets its own empty-state message.',
+        pr: 315,
+        prTitle: 'feat(v2): RH1c — Applicants tab',
+        internal: true,
+      },
     ],
   },
   {

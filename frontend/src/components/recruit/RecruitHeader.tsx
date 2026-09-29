@@ -6,6 +6,11 @@
  * closed). The status `Select` renders on the Applicants and Invites tabs
  * only: on the Listing tab the editor's own status cards are the single write
  * path (M9), so the header must not offer a second one there.
+ *
+ * The count reads the `applicants` slice (RH1c, R-RH-R) rather than the
+ * store's global `pendingCount`, which the V2 bell and the Settings dock keep
+ * overwriting with their own (fit-less) `fetchGroupRequests` polls. It falls
+ * back to 0 until the Applicants tab's own fetch lands for THIS static.
  */
 import { Megaphone } from 'lucide-react';
 import { PageHeader } from '../layout/PageHeader';
@@ -26,7 +31,8 @@ interface RecruitHeaderProps {
 }
 
 export function RecruitHeader({ group, tab }: RecruitHeaderProps) {
-  const pendingCount = useJoinRequestStore((s) => s.pendingCount);
+  const applicants = useJoinRequestStore((s) => s.applicants);
+  const pendingCount = applicants?.groupId === group.id ? applicants.pendingCount : 0;
   const { status, setStatus, isSaving } = useRecruitStatus(group);
 
   const discovery = group.settings?.discovery;

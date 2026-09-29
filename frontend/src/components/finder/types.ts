@@ -18,9 +18,9 @@ export interface FitNight {
   coverage: 'full' | 'part' | 'none' | null;
 }
 
-// Not exported: only FitV2's own `role`/`schedule` fields need this shape
-// today (Task 3 can export these if a later file needs them by name).
-interface FitV2Role {
+// Exported since RH1c (Task 3): the Applicants tab reads these fields by
+// name off `JoinRequest.fit`.
+export interface FitV2Role {
   status: 'match' | 'partial' | 'none' | 'unknown';
   matchedJob: string | null;
   matchedRole: string | null;
@@ -29,7 +29,7 @@ interface FitV2Role {
   asRole: string | null;
 }
 
-interface FitV2Schedule {
+export interface FitV2Schedule {
   status: 'match' | 'partial' | 'conflict' | 'unknown';
   basis: 'time' | 'day';
   nights: FitNight[];

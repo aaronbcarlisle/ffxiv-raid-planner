@@ -6,15 +6,25 @@ import type {
 } from '../types';
 import { api } from '../services/api';
 
+/** The Applicants tab's own slice (R-RH-R): independent of `groupRequests`,
+ *  which the V2 bell and the Settings dock keep polling without `fit`. */
+export interface ApplicantsState {
+  groupId: string;
+  items: JoinRequest[];
+  pendingCount: number;
+}
+
 interface JoinRequestState {
   myRequests: JoinRequest[];
   groupRequests: JoinRequest[];
   pendingCount: number;
+  applicants: ApplicantsState | null;
   isLoading: boolean;
   error: string | null;
 
   fetchMyRequests: () => Promise<void>;
   fetchGroupRequests: (groupId: string, includeResolved?: boolean) => Promise<void>;
+  fetchApplicants: (groupId: string) => Promise<void>;
   createRequest: (shareCode: string, data: JoinRequestCreatePayload) => Promise<JoinRequest>;
   cancelRequest: (requestId: string) => Promise<void>;
   acceptRequest: (requestId: string) => Promise<void>;
@@ -24,10 +34,24 @@ interface JoinRequestState {
   clearError: () => void;
 }
 
+/**
+ * Guards `fetchApplicants` against a stale response (two overlapping calls
+ * where the first resolves last): only the call holding the latest sequence
+ * number at resolution time is allowed to write `applicants`.
+ */
+let applicantsRequestSeq = 0;
+
+/** Merges a mutation response into an applicants row, keeping its previous
+ *  `fit` — accept/decline/under-review responses carry `fit: null`. */
+function mergeApplicantRow(row: JoinRequest, updated: JoinRequest): JoinRequest {
+  return { ...updated, fit: updated.fit ?? row.fit };
+}
+
 export const useJoinRequestStore = create<JoinRequestState>((set) => ({
   myRequests: [],
   groupRequests: [],
   pendingCount: 0,
+  applicants: null,
   isLoading: false,
   error: null,
 
@@ -64,6 +88,22 @@ export const useJoinRequestStore = create<JoinRequestState>((set) => ({
     }
   },
 
+  fetchApplicants: async (groupId: string) => {
+    const seq = ++applicantsRequestSeq;
+    try {
+      const response = await api.get<JoinRequestListResponse>(
+        `/api/static-groups/${groupId}/join-requests?include_resolved=true&fit=true`
+      );
+      if (seq !== applicantsRequestSeq) return; // a newer call already resolved
+      set({
+        applicants: { groupId, items: response.items, pendingCount: response.pendingCount },
+      });
+    } catch (error) {
+      if (seq !== applicantsRequestSeq) return;
+      set({ error: error instanceof Error ? error.message : 'Failed to fetch applicants' });
+    }
+  },
+
   createRequest: async (shareCode: string, data: JoinRequestCreatePayload) => {
     set({ error: null });
     const request = await api.post<JoinRequest>(
@@ -88,6 +128,11 @@ export const useJoinRequestStore = create<JoinRequestState>((set) => ({
     set((state) => ({
       groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
       pendingCount: Math.max(0, state.pendingCount - 1),
+      applicants: state.applicants && {
+        ...state.applicants,
+        items: state.applicants.items.map((r) => (r.id === requestId ? mergeApplicantRow(r, updated) : r)),
+        pendingCount: Math.max(0, state.applicants.pendingCount - 1),
+      },
     }));
   },
 
@@ -97,6 +142,11 @@ export const useJoinRequestStore = create<JoinRequestState>((set) => ({
     set((state) => ({
       groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
       pendingCount: Math.max(0, state.pendingCount - 1),
+      applicants: state.applicants && {
+        ...state.applicants,
+        items: state.applicants.items.map((r) => (r.id === requestId ? mergeApplicantRow(r, updated) : r)),
+        pendingCount: Math.max(0, state.applicants.pendingCount - 1),
+      },
     }));
   },
 
@@ -105,6 +155,10 @@ export const useJoinRequestStore = create<JoinRequestState>((set) => ({
     const updated = await api.post<JoinRequest>(`/api/join-requests/${requestId}/under-review`);
     set((state) => ({
       groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
+      applicants: state.applicants && {
+        ...state.applicants,
+        items: state.applicants.items.map((r) => (r.id === requestId ? mergeApplicantRow(r, updated) : r)),
+      },
     }));
   },
 
