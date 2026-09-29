@@ -27,7 +27,12 @@ from ..schemas.discovery import (
     FitViewer,
     GoalAlignmentSummarySlim,
 )
-from ..services.discovery_settings import get_discovery, is_discoverable
+from ..services.discovery_settings import (
+    STATUSES,
+    get_discovery,
+    is_discoverable,
+    normalize_status,
+)
 from ..services.finder_fit import (
     best_match_key,
     compute_fit_v2,
@@ -67,6 +72,18 @@ def _matches_string_filter(filter_val: str, field_val: str | None) -> bool:
     if not field_val:
         return False
     return filter_val.lower() == field_val.lower()
+
+
+def _matches_status_filter(filter_val: str, raw_status: object) -> bool:
+    """`?recruitmentStatus=` against the normalised stored status: V2's `selective`
+    finds a legacy `limited` listing and V1's `limited` finds a `selective` one. A
+    query outside the known statuses matches nothing (it never reads as open)."""
+    wanted = filter_val.lower()
+    if wanted == "limited":
+        wanted = "selective"
+    if wanted not in STATUSES:
+        return False
+    return normalize_status(raw_status) == wanted
 
 
 def _matches_text_query(query: str, group_name: str, description: str | None) -> bool:
@@ -294,8 +311,8 @@ async def list_discoverable_statics(
 
         discovery = get_discovery(group.settings)
         assert discovery is not None
-        # The status filter compares against the normalised response value, so a
-        # non-string stored status can't 500 the `.lower()` (R-RH-A).
+        # The response keeps the raw stored string (R-RH-A); the status filter below
+        # compares normalised values, so a non-string stored status can't 500 it.
         response_status = _response_status(discovery)
 
         # Text search
@@ -314,7 +331,9 @@ async def list_discoverable_statics(
             continue
         if intensity and not _matches_string_filter(intensity, discovery.get("intensity")):
             continue
-        if recruitment_status and not _matches_string_filter(recruitment_status, response_status):
+        if recruitment_status and not _matches_status_filter(
+            recruitment_status, discovery.get("recruitmentStatus")
+        ):
             continue
         if data_center and not _matches_string_filter(data_center, discovery.get("dataCenter")):
             continue

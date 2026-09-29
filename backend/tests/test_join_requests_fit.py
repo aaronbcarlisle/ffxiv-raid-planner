@@ -3,11 +3,14 @@
 The V1 golden: `tests/golden/join_requests_v1.json` holds the group list response
 for a pinned fixture (fixed ids and timestamps: one pending, one under-review and
 one declined request) taken with `include_resolved=true` and no `fit`, plus its
-statement count, captured on the base commit 6739b9f5. Regenerate it only on that
-base with `JOIN_REQUESTS_GOLDEN_WRITE=1 pytest tests/test_join_requests_fit.py
--k v1_response_unchanged`. `test_v1_response_unchanged` deletes each item's
-additive `fit` key and compares the rest and the statement count, so a request
-without `fit` stays byte-for-byte (the plugin contract).
+statement count. The capture ran against the base tree `6739b9f5` (the production
+code before any RH1a edit) and was committed, with this test, as `816317d7`. To
+regenerate it, check out `6739b9f5`'s production code (that base, not the commit
+that added the file) and run `JOIN_REQUESTS_GOLDEN_WRITE=1 pytest
+tests/test_join_requests_fit.py -k v1_response_unchanged`.
+`test_v1_response_unchanged` deletes each item's additive `fit` key and compares
+the rest and the statement count, so a request without `fit` stays byte-for-byte
+after that key is removed (the V1 callers' contract).
 """
 
 from __future__ import annotations

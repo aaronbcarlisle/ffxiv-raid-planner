@@ -991,3 +991,53 @@ async def test_limited_status_passes_through(
     data = resp.json()
     assert data["total"] == 1
     assert data["items"][0]["recruitmentStatus"] == "limited"
+
+
+# --- Status filter on the normalised status (Copilot on PR #313) ---
+# `?recruitmentStatus=<q>` matches when the normalised stored status equals the
+# normalised query, so V2's `selective` finds a legacy `limited` listing and V1's
+# `limited` finds a `selective` one; the response keeps the raw stored string.
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("stored", "query", "listed"),
+    [
+        pytest.param("limited", "selective", True, id="stored_limited_query_selective"),
+        pytest.param("selective", "limited", True, id="stored_selective_query_limited"),
+        pytest.param("limited", "limited", True, id="stored_limited_query_limited"),
+        pytest.param("open", "selective", False, id="stored_open_query_selective"),
+        pytest.param("selective", "open", False, id="stored_selective_query_open"),
+        pytest.param("open", "open", True, id="stored_open_query_open"),
+        pytest.param("closed", "closed", False, id="closed_stays_hidden_when_queried"),
+    ],
+)
+async def test_status_filter_matches_on_the_normalised_status(
+    client: AsyncClient, session, test_user: User, stored: str, query: str, listed: bool
+):
+    await create_static_group(
+        session, test_user, name="Filtered", is_public=True,
+        settings=_discovery_settings(recruitment_status=stored),
+    )
+    resp = await client.get(ENDPOINT, params={"recruitmentStatus": query})
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["total"] == (1 if listed else 0)
+    if listed:
+        assert data["items"][0]["recruitmentStatus"] == stored  # raw pass-through (R-RH-A)
+
+
+@pytest.mark.asyncio
+async def test_status_filter_unknown_query_matches_nothing(
+    client: AsyncClient, session, test_user: User
+):
+    """A garbage query never normalises to open and returns every open listing."""
+    for status in ("open", "selective", "limited"):
+        await create_static_group(
+            session, test_user, name=f"Static {status}", is_public=True,
+            settings=_discovery_settings(recruitment_status=status),
+        )
+    resp = await client.get(ENDPOINT, params={"recruitmentStatus": "whatever"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["total"] == 0
+    assert resp.json()["items"] == []
