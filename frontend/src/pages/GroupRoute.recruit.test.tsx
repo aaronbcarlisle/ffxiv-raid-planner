@@ -58,6 +58,14 @@ describe('GroupRoute — /group/:shareCode/recruit', () => {
     expect(screen.queryByTestId('legacy-shell')).toBeNull();
   });
 
+  it('legacy: the redirect carries the search minus rtab and create (explicit shell and tier survive)', () => {
+    renderAt('/group/abc/recruit?shell=legacy&rtab=listing&create=1&tier=t1');
+    const probe = screen.getByTestId('location');
+    expect(probe.getAttribute('data-path')).toBe('/group/abc?shell=legacy&tier=t1');
+    expect(probe.getAttribute('data-type')).toBe('REPLACE');
+    expect(screen.getByTestId('legacy-shell')).toBeInTheDocument();
+  });
+
   it('legacy on the plain group route is untouched (no redirect, GroupView)', () => {
     renderAt('/group/abc?tab=roster');
     expect(screen.getByTestId('location').getAttribute('data-path')).toBe('/group/abc?tab=roster');

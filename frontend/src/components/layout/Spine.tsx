@@ -50,9 +50,11 @@ export function Spine({ activeTab, onTabChange }: SpineProps) {
         case 'Home':
           nextIndex = 0;
           break;
-        default: // 'End'
+        case 'End':
           nextIndex = SPINE_TABS.length - 1;
           break;
+        default:
+          return;
       }
     }
 

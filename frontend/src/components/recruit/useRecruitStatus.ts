@@ -48,8 +48,9 @@ export function useRecruitStatus(group: StaticGroup) {
       setIsSaving(true);
       try {
         await updateGroup(group.id, { settings: { ...group.settings, discovery: nextDiscovery } });
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Could not update the recruitment status');
+      } catch {
+        // Own copy, not the store's message (its fallback says "group").
+        toast.error("Couldn't update the recruitment status.");
         clearGroupError();
       } finally {
         setIsSaving(false);

@@ -127,6 +127,12 @@ describe('RecruitPage guard (R-RH-G)', () => {
     expect(screen.getByTestId('profile')).toBeInTheDocument();
   });
 
+  it('a member\'s redirect carries the tier the link had', () => {
+    mocks.canEdit = false;
+    renderAt(['/group/abc/recruit?rtab=listing&tier=t1']);
+    expect(path()).toBe('/group/abc?tier=t1');
+  });
+
   it('group not loaded → skeleton, no header, no redirect', () => {
     mocks.group = null;
     renderAt(['/group/abc/recruit']);
@@ -167,6 +173,16 @@ describe('RecruitPage tabs (R-RH-H, R-RH-J)', () => {
     expect(screen.getByRole('combobox', { name: 'Recruitment status' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Open Settings → Recruitment' }));
     expect(useSettingsPanelStore.getState().recruitmentSection).toBe('invitations');
+    expect(useSettingsPanelStore.getState().highlightCreateInvite).toBe(false);
+  });
+
+  it('?rtab=invites&create=1 hands the create-invite highlight to the dock (TopBar invite parity)', () => {
+    renderAt(['/group/abc/recruit?rtab=invites&create=1']);
+    fireEvent.click(screen.getByRole('button', { name: 'Open Settings → Recruitment' }));
+    const s = useSettingsPanelStore.getState();
+    expect(s.isOpen).toBe(true);
+    expect(s.recruitmentSection).toBe('invitations');
+    expect(s.highlightCreateInvite).toBe(true);
   });
 
   it('clicking Applicants from Listing drops the param (default tab is omitted)', () => {
@@ -220,12 +236,14 @@ describe('RecruitHeader (R-RH-L)', () => {
     expect(mocks.clearGroupError).not.toHaveBeenCalled();
   });
 
-  it('a failed save toasts the error and clears the group store error (no double modal)', async () => {
+  it('a failed save toasts its own copy (never the store\'s "group" message) and clears the group store error', async () => {
     mocks.updateGroup.mockRejectedValueOnce(new Error('Failed to update group'));
     renderAt(['/group/abc/recruit']);
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recruitment status' }), { key: 'Enter' });
     fireEvent.click(screen.getByRole('option', { name: 'Closed' }));
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Failed to update group'));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1));
+    expect(mocks.toastError).toHaveBeenCalledWith("Couldn't update the recruitment status.");
+    expect(mocks.toastError.mock.calls[0][0]).not.toMatch(/group/i);
     expect(mocks.clearGroupError).toHaveBeenCalledTimes(1);
   });
 });

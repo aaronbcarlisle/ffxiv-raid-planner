@@ -144,6 +144,7 @@ function Probe() {
     <>
       <div data-testid="location" data-path={location.pathname + location.search} data-type={type} />
       <button type="button" data-testid="go-def" onClick={() => navigate('/group/def')}>go-def</button>
+      <button type="button" data-testid="go-def-rcsub" onClick={() => navigate('/group/def?rcsub=listing')}>go-def-rcsub</button>
       <button
         type="button"
         data-testid="push-rcsub"
@@ -316,11 +317,30 @@ describe('NewShell — ?rcsub= on the group route (M11)', () => {
     expect(path()).toBe('/group/abc?rcsub=requests');
   });
 
-  it('is left alone while the Settings dock is open (its own sub-nav writes rcsub)', () => {
+  it('is one-shot per arrival: after the static has loaded once, a later rcsub write (dock closed) does not navigate', () => {
     mocks.tiers = [];
-    useSettingsPanelStore.setState({ isOpen: true, tab: 'recruitment' });
     renderShell('/group/abc?tier=t1');
+    expect(useSettingsPanelStore.getState().isOpen).toBe(false);
     act(() => { fireEvent.click(screen.getByTestId('push-rcsub')); });
     expect(path()).toBe('/group/abc?tier=t1&rcsub=listing');
+  });
+
+  it('does not fire again for the same static after it acted once (Spine back, then a dock rcsub write)', () => {
+    mocks.tiers = [];
+    renderShell('/group/abc?rcsub=requests');
+    expect(path()).toBe('/group/abc/recruit');
+    act(() => { fireEvent.click(screen.getByTestId('spine-stub')); });
+    expect(path()).toBe('/group/abc?tab=roster');
+    act(() => { fireEvent.click(screen.getByTestId('push-rcsub')); });
+    expect(path()).toBe('/group/abc?tab=roster&rcsub=listing');
+  });
+
+  it('arriving at another static with ?rcsub= acts again', () => {
+    mocks.tiers = [];
+    renderShell('/group/abc?tier=t1');
+    mocks.currentGroup = { ...GROUP_ABC, id: 'g2', shareCode: 'def' };
+    act(() => { fireEvent.click(screen.getByTestId('go-def-rcsub')); });
+    expect(path()).toBe('/group/def/recruit?rtab=listing');
+    expect(navType()).toBe('REPLACE');
   });
 });

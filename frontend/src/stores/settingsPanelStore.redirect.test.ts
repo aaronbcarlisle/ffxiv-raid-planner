@@ -57,6 +57,33 @@ describe('settingsPanelStore with the V2 redirect registered', () => {
     expect(redirect).toHaveBeenCalledWith({ tab: 'recruitment' });
   });
 
+  it('toggle({ tab: recruitment }) on a dock already open on Recruitment closes it and never consults the redirect (Alt+I)', () => {
+    const redirect = vi.fn(() => true);
+    useSettingsPanelStore.getState().setRecruitRedirect(redirect);
+    useSettingsPanelStore.setState({ isOpen: true, tab: 'recruitment' });
+    useSettingsPanelStore.getState().toggle({ tab: 'recruitment' });
+    expect(redirect).not.toHaveBeenCalled();
+    expect(useSettingsPanelStore.getState().isOpen).toBe(false);
+  });
+
+  it('toggle({ tab: recruitment }) on a dock open on another tab switches to it (today\'s semantics), no redirect', () => {
+    const redirect = vi.fn(() => true);
+    useSettingsPanelStore.getState().setRecruitRedirect(redirect);
+    useSettingsPanelStore.setState({ isOpen: true, tab: 'general' });
+    useSettingsPanelStore.getState().toggle({ tab: 'recruitment' });
+    expect(redirect).not.toHaveBeenCalled();
+    expect(useSettingsPanelStore.getState().isOpen).toBe(true);
+    expect(useSettingsPanelStore.getState().tab).toBe('recruitment');
+  });
+
+  it('toggle({ tab: recruitment }) on a closed dock calls the redirect and stays closed', () => {
+    const redirect = vi.fn(() => true);
+    useSettingsPanelStore.getState().setRecruitRedirect(redirect);
+    useSettingsPanelStore.getState().toggle({ tab: 'recruitment' });
+    expect(redirect).toHaveBeenCalledTimes(1);
+    expect(useSettingsPanelStore.getState().isOpen).toBe(false);
+  });
+
   it('open({ tab: members }) never consults the redirect and opens as before', () => {
     const redirect = vi.fn(() => true);
     useSettingsPanelStore.getState().setRecruitRedirect(redirect);

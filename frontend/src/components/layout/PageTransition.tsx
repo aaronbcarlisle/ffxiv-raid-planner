@@ -7,11 +7,23 @@
  * exit, causing the new page to briefly flash then fade out.
  *
  * Respects prefers-reduced-motion via useDevice hook.
+ *
+ * The animation key is the page identity, not the raw pathname: a static's
+ * routes (`/group/:code` and `/group/:code/recruit`, R-RH-G) share one key, so
+ * moving between them keeps the mounted shell (no cold refetch of the group
+ * and its tiers), while a static-to-static switch and every other pathname
+ * change still remount and fade in as before.
  */
 
-import { useLocation, Outlet } from 'react-router-dom';
+import { matchPath, useLocation, Outlet } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useDevice } from '../../hooks/useDevice';
+
+/** The key a location animates under: the static for its routes, else the pathname. */
+function pageTransitionKey(pathname: string): string {
+  const shareCode = matchPath('/group/:shareCode/*', pathname)?.params.shareCode;
+  return shareCode ? `group:${shareCode}` : pathname;
+}
 
 export function PageTransition() {
   const location = useLocation();
@@ -23,7 +35,7 @@ export function PageTransition() {
 
   return (
     <motion.div
-      key={location.pathname}
+      key={pageTransitionKey(location.pathname)}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1, transition: { duration: 0.15, ease: [0.4, 0, 0.2, 1] } }}
       className="flex-1 min-h-0 min-w-0 flex flex-col"

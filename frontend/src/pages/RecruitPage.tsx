@@ -13,7 +13,7 @@
  * the editor and the invite list here.
  */
 import { useEffect } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
 import { Button } from '../components/primitives';
 import { CardShell, EmptyState, PageSkeleton, Tabs } from '../components/ui';
@@ -38,24 +38,37 @@ export function RecruitPage() {
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
   const { canEdit: canManage } = useStaticPermissions();
   const [tab, setTab] = useUrlTabState('rtab', RECRUIT_TAB_VALUES, 'applicants');
+  const [searchParams] = useSearchParams();
 
   if (!shareCode || !currentGroup || currentGroup.shareCode !== shareCode) {
     return <PageSkeleton />;
   }
   if (!canManage) {
-    return <Navigate to={`/group/${shareCode}`} replace />;
+    // Keep the tier so the static opens on the one the link carried.
+    const tier = searchParams.get('tier');
+    return <Navigate to={`/group/${shareCode}${tier ? `?tier=${encodeURIComponent(tier)}` : ''}`} replace />;
   }
-  return <RecruitPageBody group={currentGroup} tab={tab} onTabChange={setTab} />;
+  return (
+    <RecruitPageBody
+      group={currentGroup}
+      tab={tab}
+      onTabChange={setTab}
+      createRequested={searchParams.get('create') === '1'}
+    />
+  );
 }
 
 function RecruitPageBody({
   group,
   tab,
   onTabChange,
+  createRequested,
 }: {
   group: StaticGroup;
   tab: RecruitTab;
   onTabChange: (tab: RecruitTab) => void;
+  /** `?create=1`: the Invites hand-off keeps the create-invite highlight it carried. */
+  createRequested: boolean;
 }) {
   // The header's waiting count reads the store's pending count; keep it fresh
   // for a cold load of the route (RH1c replaces this with the applicants fetch).
@@ -84,20 +97,28 @@ function RecruitPageBody({
         </CardShell>
       )}
       {tab === 'listing' && <DockFallback section="listing" />}
-      {tab === 'invites' && <DockFallback section="invitations" />}
+      {tab === 'invites' && <DockFallback section="invitations" highlightCreateInvite={createRequested} />}
     </div>
   );
 }
 
 /** R-RH-J: the interim hand-off to the Settings dock, bypassing the route redirect. */
-function DockFallback({ section }: { section: RecruitmentSection }) {
+function DockFallback({
+  section,
+  highlightCreateInvite = false,
+}: {
+  section: RecruitmentSection;
+  highlightCreateInvite?: boolean;
+}) {
   return (
     <CardShell as="div" className="flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-text-secondary">Coming in the next update, use Settings → Recruitment for now</p>
       <Button
         variant="secondary"
         size="sm"
-        onClick={() => useSettingsPanelStore.getState().openDock({ tab: 'recruitment', section })}
+        onClick={() =>
+          useSettingsPanelStore.getState().openDock({ tab: 'recruitment', section, highlightCreateInvite })
+        }
       >
         Open Settings → Recruitment
       </Button>

@@ -70,8 +70,11 @@ export const useSettingsPanelStore = create<SettingsPanelState>((set, get) => ({
     })),
   close: () => set({ isOpen: false, recruitmentSection: undefined, highlightCreateInvite: false }),
   toggle: (opts = {}) => {
-    if (opts.tab === 'recruitment' && get().recruitRedirect?.(opts)) return;
     const s = get();
+    // Only a CLOSED dock redirects (R-RH-I); an open one keeps today's toggle
+    // semantics below (same tab closes, another tab switches), so Alt+I on an
+    // open Recruitment dock closes it rather than navigating.
+    if (!s.isOpen && opts.tab === 'recruitment' && s.recruitRedirect?.(opts)) return;
     const sameTab = opts.tab === undefined || opts.tab === s.tab;
     if (s.isOpen && sameTab && !opts.section) {
       set({ isOpen: false, recruitmentSection: undefined, highlightCreateInvite: false });
