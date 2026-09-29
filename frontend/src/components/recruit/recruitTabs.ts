@@ -57,3 +57,26 @@ export function recruitUrlForOpen(shareCode: string, opts: OpenOptions, tier?: s
   const tab = RECRUIT_SECTION_MAP[opts.section ?? 'overview'];
   return recruitUrl(shareCode, tab, { create: tab === 'invites' && !!opts.highlightCreateInvite, tier });
 }
+
+/** The route's own params: never carried onto another URL. */
+const RECRUIT_ROUTE_PARAMS: readonly string[] = ['rtab', 'create'];
+
+/**
+ * Carries the current location's params onto a same-static URL built from it.
+ * `?viewAs=` and `?adminMode=` are URL-driven state (View As, admin access →
+ * `canEdit`) that same-static navigation has always preserved, so a URL built
+ * from a live location must keep them; only the recruit route's own
+ * `rtab`/`create` and any `drop`ped keys are left behind. The URL's own params
+ * come first and win. `recruitUrl` itself stays pure: callers with no live
+ * location pass nothing to carry.
+ */
+export function withCarriedParams(url: string, currentSearch: string, drop: readonly string[] = []): string {
+  const [pathname, own = ''] = url.split('?');
+  const params = new URLSearchParams(own);
+  new URLSearchParams(currentSearch).forEach((value, key) => {
+    if (RECRUIT_ROUTE_PARAMS.includes(key) || drop.includes(key) || params.has(key)) return;
+    params.set(key, value);
+  });
+  const search = params.toString();
+  return `${pathname}${search ? `?${search}` : ''}`;
+}

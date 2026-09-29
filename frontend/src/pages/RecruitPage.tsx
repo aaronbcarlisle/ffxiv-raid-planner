@@ -18,7 +18,7 @@ import { Inbox } from 'lucide-react';
 import { Button } from '../components/primitives';
 import { CardShell, EmptyState, PageSkeleton, Tabs } from '../components/ui';
 import { RecruitHeader } from '../components/recruit/RecruitHeader';
-import { RECRUIT_TAB_VALUES, type RecruitTab } from '../components/recruit/recruitTabs';
+import { RECRUIT_TAB_VALUES, withCarriedParams, type RecruitTab } from '../components/recruit/recruitTabs';
 import { useUrlTabState } from '../hooks/useUrlTabState';
 import { useStaticPermissions } from '../hooks/useStaticPermissions';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
@@ -44,9 +44,10 @@ export function RecruitPage() {
     return <PageSkeleton />;
   }
   if (!canManage) {
-    // Keep the tier so the static opens on the one the link carried.
-    const tier = searchParams.get('tier');
-    return <Navigate to={`/group/${shareCode}${tier ? `?tier=${encodeURIComponent(tier)}` : ''}`} replace />;
+    // Carry the search minus the route's own params: the tier so the static
+    // opens on the one the link had, `viewAs`/`adminMode` so URL-driven access
+    // is not lost on the way back.
+    return <Navigate to={withCarriedParams(`/group/${shareCode}`, searchParams.toString())} replace />;
   }
   return (
     <RecruitPageBody

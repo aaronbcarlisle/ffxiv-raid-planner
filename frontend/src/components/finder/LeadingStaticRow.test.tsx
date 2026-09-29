@@ -28,9 +28,17 @@ vi.mock('../../stores/staticGroupStore', () => ({
     selector({ groups, fetchGroups, createGroup: vi.fn() }),
 }));
 
-// R-RH-N: the row no longer touches the settings store — a real one is
-// imported here only to prove that. Any call would flip `isOpen`.
+// The resolved shell decides the branch (C1): V2 navigates to the route only;
+// legacy keeps the pre-RH1b navigate + open-dock pair.
+const shellState: { shell: 'v2' | 'legacy' } = { shell: 'v2' };
+vi.mock('../../lib/shellPreference', () => ({
+  useResolvedShell: () => shellState.shell,
+}));
+
+// The REAL settings store: under V2 the row must never touch it (any call
+// would flip `isOpen`); under legacy the open is spied on and asserted.
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
+const originalOpen = useSettingsPanelStore.getState().open;
 
 function group(overrides: Partial<StaticGroupListItem> = {}): StaticGroupListItem {
   return {
@@ -49,7 +57,8 @@ beforeEach(() => {
   groups = [];
   mockNavigate.mockClear();
   fetchGroups.mockClear();
-  useSettingsPanelStore.setState({ isOpen: false, recruitRedirect: null });
+  shellState.shell = 'v2';
+  useSettingsPanelStore.setState({ isOpen: false, recruitmentSection: undefined, recruitRedirect: null, open: originalOpen });
   // jsdom has no matchMedia; Modal -> useDevice depends on it (SetupWizard renders a Modal).
   vi.stubGlobal(
     'matchMedia',
@@ -77,6 +86,25 @@ describe('LeadingStaticRow', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/group/ABC/recruit?rtab=listing');
     // No settings-dock open any more.
     expect(useSettingsPanelStore.getState().isOpen).toBe(false);
+  });
+
+  it('legacy shell: "Post a listing" navigates to ?rcsub=listing THEN opens Settings → Recruitment → Listing (pre-RH1b pair, C1)', () => {
+    shellState.shell = 'legacy';
+    groups = [group({ id: 'g1', shareCode: 'ABC', userRole: 'owner' })];
+    const openSpy = vi.spyOn(useSettingsPanelStore.getState(), 'open');
+    renderRow();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Post a listing' }));
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith('/group/ABC?rcsub=listing');
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledWith({ tab: 'recruitment', section: 'listing' });
+    expect(mockNavigate.mock.invocationCallOrder[0]).toBeLessThan(openSpy.mock.invocationCallOrder[0]);
+    // The dock really opened on Recruitment → Listing (no redirect registered in V1).
+    expect(useSettingsPanelStore.getState().isOpen).toBe(true);
+    expect(useSettingsPanelStore.getState().tab).toBe('recruitment');
+    expect(useSettingsPanelStore.getState().recruitmentSection).toBe('listing');
+    openSpy.mockRestore();
   });
 
   it('two led statics: the Select lists both, and choosing one runs the same navigation', () => {

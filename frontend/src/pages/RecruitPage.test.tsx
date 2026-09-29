@@ -133,6 +133,12 @@ describe('RecruitPage guard (R-RH-G)', () => {
     expect(path()).toBe('/group/abc?tier=t1');
   });
 
+  it('a member\'s redirect carries viewAs (URL-driven state) and drops only rtab/create (C2)', () => {
+    mocks.canEdit = false;
+    renderAt(['/group/abc/recruit?rtab=listing&tier=t1&viewAs=u2']);
+    expect(path()).toBe('/group/abc?tier=t1&viewAs=u2');
+  });
+
   it('group not loaded → skeleton, no header, no redirect', () => {
     mocks.group = null;
     renderAt(['/group/abc/recruit']);

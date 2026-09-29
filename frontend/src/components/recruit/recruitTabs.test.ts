@@ -8,6 +8,7 @@ import {
   recruitTabForSection,
   recruitUrl,
   recruitUrlForOpen,
+  withCarriedParams,
 } from './recruitTabs';
 
 describe('recruitUrl', () => {
@@ -72,5 +73,30 @@ describe('recruitUrlForOpen', () => {
     expect(recruitUrlForOpen('abc', { tab: 'recruitment', highlightCreateInvite: true }, null)).toBe(
       '/group/abc/recruit',
     );
+  });
+});
+
+describe('withCarriedParams', () => {
+  it('carries viewAs/adminMode (and any other param) after the URL\'s own params, dropping rtab and create', () => {
+    expect(
+      withCarriedParams('/group/abc?tab=roster', '?rtab=listing&create=1&tier=t1&viewAs=u2&adminMode=true'),
+    ).toBe('/group/abc?tab=roster&tier=t1&viewAs=u2&adminMode=true');
+  });
+
+  it('the URL\'s own params win over a carried duplicate', () => {
+    expect(withCarriedParams('/group/abc/recruit?rtab=invites&tier=t1', 'tier=t9&adminMode=true')).toBe(
+      '/group/abc/recruit?rtab=invites&tier=t1&adminMode=true',
+    );
+  });
+
+  it('drops the extra keys it is told to (a consumed rcsub)', () => {
+    expect(withCarriedParams('/group/abc/recruit?rtab=listing', 'rcsub=listing&adminMode=true', ['rcsub'])).toBe(
+      '/group/abc/recruit?rtab=listing&adminMode=true',
+    );
+  });
+
+  it('a bare URL with nothing to carry stays bare', () => {
+    expect(withCarriedParams('/group/abc', '')).toBe('/group/abc');
+    expect(withCarriedParams('/group/abc', 'rtab=listing&create=1')).toBe('/group/abc');
   });
 });

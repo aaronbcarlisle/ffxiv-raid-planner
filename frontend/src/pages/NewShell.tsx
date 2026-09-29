@@ -5,7 +5,12 @@ import { CommandPalette } from '../components/layout/CommandPalette';
 import { GroupViewContent } from './GroupViewContent';
 import { RecruitPage } from './RecruitPage';
 import { ShellContentStates } from './ShellContentStates';
-import { recruitTabForSection, recruitUrl, recruitUrlForOpen } from '../components/recruit/recruitTabs';
+import {
+  recruitTabForSection,
+  recruitUrl,
+  recruitUrlForOpen,
+  withCarriedParams,
+} from '../components/recruit/recruitTabs';
 import type { PageMode } from '../types';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { JoinRequestBanner } from '../components/static-group';
@@ -196,6 +201,10 @@ export function NewShell() {
   const urlTierId = searchParams.get('tier');
   const { shareCode } = useParams<{ shareCode: string }>();
   const navigate = useNavigate();
+  // Every same-static URL built below carries the live search (`?viewAs=`,
+  // `?adminMode=` are URL-driven state) via `withCarriedParams`; `location` is
+  // also what the `?rcsub=` handler re-checks on every navigation.
+  const location = useLocation();
   // R-RH-G: on the Recruiting sub-route the Spine has no selected tab and a
   // tab change (Spine or ⌘K) LEAVES the route for `/group/:code?tab=…` instead
   // of writing `?tab=` onto it (M1). `useGroupViewState` is left alone.
@@ -315,15 +324,16 @@ export function NewShell() {
   // motion, across statics too, so a stale closure would send the user to the
   // previous static's inbox. V1 never registers. Cleared on unmount so the
   // account-level dock is unaffected.
+  const currentSearch = location.search;
   useEffect(() => {
     if (!shareCode) return;
     const { setRecruitRedirect } = useSettingsPanelStore.getState();
     setRecruitRedirect((opts) => {
-      navigate(recruitUrlForOpen(shareCode, opts, urlTierId));
+      navigate(withCarriedParams(recruitUrlForOpen(shareCode, opts, urlTierId), currentSearch));
       return true;
     });
     return () => setRecruitRedirect(null);
-  }, [shareCode, navigate, urlTierId]);
+  }, [shareCode, navigate, urlTierId, currentSearch]);
 
   // ── `?rcsub=` on the group route (M11) ──────────────────────────────────
   // An old dock deep link (SF1c's seed `?rcsub=listing`, bookmarks) is
@@ -340,7 +350,6 @@ export function NewShell() {
   // `rcsub` write by the dock's Recruitment sub-nav (still on the param until
   // RH1d) never triggers it. Keyed on `location`, a new object per navigation
   // even when the URL string is unchanged, so every write is re-checked.
-  const location = useLocation();
   const groupLoadedForRoute = currentGroup?.shareCode === shareCode;
   const rcsubArrival = useRef<{ shareCode: string; pending: boolean } | null>(null);
   useEffect(() => {
@@ -357,7 +366,8 @@ export function NewShell() {
       return;
     }
     if (canManage) {
-      navigate(recruitUrl(shareCode, recruitTabForSection(rcsub), { tier: params.get('tier') }), { replace: true });
+      const target = recruitUrl(shareCode, recruitTabForSection(rcsub), { tier: params.get('tier') });
+      navigate(withCarriedParams(target, location.search, ['rcsub']), { replace: true });
     } else {
       params.delete('rcsub');
       const search = params.toString();
@@ -366,16 +376,14 @@ export function NewShell() {
   }, [location, shareCode, onRecruitPath, groupLoadedForRoute, canManage, navigate]);
 
   // M1: a Spine / ⌘K tab change from the Recruiting route goes back to the
-  // static on that tab, carrying the tier so the target selects the same tier
-  // without a `?tier=` mirror write.
+  // static on that tab, carrying the current search (the tier, so the target
+  // selects the same tier without a `?tier=` mirror write; `viewAs`/`adminMode`
+  // so admin access survives) minus the route's own `rtab`/`create`.
   const goToTab = useCallback(
     (tab: PageMode) => {
-      const params = new URLSearchParams();
-      params.set('tab', tab);
-      if (urlTierId) params.set('tier', urlTierId);
-      navigate({ pathname: `/group/${shareCode}`, search: `?${params.toString()}` });
+      navigate(withCarriedParams(`/group/${shareCode}?tab=${tab}`, currentSearch));
     },
-    [navigate, shareCode, urlTierId],
+    [navigate, shareCode, currentSearch],
   );
 
   // ── v2-scoped mod-K binding ──────────────────────────────────────────────

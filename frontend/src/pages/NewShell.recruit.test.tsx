@@ -204,6 +204,11 @@ function renderShell(initialPath: string) {
 }
 
 const path = () => screen.getByTestId('location').getAttribute('data-path');
+/** The current location as `[pathname, sorted params]` for order-independent assertions. */
+const located = () => {
+  const [pathname, search = ''] = (path() ?? '').split('?');
+  return { pathname, params: Object.fromEntries(new URLSearchParams(search)) };
+};
 const navType = () => screen.getByTestId('location').getAttribute('data-type');
 const openRecruitment = (opts: Parameters<ReturnType<typeof useSettingsPanelStore.getState>['open']>[0]) =>
   act(() => { useSettingsPanelStore.getState().open(opts); });
@@ -260,6 +265,15 @@ describe('NewShell — the Recruiting sub-route body (R-RH-G)', () => {
     fireEvent.click(screen.getByTestId('spine-stub'));
     expect(path()).toBe('/group/abc?tab=roster');
   });
+
+  it('a tab change carries viewAs/adminMode (URL-driven access) and drops only rtab/create (C2)', () => {
+    renderShell('/group/abc/recruit?rtab=listing&create=1&tier=t1&viewAs=u2&adminMode=true');
+    fireEvent.click(screen.getByTestId('spine-stub'));
+    expect(located()).toEqual({
+      pathname: '/group/abc',
+      params: { tab: 'roster', tier: 't1', viewAs: 'u2', adminMode: 'true' },
+    });
+  });
 });
 
 describe('NewShell — the settings seam (R-RH-I)', () => {
@@ -270,6 +284,15 @@ describe('NewShell — the settings seam (R-RH-I)', () => {
     expect(useSettingsPanelStore.getState().isOpen).toBe(false);
     expect(navType()).toBe('PUSH');
     expect(screen.getByTestId('recruit-page-mock')).toBeInTheDocument();
+  });
+
+  it('the redirect carries adminMode (an admin without a role keeps canManage on the route) (C2)', () => {
+    renderShell('/group/abc?adminMode=true&tier=t1');
+    openRecruitment({ tab: 'recruitment', section: 'invitations', highlightCreateInvite: true });
+    expect(located()).toEqual({
+      pathname: '/group/abc/recruit',
+      params: { rtab: 'invites', create: '1', tier: 't1', adminMode: 'true' },
+    });
   });
 
   it('open({ recruitment, requests }) lands on Applicants', () => {
@@ -370,8 +393,20 @@ describe('NewShell — ?rcsub= on the group route (M11)', () => {
     mocks.currentGroup = GROUP_ABC;
     stale.armed = true;
     rerenderShell();
-    expect(path()).toBe('/group/abc/recruit?rtab=listing');
+    // Re-applied from the overwritten group URL, so its `tab` rides along; the
+    // consumed `rcsub` does not.
+    expect(located()).toEqual({ pathname: '/group/abc/recruit', params: { rtab: 'listing', tab: 'overview' } });
     expect(screen.getByTestId('recruit-page-mock')).toBeInTheDocument();
+  });
+
+  it('the rcsub redirect carries adminMode and drops the consumed rcsub (C2)', () => {
+    mocks.tiers = [];
+    renderShell('/group/abc?rcsub=listing&adminMode=true&tier=t1');
+    expect(located()).toEqual({
+      pathname: '/group/abc/recruit',
+      params: { rtab: 'listing', tier: 't1', adminMode: 'true' },
+    });
+    expect(navType()).toBe('REPLACE');
   });
 
   it('arriving at another static with ?rcsub= acts again', () => {
