@@ -11,11 +11,16 @@
  * roster never sees the toggle.
  *
  * R-RH-I (the Recruiting seam): the V2 shell registers `recruitRedirect` while
- * it is mounted. `open`/`toggle` for the Recruitment tab consult it first and,
- * when it returns true, do nothing else — the dock never opens, `isOpen` never
- * flips, so no `showSettings` write and no history entry. V1 never registers,
- * so every opener keeps today's behaviour there. `openDock` is `open` without
- * the hook, for the route's interim Listing/Invites placeholders (R-RH-J).
+ * it is mounted. `open` for the Recruitment tab always consults it first and,
+ * when it returns true, does nothing else — the dock never opens, `isOpen`
+ * never flips, so no `showSettings` write and no history entry. `toggle`
+ * consults it too, EXCEPT when the dock is already open and showing
+ * Recruitment: there, Alt+I keeps closing the dock rather than navigating
+ * (see the inline comment in `toggle` — RH1d fix wave: an open dock on
+ * ANOTHER tab now closes first, then hands off to the redirect, so toggling
+ * to Recruitment while it's hidden from the dock's own tab list is no longer
+ * a silent no-op). V1 never registers, so every opener keeps today's
+ * behaviour there.
  */
 import { create } from 'zustand';
 import type { SettingsTab, RecruitmentSection } from '../components/settings';
@@ -39,8 +44,6 @@ interface SettingsPanelState {
   setRecruitRedirect: (fn: RecruitRedirect | null) => void;
   /** Open (or re-route) the panel to a tab/section. */
   open: (opts?: OpenOptions) => void;
-  /** Open the dock itself, bypassing `recruitRedirect` (R-RH-J placeholders only). */
-  openDock: (opts?: OpenOptions) => void;
   close: () => void;
   /**
    * Toggle from the gear / dock control. Re-requesting the same tab while open
@@ -59,29 +62,36 @@ export const useSettingsPanelStore = create<SettingsPanelState>((set, get) => ({
   setRecruitRedirect: (fn) => set({ recruitRedirect: fn }),
   open: (opts = {}) => {
     if (opts.tab === 'recruitment' && get().recruitRedirect?.(opts)) return;
-    get().openDock(opts);
-  },
-  openDock: (opts = {}) =>
     set((s) => ({
       isOpen: true,
       tab: opts.tab ?? s.tab,
       recruitmentSection: opts.section,
       highlightCreateInvite: opts.highlightCreateInvite ?? false,
-    })),
+    }));
+  },
   close: () => set({ isOpen: false, recruitmentSection: undefined, highlightCreateInvite: false }),
   toggle: (opts = {}) => {
     const s = get();
-    // Only a CLOSED dock redirects (R-RH-I); an open one keeps today's toggle
-    // semantics below (same tab closes, another tab switches), so Alt+I on an
-    // open Recruitment dock closes it rather than navigating.
-    if (!s.isOpen && opts.tab === 'recruitment' && s.recruitRedirect?.(opts)) return;
-    const sameTab = opts.tab === undefined || opts.tab === s.tab;
-    if (s.isOpen && sameTab && !opts.section) {
+    // A closed dock redirects, and so does an open one showing ANOTHER tab —
+    // close it first so the panel never falls back to General for a tab the
+    // host just hid (R-RH-J), then hand off to the route (RH1d fix wave: this
+    // used to only fire while closed, so Alt+I on a dock open elsewhere just
+    // switched to the now-hidden Recruitment tab, a silent no-op). An open
+    // dock already ON Recruitment skips this and falls through to the plain
+    // toggle below, so Alt+I there keeps just closing it rather than
+    // navigating.
+    if (opts.tab === 'recruitment' && s.tab !== 'recruitment' && s.recruitRedirect) {
+      if (s.isOpen) set({ isOpen: false, recruitmentSection: undefined, highlightCreateInvite: false });
+      if (s.recruitRedirect(opts)) return;
+    }
+    const current = get();
+    const sameTab = opts.tab === undefined || opts.tab === current.tab;
+    if (current.isOpen && sameTab && !opts.section) {
       set({ isOpen: false, recruitmentSection: undefined, highlightCreateInvite: false });
     } else {
       set({
         isOpen: true,
-        tab: opts.tab ?? s.tab,
+        tab: opts.tab ?? current.tab,
         recruitmentSection: opts.section,
         highlightCreateInvite: opts.highlightCreateInvite ?? (opts.tab === 'recruitment' && !opts.section),
       });

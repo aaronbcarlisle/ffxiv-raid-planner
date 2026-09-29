@@ -22,6 +22,7 @@ import { SettingsSubNav } from './SettingsSubNav';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useInvitationStore } from '../../stores/invitationStore';
+import { normalizeRecruitmentStatus, STATUS_LABEL } from '../../utils/recruitmentStatus';
 import type { JoinRequest, StaticGroup } from '../../types';
 
 const RECRUITMENT_SECTION_VALUES = ['overview', 'listing', 'requests', 'invitations'] as const;
@@ -104,26 +105,6 @@ function StatusCard({
   );
 }
 
-type RecruitmentStatus = 'open' | 'selective' | 'paused' | 'closed';
-
-/**
- * The stored status read exactly as the backend's
- * `discovery_settings.normalize_status` reads it (same copy as JoinRequestBanner):
- * `limited` is `selective`; missing, empty, non-string or unknown is `open`.
- */
-function normalizeStatus(raw: unknown): RecruitmentStatus {
-  if (raw === 'limited') return 'selective';
-  if (raw === 'open' || raw === 'selective' || raw === 'paused' || raw === 'closed') return raw;
-  return 'open';
-}
-
-const STATUS_LABEL: Record<RecruitmentStatus, string> = {
-  open: 'Open',
-  selective: 'Selective',
-  paused: 'Paused',
-  closed: 'Closed',
-};
-
 function RecruitmentOverview({
   group,
   pendingCount,
@@ -137,7 +118,7 @@ function RecruitmentOverview({
 }) {
   const { invitations } = useInvitationStore();
   const discovery = group.settings?.discovery ?? { enabled: false, recruitmentStatus: 'closed' };
-  const status = normalizeStatus(discovery.recruitmentStatus);
+  const status = normalizeRecruitmentStatus(discovery.recruitmentStatus);
   // Mirrors the backend's `is_discoverable`: a paused or closed listing has left
   // the Static Finder, so the card must not call it Live (R-RH-A).
   const isListed =

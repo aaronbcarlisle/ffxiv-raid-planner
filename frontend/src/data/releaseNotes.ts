@@ -99,6 +99,15 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): RH1c — Applicants tab',
         internal: true,
       },
+      {
+        category: 'improvement',
+        title: 'The Recruiting home gets Listing and Invites tabs',
+        description:
+          'V2 preview plumbing: the Recruiting page\'s Listing tab is a slim Live/Hidden status card over the existing listing editor, and its Invites tab lists, creates, copies and revokes invitations directly — both replace the "use Settings → Recruitment for now" placeholder. The V2 Settings dock no longer shows a Recruitment tab; every opener now lands on the route instead.',
+        pr: 316,
+        prTitle: 'feat(v2): RH1d — Listing and Invites tabs, dock hides Recruitment',
+        internal: true,
+      },
     ],
   },
   {

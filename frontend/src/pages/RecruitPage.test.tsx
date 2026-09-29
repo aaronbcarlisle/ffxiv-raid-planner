@@ -1,11 +1,13 @@
 /**
- * RecruitPage — the V2 Recruiting frame (RH1b, R-RH-G/H/J/L).
+ * RecruitPage — the V2 Recruiting frame (RH1b/RH1d, R-RH-G/H/L/M).
  *
- * Stores and permissions are mocked at the hook seam; the settings-panel store
- * is REAL so the placeholders' `openDock` is proven to bypass a registered
- * redirect. Navigation is asserted through a probe under the same
- * MemoryRouter; "Back is one step" drives `navigate(-1)` after the member
- * redirect and expects the entry BEFORE the recruit URL.
+ * Stores and permissions are mocked at the hook seam. `ListingTab` and
+ * `InvitesTab` are stubbed here (their own behaviour has dedicated suites,
+ * ListingTab.test.tsx and InvitesTab.test.tsx) — this file only proves the
+ * frame mounts the right one for the active tab with the right props.
+ * Navigation is asserted through a probe under the same MemoryRouter; "Back
+ * is one step" drives `navigate(-1)` after the member redirect and expects
+ * the entry BEFORE the recruit URL.
  */
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
@@ -45,9 +47,20 @@ vi.mock('../stores/toastStore', () => ({
 vi.mock('../components/recruit/ApplicantsTab', () => ({
   ApplicantsTab: ({ group }: { group: { id: string } }) => <div data-testid="applicants-tab">{group.id}</div>,
 }));
+vi.mock('../components/recruit/ListingTab', () => ({
+  ListingTab: ({ group, onTabChange }: { group: { id: string }; onTabChange: (t: string) => void }) => (
+    <div data-testid="listing-tab" data-group={group.id}>
+      <button type="button" onClick={() => onTabChange('applicants')}>close-listing</button>
+    </div>
+  ),
+}));
+vi.mock('../components/recruit/InvitesTab', () => ({
+  InvitesTab: ({ groupId, createRequested }: { groupId: string; createRequested?: boolean }) => (
+    <div data-testid="invites-tab" data-group={groupId} data-create={String(!!createRequested)} />
+  ),
+}));
 
 import { RecruitPage } from './RecruitPage';
-import { useSettingsPanelStore } from '../stores/settingsPanelStore';
 
 function makeGroup(discovery: Record<string, unknown> | undefined, extra: Record<string, unknown> = {}) {
   const settings: Record<string, unknown> = { lootPriority: ['tank'] };
@@ -92,9 +105,6 @@ beforeEach(() => {
   mocks.updateGroup.mockReset().mockResolvedValue(undefined);
   mocks.clearGroupError.mockReset();
   mocks.toastError.mockReset();
-  useSettingsPanelStore.setState({
-    isOpen: false, tab: 'general', recruitmentSection: undefined, highlightCreateInvite: false, recruitRedirect: null,
-  });
   vi.stubGlobal(
     'matchMedia',
     vi.fn().mockImplementation((query: string) => ({
@@ -179,38 +189,32 @@ describe('RecruitPage tabs (R-RH-H, R-RH-J)', () => {
     expect(mocks.toastError.mock.calls[0][0]).not.toMatch(/group/i);
   });
 
-  it('?rtab=listing selects Listing and hides the status select; the placeholder opens the dock via openDock past a redirect', () => {
-    const redirect = vi.fn(() => true);
-    useSettingsPanelStore.getState().setRecruitRedirect(redirect);
+  it('?rtab=listing selects Listing, hides the status select, and mounts ListingTab with the group', () => {
     renderAt(['/group/abc/recruit?rtab=listing']);
     expect(screen.getByRole('tab', { name: 'Listing' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.queryByRole('combobox', { name: 'Recruitment status' })).toBeNull();
-    expect(screen.getByText('Coming in the next update, use Settings → Recruitment for now')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Open Settings → Recruitment' }));
-    expect(redirect).not.toHaveBeenCalled();
-    const s = useSettingsPanelStore.getState();
-    expect(s.isOpen).toBe(true);
-    expect(s.tab).toBe('recruitment');
-    expect(s.recruitmentSection).toBe('listing');
+    expect(screen.getByTestId('listing-tab')).toHaveAttribute('data-group', 'g1');
   });
 
-  it('clicking Invites writes ?rtab=invites, keeps the select, and its placeholder targets the invitations section', () => {
+  it('ListingTab closing (its DiscoveryTab onClose) switches the page back to Applicants and drops the param', () => {
+    renderAt(['/group/abc/recruit?rtab=listing']);
+    fireEvent.click(screen.getByText('close-listing'));
+    expect(path()).toBe('/group/abc/recruit');
+    expect(screen.getByRole('tab', { name: 'Applicants' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('clicking Invites writes ?rtab=invites, keeps the select, and mounts InvitesTab with the group id', () => {
     renderAt(['/group/abc/recruit']);
     fireEvent.click(screen.getByRole('tab', { name: 'Invites' }));
     expect(path()).toBe('/group/abc/recruit?rtab=invites');
     expect(screen.getByRole('combobox', { name: 'Recruitment status' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Open Settings → Recruitment' }));
-    expect(useSettingsPanelStore.getState().recruitmentSection).toBe('invitations');
-    expect(useSettingsPanelStore.getState().highlightCreateInvite).toBe(false);
+    expect(screen.getByTestId('invites-tab')).toHaveAttribute('data-group', 'g1');
+    expect(screen.getByTestId('invites-tab')).toHaveAttribute('data-create', 'false');
   });
 
-  it('?rtab=invites&create=1 hands the create-invite highlight to the dock (TopBar invite parity)', () => {
+  it('?rtab=invites&create=1 passes createRequested to InvitesTab (TopBar invite parity)', () => {
     renderAt(['/group/abc/recruit?rtab=invites&create=1']);
-    fireEvent.click(screen.getByRole('button', { name: 'Open Settings → Recruitment' }));
-    const s = useSettingsPanelStore.getState();
-    expect(s.isOpen).toBe(true);
-    expect(s.recruitmentSection).toBe('invitations');
-    expect(s.highlightCreateInvite).toBe(true);
+    expect(screen.getByTestId('invites-tab')).toHaveAttribute('data-create', 'true');
   });
 
   it('clicking Applicants from Listing drops the param (default tab is omitted)', () => {

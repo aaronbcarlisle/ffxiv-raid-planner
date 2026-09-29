@@ -8,24 +8,24 @@
  * manage it (owner, lead, or admin access), so a member deep link never mounts
  * the inbox and Back is one step.
  *
- * Bodies: the Applicants tab (RH1c) fetches its own slice. Listing and Invites
- * hand off to the Settings dock through `openDock` (R-RH-J) until RH1d moves
- * the editor and the invite list here.
+ * Bodies: the Applicants tab (RH1c) fetches its own slice. The Listing tab
+ * (RH1d) is a slim status card over the existing `DiscoveryTab` editor, and
+ * the Invites tab (RH1d) lists and creates invitations directly — both no
+ * longer hand off to the Settings dock.
  */
 import { useEffect } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
-import { Button } from '../components/primitives';
-import { CardShell, PageSkeleton, Tabs } from '../components/ui';
+import { PageSkeleton, Tabs } from '../components/ui';
 import { ApplicantsTab } from '../components/recruit/ApplicantsTab';
+import { ListingTab } from '../components/recruit/ListingTab';
+import { InvitesTab } from '../components/recruit/InvitesTab';
 import { RecruitHeader } from '../components/recruit/RecruitHeader';
 import { RECRUIT_TAB_VALUES, withCarriedParams, type RecruitTab } from '../components/recruit/recruitTabs';
 import { useUrlTabState } from '../hooks/useUrlTabState';
 import { useStaticPermissions } from '../hooks/useStaticPermissions';
 import { useJoinRequestStore } from '../stores/joinRequestStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
-import { useSettingsPanelStore } from '../stores/settingsPanelStore';
 import { toast } from '../stores/toastStore';
-import type { RecruitmentSection } from '../components/settings';
 import type { StaticGroup } from '../types';
 
 const RECRUIT_TABS: { id: RecruitTab; label: string }[] = [
@@ -99,32 +99,8 @@ function RecruitPageBody({
         className="mb-4"
       />
       {tab === 'applicants' && <ApplicantsTab group={group} onTabChange={onTabChange} />}
-      {tab === 'listing' && <DockFallback section="listing" />}
-      {tab === 'invites' && <DockFallback section="invitations" highlightCreateInvite={createRequested} />}
+      {tab === 'listing' && <ListingTab group={group} onTabChange={onTabChange} />}
+      {tab === 'invites' && <InvitesTab groupId={group.id} createRequested={createRequested} />}
     </div>
-  );
-}
-
-/** R-RH-J: the interim hand-off to the Settings dock, bypassing the route redirect. */
-function DockFallback({
-  section,
-  highlightCreateInvite = false,
-}: {
-  section: RecruitmentSection;
-  highlightCreateInvite?: boolean;
-}) {
-  return (
-    <CardShell as="div" className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-text-secondary">Coming in the next update, use Settings → Recruitment for now</p>
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() =>
-          useSettingsPanelStore.getState().openDock({ tab: 'recruitment', section, highlightCreateInvite })
-        }
-      >
-        Open Settings → Recruitment
-      </Button>
-    </CardShell>
   );
 }

@@ -30,7 +30,7 @@ import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { toast } from '../../stores/toastStore';
 import { useGroupAddToRoster } from '../../pages/groupActionsContext';
 import { ApplicantRow } from './ApplicantRow';
-import { useRecruitStatus } from './useRecruitStatus';
+import { useRecruitmentStatus } from './useRecruitStatus';
 import type { RecruitTab } from './recruitTabs';
 import type { JoinRequest, StaticGroup } from '../../types';
 
@@ -54,7 +54,7 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
   const declineRequest = useJoinRequestStore((s) => s.declineRequest);
   const markUnderReview = useJoinRequestStore((s) => s.markUnderReview);
   const onLinkRoster = useGroupAddToRoster();
-  const { status } = useRecruitStatus(group);
+  const status = useRecruitmentStatus(group);
   const [showResolved, setShowResolved] = useState(false);
 
   const refetch = async () => {

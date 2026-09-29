@@ -18,23 +18,6 @@ export interface FitNight {
   coverage: 'full' | 'part' | 'none' | null;
 }
 
-// Exported since RH1c (Task 3): the Applicants tab reads these fields by
-// name off `JoinRequest.fit`.
-export interface FitV2Role {
-  status: 'match' | 'partial' | 'none' | 'unknown';
-  matchedJob: string | null;
-  matchedRole: string | null;
-  priority: 'needed' | 'nice_to_have' | null;
-  isMain: boolean;
-  asRole: string | null;
-}
-
-export interface FitV2Schedule {
-  status: 'match' | 'partial' | 'conflict' | 'unknown';
-  basis: 'time' | 'day';
-  nights: FitNight[];
-}
-
 /**
  * One reason row. Carries no English — the frontend owns the copy (R-SF-P).
  * Note: a role reason's own `status` is `"conflict"` for a role miss, but
@@ -47,13 +30,14 @@ export interface FitReason {
   params: Record<string, unknown>;
 }
 
-export interface FitV2 {
-  tier: 'strong' | 'good' | 'partial' | 'weak' | 'unknown';
-  missing: ('template' | 'jobs')[];
-  role: FitV2Role;
-  schedule: FitV2Schedule;
-  reasons: FitReason[];
-}
+// `FitV2` (and its `FitV2Role`/`FitV2Schedule` fields) are homed in
+// `types/index.ts` (RH1d): `FitV2Role`/`FitV2Schedule` had no call site
+// outside this file's own `FitV2` definition (knip flagged them as unused
+// exports), and `JoinRequest.fit` already lived there. Re-exported here so
+// every existing `from './types'` / `from '../finder/types'` call site (the
+// SF1 card, ApplicantRow, and their tests) keeps working unchanged.
+export type { FitV2 } from '../../types';
+import type { FitV2 } from '../../types';
 
 export interface FitCounts {
   strong: number;
