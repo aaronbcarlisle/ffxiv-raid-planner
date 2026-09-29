@@ -1,9 +1,17 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams } from 'react-router-dom';
+import { useLocation, useMatch, useNavigate, useParams } from 'react-router-dom';
 import { CommandPalette } from '../components/layout/CommandPalette';
 import { GroupViewContent } from './GroupViewContent';
+import { RecruitPage } from './RecruitPage';
 import { ShellContentStates } from './ShellContentStates';
+import {
+  recruitTabForSection,
+  recruitUrl,
+  recruitUrlForOpen,
+  withCarriedParams,
+} from '../components/recruit/recruitTabs';
+import type { PageMode } from '../types';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { JoinRequestBanner } from '../components/static-group';
 import { GroupActionModals, useGroupActions } from './groupActionsContext';
@@ -39,9 +47,14 @@ import { logger } from '../lib/logger';
  *  the `overview` slot. Dual shell (Phase R): the legacy route renders
  *  GroupViewContent with no slots, so its restored fallback bodies serve the
  *  classic UI — v2 always passes all four slots. Exported for the slot-wiring test. */
-export function ShellContent() {
+export function ShellContent({ onRecruitPath = false }: { onRecruitPath?: boolean }) {
   const gv = useGroupViewState();
   const { shareCode } = useParams<{ shareCode: string }>();
+  // R-RH-G: on the Recruiting sub-route (`onRecruitPath`, matched once by
+  // NewShell) the body is the RecruitPage, inside the same states wrapper with
+  // the tier gate bypassed (M2: a new static recruits before it has a tier).
+  // The chrome around it is untouched.
+  const actions = useGroupActions();
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
   const fetchGroupByShareCode = useStaticGroupStore((s) => s.fetchGroupByShareCode);
   const currentTier = useCurrentTier();
@@ -126,6 +139,7 @@ export function ShellContent() {
   // branches (GroupView.tsx:381-415) rather than only past the happy path.
   return (
     <ShellContentStates
+      skipTierGate={onRecruitPath}
       banners={
         <>
           {/* Admin access banner (View As banner is in Layout) — GroupView.tsx:392-401 parity. */}
@@ -158,11 +172,15 @@ export function ShellContent() {
           these children only in its branch 5, where `currentGroup` is loaded
           and tiers exist — so the per-slot `currentGroup ?` builders above are
           always populated by the time GroupViewContent mounts. */}
-      <GroupViewContent
-        actions={useGroupActions()}
-        slots={{ overview, roster, gear: loot, schedule }}
-        onSwitchToClassicUi={() => switchShell('legacy')}
-      />
+      {onRecruitPath ? (
+        <RecruitPage />
+      ) : (
+        <GroupViewContent
+          actions={actions}
+          slots={{ overview, roster, gear: loot, schedule }}
+          onSwitchToClassicUi={() => switchShell('legacy')}
+        />
+      )}
     </ShellContentStates>
   );
 }
@@ -182,6 +200,16 @@ export function NewShell() {
   // write that doesn't touch `tier` itself.
   const urlTierId = searchParams.get('tier');
   const { shareCode } = useParams<{ shareCode: string }>();
+  const navigate = useNavigate();
+  // Every same-static URL built below carries the live search (`?viewAs=`,
+  // `?adminMode=` are URL-driven state) via `withCarriedParams`; `location` is
+  // also what the `?rcsub=` handler re-checks on every navigation.
+  const location = useLocation();
+  // R-RH-G: on the Recruiting sub-route the Spine has no selected tab and a
+  // tab change (Spine or ⌘K) LEAVES the route for `/group/:code?tab=…` instead
+  // of writing `?tab=` onto it (M1). `useGroupViewState` is left alone.
+  const onRecruitPath = useMatch('/group/:shareCode/recruit') !== null;
+  const { canEdit: canManage } = useStaticPermissions();
   const palette = useModal();
   // Stage-1 req 10: the NotificationCenter is mounted ONCE, app-level, by
   // NotificationCenterHost (App.tsx) — the TopBar bell only writes the store's
@@ -287,6 +315,77 @@ export function NewShell() {
     return () => { cancelled = true; };
   }, [currentGroup?.id, urlTierId, fetchTiers, fetchTier, fetchCurrentWeek]);
 
+  // ── The Recruiting seam (R-RH-I) ─────────────────────────────────────────
+  // While this shell is mounted, every `open`/`toggle` of the Settings dock's
+  // Recruitment tab lands on the route instead; the dock never opens, so no
+  // `showSettings` write and no history entry. Keyed on the share code and the
+  // current tier (M10): the shell stays mounted across the recruit path
+  // (PageTransition keys on the static, not the pathname) and, under reduced
+  // motion, across statics too, so a stale closure would send the user to the
+  // previous static's inbox. V1 never registers. Cleared on unmount so the
+  // account-level dock is unaffected.
+  const currentSearch = location.search;
+  useEffect(() => {
+    if (!shareCode) return;
+    const { setRecruitRedirect } = useSettingsPanelStore.getState();
+    setRecruitRedirect((opts) => {
+      navigate(withCarriedParams(recruitUrlForOpen(shareCode, opts, urlTierId), currentSearch));
+      return true;
+    });
+    return () => setRecruitRedirect(null);
+  }, [shareCode, navigate, urlTierId, currentSearch]);
+
+  // ── `?rcsub=` on the group route (M11) ──────────────────────────────────
+  // An old dock deep link (SF1c's seed `?rcsub=listing`, bookmarks) is
+  // consumed ONCE per static the shell arrives at. On the first render where
+  // that static has loaded, an arrival WITH the param is remembered as pending
+  // and acted on — a manager is replace-navigated to the mapped tab, anyone
+  // else has the param stripped in place — and it stays pending until a render
+  // shows the URL no longer carries it. That re-check matters live: the
+  // redirect's router update is committed AFTER the sync tier-store update from
+  // the same effect flush, and the tier-loading render it produces mounts
+  // GroupViewContent on the stale group location, whose `useGroupViewState`
+  // mount effect replace-writes `?tab=` over the redirect; the next render
+  // re-applies it. An arrival WITHOUT the param is settled at once, so a later
+  // `rcsub` write by the dock's Recruitment sub-nav (still on the param until
+  // RH1d) never triggers it. Keyed on `location`, a new object per navigation
+  // even when the URL string is unchanged, so every write is re-checked.
+  const groupLoadedForRoute = currentGroup?.shareCode === shareCode;
+  const rcsubArrival = useRef<{ shareCode: string; pending: boolean } | null>(null);
+  useEffect(() => {
+    if (!shareCode || !groupLoadedForRoute) return;
+    const params = new URLSearchParams(location.search);
+    const rcsub = params.get('rcsub');
+    if (rcsubArrival.current?.shareCode !== shareCode) {
+      rcsubArrival.current = { shareCode, pending: rcsub !== null };
+    }
+    const arrival = rcsubArrival.current;
+    if (!arrival.pending) return;
+    if (!rcsub || onRecruitPath) {
+      arrival.pending = false;
+      return;
+    }
+    if (canManage) {
+      const target = recruitUrl(shareCode, recruitTabForSection(rcsub), { tier: params.get('tier') });
+      navigate(withCarriedParams(target, location.search, ['rcsub']), { replace: true });
+    } else {
+      params.delete('rcsub');
+      const search = params.toString();
+      navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace: true });
+    }
+  }, [location, shareCode, onRecruitPath, groupLoadedForRoute, canManage, navigate]);
+
+  // M1: a Spine / ⌘K tab change from the Recruiting route goes back to the
+  // static on that tab, carrying the current search (the tier, so the target
+  // selects the same tier without a `?tier=` mirror write; `viewAs`/`adminMode`
+  // so admin access survives) minus the route's own `rtab`/`create`.
+  const goToTab = useCallback(
+    (tab: PageMode) => {
+      navigate(withCarriedParams(`/group/${shareCode}?tab=${tab}`, currentSearch));
+    },
+    [navigate, shareCode, currentSearch],
+  );
+
   // ── v2-scoped mod-K binding ──────────────────────────────────────────────
   // Destructure open so the effect dep-array references the stable callback
   // directly (avoids the exhaustive-deps warning for the `palette` object).
@@ -308,7 +407,7 @@ export function NewShell() {
     // and (post-T4) every other v2-chromed route.
     <GroupActionModals onTierCreated={() => gv.setPageMode('roster')}>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="new-shell">
-        <ShellContent />
+        <ShellContent onRecruitPath={onRecruitPath} />
       </div>
       {/* Stage-1 T3 portals: TopBar/Spine render into the chrome host's slot
           containers (DOM position) while staying React children of THIS tree —
@@ -325,9 +424,19 @@ export function NewShell() {
           )
         : null}
       {spineEl !== null
-        ? createPortal(<Spine activeTab={gv.pageMode} onTabChange={gv.setPageMode} />, spineEl)
+        ? createPortal(
+            <Spine
+              activeTab={onRecruitPath ? null : gv.pageMode}
+              onTabChange={onRecruitPath ? goToTab : gv.setPageMode}
+            />,
+            spineEl,
+          )
         : null}
-      <CommandPalette isOpen={palette.isOpen} onClose={palette.close} />
+      <CommandPalette
+        isOpen={palette.isOpen}
+        onClose={palette.close}
+        onSelectTab={onRecruitPath ? goToTab : undefined}
+      />
       <V2SettingsHost />
     </GroupActionModals>
   );

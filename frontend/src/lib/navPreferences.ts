@@ -25,6 +25,9 @@ export const TRANSIENT_NAV_PARAMS = [
   'player', 'viewAs', 'adminMode', 'showSettings', 'settings',
   // Per-tab settings sub-section params (Goals / Priority / Recruitment).
   'gsub', 'psub', 'rcsub',
+  // The V2 Recruiting route's tab and its one-shot "open the create form"
+  // flag (R-RH-H) — neither belongs in per-static tab memory or a static switch.
+  'rtab', 'create',
   'shell',
 ] as const;
 

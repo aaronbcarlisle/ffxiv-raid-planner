@@ -77,8 +77,12 @@ export function AppChrome({ children }: AppChromeProps) {
 
   // On a group route: which static is active (drives avatar isActive, the §1
   // host contract below, and the empty top-bar placeholder while the lazy
-  // NewShell chunk loads).
-  const groupMatch = matchPath('/group/:shareCode', location.pathname);
+  // NewShell chunk loads). Explicit matchers, not a splat (R-RH-G): the
+  // Recruiting sub-route is a group route; an unregistered `/group/x/foo`
+  // keeps the NotFound chrome.
+  const groupMatch =
+    matchPath('/group/:shareCode', location.pathname) ??
+    matchPath('/group/:shareCode/recruit', location.pathname);
   const activeShareCode = groupMatch?.params.shareCode ?? null;
   const onGroupRoute = groupMatch !== null;
 

@@ -36,6 +36,8 @@ import { useSearchParams } from 'react-router-dom';
 // being navigated to.
 const SEEDED_TAB_PARAMS = [
   'rsub', 'sched', 'stab', 'goal', 'farm', 'coll', 'gsub', 'psub', 'rcsub', 'avail', 'mf', 'rview', 'lview',
+  // The V2 Recruiting route's tab (R-RH-H).
+  'rtab',
 ] as const;
 const registeredTabParams = new Set<string>(SEEDED_TAB_PARAMS);
 

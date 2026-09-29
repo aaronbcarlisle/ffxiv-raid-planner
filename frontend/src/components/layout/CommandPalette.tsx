@@ -37,12 +37,19 @@ import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { useAuthStore } from '../../stores/authStore';
 import { buildStaticNavHref, prefRememberTabs } from '../../lib/navPreferences';
 import { getCommandPaletteShortcutLabel } from '../../lib/platform';
+import type { PageMode } from '../../types';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
+  /**
+   * Overrides `setPageMode` for the "Go to …" rows. The shell passes it on the
+   * Recruiting route (R-RH-G), where a tab change must leave the route rather
+   * than write `?tab=` onto it.
+   */
+  onSelectTab?: (tab: PageMode) => void;
 }
 
 interface PaletteCommand {
@@ -56,7 +63,7 @@ interface PaletteCommand {
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
+export function CommandPalette({ isOpen, onClose, onSelectTab }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   // Index into `filtered` (below) of the combobox's active option. Reset
   // directly in the handlers that change what's being highlighted
@@ -66,7 +73,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setPageMode } = useGroupViewState();
+  const { setPageMode: setPageModeFromState } = useGroupViewState();
+  const setPageMode = onSelectTab ?? setPageModeFromState;
   const openSettingsPanel = useSettingsPanelStore((s) => s.open);
   const groups = useStaticGroupStore((s) => s.groups);
   const rememberStaticTab = useAuthStore((s) => prefRememberTabs(s.user));

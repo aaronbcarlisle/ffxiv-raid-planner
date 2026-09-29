@@ -5,7 +5,12 @@ import { LayoutDashboard, Users, Shield, Calendar } from 'lucide-react';
 import { analytics } from '../../services/analytics';
 
 interface SpineProps {
-  activeTab: PageMode;
+  /**
+   * The selected tab, or `null` when the shell is on a page outside the four
+   * (the Recruiting route, R-RH-G): then no tab is selected, the first tab
+   * keeps the tablist reachable (M14), and any arrow/Home/End activates it.
+   */
+  activeTab: PageMode | null;
   onTabChange: (tab: PageMode) => void;
 }
 
@@ -16,8 +21,11 @@ const SPINE_TABS: { id: PageMode; label: string; Icon: FC<{ size?: number }> }[]
   { id: 'schedule', label: 'Schedule', Icon: Calendar },
 ];
 
+const NAV_KEYS = new Set(['ArrowRight', 'ArrowLeft', 'Home', 'End']);
+
 export function Spine({ activeTab, onTabChange }: SpineProps) {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const activeIndex = activeTab === null ? -1 : SPINE_TABS.findIndex(t => t.id === activeTab);
 
   const activate = (id: PageMode) => {
     analytics.track('navigation', 'tab_switch', { tab: id, surface: 'spine' });
@@ -25,24 +33,29 @@ export function Spine({ activeTab, onTabChange }: SpineProps) {
   };
 
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    const activeIndex = SPINE_TABS.findIndex(t => t.id === activeTab);
+    if (!NAV_KEYS.has(e.key)) return;
     let nextIndex: number;
 
-    switch (e.key) {
-      case 'ArrowRight':
-        nextIndex = (activeIndex + 1) % SPINE_TABS.length;
-        break;
-      case 'ArrowLeft':
-        nextIndex = (activeIndex - 1 + SPINE_TABS.length) % SPINE_TABS.length;
-        break;
-      case 'Home':
-        nextIndex = 0;
-        break;
-      case 'End':
-        nextIndex = SPINE_TABS.length - 1;
-        break;
-      default:
-        return;
+    if (activeIndex === -1) {
+      // No selected tab (off-page): every navigation key lands on the first tab.
+      nextIndex = 0;
+    } else {
+      switch (e.key) {
+        case 'ArrowRight':
+          nextIndex = (activeIndex + 1) % SPINE_TABS.length;
+          break;
+        case 'ArrowLeft':
+          nextIndex = (activeIndex - 1 + SPINE_TABS.length) % SPINE_TABS.length;
+          break;
+        case 'Home':
+          nextIndex = 0;
+          break;
+        case 'End':
+          nextIndex = SPINE_TABS.length - 1;
+          break;
+        default:
+          return;
+      }
     }
 
     e.preventDefault();
@@ -60,6 +73,9 @@ export function Spine({ activeTab, onTabChange }: SpineProps) {
     >
       {SPINE_TABS.map((tab, index) => {
         const isActive = activeTab === tab.id;
+        // Roving tabindex: the selected tab is the one Tab stop; with nothing
+        // selected the first tab takes it so the tablist stays reachable.
+        const isTabStop = activeIndex === -1 ? index === 0 : isActive;
         return (
           /* design-system-ignore: spine tab requires toggle styling */
           <button
@@ -68,7 +84,7 @@ export function Spine({ activeTab, onTabChange }: SpineProps) {
             type="button"
             role="tab"
             aria-selected={isActive}
-            tabIndex={isActive ? 0 : -1}
+            tabIndex={isTabStop ? 0 : -1}
             onClick={() => activate(tab.id)}
             className={[
               'relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors',

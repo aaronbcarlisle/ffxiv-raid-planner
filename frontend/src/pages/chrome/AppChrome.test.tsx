@@ -290,7 +290,22 @@ describe('AppChrome top-bar occupancy per route class (T4)', () => {
     expect(screen.queryByTestId('non-group-topbar-stub')).toBeNull();
   });
 
-  it.each(['/profile', '/discover', '/docs/faq', '/dashboard', '/admin/statics', '/nope'])(
+  it('the Recruiting sub-route is a group route: portal slots, no NonGroupTopBar, the static avatar current (R-RH-G)', () => {
+    renderChrome('/group/ABC/recruit?rtab=listing');
+    expect(screen.getByTestId('chrome-topbar-slot')).toBeInTheDocument();
+    expect(screen.getByTestId('chrome-spine-slot')).toBeInTheDocument();
+    expect(screen.queryByTestId('non-group-topbar-stub')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Alpha Static' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('a rail switch from the Recruiting route carries the tab but never rtab (reset preference)', () => {
+    mocks.user = { id: 'u1', tabPersistence: 'reset' };
+    renderChrome('/group/ABC/recruit?tab=overview&rtab=listing&tier=t1');
+    fireEvent.click(screen.getByRole('button', { name: 'Beta Static' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/group/XYZ?tab=overview');
+  });
+
+  it.each(['/profile', '/discover', '/docs/faq', '/dashboard', '/admin/statics', '/nope', '/group/ABC/foo'])(
     'renders NonGroupTopBar (and no slot containers) on %s',
     (path) => {
       renderChrome(path);

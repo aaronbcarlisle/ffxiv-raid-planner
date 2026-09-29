@@ -710,3 +710,25 @@ test.describe('Lodestone Sync', () => {
     await cleanupLinkedMockCharacter(page);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 15. Recruiting route (RH1b, R-RH-G)
+// ═══════════════════════════════════════════════════════════════════════════
+
+test.describe('Recruiting route', () => {
+  test('15 — Owner opens /group/:code/recruit and sees the Recruiting page with its three tabs', async ({ page }) => {
+    await loginAsOwner(page);
+    await page.goto(`/group/${DEV_SHARE_CODE}/recruit?shell=v2`);
+    await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
+
+    await expect(page.getByRole('heading', { name: 'Recruiting', exact: true })).toBeVisible({ timeout: 15_000 });
+    const tabs = page.getByRole('tablist', { name: 'Recruiting sections' });
+    for (const tab of ['Applicants', 'Listing', 'Invites']) {
+      await expect(tabs.getByRole('tab', { name: tab, exact: true })).toBeVisible();
+    }
+    // The shell's own chrome stays: the Spine is mounted with no selected tab.
+    const spine = page.getByRole('tablist', { name: 'Main content sections' });
+    await expect(spine).toBeVisible();
+    await expect(spine.getByRole('tab', { selected: true })).toHaveCount(0);
+  });
+});

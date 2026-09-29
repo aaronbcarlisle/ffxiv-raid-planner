@@ -10,20 +10,31 @@
  * `stores/*` is read-only, so this can't add its own in-flight guard either
  * — it just relies on the store AppChrome already keeps warm (PR-review fix
  * wave item 6).
+ *
+ * "Post a listing" under V2 is one navigation to the Recruiting route's Listing
+ * tab (R-RH-N); the route owns that section, and its interim Listing
+ * placeholder hands off to the dock itself (R-RH-J). `/discover` is not
+ * shell-gated, so a legacy-shell user (still the default) reaches this row too:
+ * for them the route only redirects back to the static, so they keep the
+ * pre-RH1b pair — navigate to `?rcsub=listing` and open the Settings dock on
+ * Recruitment → Listing.
  */
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../primitives';
 import { Select } from '../ui/Select';
 import { SetupWizard } from '../wizard';
 import { useModal } from '../../hooks/useModal';
+import { useResolvedShell } from '../../lib/shellPreference';
 import { useAuthStore } from '../../stores/authStore';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
+import { recruitUrl } from '../recruit/recruitTabs';
 
 export function LeadingStaticRow() {
   const user = useAuthStore((s) => s.user);
   const groups = useStaticGroupStore((s) => s.groups);
   const openSettings = useSettingsPanelStore((s) => s.open);
+  const shell = useResolvedShell();
   const navigate = useNavigate();
   const wizard = useModal();
 
@@ -32,12 +43,16 @@ export function LeadingStaticRow() {
   const led = groups.filter((g) => g.userRole === 'owner' || g.userRole === 'lead');
 
   const postListing = (shareCode: string) => {
-    // `rcsub=listing` goes straight in the URL: RecruitmentTab's sub-tab is
-    // URL-derived (useUrlTabState), and a fresh cross-static navigation's own
-    // tab/tier-establishing effects settle the URL after this call returns —
-    // openSettings's `recruitmentSection` alone loses that race live (browser
-    // walk, R-SF-J). Both still run: the store drives `tab`, the URL drives
-    // `rcsub`, and RecruitmentTab reads whichever gets there.
+    if (shell === 'v2') {
+      navigate(recruitUrl(shareCode, 'listing'));
+      return;
+    }
+    // Legacy: `rcsub=listing` goes straight in the URL: RecruitmentTab's
+    // sub-tab is URL-derived (useUrlTabState), and a fresh cross-static
+    // navigation's own tab/tier-establishing effects settle the URL after this
+    // call returns — openSettings's `recruitmentSection` alone loses that race
+    // live (browser walk, R-SF-J). Both still run: the store drives `tab`, the
+    // URL drives `rcsub`, and RecruitmentTab reads whichever gets there.
     navigate(`/group/${shareCode}?rcsub=listing`);
     openSettings({ tab: 'recruitment', section: 'listing' });
   };

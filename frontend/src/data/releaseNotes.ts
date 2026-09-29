@@ -81,6 +81,15 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): RH1a — listing status enforcement, applicant fit, overview item',
         internal: true,
       },
+      {
+        category: 'improvement',
+        title: 'The Recruiting home gets its own V2 route',
+        description:
+          'V2 preview plumbing: /group/{code}/recruit renders the Recruiting page frame — a status select in the header, Applicants / Listing / Invites tabs synced to ?rtab=, and a manager-only guard — and every "open Settings → Recruitment" control in V2 lands on that route instead of the dock, while V1 redirects the path back to the static. The Listing and Invites tabs still hand off to Settings → Recruitment until the next update.',
+        pr: 314,
+        prTitle: 'feat(v2): RH1b — recruit route, page frame and the settings seam',
+        internal: true,
+      },
     ],
   },
   {

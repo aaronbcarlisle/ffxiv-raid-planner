@@ -116,6 +116,28 @@ function renderPalette(isOpen = true, onClose = vi.fn()) {
   );
 }
 
+describe('CommandPalette onSelectTab (R-RH-G, the Recruiting route override)', () => {
+  it('"Go to …" rows call onSelectTab instead of setPageMode when the prop is given, and close', () => {
+    const onSelectTab = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <MemoryRouter initialEntries={['/group/ABC/recruit']}>
+        <CommandPalette isOpen onClose={onClose} onSelectTab={onSelectTab} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByText('Go to Roster'));
+    expect(onSelectTab).toHaveBeenCalledWith('roster');
+    expect(mockSetPageMode).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('without the prop the rows keep using setPageMode', () => {
+    renderPalette();
+    fireEvent.click(screen.getByText('Go to Roster'));
+    expect(mockSetPageMode).toHaveBeenCalledWith('roster');
+  });
+});
+
 describe('CommandPalette', () => {
   it('renders "Go to Roster" when open', () => {
     renderPalette();
