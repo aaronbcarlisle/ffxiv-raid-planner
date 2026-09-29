@@ -122,7 +122,9 @@ function RecruitmentOverview({
 
   const STATUS_LABEL: Record<string, string> = {
     open: 'Open',
+    selective: 'Selective',
     limited: 'Limited',
+    paused: 'Paused',
     closed: 'Closed',
   };
 

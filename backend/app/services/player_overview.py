@@ -22,11 +22,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from pydantic import ValidationError
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import (
     BiSTargetSet,
+    JoinRequest,
     LootLogEntry,
     MaterialLogEntry,
     MemberRole,
@@ -122,6 +123,8 @@ class _OverviewContext:
     # created_at of every loot-log row ever received by one of the caller's
     # configured, non-substitute roster players, across every active tier.
     loot_created_at_by_player_id: dict[str, list[str]] = field(default_factory=dict)
+    # Pending + under-review join requests per static the caller leads (`join_requests`, R-RH-D).
+    pending_requests: dict[str, int] = field(default_factory=dict)
 
 
 def _parse_iso_utc(value: str) -> datetime | None:
@@ -290,6 +293,24 @@ async def _load_context(session: AsyncSession, user_id: str, now: datetime) -> _
         )
         for recipient_id, created_at in loot_created_result.all():
             ctx.loot_created_at_by_player_id.setdefault(recipient_id, []).append(created_at)
+
+    # Waiting join requests on the statics the caller leads: one grouped count
+    # over the led-static-id set, skipped when the caller leads nothing (R-RH-D).
+    led_ids = [
+        group.id
+        for group, membership in groups_and_memberships
+        if membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value)
+    ]
+    if led_ids:
+        pending_result = await session.execute(
+            select(JoinRequest.static_group_id, func.count())
+            .where(
+                JoinRequest.static_group_id.in_(led_ids),
+                JoinRequest.status.in_(["pending", "under_review"]),
+            )
+            .group_by(JoinRequest.static_group_id)
+        )
+        ctx.pending_requests = {static_id: n for static_id, n in pending_result.all()}
 
     return ctx
 
@@ -626,6 +647,30 @@ def _build_bis_stale_items(
     return items
 
 
+def _build_join_request_item(
+    ctx: _OverviewContext, group: StaticGroup, membership: Membership
+) -> OverviewActionItem | None:
+    """The `join_requests` item for one static the caller leads, or `None` (R-RH-D).
+
+    Owners and leads with at least one pending or under-review request get one
+    item per static, linking to the V2 recruiting home.
+    """
+    if membership.role not in (MemberRole.OWNER.value, MemberRole.LEAD.value):
+        return None
+    n = ctx.pending_requests.get(group.id, 0)
+    if n <= 0:
+        return None
+    return OverviewActionItem(
+        type="join_requests",
+        static_id=group.id,
+        static_name=group.name,
+        title=f"{n} join request{'' if n == 1 else 's'} waiting",
+        detail=group.name,
+        href=f"/group/{group.share_code}/recruit",
+        starts_at=None,
+    )
+
+
 async def build_player_overview(
     session: AsyncSession, user_id: str, now: datetime
 ) -> PlayerOverviewResponse:
@@ -634,7 +679,8 @@ async def build_player_overview(
     `now` must be timezone-aware UTC. Action items are `rsvp_pending` by
     start ascending, then `loot_priority` by static name, case-insensitive,
     then `bis_stale` by (static name, detail), case-insensitive, with no cap
-    (R-PH2-H, R-PH3-H).
+    (R-PH2-H, R-PH3-H), then `join_requests` by static name, case-insensitive
+    (R-RH-D).
     """
     ctx = await _load_context(session, user_id, now)
 
@@ -642,6 +688,7 @@ async def build_player_overview(
     rsvp_items: list[tuple[datetime, OverviewActionItem]] = []
     loot_items: list[OverviewActionItem] = []
     bis_items: list[OverviewActionItem] = []
+    join_items: list[OverviewActionItem] = []
     for group, membership in ctx.groups_and_memberships:
         active_tier = ctx.active_tier_by_static_id.get(group.id)
         statics.append(
@@ -662,10 +709,14 @@ async def build_player_overview(
         if loot_item is not None:
             loot_items.append(loot_item)
         bis_items.extend(_build_bis_stale_items(ctx, group, membership))
+        join_item = _build_join_request_item(ctx, group, membership)
+        if join_item is not None:
+            join_items.append(join_item)
 
     rsvp_items.sort(key=lambda pair: pair[0])
     loot_items.sort(key=lambda item: item.static_name.casefold())
     bis_items.sort(key=lambda item: (item.static_name.casefold(), item.detail))
-    action_items = [item for _start, item in rsvp_items] + loot_items + bis_items
+    join_items.sort(key=lambda item: item.static_name.casefold())
+    action_items = [item for _start, item in rsvp_items] + loot_items + bis_items + join_items
 
     return PlayerOverviewResponse(statics=statics, action_items=action_items)

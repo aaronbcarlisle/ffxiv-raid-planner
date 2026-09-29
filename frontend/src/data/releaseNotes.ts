@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.48';
+export const CURRENT_VERSION = '2.1.51';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,30 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.51',
+    date: '2026-09-28T18:00:00Z',
+    title: 'Closed and paused listings stop taking requests',
+    items: [
+      {
+        category: 'fix',
+        title: 'Closed and paused listings leave the Static Finder and stop new join requests',
+        description:
+          'Closed and paused listings now leave the Static Finder and stop new join requests, and the join banner says so; the recruitment overview labels Selective and Paused correctly; an applicant under review can no longer send a second request. The Static Finder\'s Closed filter now finds nothing, because closed listings are hidden.',
+        pr: 313,
+        prTitle: 'feat(v2): RH1a — listing status enforcement, applicant fit, overview item',
+      },
+      {
+        category: 'improvement',
+        title: 'Join-request responses carry an applicant fit field',
+        description:
+          'V2 preview plumbing: join-request responses carry a `fit` field (null unless requested). GET /api/static-groups/{id}/join-requests?fit=true computes each waiting applicant\'s Static Finder fit against the listing, and the Player Hub overview gains a join_requests item for statics you lead.',
+        pr: 313,
+        prTitle: 'feat(v2): RH1a — listing status enforcement, applicant fit, overview item',
+        internal: true,
+      },
+    ],
+  },
   {
     version: '2.1.50',
     date: '2026-09-27T23:00:00Z',

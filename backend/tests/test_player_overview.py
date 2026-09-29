@@ -1,13 +1,14 @@
 """Tests for GET /api/player/overview and services.player_overview.build_player_overview."""
 
 import logging
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import MemberRole
+from app.models import JoinRequest, MemberRole
 from app.services.loot_context import calculate_week_number, served_settings
 from app.services.player_overview import build_player_overview
 from tests.factories import (
@@ -1519,5 +1520,134 @@ class TestBisStale:
 
         with count_statements(engine) as counts_three:
             await build_player_overview(session, caller.id, NOW)
+
+        assert counts_one.n == counts_three.n
+
+
+# ==================== join_requests (RH1a, R-RH-D) ====================
+
+
+def _join_items(result):
+    return [item for item in result.action_items if item.type == "join_requests"]
+
+
+async def _request_row(session, group, *, status: str = "pending"):
+    applicant = await create_user(session, discord_username=f"applicant-{status}")
+    row = JoinRequest(
+        id=str(uuid.uuid4()),
+        static_group_id=group.id,
+        requester_user_id=applicant.id,
+        status=status,
+        created_at=NOW.isoformat(),
+        updated_at=NOW.isoformat(),
+    )
+    session.add(row)
+    await session.flush()
+    return row
+
+
+async def _led_static(session, caller, *, name: str = "Recruit Static", role: MemberRole = MemberRole.LEAD):
+    """A static owned by someone else that `caller` joins with `role`."""
+    owner = await create_user(session, discord_username="owner")
+    group = await create_static_group(session, owner, name=name)
+    await create_membership(session, caller, group, role=role)
+    return group
+
+
+class TestJoinRequests:
+    async def test_lead_with_two_waiting_and_one_declined(self, session: AsyncSession):
+        caller = await create_user(session, discord_username="caller")
+        group = await _led_static(session, caller)
+        await _request_row(session, group, status="pending")
+        await _request_row(session, group, status="pending")
+        await _request_row(session, group, status="declined")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _join_items(result)
+        assert len(items) == 1
+        item = items[0]
+        assert item.type == "join_requests"
+        assert item.static_id == group.id
+        assert item.static_name == "Recruit Static"
+        assert item.title == "2 join requests waiting"
+        assert item.detail == "Recruit Static"
+        assert item.href == f"/group/{group.share_code}/recruit"
+        assert item.starts_at is None
+
+    async def test_one_pending_is_singular(self, session: AsyncSession):
+        caller = await create_user(session, discord_username="caller")
+        group = await _led_static(session, caller)
+        await _request_row(session, group, status="pending")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert [item.title for item in _join_items(result)] == ["1 join request waiting"]
+
+    async def test_under_review_counts_as_waiting(self, session: AsyncSession):
+        caller = await create_user(session, discord_username="caller")
+        group = await _led_static(session, caller)
+        await _request_row(session, group, status="pending")
+        await _request_row(session, group, status="under_review")
+        await _request_row(session, group, status="cancelled")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert [item.title for item in _join_items(result)] == ["2 join requests waiting"]
+
+    async def test_member_of_the_same_static_gets_no_item(self, session: AsyncSession):
+        caller = await create_user(session, discord_username="caller")
+        group = await _led_static(session, caller, role=MemberRole.MEMBER)
+        await _request_row(session, group, status="pending")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert result.statics[0].id == group.id
+        assert _join_items(result) == []
+
+    async def test_lead_with_zero_waiting_gets_no_item(self, session: AsyncSession):
+        caller = await create_user(session, discord_username="caller")
+        group = await _led_static(session, caller)
+        await _request_row(session, group, status="declined")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _join_items(result) == []
+
+    async def test_placed_after_bis_stale(self, session: AsyncSession):
+        caller = await create_user(session)
+        group, tier, player = await _seed_bis_static(session, caller, name="Both Static")
+        await _seed_bis_profile(session, caller, updated_at=(NOW - timedelta(days=2)).isoformat())
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+        await _request_row(session, group, status="pending")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert [item.type for item in result.action_items] == ["bis_stale", "join_requests"]
+
+    async def test_two_items_sorted_by_static_name(self, session: AsyncSession):
+        caller = await create_user(session, discord_username="caller")
+        beta = await create_static_group(session, caller, name="Beta")
+        alpha = await create_static_group(session, caller, name="alpha")
+        await _request_row(session, beta, status="pending")
+        await _request_row(session, alpha, status="pending")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert [item.static_name for item in _join_items(result)] == ["alpha", "Beta"]
+
+    async def test_statement_count_one_static_vs_three_same_count(
+        self, session: AsyncSession, engine, count_statements,
+    ):
+        caller = await create_user(session, discord_username="caller")
+        solo = await create_static_group(session, caller, name="Solo")
+        await _request_row(session, solo, status="pending")
+
+        with count_statements(engine) as counts_one:
+            result = await build_player_overview(session, caller.id, NOW)
+        assert len(_join_items(result)) == 1
+
+        for name in ("Second", "Third"):
+            group = await create_static_group(session, caller, name=name)
+            await _request_row(session, group, status="pending")
+
+        with count_statements(engine) as counts_three:
+            result = await build_player_overview(session, caller.id, NOW)
+        assert len(_join_items(result)) == 3
 
         assert counts_one.n == counts_three.n

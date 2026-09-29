@@ -896,3 +896,98 @@ async def test_discovery_never_exposes_join_request_data(client: AsyncClient, se
     for field in ["joinRequests", "join_requests", "pendingCount", "pending_count",
                   "applicants", "requester", "requestCount", "request_count"]:
         assert field not in item, f"Discovery leaked join request field: {field}"
+
+
+# --- Recruitment status enforcement (RH1a, R-RH-A) ---
+# Each case runs for a guest, a signed-in V1 caller and a fitV2 caller: the gate
+# is the same `is_discoverable` on every path, and the golden counts
+# (tests/golden/discovery_v1.json) stay unedited because it adds no SQL.
+
+CALLERS = ["guest", "v1", "fitv2"]
+
+
+def _caller(kind: str, auth_headers: dict) -> tuple[dict | None, dict]:
+    if kind == "guest":
+        return None, {}
+    if kind == "v1":
+        return auth_headers, {}
+    return auth_headers, {"fitV2": "true"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", CALLERS)
+async def test_paused_and_closed_listings_hidden(
+    client: AsyncClient, session, test_user: User, auth_headers: dict, kind: str
+):
+    for name, status in (
+        ("Open One", "open"), ("Selective One", "selective"),
+        ("Paused One", "paused"), ("Closed One", "closed"),
+    ):
+        await create_static_group(
+            session, test_user, name=name, is_public=True,
+            settings=_discovery_settings(recruitment_status=status),
+        )
+    headers, params = _caller(kind, auth_headers)
+    resp = await client.get(ENDPOINT, params={**params, "sort": "name"}, headers=headers)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["total"] == 2
+    assert [item["name"] for item in data["items"]] == ["Open One", "Selective One"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", CALLERS)
+async def test_missing_status_listed_as_open(
+    client: AsyncClient, session, test_user: User, auth_headers: dict, kind: str
+):
+    await create_static_group(
+        session, test_user, name="No Status", is_public=True,
+        settings={"discovery": {"enabled": True}},
+    )
+    headers, params = _caller(kind, auth_headers)
+    resp = await client.get(ENDPOINT, params=params, headers=headers)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "No Status"
+    assert data["items"][0]["recruitmentStatus"] == "open"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", CALLERS)
+async def test_non_string_status_listed_as_open(
+    client: AsyncClient, session, test_user: User, auth_headers: dict, kind: str
+):
+    await create_static_group(
+        session, test_user, name="Seven", is_public=True,
+        settings={"discovery": {"enabled": True, "recruitmentStatus": 7}},
+    )
+    headers, params = _caller(kind, auth_headers)
+    resp = await client.get(ENDPOINT, params=params, headers=headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["items"][0]["recruitmentStatus"] == "open"
+
+    # The status filter's `.lower()` runs on the normalised value, never on the 7.
+    filtered = await client.get(
+        ENDPOINT, params={**params, "recruitmentStatus": "open"}, headers=headers
+    )
+    assert filtered.status_code == 200, filtered.text
+    assert filtered.json()["total"] == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", CALLERS)
+async def test_limited_status_passes_through(
+    client: AsyncClient, session, test_user: User, auth_headers: dict, kind: str
+):
+    """`limited` is listed (it normalises to selective) and the response keeps the stored string."""
+    await create_static_group(
+        session, test_user, name="Limited One", is_public=True,
+        settings=_discovery_settings(recruitment_status="limited"),
+    )
+    headers, params = _caller(kind, auth_headers)
+    resp = await client.get(ENDPOINT, params=params, headers=headers)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["recruitmentStatus"] == "limited"

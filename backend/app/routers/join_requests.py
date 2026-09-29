@@ -4,7 +4,7 @@ import uuid
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from ..database import get_session
 from ..dependencies import get_current_user
 from ..models import JoinRequest, Membership, MemberRole, StaticGroup, User
+from ..models.static_objective_goal import StaticObjectiveGoal
 from .notifications import create_notification
 from ..permissions import (
     NotFound,
@@ -30,6 +31,18 @@ from ..schemas import (
     LinkRosterRequest,
     RequesterInfo,
 )
+from ..schemas.discovery import FitV2
+from ..schemas.join_request import VALID_ROLE_INTERESTS
+from ..services.availability_layering import load_zone
+from ..services.discovery_settings import get_discovery, is_listing_enabled, normalize_status
+from ..services.finder_fit import (
+    compute_fit_v2,
+    compute_role_fit,
+    compute_schedule_fit,
+    recruit_entries,
+)
+from ..services.finder_inputs import load_fit_inputs
+from ..services.fit_score import compute_fit_summary
 
 router = APIRouter(prefix="/api", tags=["join-requests"])
 
@@ -42,18 +55,6 @@ DAY_LABELS = {
     "SA": "Sat",
     "SU": "Sun",
 }
-
-
-def _is_discoverable(group: StaticGroup) -> bool:
-    if not group.is_public:
-        return False
-    settings = group.settings
-    if not settings or not isinstance(settings, dict):
-        return False
-    discovery = settings.get("discovery")
-    if not discovery or not isinstance(discovery, dict):
-        return False
-    return discovery.get("enabled") is True
 
 
 def _unique(values: list[str]) -> list[str]:
@@ -176,11 +177,88 @@ def _player_availability_summary(rows: list, include_exact: bool) -> dict | None
     return isinstance(parsed, list) and len(parsed) > 0
 
 
+async def _applicant_fits(
+    session: AsyncSession,
+    group: StaticGroup,
+    discovery: dict,
+    requests: list[JoinRequest],
+    *,
+    now: datetime,
+) -> dict[str, FitV2]:
+    """The Static Finder fit of each waiting applicant against this listing, by
+    request id (RH1a, R-RH-C).
+
+    Only pending and under-review rows get a fit: resolved rows nulled their
+    data on purpose and the applicant's consent ends at resolution (M5). The
+    inputs load in one batched pass, so the statement count is constant in the
+    number of waiting requests. The listing's own zone is the display zone
+    (an applicant's template zone when the listing has none, M4), and a fit
+    with missing inputs is capped at `partial` (OWNER-5); the Finder's own
+    fit is not capped.
+    """
+    waiting = [r for r in requests if r.status in ("pending", "under_review")]
+    if not waiting:
+        return {}
+
+    inputs = await load_fit_inputs(
+        session,
+        [r.requester_user_id for r in waiting],
+        discoverable_only=False,
+        availability_always=True,
+    )
+    og_result = await session.execute(
+        select(StaticObjectiveGoal).where(StaticObjectiveGoal.static_group_id == group.id)
+    )
+    static_goals = [
+        {"id": g.id, "category": g.category, "priority": g.priority, "title": g.title}
+        for g in og_result.scalars().all()
+    ]
+    entries = recruit_entries(discovery)
+    zone = discovery.get("timezone")
+    # M4: `load_zone(None)` raises, so only a non-empty string is tried.
+    listing_zone = zone if isinstance(zone, str) and zone and load_zone(zone) else None
+
+    fits: dict[str, FitV2] = {}
+    for r in waiting:
+        i = inputs[r.requester_user_id]
+        raw_fit = compute_fit_summary(
+            static_group=group,
+            static_objectives=static_goals,
+            player_goals=i.public_goals,
+            player_jobs=i.player_jobs,
+            player_availability=i.availability,
+            player_languages=[],
+            player_comms=None,
+            player_bis_targets=i.public_bis,
+            listing_data=discovery,
+        )
+        role_interest = r.role_interest if isinstance(r.role_interest, list) else []
+        wanted = r.selected_role or (role_interest[0] if role_interest else None)
+        as_role = wanted if isinstance(wanted, str) and wanted in VALID_ROLE_INTERESTS else None
+        role_fit = compute_role_fit(i.viewer_jobs, entries, as_role)
+        schedule_fit = compute_schedule_fit(
+            i.template_days, discovery, now=now, display_zone=listing_zone or i.display_zone
+        )
+        raw = compute_fit_v2(
+            role_fit=role_fit,
+            schedule_fit=schedule_fit,
+            goal_counts=raw_fit["goals"],
+            comms_fit=raw_fit["comms"],
+            bis_fit=raw_fit["bis"],
+            missing=i.missing,
+        )
+        if raw["missing"] and raw["tier"] in ("strong", "good"):
+            raw["tier"] = "partial"
+        fits[r.id] = FitV2.from_raw(raw)
+    return fits
+
+
 def _request_to_response(
     req: JoinRequest,
     *,
     include_requester: bool = False,
     group_name: str | None = None,
+    fit: FitV2 | None = None,
 ) -> JoinRequestResponse:
     requester_info = None
     if include_requester and req.requester:
@@ -226,6 +304,7 @@ def _request_to_response(
         updated_at=req.updated_at,
         resolved_at=req.resolved_at,
         resolved_by_user_id=req.resolved_by_user_id,
+        fit=fit,
     )
 
 
@@ -245,10 +324,19 @@ async def create_join_request(
 ) -> JoinRequestResponse:
     group = await get_static_group_by_share_code(session, share_code)
 
-    if not _is_discoverable(group):
+    if not is_listing_enabled(group):
         raise PermissionDenied(
             "This static is not accepting join requests. "
             "It must be public with discovery enabled."
+        )
+    # A paused or closed listing is hidden from the Static Finder and takes no new
+    # requests either (R-RH-A); the status reads exactly as `is_discoverable` reads it.
+    discovery = get_discovery(group.settings)
+    assert discovery is not None
+    if normalize_status(discovery.get("recruitmentStatus")) in ("paused", "closed"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This static is not taking join requests right now",
         )
 
     existing_membership = await get_user_membership(session, current_user.id, group.id)
@@ -258,14 +346,18 @@ async def create_join_request(
             detail="You are already a member of this static",
         )
 
+    # One waiting request at a time, whether pending or under review; `.first()`
+    # so a user who somehow holds both rows gets the 409, not a 500 (M6).
     existing_request = await session.execute(
-        select(JoinRequest).where(
+        select(JoinRequest)
+        .where(
             JoinRequest.static_group_id == group.id,
             JoinRequest.requester_user_id == current_user.id,
-            JoinRequest.status == "pending",
+            JoinRequest.status.in_(["pending", "under_review"]),
         )
+        .limit(1)
     )
-    if existing_request.scalar_one_or_none():
+    if existing_request.scalars().first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="You already have a pending request for this static",
@@ -658,6 +750,9 @@ async def cancel_join_request(
 async def list_group_join_requests(
     group_id: str,
     include_resolved: bool = False,
+    fit: bool = Query(
+        False, description="Compute each waiting applicant's Static Finder fit (RH1a)"
+    ),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> JoinRequestListResponse:
@@ -675,7 +770,7 @@ async def list_group_join_requests(
 
     query = query.order_by(JoinRequest.created_at.desc())
     result = await session.execute(query)
-    requests = result.scalars().all()
+    requests = list(result.scalars().all())
 
     pending_count_result = await session.execute(
         select(func.count()).select_from(JoinRequest).where(
@@ -685,8 +780,22 @@ async def list_group_join_requests(
     )
     pending_count = pending_count_result.scalar() or 0
 
+    # `fit` is additive: without it (the plugin's path) the response is byte-identical
+    # to before (tests/golden/join_requests_v1.json) and every `fit` is null.
+    fits: dict[str, FitV2] = {}
+    discovery = get_discovery(group.settings)
+    if fit and discovery is not None:
+        fits = await _applicant_fits(
+            session, group, discovery, requests, now=datetime.now(timezone.utc)
+        )
+
     return JoinRequestListResponse(
-        items=[_request_to_response(req, include_requester=True, group_name=group.name) for req in requests],
+        items=[
+            _request_to_response(
+                req, include_requester=True, group_name=group.name, fit=fits.get(req.id)
+            )
+            for req in requests
+        ],
         pending_count=pending_count,
     )
 

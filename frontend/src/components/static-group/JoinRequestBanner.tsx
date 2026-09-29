@@ -19,6 +19,21 @@ function isDiscoverable(settings?: StaticGroupSettings): boolean {
   return settings?.discovery?.enabled === true;
 }
 
+/**
+ * The stored status read exactly as the backend's `normalize_status` reads it
+ * (R-RH-A): `limited` is `selective`; missing, empty or non-string is `open`.
+ */
+function normalizeStatus(raw: unknown): 'open' | 'selective' | 'paused' | 'closed' {
+  if (raw === 'limited') return 'selective';
+  if (raw === 'open' || raw === 'selective' || raw === 'paused' || raw === 'closed') return raw;
+  return 'open';
+}
+
+function isTakingRequests(settings?: StaticGroupSettings): boolean {
+  const status = normalizeStatus(settings?.discovery?.recruitmentStatus);
+  return status === 'open' || status === 'selective';
+}
+
 const STATUS_CONFIG = {
   pending: { icon: Clock, label: 'Request pending', color: 'text-status-warning' },
   under_review: { icon: Eye, label: 'Under review', color: 'text-status-info' },
@@ -41,6 +56,7 @@ export function JoinRequestBanner({ shareCode, staticName, groupId, settings, us
 
   if (userRole) return null;
   if (!isDiscoverable(settings)) return null;
+  const takingRequests = isTakingRequests(settings);
 
   const existingRequest: JoinRequest | undefined = myRequests.find(
     (r) => r.staticGroupId === groupId
@@ -62,7 +78,7 @@ export function JoinRequestBanner({ shareCode, staticName, groupId, settings, us
     }
   };
 
-  if (!user) {
+  if (!user && takingRequests) {
     return (
       <div className="mb-3 rounded-lg border border-accent/20 bg-accent/5 p-3 flex items-center justify-between gap-3">
         <p className="text-sm text-text-secondary">
@@ -96,6 +112,18 @@ export function JoinRequestBanner({ shareCode, staticName, groupId, settings, us
             Cancel Request
           </Button>
         )}
+      </div>
+    );
+  }
+
+  // A paused or closed listing is hidden from the Static Finder and the backend
+  // 409s a new request (R-RH-A), so the banner says so instead of offering one.
+  if (!takingRequests) {
+    return (
+      <div className="mb-3 rounded-lg border border-border-default bg-surface-elevated p-3">
+        <p className="text-sm text-text-secondary">
+          This static isn&apos;t taking requests right now.
+        </p>
       </div>
     );
   }
