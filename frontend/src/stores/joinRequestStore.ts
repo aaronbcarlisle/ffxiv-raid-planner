@@ -52,7 +52,10 @@ function mergeApplicantRow(row: JoinRequest, updated: JoinRequest): JoinRequest 
  * link-roster): updates the row in `groupRequests`, and in `applicants.items`
  * when that slice is loaded (keeping the row's previous `fit`), and moves both
  * pending counts by `pendingDelta` (0 for actions that don't resolve a
- * waiting request, per §R-RH-R).
+ * waiting request, per §R-RH-R). The applicants count only moves when the
+ * row is in the slice: the V1 dock and Static Home act on whatever static
+ * they show, while `applicants` holds the static the Recruiting page last
+ * loaded, so an unscoped decrement would drift its "N waiting" down.
  */
 function patchApplicants(
   state: Pick<JoinRequestState, 'groupRequests' | 'pendingCount' | 'applicants'>,
@@ -66,7 +69,11 @@ function patchApplicants(
     applicants: state.applicants && {
       ...state.applicants,
       items: state.applicants.items.map((r) => (r.id === requestId ? mergeApplicantRow(r, updated) : r)),
-      pendingCount: Math.max(0, state.applicants.pendingCount - pendingDelta),
+      pendingCount: Math.max(
+        0,
+        state.applicants.pendingCount -
+          (state.applicants.items.some((r) => r.id === requestId) ? pendingDelta : 0),
+      ),
     },
   };
 }

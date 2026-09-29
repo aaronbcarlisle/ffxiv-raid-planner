@@ -129,6 +129,24 @@ describe('acceptRequest / declineRequest / markUnderReview — applicants slice'
     expect(state.applicants?.items[0].fit).toEqual(fit);
   });
 
+  it('acceptRequest for a row not in the applicants slice leaves applicants.pendingCount alone', async () => {
+    const loaded = request({ id: 'r1', status: 'pending' });
+    const elsewhere = request({ id: 'other', staticGroupId: 'g2', status: 'pending' });
+    useJoinRequestStore.setState({
+      groupRequests: [elsewhere],
+      pendingCount: 1,
+      applicants: { groupId: 'g1', items: [loaded], pendingCount: 1 },
+    });
+    vi.mocked(api.post).mockResolvedValue(request({ id: 'other', staticGroupId: 'g2', status: 'accepted', fit: null }));
+
+    await useJoinRequestStore.getState().acceptRequest('other');
+
+    const state = useJoinRequestStore.getState();
+    expect(state.pendingCount).toBe(0);
+    expect(state.applicants?.pendingCount).toBe(1);
+    expect(state.applicants?.items[0].status).toBe('pending');
+  });
+
   it('declineRequest keeps applicants.pendingCount at 0, never negative', async () => {
     const pending = request({ id: 'r1', status: 'pending' });
     useJoinRequestStore.setState({

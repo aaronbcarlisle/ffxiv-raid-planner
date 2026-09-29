@@ -4,13 +4,19 @@
  * The mount fetch lives in `RecruitPage` (fix wave round 2: two mount
  * fetches raced the store's sequence guard and could swallow a real
  * failure) — this component only reads `applicants` and renders a loading
- * skeleton until the slice belongs to this group. Waiting (`pending` |
- * `under_review`) rows sort newest first; resolved rows sit behind a
- * collapsed toggle. Action handlers wrap the store's accept/decline/under-
- * review calls with a toast and, on failure (Review Focus 5: the backend's
- * 400 "already accepted" when another lead resolved it first), refetch so
- * the row reflects what actually happened. Empty states read the listing's
- * live/public/enabled state and its normalised status (spec §3).
+ * skeleton until the slice belongs to this group. Active rows — waiting
+ * (`pending` | `under_review`) plus accepted rows not yet linked to a roster
+ * slot, since "Link to roster slot" is the next step in the flow (spec §4:
+ * "Accept then shows Link to roster") — sort newest first; the rest sit
+ * behind a collapsed Resolved toggle. Action handlers wrap the store's
+ * accept/decline/under-review calls with a toast and, on failure (Review
+ * Focus 5: the backend's 400 "already accepted" when another lead resolved
+ * it first), await a refetch so the row reflects what actually happened and
+ * the row's in-flight guard holds until the reload lands (a retry during the
+ * GET could otherwise be overwritten by its stale response). Empty states
+ * read the listing's live/public/enabled state and its normalised status
+ * (spec §3); the positive "No one has asked yet" only shows when there is
+ * no history at all.
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -30,6 +36,11 @@ import type { JoinRequest, StaticGroup } from '../../types';
 
 const WAITING_STATUSES = new Set(['pending', 'under_review']);
 
+/** Rows that still need the lead: waiting, or accepted but not yet linked to a roster slot. */
+function isActive(request: JoinRequest): boolean {
+  return WAITING_STATUSES.has(request.status) || (request.status === 'accepted' && !request.rosterPlayerId);
+}
+
 interface ApplicantsTabProps {
   group: StaticGroup;
   onTabChange: (tab: RecruitTab) => void;
@@ -46,10 +57,12 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
   const { status } = useRecruitStatus(group);
   const [showResolved, setShowResolved] = useState(false);
 
-  const refetch = () => {
-    fetchApplicants(group.id).catch(() => {
+  const refetch = async () => {
+    try {
+      await fetchApplicants(group.id);
+    } catch {
       toast.error("Couldn't load applicants.");
-    });
+    }
   };
 
   if (!applicants || applicants.groupId !== group.id) {
@@ -62,10 +75,10 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
   }
 
   const items: JoinRequest[] = applicants.items;
-  const waiting = items
-    .filter((r) => WAITING_STATUSES.has(r.status))
+  const active = items
+    .filter(isActive)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  const resolved = items.filter((r) => !WAITING_STATUSES.has(r.status));
+  const resolved = items.filter((r) => !isActive(r));
 
   const handleAccept = async (id: string) => {
     try {
@@ -73,7 +86,7 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
       toast.success('Request accepted — member added to static.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to accept request');
-      refetch();
+      await refetch();
     }
   };
 
@@ -83,7 +96,7 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
       toast.success('Request declined.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to decline request');
-      refetch();
+      await refetch();
     }
   };
 
@@ -93,7 +106,7 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
       toast.success('Marked as under review.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to update request');
-      refetch();
+      await refetch();
     }
   };
 
@@ -110,15 +123,16 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      {waiting.length === 0 && (
+      {active.length === 0 && (
         <ApplicantsEmptyState
           group={group}
           status={status}
+          hasHistory={items.length > 0}
           onGoToListing={() => onTabChange('listing')}
           onBrowseFinder={() => navigate('/discover')}
         />
       )}
-      {waiting.map((request) => (
+      {active.map((request) => (
         <ApplicantRow key={request.id} request={request} {...rowProps} />
       ))}
       {resolved.length > 0 && (
@@ -138,11 +152,15 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
 function ApplicantsEmptyState({
   group,
   status,
+  hasHistory,
   onGoToListing,
   onBrowseFinder,
 }: {
   group: StaticGroup;
   status: 'open' | 'selective' | 'paused' | 'closed';
+  /** Resolved rows exist: the listing-state branches still apply, but
+   *  "No one has asked yet" would contradict the Resolved toggle below. */
+  hasHistory: boolean;
   onGoToListing: () => void;
   onBrowseFinder: () => void;
 }) {
@@ -187,6 +205,8 @@ function ApplicantsEmptyState({
       </CardShell>
     );
   }
+
+  if (hasHistory) return null;
 
   return (
     <CardShell as="div">

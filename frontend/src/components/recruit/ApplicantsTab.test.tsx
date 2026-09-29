@@ -118,7 +118,7 @@ describe('ApplicantsTab — ordering', () => {
       items: [
         request({ id: 'old', status: 'pending', createdAt: '2026-09-01T00:00:00Z' }),
         request({ id: 'new', status: 'under_review', createdAt: '2026-09-10T00:00:00Z' }),
-        request({ id: 'accepted', status: 'accepted', createdAt: '2026-09-05T00:00:00Z' }),
+        request({ id: 'accepted', status: 'accepted', rosterPlayerId: 'p1', createdAt: '2026-09-05T00:00:00Z' }),
       ],
       pendingCount: 2,
     };
@@ -130,6 +130,24 @@ describe('ApplicantsTab — ordering', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Resolved (1)' }));
     expect(screen.getByTestId('row-accepted')).toBeInTheDocument();
+  });
+
+  it('an accepted row without a roster link stays in the active list (spec §4: Accept then shows Link to roster)', () => {
+    mocks.applicants = {
+      groupId: 'g1',
+      items: [
+        request({ id: 'pending', status: 'pending', createdAt: '2026-09-01T00:00:00Z' }),
+        request({ id: 'unlinked', status: 'accepted', createdAt: '2026-09-10T00:00:00Z' }),
+        request({ id: 'linked', status: 'accepted', rosterPlayerId: 'p1', createdAt: '2026-09-05T00:00:00Z' }),
+      ],
+      pendingCount: 1,
+    };
+    renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
+
+    const rows = screen.getAllByTestId(/^row-/).map((el) => el.getAttribute('data-testid'));
+    expect(rows).toEqual(['row-unlinked', 'row-pending']);
+    expect(screen.getByRole('button', { name: 'Resolved (1)' })).toBeInTheDocument();
+    expect(screen.queryByText('No one has asked yet')).toBeNull();
   });
 });
 
@@ -166,6 +184,28 @@ describe('ApplicantsTab — empty states', () => {
     expect(onTabChange).toHaveBeenCalledWith('listing');
   });
 
+  it('listing live with only resolved rows: no "No one has asked yet", just the Resolved toggle', () => {
+    mocks.applicants = {
+      groupId: 'g1',
+      items: [request({ id: 'done', status: 'declined' })],
+      pendingCount: 0,
+    };
+    renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
+    expect(screen.queryByText('No one has asked yet')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Resolved (1)' })).toBeInTheDocument();
+  });
+
+  it('listing off with only resolved rows still explains the listing state', () => {
+    mocks.applicants = {
+      groupId: 'g1',
+      items: [request({ id: 'done', status: 'declined' })],
+      pendingCount: 0,
+    };
+    renderTab(group({ enabled: true, recruitmentStatus: 'open' }, { isPublic: false }));
+    expect(screen.getByText(/Your listing is off/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Resolved (1)' })).toBeInTheDocument();
+  });
+
   it('a stored limited status reads as selective (not paused/closed) for the empty-state branch', () => {
     renderTab(group({ enabled: true, recruitmentStatus: 'limited' }));
     expect(screen.getByText('No one has asked yet')).toBeInTheDocument();
@@ -195,5 +235,43 @@ describe('ApplicantsTab — accept error refetch', () => {
     // The tab no longer fetches on mount (fix wave round 2) — this is the
     // refetch-after-a-failed-action call alone.
     expect(mocks.fetchApplicants).toHaveBeenCalledTimes(1);
+  });
+
+  it('the handler settles only after the refetch lands, so the row\'s in-flight guard covers the GET', async () => {
+    let settled = false;
+    vi.doMock('./ApplicantRow', () => ({
+      ApplicantRow: ({ request: r, onAccept }: { request: JoinRequest; onAccept: (id: string) => Promise<void> }) => (
+        <button
+          type="button"
+          onClick={() => {
+            onAccept(r.id).then(() => {
+              settled = true;
+            });
+          }}
+        >
+          {`accept-${r.id}`}
+        </button>
+      ),
+    }));
+    vi.resetModules();
+    const { ApplicantsTab: FreshTab } = await import('./ApplicantsTab');
+    mocks.applicants = { groupId: 'g1', items: [request({ id: 'r1' })], pendingCount: 1 };
+    mocks.acceptRequest.mockRejectedValueOnce(new Error('Already accepted'));
+    let resolveFetch: () => void = () => {};
+    mocks.fetchApplicants.mockReturnValueOnce(new Promise<void>((resolve) => { resolveFetch = resolve; }));
+
+    render(
+      <MemoryRouter>
+        <FreshTab group={group({ enabled: true, recruitmentStatus: 'open' })} onTabChange={vi.fn()} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByText('accept-r1'));
+
+    await waitFor(() => expect(mocks.fetchApplicants).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    resolveFetch();
+    await waitFor(() => expect(settled).toBe(true));
   });
 });
