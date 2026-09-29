@@ -157,4 +157,22 @@ describe('acceptRequest / declineRequest / markUnderReview — applicants slice'
 
     expect(useJoinRequestStore.getState().applicants).toBeNull();
   });
+
+  it('linkRoster updates the row in both lists, keeps its previous fit, and leaves pendingCount unchanged', async () => {
+    const fit = { tier: 'strong', missing: [], role: {} as never, schedule: {} as never, reasons: [] };
+    const accepted = request({ id: 'r1', status: 'accepted', rosterPlayerId: undefined, fit: fit as JoinRequest['fit'] });
+    useJoinRequestStore.setState({
+      groupRequests: [accepted],
+      applicants: { groupId: 'g1', items: [accepted], pendingCount: 0 },
+    });
+    vi.mocked(api.post).mockResolvedValue(request({ id: 'r1', status: 'accepted', rosterPlayerId: 'p1', fit: null }));
+
+    await useJoinRequestStore.getState().linkRoster('r1', 'p1');
+
+    const state = useJoinRequestStore.getState();
+    expect(state.groupRequests[0].rosterPlayerId).toBe('p1');
+    expect(state.applicants?.items[0].rosterPlayerId).toBe('p1');
+    expect(state.applicants?.items[0].fit).toEqual(fit);
+    expect(state.applicants?.pendingCount).toBe(0);
+  });
 });

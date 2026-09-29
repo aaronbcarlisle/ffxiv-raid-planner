@@ -170,6 +170,10 @@ export const useJoinRequestStore = create<JoinRequestState>((set) => ({
     );
     set((state) => ({
       groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
+      applicants: state.applicants && {
+        ...state.applicants,
+        items: state.applicants.items.map((r) => (r.id === requestId ? mergeApplicantRow(r, updated) : r)),
+      },
     }));
   },
 
