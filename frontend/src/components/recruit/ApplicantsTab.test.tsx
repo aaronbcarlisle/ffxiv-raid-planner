@@ -14,6 +14,7 @@ import type { DiscoverySettings, JoinRequest, StaticGroup } from '../../types';
 
 const mocks = vi.hoisted(() => ({
   applicants: null as { groupId: string; items: JoinRequest[]; pendingCount: number } | null,
+  error: null as string | null,
   fetchApplicants: vi.fn(),
   acceptRequest: vi.fn(),
   declineRequest: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock('react-router-dom', async (orig) => ({
 vi.mock('../../stores/joinRequestStore', () => ({
   useJoinRequestStore: (sel: (s: Record<string, unknown>) => unknown) => sel({
     applicants: mocks.applicants,
+    error: mocks.error,
     fetchApplicants: mocks.fetchApplicants,
     acceptRequest: mocks.acceptRequest,
     declineRequest: mocks.declineRequest,
@@ -80,6 +82,7 @@ beforeEach(() => {
   // exercise their own branch rather than the loading skeleton; the loading
   // and error tests below set `applicants` back to null themselves.
   mocks.applicants = { groupId: 'g1', items: [], pendingCount: 0 };
+  mocks.error = null;
   mocks.fetchApplicants.mockReset().mockResolvedValue(undefined);
   mocks.acceptRequest.mockReset().mockResolvedValue(undefined);
   mocks.declineRequest.mockReset().mockResolvedValue(undefined);
@@ -108,6 +111,39 @@ describe('ApplicantsTab — loading (IMPORTANT 2)', () => {
     mocks.applicants = { groupId: 'other-group', items: [], pendingCount: 0 };
     renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
     expect(screen.getByTestId('applicants-loading')).toBeInTheDocument();
+  });
+});
+
+describe('ApplicantsTab — skeleton Retry link', () => {
+  it('no Retry while loading with no error', () => {
+    mocks.applicants = null;
+    mocks.error = null;
+    renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
+    expect(screen.queryByText('Retry')).toBeNull();
+  });
+
+  it('Retry is present once the store holds an error', () => {
+    mocks.applicants = null;
+    mocks.error = 'Failed to fetch applicants';
+    renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
+    expect(screen.getByText('Retry')).toBeInTheDocument();
+  });
+
+  it('clicking Retry calls fetchApplicants with the group id', () => {
+    mocks.applicants = null;
+    mocks.error = 'Failed to fetch applicants';
+    renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
+    fireEvent.click(screen.getByText('Retry'));
+    expect(mocks.fetchApplicants).toHaveBeenCalledWith('g1');
+  });
+
+  it('a rejected Retry toasts the same copy the page uses', async () => {
+    mocks.applicants = null;
+    mocks.error = 'Failed to fetch applicants';
+    mocks.fetchApplicants.mockRejectedValueOnce(new Error('Network error'));
+    renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
+    fireEvent.click(screen.getByText('Retry'));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("Couldn't load applicants."));
   });
 });
 

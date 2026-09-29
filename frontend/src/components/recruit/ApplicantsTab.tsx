@@ -49,6 +49,7 @@ interface ApplicantsTabProps {
 export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
   const navigate = useNavigate();
   const applicants = useJoinRequestStore((s) => s.applicants);
+  const loadError = useJoinRequestStore((s) => s.error);
   const fetchApplicants = useJoinRequestStore((s) => s.fetchApplicants);
   const acceptRequest = useJoinRequestStore((s) => s.acceptRequest);
   const declineRequest = useJoinRequestStore((s) => s.declineRequest);
@@ -70,6 +71,11 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
       <div data-testid="applicants-loading" className="flex flex-col gap-3">
         <CardSkeleton />
         <CardSkeleton />
+        {loadError && (
+          <div className="text-center">
+            <LinkText onClick={refetch}>Retry</LinkText>
+          </div>
+        )}
       </div>
     );
   }
