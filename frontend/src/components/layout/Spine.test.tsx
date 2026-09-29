@@ -76,6 +76,54 @@ describe('Spine', () => {
   });
 });
 
+describe('Spine with activeTab=null (off-page, R-RH-G)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('selects no tab and keeps the first tab as the one Tab stop (M14)', () => {
+    render(<Spine activeTab={null} onTabChange={vi.fn()} />);
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs).toHaveLength(4);
+    tabs.forEach((t) => expect(t).toHaveAttribute('aria-selected', 'false'));
+    expect(screen.getByRole('tab', { name: 'Home' })).toHaveAttribute('tabindex', '0');
+    ['Roster', 'Loot', 'Schedule'].forEach((l) =>
+      expect(screen.getByRole('tab', { name: l })).toHaveAttribute('tabindex', '-1'),
+    );
+  });
+
+  it.each(['ArrowRight', 'ArrowLeft', 'Home', 'End'])('%s from no selection activates and focuses the first tab', (key) => {
+    const onTabChange = vi.fn();
+    render(<Spine activeTab={null} onTabChange={onTabChange} />);
+    screen.getByRole('tab', { name: 'Home' }).focus();
+    fireEvent.keyDown(screen.getByRole('tablist'), { key });
+    expect(onTabChange).toHaveBeenCalledTimes(1);
+    expect(onTabChange).toHaveBeenCalledWith('overview');
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Home' }));
+  });
+
+  it('a non-navigation key does nothing from no selection', () => {
+    const onTabChange = vi.fn();
+    render(<Spine activeTab={null} onTabChange={onTabChange} />);
+    fireEvent.keyDown(screen.getByRole('tablist'), { key: 'Enter' });
+    expect(onTabChange).not.toHaveBeenCalled();
+  });
+
+  it('clicking a tab still calls onTabChange with its PageMode', () => {
+    const onTabChange = vi.fn();
+    render(<Spine activeTab={null} onTabChange={onTabChange} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Loot' }));
+    expect(onTabChange).toHaveBeenCalledWith('gear');
+  });
+
+  it('End from a selected tab still goes to the last tab (unchanged)', () => {
+    const onTabChange = vi.fn();
+    render(<Spine activeTab="overview" onTabChange={onTabChange} />);
+    fireEvent.keyDown(screen.getByRole('tablist'), { key: 'End' });
+    expect(onTabChange).toHaveBeenCalledWith('schedule');
+  });
+});
+
 // Helper: captures the current MemoryRouter location as a data attribute
 function LocationDisplay() {
   const loc = useLocation();

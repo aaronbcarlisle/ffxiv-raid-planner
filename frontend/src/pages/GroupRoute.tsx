@@ -8,8 +8,13 @@
  * preference store means the "Try the new UI" / "Switch to classic UI" toggles
  * remount the shell in place — no reload. The single-mount contract holds:
  * both shells call useViewAsUrlSync/useStaticNavMemory, but only one renders.
+ *
+ * The V2 Recruiting sub-route `/group/:shareCode/recruit` (R-RH-G) shares this
+ * gate: under V2 NewShell swaps its body for the page; under V1 the path is not
+ * a page, so it redirects to the static and GroupView never renders it.
  */
 import { Suspense, lazy } from 'react';
+import { Navigate, useMatch } from 'react-router-dom';
 import { GroupView } from './GroupView';
 import { PageSkeleton } from '../components/ui/Skeleton';
 import { useResolvedShell } from '../lib/shellPreference';
@@ -18,6 +23,10 @@ const NewShell = lazy(() => import('./NewShell').then(m => ({ default: m.NewShel
 
 export function GroupRoute() {
   const shell = useResolvedShell();
+  const recruit = useMatch('/group/:shareCode/recruit');
+  if (shell !== 'v2' && recruit) {
+    return <Navigate to={`/group/${recruit.params.shareCode}`} replace />;
+  }
   if (shell === 'v2') {
     return <Suspense fallback={<PageSkeleton />}><NewShell /></Suspense>;
   }

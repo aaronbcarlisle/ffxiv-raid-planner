@@ -168,6 +168,9 @@ function App() {
               <Route path="errors" element={<AdminErrors />} />
             </Route>
             <Route path="group/:shareCode" element={<GroupRoute />} />
+            {/* The V2 Recruiting home (R-RH-G). Same gate: V1 redirects it to
+                the static, V2's NewShell swaps its body for the page. */}
+            <Route path="group/:shareCode/recruit" element={<GroupRoute />} />
             {/* Documentation routes */}
             <Route path="docs" element={<DocsIndex />} />
             <Route path="docs/quick-start" element={<QuickStartGuide />} />

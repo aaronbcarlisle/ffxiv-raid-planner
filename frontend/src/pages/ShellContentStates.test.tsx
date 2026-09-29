@@ -68,11 +68,14 @@ function resetStores() {
   useViewAsStore.setState({ viewAsUser: null });
 }
 
-function renderStates(children: ReactNode = <div data-testid="content">CONTENT</div>) {
+function renderStates(
+  children: ReactNode = <div data-testid="content">CONTENT</div>,
+  props: { skipTierGate?: boolean } = {},
+) {
   return render(
     <MemoryRouter initialEntries={['/group/DEVTST']}>
       <Routes>
-        <Route path="/group/:shareCode" element={<ShellContentStates>{children}</ShellContentStates>} />
+        <Route path="/group/:shareCode" element={<ShellContentStates {...props}>{children}</ShellContentStates>} />
         <Route path="/profile" element={<div data-testid="profile-probe">PROFILE</div>} />
       </Routes>
     </MemoryRouter>,
@@ -186,6 +189,22 @@ describe('ShellContentStates', () => {
     // The Copy button's accessible name comes from its aria-label, not its
     // visible text (same trap C5 hit): 'Copy error details', never 'Copy'.
     expect(screen.getByRole('button', { name: 'Copy error details' })).toBeInTheDocument();
+  });
+
+  it('4e. skipTierGate: a tierless static renders children, not "No Raid Tiers" (R-RH-G, M2)', () => {
+    useStaticGroupStore.setState({ currentGroup: group });
+    useTierStore.setState({ tiers: [], isLoading: false });
+    renderStates(undefined, { skipTierGate: true });
+    expect(screen.getByTestId('content')).toBeInTheDocument();
+    expect(screen.queryByTestId('shell-state-no-tiers')).not.toBeInTheDocument();
+    expect(screen.queryByText('No Raid Tiers')).not.toBeInTheDocument();
+  });
+
+  it('4f. skipTierGate does not bypass the not-found branch', () => {
+    useStaticGroupStore.setState({ currentGroup: null, error: null, isLoading: false });
+    renderStates(undefined, { skipTierGate: true });
+    expect(screen.getByTestId('shell-state-not-found')).toBeInTheDocument();
+    expect(screen.queryByTestId('content')).not.toBeInTheDocument();
   });
 
   it('4c. no-tiers suppressed while tiers are still loading', () => {

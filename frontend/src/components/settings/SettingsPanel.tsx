@@ -330,6 +330,12 @@ interface SettingsPanelProps {
    * `RightDockPanel` can supply the chrome (desktop).
    */
   container?: 'slideout' | 'dock';
+  /**
+   * Tabs the host removes for this shell (R-RH-J: V2 hides Recruitment once
+   * the Recruiting route owns it). Applied after the role filter, so a stored
+   * active tab that is hidden falls back to General like a role-hidden one.
+   */
+  hiddenTabs?: SettingsTab[];
 }
 
 export function SettingsPanel({
@@ -341,6 +347,7 @@ export function SettingsPanel({
   isAdmin,
   onAddToRoster,
   container = 'slideout',
+  hiddenTabs,
 }: SettingsPanelProps) {
   // Open-state, active tab, and routed sub-section all live in the settings
   // store (NOT the URL) so toggling the panel never re-renders the roster that
@@ -358,8 +365,11 @@ export function SettingsPanel({
   // arrays are stable across renders (keeps navigateTab's memoization intact).
   // With no static (account-level open), only the General tab is shown.
   const visibleTabs = useMemo(
-    () => (group ? ALL_TABS.filter((t) => t.visible(role, isAdmin)) : ALL_TABS.filter((t) => t.id === 'general')),
-    [group, role, isAdmin]
+    () =>
+      (group ? ALL_TABS.filter((t) => t.visible(role, isAdmin)) : ALL_TABS.filter((t) => t.id === 'general')).filter(
+        (t) => !hiddenTabs?.includes(t.id),
+      ),
+    [group, role, isAdmin, hiddenTabs]
   );
   const tabOrder = useMemo(() => visibleTabs.map((t) => t.id), [visibleTabs]);
   const effectiveTab: SettingsTab = tabOrder.includes(activeTab) ? activeTab : 'general';

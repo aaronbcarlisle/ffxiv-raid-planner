@@ -17,6 +17,11 @@ describe('TRANSIENT_NAV_PARAMS', () => {
   it('includes shell — the v2 flip gate must never be baked into persisted static-nav state', () => {
     expect(TRANSIENT_NAV_PARAMS).toContain('shell');
   });
+
+  it('includes the Recruiting route params rtab and create (R-RH-H)', () => {
+    expect(TRANSIENT_NAV_PARAMS).toContain('rtab');
+    expect(TRANSIENT_NAV_PARAMS).toContain('create');
+  });
 });
 
 describe('buildStaticNavHref', () => {
@@ -59,6 +64,18 @@ describe('buildStaticNavHref', () => {
     const href = buildStaticNavHref('ABC', { remember: true, extraParams: {} });
     expect(href).toBe('/group/ABC?tab=roster');
     expect(href).not.toContain('shell');
+  });
+
+  it('remember=false from the Recruiting route drops rtab and create with the tier', () => {
+    const currentParams = new URLSearchParams('tab=overview&rtab=invites&create=1&tier=t1');
+    const href = buildStaticNavHref('XYZ', { remember: false, currentParams });
+    expect(href).toBe('/group/XYZ?tab=overview');
+  });
+
+  it('remember=true strips a persisted rtab on restore', () => {
+    localStorage.setItem('static-nav-ABC', 'tab=roster&rtab=listing');
+    const href = buildStaticNavHref('ABC', { remember: true });
+    expect(href).toBe('/group/ABC?tab=roster');
   });
 });
 

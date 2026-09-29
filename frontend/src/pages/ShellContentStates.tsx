@@ -62,8 +62,15 @@ function formatErrorDetails(message: string, stack: string | null): string {
 export function ShellContentStates({
   children,
   banners,
+  skipTierGate = false,
 }: {
   children: ReactNode;
+  /**
+   * Bypass branch 4 (no-tiers) and render `children` for a tierless static
+   * (R-RH-G, M2): the Recruiting page needs no tier — a new static recruits
+   * before it has one. Branches 1-3 and the error overlay are unchanged.
+   */
+  skipTierGate?: boolean;
   /**
    * Self-contained banners (AdminBanners / JoinRequestBanner) that must render
    * whenever `currentGroup` is truthy — legacy parity: every early-return guard
@@ -257,7 +264,7 @@ export function ShellContentStates({
   // switch, `fetchGroupByShareCode` sets the group store's isLoading:true
   // WITHOUT nulling the stale currentGroup, so without this guard a still-
   // populated static would flash "No Raid Tiers" for the roundtrip.
-  if (tiers.length === 0 && !tiersLoading && !isLoading) {
+  if (!skipTierGate && tiers.length === 0 && !tiersLoading && !isLoading) {
     return (
       <>
         {banners}

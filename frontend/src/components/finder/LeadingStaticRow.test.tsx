@@ -28,10 +28,9 @@ vi.mock('../../stores/staticGroupStore', () => ({
     selector({ groups, fetchGroups, createGroup: vi.fn() }),
 }));
 
-const openSettings = vi.fn();
-vi.mock('../../stores/settingsPanelStore', () => ({
-  useSettingsPanelStore: (selector: (s: { open: () => void }) => unknown) => selector({ open: openSettings }),
-}));
+// R-RH-N: the row no longer touches the settings store — a real one is
+// imported here only to prove that. Any call would flip `isOpen`.
+import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 
 function group(overrides: Partial<StaticGroupListItem> = {}): StaticGroupListItem {
   return {
@@ -49,8 +48,8 @@ beforeEach(() => {
   authState.user = { id: 'u1' };
   groups = [];
   mockNavigate.mockClear();
-  openSettings.mockClear();
   fetchGroups.mockClear();
+  useSettingsPanelStore.setState({ isOpen: false, recruitRedirect: null });
   // jsdom has no matchMedia; Modal -> useDevice depends on it (SetupWizard renders a Modal).
   vi.stubGlobal(
     'matchMedia',
@@ -69,20 +68,18 @@ describe('LeadingStaticRow', () => {
     expect(screen.getByRole('heading', { name: /create.*static/i })).toBeInTheDocument();
   });
 
-  it('one led static: "Post a listing" navigates then opens Settings → Recruitment → Listing, in that order', () => {
+  it('one led static: "Post a listing" is one navigation to the Recruiting route\'s Listing tab (R-RH-N)', () => {
     groups = [group({ id: 'g1', shareCode: 'ABC', userRole: 'owner' })];
     renderRow();
-    const order: string[] = [];
-    mockNavigate.mockImplementation(() => order.push('navigate'));
-    openSettings.mockImplementation(() => order.push('open'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Post a listing' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/group/ABC?rcsub=listing');
-    expect(openSettings).toHaveBeenCalledWith({ tab: 'recruitment', section: 'listing' });
-    expect(order).toEqual(['navigate', 'open']);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith('/group/ABC/recruit?rtab=listing');
+    // No settings-dock open any more.
+    expect(useSettingsPanelStore.getState().isOpen).toBe(false);
   });
 
-  it('two led statics: the Select lists both, and choosing one runs the same calls', () => {
+  it('two led statics: the Select lists both, and choosing one runs the same navigation', () => {
     groups = [
       group({ id: 'g1', name: 'Twilight Wardens', shareCode: 'ABC', userRole: 'owner' }),
       group({ id: 'g2', name: 'Savage Clears Co', shareCode: 'DEF', userRole: 'lead' }),
@@ -94,8 +91,9 @@ describe('LeadingStaticRow', () => {
     expect(screen.getByRole('option', { name: 'Savage Clears Co' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('option', { name: 'Savage Clears Co' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/group/DEF?rcsub=listing');
-    expect(openSettings).toHaveBeenCalledWith({ tab: 'recruitment', section: 'listing' });
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith('/group/DEF/recruit?rtab=listing');
+    expect(useSettingsPanelStore.getState().isOpen).toBe(false);
   });
 
   it('a member-only group is not listed', () => {

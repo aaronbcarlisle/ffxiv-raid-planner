@@ -8,7 +8,7 @@ import { Settings } from 'lucide-react';
 import { useDevice } from '../../hooks/useDevice';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { RightDockPanel } from '../ui/RightDockPanel';
-import { SettingsPanel } from './SettingsPanel';
+import { SettingsPanel, type SettingsTab } from './SettingsPanel';
 import { SETTINGS_PANEL_WIDTH } from './settingsLayout';
 import type { StaticGroup, SnapshotPlayer, JoinRequest } from '../../types';
 
@@ -18,9 +18,11 @@ interface StaticSettingsHostProps {
   tierId?: string;
   isAdmin?: boolean;
   onAddToRoster?: (request: JoinRequest) => void;
+  /** Passed through to `SettingsPanel.hiddenTabs` (R-RH-J); V1 passes nothing. */
+  hiddenTabs?: SettingsTab[];
 }
 
-export function StaticSettingsHost({ group, players, tierId, isAdmin, onAddToRoster }: StaticSettingsHostProps) {
+export function StaticSettingsHost({ group, players, tierId, isAdmin, onAddToRoster, hiddenTabs }: StaticSettingsHostProps) {
   const isOpen = useSettingsPanelStore((s) => s.isOpen);
   const close = useSettingsPanelStore((s) => s.close);
   const { isSmallScreen } = useDevice();
@@ -35,6 +37,7 @@ export function StaticSettingsHost({ group, players, tierId, isAdmin, onAddToRos
       tierId={tierId}
       isAdmin={isAdmin}
       onAddToRoster={onAddToRoster}
+      hiddenTabs={hiddenTabs}
     />
   );
 

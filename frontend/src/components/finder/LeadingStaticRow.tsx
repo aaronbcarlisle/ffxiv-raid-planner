@@ -10,6 +10,11 @@
  * `stores/*` is read-only, so this can't add its own in-flight guard either
  * — it just relies on the store AppChrome already keeps warm (PR-review fix
  * wave item 6).
+ *
+ * "Post a listing" is one navigation to the Recruiting route's Listing tab
+ * (R-RH-N). It used to navigate to `?rcsub=listing` AND open the Settings
+ * dock; the route owns that section now, and its interim Listing placeholder
+ * hands off to the dock itself (R-RH-J).
  */
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../primitives';
@@ -18,12 +23,11 @@ import { SetupWizard } from '../wizard';
 import { useModal } from '../../hooks/useModal';
 import { useAuthStore } from '../../stores/authStore';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
-import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
+import { recruitUrl } from '../recruit/recruitTabs';
 
 export function LeadingStaticRow() {
   const user = useAuthStore((s) => s.user);
   const groups = useStaticGroupStore((s) => s.groups);
-  const openSettings = useSettingsPanelStore((s) => s.open);
   const navigate = useNavigate();
   const wizard = useModal();
 
@@ -32,14 +36,7 @@ export function LeadingStaticRow() {
   const led = groups.filter((g) => g.userRole === 'owner' || g.userRole === 'lead');
 
   const postListing = (shareCode: string) => {
-    // `rcsub=listing` goes straight in the URL: RecruitmentTab's sub-tab is
-    // URL-derived (useUrlTabState), and a fresh cross-static navigation's own
-    // tab/tier-establishing effects settle the URL after this call returns —
-    // openSettings's `recruitmentSection` alone loses that race live (browser
-    // walk, R-SF-J). Both still run: the store drives `tab`, the URL drives
-    // `rcsub`, and RecruitmentTab reads whichever gets there.
-    navigate(`/group/${shareCode}?rcsub=listing`);
-    openSettings({ tab: 'recruitment', section: 'listing' });
+    navigate(recruitUrl(shareCode, 'listing'));
   };
 
   return (
