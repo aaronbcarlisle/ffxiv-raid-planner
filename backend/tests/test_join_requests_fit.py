@@ -335,9 +335,9 @@ async def test_applicant_with_friday_template_matches(
     assert fit["role"]["asRole"] == "melee"
     assert fit["schedule"]["status"] == "match"
     assert fit["schedule"]["nights"][0]["localStart"] == "20:00"  # the listing's zone
-    assert {"kind": "role", "status": "match"} == {
-        k: v for r in fit["reasons"] if r["kind"] == "role" for k, v in r.items() if k != "params"
-    }
+    assert [
+        {"kind": r["kind"], "status": r["status"]} for r in fit["reasons"] if r["kind"] == "role"
+    ] == [{"kind": "role", "status": "match"}]
     assert fit["missing"] == []
     assert fit["tier"] == "strong"
 

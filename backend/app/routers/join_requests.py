@@ -780,8 +780,9 @@ async def list_group_join_requests(
     )
     pending_count = pending_count_result.scalar() or 0
 
-    # `fit` is additive: without it (the plugin's path) the response is byte-identical
-    # to before (tests/golden/join_requests_v1.json) and every `fit` is null.
+    # `fit` is additive: without it (the V1 callers' path) every `fit` is null and the
+    # response is identical to before after removing the additive `fit` key
+    # (tests/golden/join_requests_v1.json).
     fits: dict[str, FitV2] = {}
     discovery = get_discovery(group.settings)
     if fit and discovery is not None:
