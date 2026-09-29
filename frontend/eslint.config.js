@@ -248,6 +248,18 @@ export default defineConfig([
       'design-system/no-cursor-pointer-without-role': 'error',
     },
   },
+  // RH1 Recruiting home (RH1b/RH1c): zero color/type debt as of this slice —
+  // lock it at error so it cannot regress (whole-branch review M7).
+  {
+    files: ['src/components/recruit/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: {
+      'design-system/no-arbitrary-color': 'error',
+      'design-system/no-tiny-text': 'error',
+      'design-system/no-noninteractive-onclick': 'error',
+      'design-system/no-cursor-pointer-without-role': 'error',
+    },
+  },
   // Test files exercise raw elements and arbitrary values as fixtures; the
   // design-system rules target shipped UI, not test scaffolding. (Matches the
   // exclusion already in scripts/check-design-system.sh.)

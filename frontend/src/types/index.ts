@@ -8,6 +8,9 @@
 // Re-export job/role types from gamedata
 export type { Job, Role, JobInfo } from '../gamedata';
 
+// Static Finder fit (R-RH-C): JoinRequest.fit reuses the SF1 shape.
+import type { FitV2 } from '../components/finder/types';
+
 // Gear slot identifiers
 export type GearSlot =
   | 'weapon'
@@ -1030,6 +1033,12 @@ export interface JoinRequest {
   updatedAt: string;
   resolvedAt?: string;
   resolvedByUserId?: string;
+  /**
+   * Live Static Finder fit against this static's listing (R-RH-C), present
+   * only on pending/under_review rows from `?fit=true`; null on resolved
+   * rows and on mutation responses (RH1c).
+   */
+  fit?: FitV2 | null;
 }
 
 export interface JoinRequestListResponse {

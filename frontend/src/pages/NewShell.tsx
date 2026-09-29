@@ -367,7 +367,9 @@ export function NewShell() {
     }
     if (canManage) {
       const target = recruitUrl(shareCode, recruitTabForSection(rcsub), { tier: params.get('tier') });
-      navigate(withCarriedParams(target, location.search, ['rcsub']), { replace: true });
+      // `rcsub` is now dropped unconditionally by `withCarriedParams` itself
+      // (RECRUIT_ROUTE_PARAMS, M5) — no explicit drop list needed here.
+      navigate(withCarriedParams(target, location.search), { replace: true });
     } else {
       params.delete('rcsub');
       const search = params.toString();
