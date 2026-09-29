@@ -175,6 +175,17 @@ describe('DiscoveryTab', () => {
     expect(screen.getByText(/lets applicants see how full/)).toBeInTheDocument();
   });
 
+  it('reads a stored listing with no status as open, like the backend', () => {
+    // Saving from the editor writes its status state back, so a missing
+    // status must not normalise to closed (that would delist the static).
+    const group = makeGroup({ settings: { discovery: { enabled: true } } } as Partial<StaticGroup>);
+    render(<DiscoveryTab group={group} onClose={onClose} />);
+
+    // The preview pill renders the raw status value (CSS capitalises it).
+    expect(screen.getByText('open')).toBeInTheDocument();
+    expect(screen.queryByText('closed')).not.toBeInTheDocument();
+  });
+
   it('shows Save Listing and Cancel buttons', () => {
     render(<DiscoveryTab group={makeGroup()} onClose={onClose} />);
 

@@ -18,6 +18,10 @@ interface JoinRequestState {
   myRequests: JoinRequest[];
   groupRequests: JoinRequest[];
   pendingCount: number;
+  /** The static `groupRequests`/`pendingCount` were last fetched for (null
+   *  before the first fetch). Readers that show the count for a specific
+   *  static gate on it, so a static switch never shows the previous one's. */
+  groupRequestsGroupId: string | null;
   applicants: ApplicantsState | null;
   isLoading: boolean;
   error: string | null;
@@ -82,6 +86,7 @@ export const useJoinRequestStore = create<JoinRequestState>((set) => ({
   myRequests: [],
   groupRequests: [],
   pendingCount: 0,
+  groupRequestsGroupId: null,
   applicants: null,
   isLoading: false,
   error: null,
@@ -109,6 +114,7 @@ export const useJoinRequestStore = create<JoinRequestState>((set) => ({
       set({
         groupRequests: response.items,
         pendingCount: response.pendingCount,
+        groupRequestsGroupId: groupId,
         isLoading: false,
       });
     } catch (error) {

@@ -34,6 +34,14 @@ interface InvitationState {
   clearError: () => void;
 }
 
+/**
+ * Guards `fetchInvitations` against a stale response (static A then B, with
+ * A resolving last): only the latest call may write `invitations`, the same
+ * idiom as `joinRequestStore`'s applicants guard. `clearInvitations` bumps it
+ * too, so a response still in flight cannot refill a cleared list.
+ */
+let invitationsRequestSeq = 0;
+
 export const useInvitationStore = create<InvitationState>((set) => ({
   // Initial state
   invitations: [],
@@ -47,14 +55,17 @@ export const useInvitationStore = create<InvitationState>((set) => ({
    * Fetch all invitations for a static group
    */
   fetchInvitations: async (groupId: string) => {
+    const seq = ++invitationsRequestSeq;
     set({ isLoading: true, error: null });
 
     try {
       const invitations = await authRequest<Invitation[]>(
         `/api/static-groups/${groupId}/invitations`
       );
+      if (seq !== invitationsRequestSeq) return; // a newer call owns the list
       set({ invitations, isLoading: false });
     } catch (error) {
+      if (seq !== invitationsRequestSeq) return;
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch invitations',
         isLoading: false,
@@ -173,7 +184,8 @@ export const useInvitationStore = create<InvitationState>((set) => ({
    * Clear invitations (when switching groups)
    */
   clearInvitations: () => {
-    set({ invitations: [], error: null });
+    invitationsRequestSeq++;
+    set({ invitations: [], isLoading: false, error: null });
   },
 
   /**

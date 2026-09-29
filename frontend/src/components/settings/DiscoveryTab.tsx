@@ -22,6 +22,7 @@ import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
 import { authRequest } from '../../services/api';
 import { useResolvedShell } from '../../lib/shellPreference';
+import { normalizeRecruitmentStatus, type RecruitmentStatus } from '../../utils/recruitmentStatus';
 import {
   getJobsByRole,
   getRoleForJob,
@@ -40,10 +41,6 @@ import type {
   CommunicationStyle,
   VoiceRequirement,
 } from '../../types';
-
-// ─── Local types ─────────────────────────────────────────────────────────────
-
-type RecruitmentStatus = 'open' | 'selective' | 'paused' | 'closed';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -144,12 +141,6 @@ const SECTION_LABELS: Record<SectionId, string> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function normalizeStatus(s: string | undefined): RecruitmentStatus {
-  if (s === 'limited') return 'selective'; // legacy migration
-  if (['open', 'selective', 'paused', 'closed'].includes(s ?? '')) return s as RecruitmentStatus;
-  return 'closed';
-}
 
 function getDiscovery(group: StaticGroup): DiscoverySettings {
   return group.settings?.discovery ?? EMPTY_DISCOVERY;
@@ -746,7 +737,11 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
 
   // ── State ────────────────────────────────────────────────────────────────────
   const [enabled,            setEnabled]            = useState(existing.enabled);
-  const [recruitmentStatus,  setRecruitmentStatus]  = useState<RecruitmentStatus>(normalizeStatus(existing.recruitmentStatus));
+  const [recruitmentStatus,  setRecruitmentStatus]  = useState<RecruitmentStatus>(
+    // Shared normaliser: a stored listing with no status reads as open, the
+    // same as the backend and the Finder (EMPTY_DISCOVERY stays explicitly closed).
+    normalizeRecruitmentStatus(existing.recruitmentStatus),
+  );
   const [description,        setDescription]        = useState(existing.description ?? '');
   const [intensity,          setIntensity]          = useState(existing.intensity ?? '');
   const [contactMethod,      setContactMethod]      = useState<ContactMethod | ''>(existing.contactMethod ?? '');

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   fetchSessions: vi.fn(),
   groupRequests: [] as JoinRequest[],
   pendingCount: 0,
+  groupRequestsGroupId: 'g1' as string | null,
   fetchGroupRequests: vi.fn(),
   lootLog: [] as unknown[],
   materialLog: [] as unknown[],
@@ -55,7 +56,12 @@ vi.mock('../../stores/scheduleStore', () => ({
 }));
 vi.mock('../../stores/joinRequestStore', () => ({
   useJoinRequestStore: (sel: (s: Record<string, unknown>) => unknown) =>
-    sel({ groupRequests: mocks.groupRequests, pendingCount: mocks.pendingCount, fetchGroupRequests: mocks.fetchGroupRequests }),
+    sel({
+      groupRequests: mocks.groupRequests,
+      pendingCount: mocks.pendingCount,
+      groupRequestsGroupId: mocks.groupRequestsGroupId,
+      fetchGroupRequests: mocks.fetchGroupRequests,
+    }),
 }));
 vi.mock('../../stores/lootTrackingStore', () => ({
   useLootTrackingStore: (sel: (s: Record<string, unknown>) => unknown) =>
@@ -176,6 +182,7 @@ beforeEach(() => {
   mocks.fetchSessions = vi.fn();
   mocks.groupRequests = [];
   mocks.pendingCount = 0;
+  mocks.groupRequestsGroupId = 'g1';
   mocks.fetchGroupRequests = vi.fn();
   mocks.lootLog = [];
   mocks.materialLog = [];
@@ -448,6 +455,16 @@ describe('Home', () => {
 
     it('zero waiting renders no count', () => {
       mocks.pendingCount = 0;
+      renderHome({ group: liveGroup(), canManage: true });
+      expect(screen.getByText('Recruiting · Live · Open')).toBeInTheDocument();
+      expect(screen.queryByText(/waiting/)).not.toBeInTheDocument();
+    });
+
+    it('shows no count while the store still holds the requests of another static', () => {
+      // Static switch: the global count still belongs to the previous static
+      // until this screen's own fetch lands.
+      mocks.pendingCount = 5;
+      mocks.groupRequestsGroupId = 'other-static';
       renderHome({ group: liveGroup(), canManage: true });
       expect(screen.getByText('Recruiting · Live · Open')).toBeInTheDocument();
       expect(screen.queryByText(/waiting/)).not.toBeInTheDocument();

@@ -5,9 +5,10 @@
  * plus the waiting count) sits above the existing `DiscoveryTab` editor, which
  * owns the listing's full builder AND the status write path (M9: the header's
  * status `Select` does not render on this tab, so the editor's own status
- * cards are the single place to change it). The card itself never writes
- * status — it only reads it (`useRecruitmentStatus`), and has no `Select`, no
- * checklist, no preview and no fill button.
+ * cards are the single place to change it). The card itself neither reads nor
+ * writes the status label — it shows only Live/Hidden and the waiting count
+ * (the status label stays in `RecruitHeader`'s subtitle) — and has no
+ * `Select`, no checklist, no preview and no fill button.
  */
 import { CardShell } from '../ui/CardShell';
 import { DiscoveryTab } from '../settings/DiscoveryTab';

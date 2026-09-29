@@ -95,7 +95,8 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   const fetchSessions = useScheduleStore((s) => s.fetchSessions);
 
   const groupRequests = useJoinRequestStore((s) => s.groupRequests);
-  const pendingCount = useJoinRequestStore((s) => s.pendingCount);
+  const storePendingCount = useJoinRequestStore((s) => s.pendingCount);
+  const requestsGroupId = useJoinRequestStore((s) => s.groupRequestsGroupId);
   const fetchGroupRequests = useJoinRequestStore((s) => s.fetchGroupRequests);
 
   const lootLog = useLootTrackingStore((s) => s.lootLog);
@@ -311,9 +312,11 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   }, [tier?.players, groupRequests, canManage, onNavigate, onOpenRequests]);
 
   // ── Recruiting line (manage-only, R-RH-P): "Recruiting · Live/Listing off
-  // · {status label} · {n} waiting". `pendingCount` is the store's global
-  // count, kept warm by this screen's own manage-only `fetchGroupRequests`
-  // above — no extra fetch here.
+  // · {status label} · {n} waiting". The store's `pendingCount` is kept warm
+  // by this screen's own manage-only `fetchGroupRequests` above — no extra
+  // fetch here — but it is one global count, so it only counts when it was
+  // fetched for this static (a static switch shows no count until it lands).
+  const pendingCount = requestsGroupId === group.id ? storePendingCount : 0;
   const recruitingLine = useMemo(() => {
     const discovery = group.settings?.discovery;
     const live = !!group.isPublic && !!discovery?.enabled;
