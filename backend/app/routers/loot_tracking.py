@@ -6,10 +6,12 @@ API endpoints for loot log and page tracking.
 
 import structlog
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, func, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+
+from app.services.audit import audit
 
 logger = structlog.get_logger(__name__)
 
@@ -28,6 +30,7 @@ from app.models import (
 )
 from app.permissions import (
     PermissionDenied,
+    admin_override_for,
     check_view_permission,
     get_static_group,
     get_user_membership,
@@ -1060,6 +1063,7 @@ async def start_next_week(
 async def revert_week(
     group_id: str,
     tier_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -1070,7 +1074,7 @@ async def revert_week(
     """
     # Check permissions - requires lead or owner
     await get_static_group(db, group_id)
-    await require_can_edit_roster(db, current_user.id, group_id)
+    membership = await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier with row-level lock to prevent race conditions.
     # All validation and modifications happen AFTER lock acquisition.
@@ -1096,10 +1100,28 @@ async def revert_week(
     new_start_date = start_date + timedelta(days=7)
     tier.week_start_date = new_start_date.isoformat()
 
-    await db.commit()
-
-    # Calculate and return the new week number
+    # Calculate the new week number before commit (pure function over the
+    # in-memory tier; R-AD-B places the emit right before the commit).
     new_week = calculate_week_number(tier)
+
+    admin_override = await admin_override_for(
+        db, current_user.id, group_id, membership, MemberRole.LEAD
+    )
+    await audit(
+        db,
+        actor=current_user,
+        action="week.reverted",
+        target_type="tier",
+        target_id=tier.id,
+        target_label=tier.tier_id,
+        static_group_id=group_id,
+        old={"week": current_calculated_week},
+        new={"week": new_week},
+        request=request,
+        admin_override=admin_override,
+    )
+
+    await db.commit()
 
     logger.info(
         "week_reverted",

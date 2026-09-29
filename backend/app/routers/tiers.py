@@ -512,6 +512,7 @@ async def update_tier_snapshot(
 async def delete_tier_snapshot(
     group_id: str,
     tier_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> None:
@@ -520,7 +521,7 @@ async def delete_tier_snapshot(
     tier_id can be either the UUID (id) or the tier slug (tier_id).
     """
     group = await get_static_group(session, group_id)
-    await require_can_edit_roster(session, current_user.id, group_id)
+    membership = await require_can_edit_roster(session, current_user.id, group_id)
 
     # Try to find by UUID first, then by tier slug
     result = await session.execute(
@@ -534,6 +535,10 @@ async def delete_tier_snapshot(
     if not snapshot:
         raise NotFound(f"Tier snapshot for '{tier_id}' not found")
 
+    # Locals captured before delete (R-AD-B).
+    snapshot_id = snapshot.id
+    old_values = {"tier_id": snapshot.tier_id, "is_active": snapshot.is_active}
+
     # Delete associated weekly assignments to prevent orphaned data
     # Uses canonical tier_id (slug) which is how assignments are stored
     from sqlalchemy import delete
@@ -546,6 +551,23 @@ async def delete_tier_snapshot(
     )
 
     await session.delete(snapshot)
+
+    admin_override = await admin_override_for(
+        session, current_user.id, group_id, membership, MemberRole.LEAD
+    )
+    await audit(
+        session,
+        actor=current_user,
+        action="tier.deleted",
+        target_type="tier",
+        target_id=snapshot_id,
+        target_label=old_values["tier_id"],
+        static_group_id=group_id,
+        old=old_values,
+        request=request,
+        admin_override=admin_override,
+    )
+
     await session.commit()
 
 
@@ -1027,12 +1049,13 @@ async def delete_snapshot_player(
     group_id: str,
     tier_id: str,
     player_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> None:
     """Remove a player from a tier snapshot"""
     group = await get_static_group(session, group_id)
-    await require_can_edit_roster(session, current_user.id, group_id)
+    membership = await require_can_edit_roster(session, current_user.id, group_id)
 
     result = await session.execute(
         select(SnapshotPlayer)
@@ -1048,7 +1071,27 @@ async def delete_snapshot_player(
     if not player:
         raise NotFound("Player not found")
 
+    # Locals captured before delete (R-AD-B).
+    old_values = {"name": player.name, "job": player.job, "user_id": player.user_id}
+
     await session.delete(player)
+
+    admin_override = await admin_override_for(
+        session, current_user.id, group_id, membership, MemberRole.LEAD
+    )
+    await audit(
+        session,
+        actor=current_user,
+        action="player.deleted",
+        target_type="player",
+        target_id=player_id,
+        target_label=old_values["name"],
+        static_group_id=group_id,
+        old=old_values,
+        request=request,
+        admin_override=admin_override,
+    )
+
     await session.commit()
 
 

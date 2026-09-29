@@ -38,6 +38,7 @@ AD1b hazards, recorded here so emit authors see them:
   reach optional-auth routes.
 """
 
+import re
 from datetime import datetime, timezone
 
 from fastapi import Request
@@ -62,7 +63,12 @@ _SECRET_SUFFIXES = ("_hash", "_secret", "_token")
 
 def _is_secret_key(key: str) -> bool:
     lowered = key.lower()
-    return lowered in _SECRET_KEYS or lowered.endswith(_SECRET_SUFFIXES)
+    if lowered in _SECRET_KEYS or lowered.endswith(_SECRET_SUFFIXES):
+        return True
+    # camelCase settings keys (e.g. "webhookUrl") stored verbatim in free-form
+    # blobs like settings.discovery: check the snake_case form too.
+    snake = re.sub(r"(?<!^)(?=[A-Z])", "_", key).lower()
+    return snake in _SECRET_KEYS or snake.endswith(_SECRET_SUFFIXES)
 
 
 def _strip_secrets(values: dict | None) -> dict | None:

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, TypeVar
 
 import structlog
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -28,6 +28,7 @@ from ..models import (
 from ..permissions import (
     NotFound,
     PermissionDenied,
+    admin_override_for,
     check_view_permission,
     get_static_group,
     get_static_group_by_share_code,
@@ -60,6 +61,7 @@ from ..schemas import (
     StaticSettingsSchema,
 )
 from ..services import generate_share_code
+from ..services.audit import audit
 from ..services.availability_layering import load_zone
 
 router = APIRouter(prefix="/api/static-groups", tags=["static-groups"])
@@ -611,6 +613,7 @@ async def get_static_group_by_id(
 @router.put("/{group_id}", response_model=StaticGroupResponse)
 async def update_static_group(
     group_id: str,
+    request: Request,
     data: StaticGroupUpdate,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -619,10 +622,16 @@ async def update_static_group(
     group = await get_static_group(session, group_id, load_memberships=True)
 
     # Check permission - name/settings require lead, visibility requires owner
+    changed_keys = list(data.model_dump(exclude_unset=True, by_alias=False).keys())
     if data.is_public is not None:
-        await require_owner(session, current_user.id, group_id)
+        membership = await require_owner(session, current_user.id, group_id)
+        min_role = MemberRole.OWNER
     else:
-        await require_can_manage_members(session, current_user.id, group_id)
+        membership = await require_can_manage_members(session, current_user.id, group_id)
+        min_role = MemberRole.LEAD
+
+    # Old values read from the group before any field is touched (R-AD-B/R-AD-G).
+    old_values = {key: getattr(group, key) for key in changed_keys}
 
     # Update fields
     if data.name is not None:
@@ -638,6 +647,27 @@ async def update_static_group(
 
     group.updated_at = datetime.now(timezone.utc).isoformat()
 
+    # New values read after the server-forced settings changes land, so a
+    # settings update that only changed splitClearMode still shows the diff.
+    new_values = {key: getattr(group, key) for key in changed_keys}
+    if any(old_values.get(key) != new_values.get(key) for key in changed_keys):
+        admin_override = await admin_override_for(
+            session, current_user.id, group_id, membership, min_role
+        )
+        await audit(
+            session,
+            actor=current_user,
+            action="static.updated",
+            target_type="static",
+            target_id=group.id,
+            target_label=group.name,
+            static_group_id=group.id,
+            old=old_values,
+            new=new_values,
+            request=request,
+            admin_override=admin_override,
+        )
+
     await session.flush()
     await session.commit()
 
@@ -652,6 +682,7 @@ async def update_static_group(
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_static_group(
     group_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> None:
@@ -659,15 +690,43 @@ async def delete_static_group(
     group = await get_static_group(session, group_id)
 
     # Only owner can delete
-    await require_owner(session, current_user.id, group_id)
+    membership = await require_owner(session, current_user.id, group_id)
+
+    # Locals captured before delete (R-AD-B) — old_values and the label
+    # survive the group's removal since the audit row has no FK to it.
+    old_values = {
+        "name": group.name,
+        "share_code": group.share_code,
+        "is_public": group.is_public,
+    }
+    group_name = group.name
+
+    admin_override = await admin_override_for(
+        session, current_user.id, group_id, membership, MemberRole.OWNER
+    )
 
     await session.delete(group)
+
+    await audit(
+        session,
+        actor=current_user,
+        action="static.deleted",
+        target_type="static",
+        target_id=group_id,
+        target_label=group_name,
+        static_group_id=group_id,
+        old=old_values,
+        request=request,
+        admin_override=admin_override,
+    )
+
     await session.commit()
 
 
 @router.post("/{group_id}/duplicate", response_model=StaticGroupWithMembers, status_code=status.HTTP_201_CREATED)
 async def duplicate_group(
     group_id: str,
+    request: Request,
     data: DuplicateGroupRequest,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -801,6 +860,23 @@ async def duplicate_group(
                     session.add(new_player)
 
     await session.flush()
+
+    # duplicate_group has no require_* check: R-AD-A defines override from
+    # this route's own locals rather than admin_override_for.
+    admin_override = user_is_admin and membership is None
+    await audit(
+        session,
+        actor=current_user,
+        action="static.duplicated",
+        target_type="static",
+        target_id=new_group_id,
+        target_label=data.new_name,
+        static_group_id=group_id,
+        new={"source_group_id": group_id, "name": data.new_name},
+        request=request,
+        admin_override=admin_override,
+    )
+
     await session.commit()
 
     logger.info(
@@ -986,6 +1062,7 @@ async def list_interacted_users(
 async def add_member(
     group_id: str,
     user_id: str,
+    request: Request,
     role: MemberRoleEnum = MemberRoleEnum.MEMBER,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -1029,6 +1106,23 @@ async def add_member(
     )
     session.add(membership)
     await session.flush()
+
+    admin_override = await admin_override_for(
+        session, current_user.id, group_id, actor_membership, MemberRole.LEAD
+    )
+    await audit(
+        session,
+        actor=current_user,
+        action="member.added",
+        target_type="user",
+        target_id=user_id,
+        target_label=user.effective_name,
+        static_group_id=group_id,
+        new={"role": role.value},
+        request=request,
+        admin_override=admin_override,
+    )
+
     await session.commit()
 
     # Reload with user relationship
@@ -1046,6 +1140,7 @@ async def add_member(
 async def update_member_role(
     group_id: str,
     user_id: str,
+    request: Request,
     data: MembershipUpdate,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -1078,11 +1173,32 @@ async def update_member_role(
         if data.role == MemberRoleEnum.LEAD:
             raise PermissionDenied("Only owners can promote to lead")
 
+    old_role = target_membership.role
+
     # Update role
     target_membership.role = data.role.value
     target_membership.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+
+    target_user = await session.get(User, user_id)
+    admin_override = await admin_override_for(
+        session, current_user.id, group_id, actor_membership, MemberRole.LEAD
+    )
+    await audit(
+        session,
+        actor=current_user,
+        action="member.role_changed",
+        target_type="user",
+        target_id=user_id,
+        target_label=target_user.effective_name if target_user else user_id,
+        static_group_id=group_id,
+        old={"role": old_role},
+        new={"role": target_membership.role},
+        request=request,
+        admin_override=admin_override,
+    )
+
     await session.commit()
 
     # Reload with user relationship
@@ -1100,6 +1216,7 @@ async def update_member_role(
 async def remove_member(
     group_id: str,
     user_id: str,
+    request: Request,
     unlink_players: bool = True,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -1120,14 +1237,33 @@ async def remove_member(
     if not target_membership:
         raise NotFound("Member not found")
 
+    old_role = target_membership.role
+    target_user = await session.get(User, user_id)
+    target_label = target_user.effective_name if target_user else user_id
+
     # Self-removal is always allowed (except for owner)
     if user_id == current_user.id:
         if target_membership.role == MemberRole.OWNER.value:
             raise PermissionDenied("Owner cannot leave the group. Transfer ownership first.")
         # Unlink players if requested
+        unlinked_count = 0
         if unlink_players:
-            await _unlink_user_players(session, group_id, user_id)
+            unlinked_count = await _unlink_user_players(session, group_id, user_id)
         await session.delete(target_membership)
+
+        await audit(
+            session,
+            actor=current_user,
+            action="member.removed",
+            target_type="user",
+            target_id=user_id,
+            target_label=target_label,
+            static_group_id=group_id,
+            old={"role": old_role, "unlinked_player_count": unlinked_count},
+            request=request,
+            admin_override=False,
+        )
+
         await session.commit()
         return
 
@@ -1146,18 +1282,38 @@ async def remove_member(
         raise PermissionDenied("Only owners can remove leads")
 
     # Unlink players if requested
+    unlinked_count = 0
     if unlink_players:
-        await _unlink_user_players(session, group_id, user_id)
+        unlinked_count = await _unlink_user_players(session, group_id, user_id)
 
     await session.delete(target_membership)
+
+    admin_override = await admin_override_for(
+        session, current_user.id, group_id, actor_membership, MemberRole.LEAD
+    )
+    await audit(
+        session,
+        actor=current_user,
+        action="member.removed",
+        target_type="user",
+        target_id=user_id,
+        target_label=target_label,
+        static_group_id=group_id,
+        old={"role": old_role, "unlinked_player_count": unlinked_count},
+        request=request,
+        admin_override=admin_override,
+    )
+
     await session.commit()
 
 
-async def _unlink_user_players(session: AsyncSession, group_id: str, user_id: str) -> None:
+async def _unlink_user_players(session: AsyncSession, group_id: str, user_id: str) -> int:
     """Unlink all player cards assigned to a user in a group.
 
     Finds all SnapshotPlayer records across all tiers in the group that are
     linked to the given user and sets their user_id to None.
+
+    Returns the number of player cards unlinked (audit old_values count).
     """
     # Find all players linked to this user in any tier of this group
     result = await session.execute(
@@ -1176,21 +1332,27 @@ async def _unlink_user_players(session: AsyncSession, group_id: str, user_id: st
         player.user_id = None
         player.updated_at = now
 
+    return len(linked_players)
+
 
 @router.post("/{group_id}/transfer-ownership", response_model=StaticGroupResponse)
 async def transfer_ownership(
     group_id: str,
     new_owner_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> StaticGroupResponse:
     """Transfer ownership to another member (owner only)"""
     from ..permissions import PermissionDenied
 
-    group = await get_static_group(session, group_id)
+    # load_memberships=True: group_to_response reads group.member_count, and
+    # the audit row's commit below expires the session, so this avoids an
+    # unawaited lazy-load of .memberships when the response is built.
+    group = await get_static_group(session, group_id, load_memberships=True)
 
     # Only owner can transfer
-    await require_owner(session, current_user.id, group_id)
+    membership = await require_owner(session, current_user.id, group_id)
 
     # Get new owner's membership
     new_owner_membership = await get_user_membership(session, new_owner_id, group_id)
@@ -1200,6 +1362,7 @@ async def transfer_ownership(
     # Get current owner's membership
     current_owner_membership = await get_user_membership(session, current_user.id, group_id)
 
+    old_owner_id = group.owner_id
     now = datetime.now(timezone.utc).isoformat()
 
     # Update group owner
@@ -1212,6 +1375,23 @@ async def transfer_ownership(
 
     current_owner_membership.role = MemberRole.LEAD.value  # Demote to lead
     current_owner_membership.updated_at = now
+
+    admin_override = await admin_override_for(
+        session, current_user.id, group_id, membership, MemberRole.OWNER
+    )
+    await audit(
+        session,
+        actor=current_user,
+        action="static.ownership_transferred",
+        target_type="static",
+        target_id=group.id,
+        target_label=group.name,
+        static_group_id=group.id,
+        old={"owner_id": old_owner_id},
+        new={"owner_id": new_owner_id},
+        request=request,
+        admin_override=admin_override,
+    )
 
     await session.flush()
     await session.commit()

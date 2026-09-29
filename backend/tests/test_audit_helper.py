@@ -104,6 +104,12 @@ class TestSecretDenyList:
     def test_none_passes_through(self):
         assert _strip_secrets(None) is None
 
+    def test_camel_case_secret_keys_stripped(self):
+        """settings.discovery is stored verbatim (camelCase) — a webhookUrl
+        key must be stripped the same as its snake_case form (Task 2 step 1)."""
+        values = {"webhookUrl": "https://hook", "discordBotToken": "x", "name": "kept"}
+        assert _strip_secrets(values) == {"name": "kept"}
+
 
 @pytest.mark.asyncio
 class TestAuditAtomicity:
