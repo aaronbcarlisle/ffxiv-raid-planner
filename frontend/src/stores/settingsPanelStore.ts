@@ -27,7 +27,7 @@ export interface OpenOptions {
 }
 
 /** Returns true when it handled the open (the dock must then stay closed). */
-export type RecruitRedirect = (opts: OpenOptions) => boolean;
+type RecruitRedirect = (opts: OpenOptions) => boolean;
 
 interface SettingsPanelState {
   isOpen: boolean;

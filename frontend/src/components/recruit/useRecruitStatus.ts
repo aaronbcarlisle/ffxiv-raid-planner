@@ -26,7 +26,8 @@ export const RECRUITMENT_STATUS_OPTIONS = (Object.keys(RECRUITMENT_STATUS_LABEL)
   (value) => ({ value, label: RECRUITMENT_STATUS_LABEL[value] }),
 );
 
-export function normalizeRecruitmentStatus(raw: unknown): RecruitmentStatus {
+// Module-private until RH1d extracts the shared `utils/recruitmentStatus.ts`.
+function normalizeRecruitmentStatus(raw: unknown): RecruitmentStatus {
   if (raw === 'limited') return 'selective';
   if (raw === 'open' || raw === 'selective' || raw === 'paused' || raw === 'closed') return raw;
   return 'open';

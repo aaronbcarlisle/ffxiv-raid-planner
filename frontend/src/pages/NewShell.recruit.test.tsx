@@ -11,10 +11,33 @@
  * provided with a live node. The settings-panel store is REAL: `open(...)` on
  * it is what the seam must intercept.
  */
+import { useEffect, useRef } from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PageMode } from '../types';
+
+/**
+ * Live, the `?rcsub=` redirect's router update is committed AFTER the sync
+ * tier-store update from the same effect flush; the tier-loading render that
+ * produces mounts `GroupViewContent` on the stale group location, and its
+ * `useGroupViewState` mount effect replace-writes `?tab=` there, so the two
+ * router updates collapse into one render that shows the group URL again. The
+ * writer below reproduces that ordering: it is a sibling rendered AFTER the
+ * routes, so its effect runs in the same commit as NewShell's handler but
+ * after it, with the pre-redirect location in its closure.
+ */
+const stale = { armed: false };
+function StaleTabWriter({ armed }: { armed: boolean }) {
+  const [, setSearchParams] = useSearchParams();
+  const fired = useRef(false);
+  useEffect(() => {
+    if (!armed || fired.current) return;
+    fired.current = true;
+    setSearchParams((prev) => { const p = new URLSearchParams(prev); p.set('tab', 'overview'); return p; }, { replace: true });
+  }, [armed, setSearchParams]);
+  return null;
+}
 
 interface MockTier { id: string; tierId: string; contentType: string; players: unknown[]; isActive: boolean }
 const TIER_T1: MockTier = { id: 'snap-t1', tierId: 't1', contentType: 'savage', players: [], isActive: true };
@@ -129,6 +152,7 @@ beforeEach(() => {
   mocks.fetchGroupByShareCode.mockClear();
   mocks.clearGroupError.mockClear();
   mocks.fetchCurrentWeek.mockClear();
+  stale.armed = false;
   localStorage.clear();
   useSettingsPanelStore.setState({
     isOpen: false, tab: 'general', recruitmentSection: undefined, highlightCreateInvite: false, recruitRedirect: null,
@@ -171,6 +195,7 @@ function renderShell(initialPath: string) {
           <Route path="/group/:shareCode" element={<NewShell />} />
           <Route path="/group/:shareCode/recruit" element={<NewShell />} />
         </Routes>
+        <StaleTabWriter armed={stale.armed} />
       </MemoryRouter>
     </ChromeSlotNodesContext.Provider>
   );
@@ -333,6 +358,20 @@ describe('NewShell — ?rcsub= on the group route (M11)', () => {
     expect(path()).toBe('/group/abc?tab=roster');
     act(() => { fireEvent.click(screen.getByTestId('push-rcsub')); });
     expect(path()).toBe('/group/abc?tab=roster&rcsub=listing');
+  });
+
+  it('a stale ?tab= replace write queued behind the redirect does not lose the deep link (live regression, cold arrival)', () => {
+    mocks.currentGroup = null;
+    const { rerenderShell } = renderShell('/group/abc?rcsub=listing');
+    expect(path()).toBe('/group/abc?rcsub=listing');
+
+    // The group loads; in the same commit the handler redirects and then the
+    // tab-memory write (pre-redirect closure) replaces the group URL over it.
+    mocks.currentGroup = GROUP_ABC;
+    stale.armed = true;
+    rerenderShell();
+    expect(path()).toBe('/group/abc/recruit?rtab=listing');
+    expect(screen.getByTestId('recruit-page-mock')).toBeInTheDocument();
   });
 
   it('arriving at another static with ?rcsub= acts again', () => {

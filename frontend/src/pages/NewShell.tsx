@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useMatch, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useMatch, useNavigate, useParams } from 'react-router-dom';
 import { CommandPalette } from '../components/layout/CommandPalette';
 import { GroupViewContent } from './GroupViewContent';
 import { RecruitPage } from './RecruitPage';
@@ -326,31 +326,44 @@ export function NewShell() {
   }, [shareCode, navigate, urlTierId]);
 
   // ── `?rcsub=` on the group route (M11) ──────────────────────────────────
-  // An old dock deep link (SF1c's seed `?rcsub=listing`, bookmarks) resolves
-  // ONCE per static the shell arrives at, on the first render where that
-  // static has loaded: a manager is replace-navigated to the mapped tab;
-  // anyone else has the param stripped in place. The arrival is remembered in
-  // a ref, so a later `rcsub` write (the dock's Recruitment sub-nav still uses
-  // the param until RH1d) never re-triggers it on the next tier switch. A
-  // fresh arrival (another static, or a cold load of a URL carrying the param)
-  // is a deep link again.
-  const rcsub = searchParams.get('rcsub');
+  // An old dock deep link (SF1c's seed `?rcsub=listing`, bookmarks) is
+  // consumed ONCE per static the shell arrives at. On the first render where
+  // that static has loaded, an arrival WITH the param is remembered as pending
+  // and acted on — a manager is replace-navigated to the mapped tab, anyone
+  // else has the param stripped in place — and it stays pending until a render
+  // shows the URL no longer carries it. That re-check matters live: the
+  // redirect's router update is committed AFTER the sync tier-store update from
+  // the same effect flush, and the tier-loading render it produces mounts
+  // GroupViewContent on the stale group location, whose `useGroupViewState`
+  // mount effect replace-writes `?tab=` over the redirect; the next render
+  // re-applies it. An arrival WITHOUT the param is settled at once, so a later
+  // `rcsub` write by the dock's Recruitment sub-nav (still on the param until
+  // RH1d) never triggers it. Keyed on `location`, a new object per navigation
+  // even when the URL string is unchanged, so every write is re-checked.
+  const location = useLocation();
   const groupLoadedForRoute = currentGroup?.shareCode === shareCode;
-  const rcsubSettledFor = useRef<string | null>(null);
+  const rcsubArrival = useRef<{ shareCode: string; pending: boolean } | null>(null);
   useEffect(() => {
-    if (!shareCode || !groupLoadedForRoute || rcsubSettledFor.current === shareCode) return;
-    rcsubSettledFor.current = shareCode;
-    if (!rcsub || onRecruitPath) return;
-    if (canManage) {
-      navigate(recruitUrl(shareCode, recruitTabForSection(rcsub), { tier: urlTierId }), { replace: true });
-    } else {
-      setSearchParamsRef.current((prev) => {
-        const params = new URLSearchParams(prev);
-        params.delete('rcsub');
-        return params;
-      }, { replace: true });
+    if (!shareCode || !groupLoadedForRoute) return;
+    const params = new URLSearchParams(location.search);
+    const rcsub = params.get('rcsub');
+    if (rcsubArrival.current?.shareCode !== shareCode) {
+      rcsubArrival.current = { shareCode, pending: rcsub !== null };
     }
-  }, [rcsub, shareCode, onRecruitPath, groupLoadedForRoute, canManage, navigate, urlTierId]);
+    const arrival = rcsubArrival.current;
+    if (!arrival.pending) return;
+    if (!rcsub || onRecruitPath) {
+      arrival.pending = false;
+      return;
+    }
+    if (canManage) {
+      navigate(recruitUrl(shareCode, recruitTabForSection(rcsub), { tier: params.get('tier') }), { replace: true });
+    } else {
+      params.delete('rcsub');
+      const search = params.toString();
+      navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace: true });
+    }
+  }, [location, shareCode, onRecruitPath, groupLoadedForRoute, canManage, navigate]);
 
   // M1: a Spine / ⌘K tab change from the Recruiting route goes back to the
   // static on that tab, carrying the tier so the target selects the same tier
