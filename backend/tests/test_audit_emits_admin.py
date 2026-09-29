@@ -287,7 +287,14 @@ class TestCatalogEmits:
     async def test_sync_success_emits_counts(
         self, client: AsyncClient, session, admin_headers
     ):
-        counts = {"mount": 3, "minion": 1, "skipped": 2}
+        # The real service's shape (catalog_import_service.sync_from_ffxiv_collect):
+        # three of the four values are dicts, so a `dict[str, int]` schema rejects it.
+        counts = {
+            "imported": {"mount": 1},
+            "skipped": 0,
+            "skipped_by_source": {},
+            "category_count_after": {"mount": 1},
+        }
 
         async def fake_sync(session):
             return counts
