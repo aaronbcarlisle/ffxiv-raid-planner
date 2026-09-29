@@ -138,6 +138,11 @@ vi.mock('../hooks/useStaticPermissions', () => ({
 import { NewShell } from './NewShell';
 import { ChromeSlotNodesContext } from './chrome/chromeSlots';
 import { useSettingsPanelStore } from '../stores/settingsPanelStore';
+// The real bridge (mounted by Layout in the app, not by NewShell itself) from
+// the `HEADER_EVENTS.SETTINGS` window event the Alt+ shortcuts dispatch to
+// `settingsPanelStore` — mounted here so the shortcuts test below exercises
+// the same path production does.
+import { SettingsPanelController } from '../components/layout/SettingsPanelController';
 
 const GROUP_ABC = { id: 'g1', name: 'Crescent', shareCode: 'abc', settings: {} };
 
@@ -190,6 +195,7 @@ function renderShell(initialPath: string) {
   const tree = () => (
     <ChromeSlotNodesContext.Provider value={slots}>
       <MemoryRouter initialEntries={[initialPath]}>
+        <SettingsPanelController />
         <Probe />
         <Routes>
           <Route path="/group/:shareCode" element={<NewShell />} />
@@ -416,5 +422,44 @@ describe('NewShell — ?rcsub= on the group route (M11)', () => {
     act(() => { fireEvent.click(screen.getByTestId('go-def-rcsub')); });
     expect(path()).toBe('/group/def/recruit?rtab=listing');
     expect(navType()).toBe('REPLACE');
+  });
+});
+
+describe('NewShell — the settings-dock subset of Alt+ shortcuts on the recruit route (live fix)', () => {
+  it('Alt+I on the recruit route reaches settingsPanelStore.toggle — GroupViewContent (mocked out here) is not mounted to own it', () => {
+    renderShell('/group/abc/recruit?tier=t1');
+    const toggleMock = vi.fn();
+    useSettingsPanelStore.setState({ toggle: toggleMock });
+    fireEvent.keyDown(window, { key: 'i', altKey: true });
+    expect(toggleMock).toHaveBeenCalledWith({ tab: 'recruitment', section: undefined });
+  });
+
+  it('Alt+G/P/M on the recruit route likewise reach toggle with their tab', () => {
+    renderShell('/group/abc/recruit?tier=t1');
+    const toggleMock = vi.fn();
+    useSettingsPanelStore.setState({ toggle: toggleMock });
+    fireEvent.keyDown(window, { key: 'g', altKey: true });
+    fireEvent.keyDown(window, { key: 'p', altKey: true });
+    fireEvent.keyDown(window, { key: 'm', altKey: true });
+    expect(toggleMock).toHaveBeenNthCalledWith(1, { tab: 'general', section: undefined });
+    expect(toggleMock).toHaveBeenNthCalledWith(2, { tab: 'priority', section: undefined });
+    expect(toggleMock).toHaveBeenNthCalledWith(3, { tab: 'members', section: undefined });
+  });
+
+  it('a member (canManage false) on the recruit route gets no dispatch', () => {
+    mocks.canEdit = false;
+    renderShell('/group/abc/recruit?tier=t1');
+    const toggleMock = vi.fn();
+    useSettingsPanelStore.setState({ toggle: toggleMock });
+    fireEvent.keyDown(window, { key: 'i', altKey: true });
+    expect(toggleMock).not.toHaveBeenCalled();
+  });
+
+  it('Alt+I on the ordinary group route is a no-op from this listener (disabled there; GroupViewContent, mocked out in this file, would own it live)', () => {
+    renderShell('/group/abc?tier=t1');
+    const toggleMock = vi.fn();
+    useSettingsPanelStore.setState({ toggle: toggleMock });
+    fireEvent.keyDown(window, { key: 'i', altKey: true });
+    expect(toggleMock).not.toHaveBeenCalled();
   });
 });

@@ -37,12 +37,34 @@ const ROLE_LABEL: Record<MemberRole, string> = {
   viewer: 'Viewer',
 };
 
+// `isValid` is the backend's own `isActive && !isExpired && !isExhausted`
+// (models/invitation.py) — using it directly (rather than re-deriving with
+// `useCount >= maxUses`) avoids the unlimited-invite bug live-found here:
+// the API sends `maxUses: null` for "no limit", and `0 >= null` coerces to
+// `0 >= 0` (true) in JS, so re-deriving filed every unlimited invite under
+// Inactive regardless of use count.
 function isInactive(inv: Invitation): boolean {
-  if (!inv.isActive) return true;
-  if (inv.expiresAt && new Date(inv.expiresAt) < new Date()) return true;
-  if (inv.maxUses !== undefined && inv.useCount >= inv.maxUses) return true;
-  return false;
+  return !inv.isValid;
 }
+
+type InactiveReason = 'Revoked' | 'Expired' | 'Used up';
+
+/** Same precedence as V1's `InvitationsPanel` badge (Revoked, then Expired,
+ *  then exhausted) — `maxUses != null` (not `!== undefined`) treats the
+ *  backend's `null` the same as "unset", so an unlimited invite is never
+ *  read as exhausted. */
+function inactiveReason(inv: Invitation): InactiveReason | null {
+  if (!inv.isActive) return 'Revoked';
+  if (inv.expiresAt && new Date(inv.expiresAt) < new Date()) return 'Expired';
+  if (inv.maxUses != null && inv.useCount >= inv.maxUses) return 'Used up';
+  return null;
+}
+
+const INACTIVE_REASON_TONE: Record<InactiveReason, 'error' | 'warning' | 'muted'> = {
+  Revoked: 'error',
+  Expired: 'warning',
+  'Used up': 'muted',
+};
 
 function formatExpiry(inv: Invitation): string {
   if (!inv.expiresAt) return 'Never expires';
@@ -105,6 +127,13 @@ export function InvitesTab({ groupId, createRequested = false }: InvitesTabProps
 
   return (
     <div className="flex flex-col gap-3">
+      {active.length === 0 && inactive.length === 0 && (
+        <p className="text-sm text-text-muted py-4 text-center">No invitations yet. Create one to invite members.</p>
+      )}
+      {active.length === 0 && inactive.length > 0 && (
+        <p className="text-sm text-text-muted">No active invites.</p>
+      )}
+
       {!showCreateForm ? (
         <Button variant="secondary" onClick={() => setShowCreateForm(true)} className="self-start">
           + Create Invitation Link
@@ -123,10 +152,6 @@ export function InvitesTab({ groupId, createRequested = false }: InvitesTabProps
             }
           }}
         />
-      )}
-
-      {active.length === 0 && inactive.length === 0 && (
-        <p className="text-sm text-text-muted py-4 text-center">No invitations yet. Create one to invite members.</p>
       )}
 
       {active.map((inv) => (
@@ -160,6 +185,7 @@ function InviteRow({
     onConfirm: () => onRevoke(invitation.id),
     timeout: 3000,
   });
+  const reason = inactiveReason(invitation);
 
   return (
     <CardShell as="div" className="flex items-center justify-between gap-4">
@@ -167,9 +193,11 @@ function InviteRow({
         <div className="flex items-center gap-2 mb-1">
           <code className="text-accent font-mono text-sm">{invitation.inviteCode}</code>
           <Tag variant="label" tone="muted">{ROLE_LABEL[invitation.role]}</Tag>
+          {reason && <Tag variant="label" tone={INACTIVE_REASON_TONE[reason]}>{reason}</Tag>}
         </div>
         <div className="text-xs text-text-muted">
-          {invitation.useCount}/{invitation.maxUses ?? '∞'} uses · {formatExpiry(invitation)}
+          {invitation.useCount}/{invitation.maxUses ?? '∞'} uses
+          {!reason && ` · ${formatExpiry(invitation)}`}
         </div>
       </div>
       <div className="flex items-center gap-2">

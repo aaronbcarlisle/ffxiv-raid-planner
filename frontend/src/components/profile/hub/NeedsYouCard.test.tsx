@@ -45,12 +45,17 @@ const bisItem: OverviewActionItem = {
   startsAt: null,
 };
 
+// The backend (player_overview.py `_build_join_request_item`) sets
+// `detail: group.name` — the SAME value as `staticName` — because the item
+// has nothing else to say. This fixture matches that on purpose (live bug:
+// the card rendered `staticName`'s Tag AND `detail` as the meta line, so the
+// static's name appeared twice on one row).
 const joinRequestsItem: OverviewActionItem = {
   type: 'join_requests',
   staticId: 's5',
   staticName: 'Recruit Static',
   title: '2 join requests waiting',
-  detail: 'Applicants are waiting on a decision',
+  detail: 'Recruit Static',
   href: '/group/abc/recruit',
   startsAt: null,
 };
@@ -217,16 +222,22 @@ describe('NeedsYouCard — rows', () => {
     expect(screen.getByText('Other Static')).toBeInTheDocument();
   });
 
-  it('renders a join_requests row with its title, static tag, detail as meta and a Review button, linking to /group/abc/recruit', () => {
+  it('renders a join_requests row with its title, static tag and a Review button, linking to /group/abc/recruit', () => {
     renderCard({ data: overviewOf([joinRequestsItem]), error: null });
 
     expect(screen.getByText('2 join requests waiting')).toBeInTheDocument();
     expect(screen.getByText('Recruit Static')).toBeInTheDocument();
-    expect(screen.getByText('Applicants are waiting on a decision')).toBeInTheDocument();
 
     const button = screen.getByRole('button', { name: 'Review' });
     button.click();
     expect(mockNavigate).toHaveBeenCalledWith('/group/abc/recruit');
     expect(mockNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render the static name twice (live fix): detail duplicates staticName, so no meta line is shown', () => {
+    renderCard({ data: overviewOf([joinRequestsItem]), error: null });
+    // Exactly one "Recruit Static" — the title's Tag — not a second copy as
+    // a meta line below it.
+    expect(screen.getAllByText('Recruit Static')).toHaveLength(1);
   });
 });

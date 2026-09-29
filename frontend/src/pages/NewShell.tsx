@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useMatch, useNavigate, useParams } from 'react-router-dom';
 import { CommandPalette } from '../components/layout/CommandPalette';
+import { HEADER_EVENTS } from '../components/layout/Header';
 import { GroupViewContent } from './GroupViewContent';
 import { RecruitPage } from './RecruitPage';
 import { ShellContentStates } from './ShellContentStates';
@@ -27,6 +28,7 @@ import { useViewAsUrlSync } from '../hooks/useViewAsUrlSync';
 import { useStaticNavMemory } from '../hooks/useStaticNavMemory';
 import { useShellToggle } from '../hooks/useShellToggle';
 import { useModal } from '../hooks/useModal';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useCurrentTier } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
 import { useViewAsStore } from '../stores/viewAsStore';
@@ -402,6 +404,36 @@ export function NewShell() {
     window.addEventListener('keydown', handleModK);
     return () => window.removeEventListener('keydown', handleModK);
   }, [openPalette]);
+
+  // ── Recruiting route: the settings-dock subset of Alt+ shortcuts ────────
+  // `GroupViewContent` (and its `useGroupViewKeyboardShortcuts`, which owns
+  // the full Alt+G/P/M/I set) only mounts for the Overview/Roster/etc. body;
+  // on the recruit sub-route `RecruitPage` renders instead, so those Alt+
+  // combos reach no listener there. `V2SettingsHost` is mounted unconditionally
+  // (below, outside the branch), so the dock itself is already reachable on
+  // this route — only the shortcut was missing. `disabled: !onRecruitPath`
+  // keeps this a no-op on the ordinary group route, where GroupViewContent's
+  // own copy already handles these (avoids a double dispatch). Same dispatch
+  // `SettingsPanelController` already bridges to `settingsPanelStore`, so
+  // Alt+I here goes through the same `toggle` → `recruitRedirect` path as
+  // every other opener (R-RH-I).
+  useKeyboardShortcuts({
+    disabled: !onRecruitPath,
+    shortcuts: [
+      { key: 'g', description: 'Settings: General', action: () => {
+        if (canManage) window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'general' } }));
+      }, requireAlt: true },
+      { key: 'p', description: 'Settings: Priority', action: () => {
+        if (canManage) window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'priority' } }));
+      }, requireAlt: true },
+      { key: 'm', description: 'Settings: Members', action: () => {
+        if (canManage) window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'members' } }));
+      }, requireAlt: true },
+      { key: 'i', description: 'Settings: Recruitment', action: () => {
+        if (canManage) window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'recruitment' } }));
+      }, requireAlt: true },
+    ],
+  });
 
   return (
     // The V2ChromeContext provider moved to AppChrome (Stage-1 T3) — the

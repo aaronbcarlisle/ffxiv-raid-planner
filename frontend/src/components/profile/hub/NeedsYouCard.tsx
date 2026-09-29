@@ -42,10 +42,15 @@ function itemIcon(type: OverviewActionItemType): ReactNode {
   return <Gem size={18} />;
 }
 
-function itemMeta(item: OverviewActionItem): string {
+function itemMeta(item: OverviewActionItem): string | undefined {
   if (item.type === 'rsvp_pending' && item.startsAt != null) {
     return `${formatSessionStart(item.startsAt)} · ${item.detail}`;
   }
+  // `join_requests`' `detail` is the backend's `group.name` — the same value
+  // already shown as the title's static-name Tag (live fix: this duplicated
+  // the static's name on the row). The backend item shape (RH1a) is
+  // unchanged; only the card drops the redundant meta line.
+  if (item.type === 'join_requests') return undefined;
   return item.detail;
 }
 

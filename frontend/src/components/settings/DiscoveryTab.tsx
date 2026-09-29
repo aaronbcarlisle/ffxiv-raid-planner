@@ -21,6 +21,7 @@ import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
 import { authRequest } from '../../services/api';
+import { useResolvedShell } from '../../lib/shellPreference';
 import {
   getJobsByRole,
   getRoleForJob,
@@ -738,6 +739,10 @@ interface DiscoveryTabProps {
 export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
   const { updateGroup } = useStaticGroupStore();
   const existing = getDiscovery(group);
+  // The "Public Static" toggle this copy points at lives under General in V1's
+  // dock, but under Static in V2's — shell-aware copy only, same pattern as
+  // LeadingStaticRow (live fix: this said "General tab" even in V2).
+  const shell = useResolvedShell();
 
   // ── State ────────────────────────────────────────────────────────────────────
   const [enabled,            setEnabled]            = useState(existing.enabled);
@@ -984,7 +989,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
                 <div className="p-3 bg-status-warning/10 border border-status-warning/30 rounded-lg flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 text-status-warning flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-text-secondary">
-                    Static is <strong className="text-text-primary">private</strong> — enable Public Static in the General tab for this listing to go live.
+                    Static is <strong className="text-text-primary">private</strong> — enable Public Static in the {shell === 'v2' ? 'Static' : 'General'} tab for this listing to go live.
                   </p>
                 </div>
               )}

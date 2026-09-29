@@ -147,6 +147,67 @@ describe('InvitesTab — rows', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Inactive (1)' }));
     expect(screen.getByText('REVOKED1')).toBeInTheDocument();
   });
+
+  it('an unlimited invite (API sends maxUses: null) renders in the active list (live bug: 0 >= null coerced true, filing it under Inactive)', () => {
+    mocks.invitations = [
+      invitation({ id: 'unlimited', inviteCode: 'UNLIM1', maxUses: null as unknown as number, useCount: 0, isActive: true, isValid: true }),
+    ];
+    renderTab();
+    expect(screen.getByText('UNLIM1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Inactive/ })).toBeNull();
+  });
+});
+
+describe('InvitesTab — inactive reason tags', () => {
+  it('a revoked invite shows a Revoked tag in place of the expiry text', () => {
+    mocks.invitations = [
+      invitation({ id: 'r', inviteCode: 'REV1', isActive: false, isValid: false, expiresAt: '2026-12-01T00:00:00Z' }),
+    ];
+    renderTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Inactive (1)' }));
+    expect(screen.getByText('Revoked')).toBeInTheDocument();
+    expect(screen.queryByText(/Expires/)).toBeNull();
+  });
+
+  it('an expired invite shows an Expired tag, not the expiry date', () => {
+    mocks.invitations = [
+      invitation({ id: 'e', inviteCode: 'EXP1', isActive: true, isValid: false, expiresAt: '2020-01-01T00:00:00Z' }),
+    ];
+    renderTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Inactive (1)' }));
+    expect(screen.getByText('Expired')).toBeInTheDocument();
+    expect(screen.queryByText(/Expires/)).toBeNull();
+  });
+
+  it('an exhausted invite shows a "Used up" tag', () => {
+    mocks.invitations = [
+      invitation({ id: 'x', inviteCode: 'USED1', isActive: true, isValid: false, maxUses: 3, useCount: 3 }),
+    ];
+    renderTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Inactive (1)' }));
+    expect(screen.getByText('Used up')).toBeInTheDocument();
+  });
+});
+
+describe('InvitesTab — "No active invites."', () => {
+  it('shows the line above the create action when some invites exist but none are active', () => {
+    mocks.invitations = [invitation({ id: 'r', isActive: false, isValid: false })];
+    renderTab();
+    expect(screen.getByText('No active invites.')).toBeInTheDocument();
+    expect(screen.queryByText('No invitations yet. Create one to invite members.')).toBeNull();
+  });
+
+  it('does not show when there are active invites', () => {
+    mocks.invitations = [invitation({ id: 'a' })];
+    renderTab();
+    expect(screen.queryByText('No active invites.')).toBeNull();
+  });
+
+  it('does not show (falls back to the totally-empty copy) when there are no invitations at all', () => {
+    renderTab();
+    expect(screen.queryByText('No active invites.')).toBeNull();
+    expect(screen.getByText('No invitations yet. Create one to invite members.')).toBeInTheDocument();
+  });
 });
 
 describe('InvitesTab — create form', () => {
