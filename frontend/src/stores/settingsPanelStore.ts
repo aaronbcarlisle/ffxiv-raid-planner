@@ -11,16 +11,20 @@
  * roster never sees the toggle.
  *
  * R-RH-I (the Recruiting seam): the V2 shell registers `recruitRedirect` while
- * it is mounted. `open` for the Recruitment tab always consults it first and,
- * when it returns true, does nothing else — the dock never opens, `isOpen`
- * never flips, so no `showSettings` write and no history entry. `toggle`
- * consults it too, EXCEPT when the dock is already open and showing
- * Recruitment: there, Alt+I keeps closing the dock rather than navigating
- * (see the inline comment in `toggle` — RH1d fix wave: an open dock on
- * ANOTHER tab now closes first, then hands off to the redirect, so toggling
- * to Recruitment while it's hidden from the dock's own tab list is no longer
- * a silent no-op). V1 never registers, so every opener keeps today's
- * behaviour there.
+ * it is mounted. `open` and `toggle` for the Recruitment tab both always
+ * consult it first — closing the dock first if it happens to be open — and,
+ * when it returns true, do nothing else: the dock never (stays) open,
+ * `isOpen` ends false, so no `showSettings` write and no history entry. There
+ * is no "already showing Recruitment" exemption: `SettingsPanel` can never
+ * actually DISPLAY that tab in V2 (its `hiddenTabs` fallback renders General
+ * while the store's `tab` field still reads `'recruitment'`, R-RH-J), so a
+ * check against `tab` was really a check against left-over V1 state — closing
+ * Recruitment in V1 keeps `tab: 'recruitment'` in the store, and switching
+ * shells in place (no reload) carries that stale value into V2, where it used
+ * to make Alt+I fall through to the plain toggle below instead of redirecting
+ * (review wave: the route became unreachable via Alt+I until some other dock
+ * tab was clicked first). V1 never registers a redirect, so every opener
+ * keeps today's behaviour there regardless.
  */
 import { create } from 'zustand';
 import type { SettingsTab, RecruitmentSection } from '../components/settings';
@@ -61,10 +65,18 @@ export const useSettingsPanelStore = create<SettingsPanelState>((set, get) => ({
   recruitRedirect: null,
   setRecruitRedirect: (fn) => set({ recruitRedirect: fn }),
   open: (opts = {}) => {
-    if (opts.tab === 'recruitment' && get().recruitRedirect?.(opts)) return;
-    set((s) => ({
+    const s = get();
+    // Close first when a redirect fires on an already-open dock (review wave,
+    // batched item 3): `toggle` already did this; `open` used to redirect
+    // without closing, so e.g. TopBar's Invite button with the dock open on
+    // General navigated to the route while leaving the dock open behind it.
+    if (opts.tab === 'recruitment' && s.recruitRedirect) {
+      if (s.isOpen) set({ isOpen: false, recruitmentSection: undefined, highlightCreateInvite: false });
+      if (s.recruitRedirect(opts)) return;
+    }
+    set((current) => ({
       isOpen: true,
-      tab: opts.tab ?? s.tab,
+      tab: opts.tab ?? current.tab,
       recruitmentSection: opts.section,
       highlightCreateInvite: opts.highlightCreateInvite ?? false,
     }));
@@ -72,15 +84,11 @@ export const useSettingsPanelStore = create<SettingsPanelState>((set, get) => ({
   close: () => set({ isOpen: false, recruitmentSection: undefined, highlightCreateInvite: false }),
   toggle: (opts = {}) => {
     const s = get();
-    // A closed dock redirects, and so does an open one showing ANOTHER tab —
-    // close it first so the panel never falls back to General for a tab the
-    // host just hid (R-RH-J), then hand off to the route (RH1d fix wave: this
-    // used to only fire while closed, so Alt+I on a dock open elsewhere just
-    // switched to the now-hidden Recruitment tab, a silent no-op). An open
-    // dock already ON Recruitment skips this and falls through to the plain
-    // toggle below, so Alt+I there keeps just closing it rather than
-    // navigating.
-    if (opts.tab === 'recruitment' && s.tab !== 'recruitment' && s.recruitRedirect) {
+    // Whenever a redirect is registered (V2), a Recruitment request always
+    // closes the dock first (if open) and hands off to the route — see the
+    // header comment for why there is no "already showing Recruitment"
+    // exemption here.
+    if (opts.tab === 'recruitment' && s.recruitRedirect) {
       if (s.isOpen) set({ isOpen: false, recruitmentSection: undefined, highlightCreateInvite: false });
       if (s.recruitRedirect(opts)) return;
     }

@@ -4,10 +4,13 @@
  * With no redirect registered the store behaves as it always has. Once the V2
  * shell registers `recruitRedirect`, an `open`/`toggle` for the Recruitment tab
  * never opens the dock (`isOpen` stays false) and the redirect sees the exact
- * options — EXCEPT a dock already open and showing Recruitment, where `toggle`
- * just closes it (Alt+I keeps that behaviour). The opener table pins where
- * each of the eight settings openers' option objects land, through the same
- * `recruitUrlForOpen` the shell composes.
+ * options — closing the dock first when it happens to be open, whatever tab it
+ * currently shows (review wave, Important 1: a stale `tab: 'recruitment'` left
+ * over from V1, carried into V2 by an in-place shell switch, used to make this
+ * fall through to the plain toggle and open an undisplayable tab instead of
+ * redirecting). The opener table pins where each of the eight settings
+ * openers' option objects land, through the same `recruitUrlForOpen` the shell
+ * composes.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSettingsPanelStore, type OpenOptions } from './settingsPanelStore';
@@ -49,6 +52,16 @@ describe('settingsPanelStore with the V2 redirect registered', () => {
     expect(redirect).toHaveBeenCalledWith({ tab: 'recruitment', section: 'listing' });
   });
 
+  it('open({ tab: recruitment }) closes an already-open dock before redirecting (batched item 3: it used to redirect without closing, leaving the dock open behind the navigation — e.g. TopBar Invite with the dock open on General)', () => {
+    const redirect = vi.fn(() => true);
+    useSettingsPanelStore.getState().setRecruitRedirect(redirect);
+    useSettingsPanelStore.setState({ isOpen: true, tab: 'general' });
+    useSettingsPanelStore.getState().open({ tab: 'recruitment', section: 'invitations', highlightCreateInvite: true });
+    expect(redirect).toHaveBeenCalledTimes(1);
+    expect(redirect).toHaveBeenCalledWith({ tab: 'recruitment', section: 'invitations', highlightCreateInvite: true });
+    expect(useSettingsPanelStore.getState().isOpen).toBe(false);
+  });
+
   it('toggle({ tab: recruitment }) likewise never opens the dock', () => {
     const redirect = vi.fn(() => true);
     useSettingsPanelStore.getState().setRecruitRedirect(redirect);
@@ -58,12 +71,21 @@ describe('settingsPanelStore with the V2 redirect registered', () => {
     expect(redirect).toHaveBeenCalledWith({ tab: 'recruitment' });
   });
 
-  it('toggle({ tab: recruitment }) on a dock already open on Recruitment closes it and never consults the redirect (Alt+I)', () => {
+  it('toggle({ tab: recruitment }) with a CLOSED dock but a stale tab: "recruitment" left over from V1 still calls the redirect (Important 1: this used to fall through and open the undisplayable tab instead)', () => {
+    const redirect = vi.fn(() => true);
+    useSettingsPanelStore.getState().setRecruitRedirect(redirect);
+    useSettingsPanelStore.setState({ isOpen: false, tab: 'recruitment' });
+    useSettingsPanelStore.getState().toggle({ tab: 'recruitment' });
+    expect(redirect).toHaveBeenCalledTimes(1);
+    expect(useSettingsPanelStore.getState().isOpen).toBe(false);
+  });
+
+  it('toggle({ tab: recruitment }) on a dock open ON Recruitment (however it got there) also closes first, then redirects — no "already showing it" exemption', () => {
     const redirect = vi.fn(() => true);
     useSettingsPanelStore.getState().setRecruitRedirect(redirect);
     useSettingsPanelStore.setState({ isOpen: true, tab: 'recruitment' });
     useSettingsPanelStore.getState().toggle({ tab: 'recruitment' });
-    expect(redirect).not.toHaveBeenCalled();
+    expect(redirect).toHaveBeenCalledTimes(1);
     expect(useSettingsPanelStore.getState().isOpen).toBe(false);
   });
 

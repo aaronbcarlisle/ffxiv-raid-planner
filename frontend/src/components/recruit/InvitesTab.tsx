@@ -3,12 +3,16 @@
  *
  * Fetches on mount, lists every invitation (code, role, uses, expiry, Copy
  * link, a double-click Revoke), and a create form (role — `lead` only for an
- * owner — days, unlimited/limited uses). `?create=1` opens the form on
- * arrival and is stripped from the URL with `replace` so a refresh doesn't
- * reopen it. Expired/exhausted/revoked rows sit under a collapsed "Inactive"
- * toggle, mirroring the Applicants tab's Resolved pattern.
+ * owner — days, unlimited/limited uses). `?create=1` opens the form and is
+ * stripped from the URL with `replace` — keyed on the live search param
+ * (review wave, Important 2), not just on mount: the tab stays mounted across
+ * a same-tab re-navigation (TopBar's Invite button while already here), and a
+ * `useState(createRequested)` read once at mount missed that re-arrival,
+ * leaving `?create=1` stuck in the URL with the form never opening. Expired/
+ * exhausted/revoked rows sit under a collapsed "Inactive" toggle, mirroring
+ * the Applicants tab's Resolved pattern.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Copy, XCircle, Check } from 'lucide-react';
 import { Button } from '../primitives';
@@ -18,6 +22,7 @@ import { Select } from '../ui/Select';
 import { NumberInput } from '../ui/NumberInput';
 import { Checkbox } from '../ui/Checkbox';
 import { Tag } from '../ui/Tag';
+import { CardSkeleton } from '../ui/Skeleton';
 import { useInvitationStore } from '../../stores/invitationStore';
 import { useStaticPermissions } from '../../hooks/useStaticPermissions';
 import { useDoubleClickConfirm } from '../../hooks/useDoubleClickConfirm';
@@ -26,8 +31,6 @@ import type { Invitation, MemberRole } from '../../types';
 
 interface InvitesTabProps {
   groupId: string;
-  /** `?create=1` (the TopBar/dock create-invite hand-off): open the form on arrival. */
-  createRequested?: boolean;
 }
 
 const ROLE_LABEL: Record<MemberRole, string> = {
@@ -76,22 +79,27 @@ function formatExpiry(inv: Invitation): string {
   return `Expires ${date}`;
 }
 
-export function InvitesTab({ groupId, createRequested = false }: InvitesTabProps) {
-  const { invitations, isCreating, fetchInvitations, createInvitation, revokeInvitation } = useInvitationStore();
+export function InvitesTab({ groupId }: InvitesTabProps) {
+  const { invitations, isLoading, isCreating, fetchInvitations, createInvitation, revokeInvitation } = useInvitationStore();
   const { userRole } = useStaticPermissions();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [showCreateForm, setShowCreateForm] = useState(createRequested);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
-  const strippedCreateParam = useRef(false);
 
   useEffect(() => {
     fetchInvitations(groupId);
   }, [groupId, fetchInvitations]);
 
-  // Strip `?create=1` once so a refresh (or Back) doesn't reopen the form.
+  // Open the create form and strip `?create=1`, keyed on the LIVE param value
+  // (Important 2) rather than a mount-only ref: the tab does not remount for
+  // a same-tab re-navigation (e.g. TopBar's Invite button while already on
+  // Invites), so a later arrival with `?create=1` must open the form again,
+  // not just once at mount.
+  const createRequested = searchParams.get('create') === '1';
   useEffect(() => {
-    if (strippedCreateParam.current || searchParams.get('create') !== '1') return;
-    strippedCreateParam.current = true;
+    if (!createRequested) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing local UI state to a URL param that is then stripped in the same effect (matches ShellContentStates.tsx's "reset derived state" precedent)
+    setShowCreateForm(true);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -100,12 +108,24 @@ export function InvitesTab({ groupId, createRequested = false }: InvitesTabProps
       },
       { replace: true },
     );
-    // Only ever runs once, on mount, for the param this page arrived with.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [createRequested, setSearchParams]);
 
-  const active = invitations.filter((inv) => !isInactive(inv));
-  const inactive = invitations.filter(isInactive);
+  // `invitationStore` is a single global list with no per-group scope; guard
+  // on `staticGroupId` so a previous static's rows never flash while this
+  // group's fetch is in flight (review wave, batched item 4).
+  const groupInvitations = invitations.filter((inv) => inv.staticGroupId === groupId);
+  const showLoadingSkeleton = isLoading && groupInvitations.length === 0;
+  const active = groupInvitations.filter((inv) => !isInactive(inv));
+  const inactive = groupInvitations.filter(isInactive);
+
+  if (showLoadingSkeleton) {
+    return (
+      <div data-testid="invites-loading" className="flex flex-col gap-3">
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
+    );
+  }
 
   const copyLink = async (code: string) => {
     try {

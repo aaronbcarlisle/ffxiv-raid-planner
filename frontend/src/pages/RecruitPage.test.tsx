@@ -55,8 +55,11 @@ vi.mock('../components/recruit/ListingTab', () => ({
   ),
 }));
 vi.mock('../components/recruit/InvitesTab', () => ({
-  InvitesTab: ({ groupId, createRequested }: { groupId: string; createRequested?: boolean }) => (
-    <div data-testid="invites-tab" data-group={groupId} data-create={String(!!createRequested)} />
+  // No `createRequested` prop (review wave, Important 2): InvitesTab reads
+  // `?create=1` itself via useSearchParams, since the tab doesn't remount for
+  // a same-tab re-navigation — see InvitesTab.test.tsx for that behaviour.
+  InvitesTab: ({ groupId }: { groupId: string }) => (
+    <div data-testid="invites-tab" data-group={groupId} />
   ),
 }));
 
@@ -209,12 +212,6 @@ describe('RecruitPage tabs (R-RH-H, R-RH-J)', () => {
     expect(path()).toBe('/group/abc/recruit?rtab=invites');
     expect(screen.getByRole('combobox', { name: 'Recruitment status' })).toBeInTheDocument();
     expect(screen.getByTestId('invites-tab')).toHaveAttribute('data-group', 'g1');
-    expect(screen.getByTestId('invites-tab')).toHaveAttribute('data-create', 'false');
-  });
-
-  it('?rtab=invites&create=1 passes createRequested to InvitesTab (TopBar invite parity)', () => {
-    renderAt(['/group/abc/recruit?rtab=invites&create=1']);
-    expect(screen.getByTestId('invites-tab')).toHaveAttribute('data-create', 'true');
   });
 
   it('clicking Applicants from Listing drops the param (default tab is omitted)', () => {

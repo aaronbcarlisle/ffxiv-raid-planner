@@ -1,18 +1,21 @@
 /**
  * InvitesTab — RH1d, R-RH-M. Mount fetch; row fields; Copy link; the
  * double-click Revoke; the create form's defaults and role gate; `?create=1`
- * opens the form and is stripped with `replace`; inactive rows collapse.
+ * opens the form and is stripped with `replace` (re-entry safe — review wave,
+ * Important 2); inactive rows collapse; a group guard against another
+ * static's rows flashing (review wave, batched item 4).
  *
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { InvitesTab } from './InvitesTab';
 import type { Invitation } from '../../types';
 
 const mocks = vi.hoisted(() => ({
   invitations: [] as Invitation[],
+  isLoading: false,
   isCreating: false,
   fetchInvitations: vi.fn(),
   createInvitation: vi.fn(),
@@ -26,6 +29,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../stores/invitationStore', () => ({
   useInvitationStore: () => ({
     invitations: mocks.invitations,
+    isLoading: mocks.isLoading,
     isCreating: mocks.isCreating,
     fetchInvitations: mocks.fetchInvitations,
     createInvitation: mocks.createInvitation,
@@ -61,15 +65,29 @@ function checkboxByLabelText(text: string): HTMLElement {
 
 function Location() {
   const loc = useLocation();
-  return <div data-testid="search">{loc.search}</div>;
+  const type = useNavigationType();
+  return <div data-testid="search" data-type={type}>{loc.search}</div>;
 }
 
-function renderTab(props: { createRequested?: boolean } = {}, initialEntry = '/group/abc/recruit?rtab=invites') {
+/** Lets a test simulate a SECOND same-route navigation (TopBar's Invite
+ *  button while already on Invites) without unmounting InvitesTab — the tab
+ *  element stays in the same position in RecruitPage's tree either way. */
+function NavToCreate() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" data-testid="nav-create" onClick={() => navigate('/group/abc/recruit?rtab=invites&create=1')}>
+      nav-create
+    </button>
+  );
+}
+
+function renderTab(initialEntry = '/group/abc/recruit?rtab=invites') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Location />
+      <NavToCreate />
       <Routes>
-        <Route path="/group/:shareCode/recruit" element={<InvitesTab groupId="g1" {...props} />} />
+        <Route path="/group/:shareCode/recruit" element={<InvitesTab groupId="g1" />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -77,6 +95,7 @@ function renderTab(props: { createRequested?: boolean } = {}, initialEntry = '/g
 
 beforeEach(() => {
   mocks.invitations = [];
+  mocks.isLoading = false;
   mocks.isCreating = false;
   mocks.fetchInvitations.mockReset();
   mocks.createInvitation.mockReset().mockResolvedValue(invitation());
@@ -277,14 +296,54 @@ describe('InvitesTab — create form', () => {
 });
 
 describe('InvitesTab — ?create=1', () => {
-  it('opens the form on mount', () => {
-    renderTab({ createRequested: true });
+  it('opens the form on arrival', () => {
+    renderTab('/group/abc/recruit?rtab=invites&create=1');
     expect(screen.getByRole('button', { name: 'Create' })).toBeInTheDocument();
   });
 
-  it('strips the create param with replace, so it never reappears in history', () => {
-    renderTab({ createRequested: true }, '/group/abc/recruit?rtab=invites&create=1');
+  it('strips the create param WITH REPLACE, so it never reappears in history', () => {
+    renderTab('/group/abc/recruit?rtab=invites&create=1');
     expect(screen.getByTestId('search').textContent).not.toContain('create=1');
     expect(screen.getByTestId('search').textContent).toContain('rtab=invites');
+    // The mutation trace (task-4-report.md, Fix wave) proved this line is
+    // load-bearing: asserting only `.search` above passes even without
+    // `{ replace: true }`, since a plain PUSH also ends up on the stripped
+    // URL. Observing the navigation TYPE is what actually pins `replace`.
+    expect(screen.getByTestId('search')).toHaveAttribute('data-type', 'REPLACE');
+  });
+
+  it('a second same-route navigation to ?create=1 (the tab stays mounted, e.g. TopBar Invite while already here) opens the form again and strips the param again (Important 2)', () => {
+    renderTab('/group/abc/recruit?rtab=invites');
+    expect(screen.queryByRole('button', { name: 'Create' })).toBeNull();
+    fireEvent.click(screen.getByTestId('nav-create'));
+    expect(screen.getByRole('button', { name: 'Create' })).toBeInTheDocument();
+    expect(screen.getByTestId('search').textContent).not.toContain('create=1');
+  });
+});
+
+describe('InvitesTab — group guard (review wave, batched item 4)', () => {
+  it('a previous static\'s rows do not flash while this group\'s fetch is in flight: a skeleton shows instead', () => {
+    mocks.invitations = [invitation({ id: 'stale', inviteCode: 'STALE1', staticGroupId: 'other-group' })];
+    mocks.isLoading = true;
+    renderTab();
+    expect(screen.queryByText('STALE1')).toBeNull();
+    expect(screen.getByTestId('invites-loading')).toBeInTheDocument();
+  });
+
+  it('once loaded (isLoading false), rows for another group are filtered out rather than shown', () => {
+    mocks.invitations = [invitation({ id: 'other', inviteCode: 'OTHER1', staticGroupId: 'zzz' })];
+    mocks.isLoading = false;
+    renderTab();
+    expect(screen.queryByText('OTHER1')).toBeNull();
+    expect(screen.queryByTestId('invites-loading')).toBeNull();
+    expect(screen.getByText('No invitations yet. Create one to invite members.')).toBeInTheDocument();
+  });
+
+  it('this group\'s own rows render normally once loaded', () => {
+    mocks.invitations = [invitation({ id: 'mine', inviteCode: 'MINE1', staticGroupId: 'g1' })];
+    mocks.isLoading = false;
+    renderTab();
+    expect(screen.getByText('MINE1')).toBeInTheDocument();
+    expect(screen.queryByTestId('invites-loading')).toBeNull();
   });
 });

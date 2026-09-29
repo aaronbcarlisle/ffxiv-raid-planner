@@ -55,7 +55,6 @@ export function RecruitPage() {
       group={currentGroup}
       tab={tab}
       onTabChange={setTab}
-      createRequested={searchParams.get('create') === '1'}
     />
   );
 }
@@ -64,13 +63,10 @@ function RecruitPageBody({
   group,
   tab,
   onTabChange,
-  createRequested,
 }: {
   group: StaticGroup;
   tab: RecruitTab;
   onTabChange: (tab: RecruitTab) => void;
-  /** `?create=1`: the Invites hand-off keeps the create-invite highlight it carried. */
-  createRequested: boolean;
 }) {
   // The page is the SOLE mount fetch for `applicants` (fix wave round 2): the
   // header's waiting count reads it regardless of which tab is active, so a
@@ -100,7 +96,7 @@ function RecruitPageBody({
       />
       {tab === 'applicants' && <ApplicantsTab group={group} onTabChange={onTabChange} />}
       {tab === 'listing' && <ListingTab group={group} onTabChange={onTabChange} />}
-      {tab === 'invites' && <InvitesTab groupId={group.id} createRequested={createRequested} />}
+      {tab === 'invites' && <InvitesTab groupId={group.id} />}
     </div>
   );
 }
