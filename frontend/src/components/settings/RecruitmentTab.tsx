@@ -104,6 +104,26 @@ function StatusCard({
   );
 }
 
+type RecruitmentStatus = 'open' | 'selective' | 'paused' | 'closed';
+
+/**
+ * The stored status read exactly as the backend's
+ * `discovery_settings.normalize_status` reads it (same copy as JoinRequestBanner):
+ * `limited` is `selective`; missing, empty, non-string or unknown is `open`.
+ */
+function normalizeStatus(raw: unknown): RecruitmentStatus {
+  if (raw === 'limited') return 'selective';
+  if (raw === 'open' || raw === 'selective' || raw === 'paused' || raw === 'closed') return raw;
+  return 'open';
+}
+
+const STATUS_LABEL: Record<RecruitmentStatus, string> = {
+  open: 'Open',
+  selective: 'Selective',
+  paused: 'Paused',
+  closed: 'Closed',
+};
+
 function RecruitmentOverview({
   group,
   pendingCount,
@@ -117,14 +137,12 @@ function RecruitmentOverview({
 }) {
   const { invitations } = useInvitationStore();
   const discovery = group.settings?.discovery ?? { enabled: false, recruitmentStatus: 'closed' };
-  const isListed = !!(group.isPublic && discovery.enabled);
+  const status = normalizeStatus(discovery.recruitmentStatus);
+  // Mirrors the backend's `is_discoverable`: a paused or closed listing has left
+  // the Static Finder, so the card must not call it Live (R-RH-A).
+  const isListed =
+    !!(group.isPublic && discovery.enabled) && (status === 'open' || status === 'selective');
   const activeInvitations = invitations.filter((inv) => inv.isValid);
-
-  const STATUS_LABEL: Record<string, string> = {
-    open: 'Open',
-    limited: 'Limited',
-    closed: 'Closed',
-  };
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto space-y-4" style={{ scrollbarGutter: 'stable' }}>
@@ -160,7 +178,7 @@ function RecruitmentOverview({
         <div className="rounded-xl border border-border-default bg-surface-elevated p-4 flex flex-col gap-1">
           <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Recruitment</p>
           <p className="text-sm font-semibold text-text-primary">
-            {STATUS_LABEL[discovery.recruitmentStatus ?? 'closed'] ?? 'Closed'}
+            {STATUS_LABEL[status]}
           </p>
           <button
             type="button"

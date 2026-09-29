@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.constants import VALID_JOBS
 
+from .discovery import FitV2
+
 
 def to_camel(string: str) -> str:
     components = string.split("_")
@@ -159,6 +161,10 @@ class JoinRequestResponse(CamelModel):
     updated_at: str
     resolved_at: str | None = None
     resolved_by_user_id: str | None = None
+    # The applicant's Static Finder fit against the listing (RH1a, R-RH-C): set
+    # only on the group list with `?fit=true`, for pending / under-review rows;
+    # null everywhere else. Additive, so the plugin's responses keep their shape.
+    fit: FitV2 | None = None
 
 
 class FitSnapshot(CamelModel):

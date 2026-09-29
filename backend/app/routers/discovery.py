@@ -1,6 +1,5 @@
 """Public static discovery API - read-only, no auth required"""
 
-import json
 from datetime import UTC, datetime
 from typing import Literal
 
@@ -11,11 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_session
 from ..dependencies import get_current_user_optional
 from ..models import Membership, StaticGroup, User
-from ..models.bis_target_set import BiSTargetSet
-from ..models.personal_availability import PersonalAvailabilityTemplate
-from ..models.player_goal import PlayerGoal
-from ..models.player_job_profile import PlayerJobProfile
-from ..models.player_profile import PlayerProfile
 from ..models.static_objective_goal import StaticObjectiveGoal
 from ..rate_limit import limiter
 from ..schemas.discovery import (
@@ -27,30 +21,28 @@ from ..schemas.discovery import (
     FitCounts,
     FitGoals,
     FitJobs,
-    FitNight,
-    FitReason,
     FitSchedule,
     FitSummary,
     FitV2,
-    FitV2Role,
-    FitV2Schedule,
     FitViewer,
     GoalAlignmentSummarySlim,
 )
-from ..services.availability_layering import TemplateDay
+from ..services.discovery_settings import (
+    STATUSES,
+    get_discovery,
+    is_discoverable,
+    normalize_status,
+)
 from ..services.finder_fit import (
-    ViewerJob,
     best_match_key,
     compute_fit_v2,
     compute_role_fit,
     compute_schedule_fit,
-    has_typical_week,
     in_day_group,
     listing_day_codes,
     recruit_entries,
-    role_for_job,
-    viewer_display_zone,
 )
+from ..services.finder_inputs import FitInputs, load_fit_inputs
 from ..services.fit_score import compute_fit_summary
 from ..services.goal_matching import compute_alignment
 
@@ -61,22 +53,12 @@ RoleKey = Literal["tank", "healer", "melee", "ranged", "caster"]
 DayGroup = Literal["weeknights", "weekends"]
 
 
-def _get_discovery(settings: dict | None) -> dict | None:
-    if not settings or not isinstance(settings, dict):
-        return None
-    discovery = settings.get("discovery")
-    if not discovery or not isinstance(discovery, dict):
-        return None
-    return discovery
-
-
-def _is_discoverable(group: StaticGroup) -> bool:
-    if not group.is_public:
-        return False
-    discovery = _get_discovery(group.settings)
-    if not discovery:
-        return False
-    return discovery.get("enabled") is True
+def _response_status(discovery: dict) -> str:
+    """The listing's `recruitmentStatus` as V1 reads it: an explicit string (including
+    `"limited"`) passes through unchanged; missing, empty or non-string reads as open
+    (R-RH-A). Listed rows are open or selective by `is_discoverable`, so no default is closed."""
+    raw = discovery.get("recruitmentStatus")
+    return raw if isinstance(raw, str) and raw.strip() else "open"
 
 
 def _matches_list_filter(value: str | None, candidates: list[str] | None) -> bool:
@@ -90,6 +72,18 @@ def _matches_string_filter(filter_val: str, field_val: str | None) -> bool:
     if not field_val:
         return False
     return filter_val.lower() == field_val.lower()
+
+
+def _matches_status_filter(filter_val: str, raw_status: object) -> bool:
+    """`?recruitmentStatus=` against the normalised stored status: V2's `selective`
+    finds a legacy `limited` listing and V1's `limited` finds a `selective` one. A
+    query outside the known statuses matches nothing (it never reads as open)."""
+    wanted = filter_val.lower()
+    if wanted == "limited":
+        wanted = "selective"
+    if wanted not in STATUSES:
+        return False
+    return normalize_status(raw_status) == wanted
 
 
 def _matches_text_query(query: str, group_name: str, description: str | None) -> bool:
@@ -141,51 +135,6 @@ def _build_fit_summary(raw: dict) -> FitSummary:
     )
 
 
-def _build_fit_v2(raw: dict) -> FitV2:
-    """Convert compute_fit_v2() dict output to a FitV2 schema object."""
-    role = raw["role"]
-    schedule = raw["schedule"]
-    return FitV2(
-        tier=raw["tier"],
-        missing=raw["missing"],
-        role=FitV2Role(
-            status=role["status"],
-            matched_job=role["matched_job"],
-            matched_role=role["matched_role"],
-            priority=role["priority"],
-            is_main=role["is_main"],
-            as_role=role["as_role"],
-        ),
-        schedule=FitV2Schedule(
-            status=schedule["status"],
-            basis=schedule["basis"],
-            nights=[FitNight(**night) for night in schedule["nights"]],
-        ),
-        reasons=[FitReason(**reason) for reason in raw["reasons"]],
-    )
-
-
-def _template_days(rows: list[PersonalAvailabilityTemplate]) -> list[TemplateDay]:
-    """Template rows as the PH3 pipe's TemplateDay; slots that aren't a JSON list read as empty."""
-    days: list[TemplateDay] = []
-    for row in rows:
-        slots: object = row.slots
-        if isinstance(slots, str):
-            try:
-                slots = json.loads(slots)
-            except ValueError:
-                slots = []
-        days.append(
-            TemplateDay(
-                user_id=row.user_id,
-                day_of_week=row.day_of_week,
-                slots=tuple(slots) if isinstance(slots, list) else (),
-                timezone=row.timezone,
-            )
-        )
-    return days
-
-
 def _to_list_item(
     group: StaticGroup,
     discovery: dict,
@@ -195,6 +144,7 @@ def _to_list_item(
     fit_summary: FitSummary | None = None,
     fit_v2: FitV2 | None = None,
     static_id: str | None = None,
+    recruitment_status: str = "open",
 ) -> DiscoveryListItem:
     contact_method, contact_value = _sanitize_contact(
         discovery.get("contactMethod"), discovery.get("contactValue")
@@ -209,7 +159,7 @@ def _to_list_item(
         **extra,
         name=group.name,
         share_code=group.share_code,
-        recruitment_status=discovery.get("recruitmentStatus", "closed"),
+        recruitment_status=recruitment_status,
         description=discovery.get("description"),
         contact_method=contact_method,
         contact_value=contact_value,
@@ -320,113 +270,34 @@ async def list_discoverable_statics(
                 "id": g.id, "category": g.category, "priority": g.priority, "title": g.title
             })
 
-    # Load current user's profile + data for alignment and fit scoring (if authenticated)
-    user_public_goals: list[dict] = []
-    user_player_jobs: list[str] = []
-    user_availability: dict | None = None
+    # Load current user's profile + data for alignment and fit scoring (if authenticated).
+    # R-SF-E: with fitV2 the viewer's own inputs load whatever the visibility, because
+    # only the viewer sees their fit. V1's fit keeps its discoverable-only gate below.
+    # Languages and comms are not read from the profile (spec §9).
     user_languages: list[str] = []
     user_comms: str | None = None
-    user_public_bis: list[dict] = []
-    user_profile: PlayerProfile | None = None
-    viewer_jobs: list[ViewerJob] = []
-    template_days: list[TemplateDay] = []
-    display_zone: str | None = None
-
+    inputs = FitInputs()
     if current_user:
-        # R-SF-E: with fitV2 the viewer's own inputs load whatever the visibility, because
-        # only the viewer sees their fit. V1's fit keeps its discoverable-only gate below.
-        profile_stmt = select(PlayerProfile).where(PlayerProfile.user_id == current_user.id)
-        if not fit_v2_active:
-            profile_stmt = profile_stmt.where(PlayerProfile.visibility == "discoverable")
-        profile_result = await session.execute(profile_stmt.limit(1))
-        user_profile = profile_result.scalar_one_or_none()
-
-        if user_profile:
-            # Public goals only
-            pg_result = await session.execute(
-                select(PlayerGoal).where(
-                    PlayerGoal.profile_id == user_profile.id,
-                    PlayerGoal.is_public == True,  # noqa: E712
-                )
-            )
-            user_public_goals = [
-                {
-                    "id": g.id,
-                    "goal_type": g.goal_type,
-                    # objective_category takes priority — same taxonomy as
-                    # StaticObjectiveGoal; fall back to free-form category.
-                    "category": g.objective_category or g.category,
-                    "intent_level": g.intent_level,
-                }
-                for g in pg_result.scalars().all()
-                # Only goals with an explicit matching category or goal_type participate
-                if g.objective_category is not None or g.goal_type is not None
-            ]
-
-            # Job profiles — main first, then alts
-            jp_result = await session.execute(
-                select(PlayerJobProfile).where(
-                    PlayerJobProfile.profile_id == user_profile.id,
-                ).order_by(
-                    # main > preferred_alt > flex > emergency > casual
-                    PlayerJobProfile.priority,
-                )
-            )
-            all_jobs = jp_result.scalars().all()
-            # Sort: main first, others by db order
-            priority_order = {"main": 0, "preferred_alt": 1, "flex": 2, "emergency": 3, "casual": 4}
-            sorted_jobs = sorted(all_jobs, key=lambda j: priority_order.get(j.priority, 99))
-            user_player_jobs = [j.job for j in sorted_jobs]
-            viewer_jobs = [
-                ViewerJob(job=j.job, role=j.role or role_for_job(j.job), is_main=index == 0)
-                for index, j in enumerate(sorted_jobs)
-            ]
-
-            # Public BiS targets linked to player job profiles
-            if user_player_jobs:
-                # Get all job_profile_ids belonging to this profile
-                jp_ids = [j.id for j in sorted_jobs]
-                if jp_ids:
-                    bis_result = await session.execute(
-                        select(BiSTargetSet).where(
-                            BiSTargetSet.job_profile_id.in_(jp_ids),
-                            BiSTargetSet.is_public == True,  # noqa: E712
-                        )
-                    )
-                    user_public_bis = [
-                        {"job": b.job, "is_public": b.is_public}
-                        for b in bis_result.scalars().all()
-                    ]
-
-        if user_profile or fit_v2_active:
-            # Personal availability — collect unique days (loaded by user id even with
-            # no profile on the fitV2 path, R-SF-E)
-            # Ordered so viewer_display_zone's "ties go to the first row" is deterministic.
-            avail_result = await session.execute(
-                select(PersonalAvailabilityTemplate)
-                .where(PersonalAvailabilityTemplate.user_id == current_user.id)
-                .order_by(
-                    PersonalAvailabilityTemplate.updated_at.desc(),
-                    PersonalAvailabilityTemplate.id,
-                )
-            )
-            avail_rows = list(avail_result.scalars().all())
-            if avail_rows:
-                user_availability = {"days": [row.day_of_week for row in avail_rows]}
-            if fit_v2_active:
-                template_days = _template_days(avail_rows)
-                display_zone = viewer_display_zone(
-                    [(row.timezone, row.updated_at) for row in avail_rows], viewer_tz
-                )
+        loaded = await load_fit_inputs(
+            session,
+            [current_user.id],
+            discoverable_only=not fit_v2_active,
+            availability_always=fit_v2_active,
+            viewer_tz=viewer_tz,
+        )
+        inputs = loaded[current_user.id]
+    user_profile = inputs.profile
+    user_public_goals = inputs.public_goals
+    user_player_jobs = inputs.player_jobs
+    user_availability = inputs.availability
+    user_public_bis = inputs.public_bis
+    viewer_jobs = inputs.viewer_jobs
+    template_days = inputs.template_days
+    display_zone = inputs.display_zone
 
     # V1's fitSummary and goalAlignment stay discoverable-only (R-SF-E).
     v1_fit_enabled = user_profile is not None and user_profile.visibility == "discoverable"
-    missing: list[str] = []
-    if fit_v2_active:
-        if not has_typical_week(template_days):
-            missing.append("template")
-        if not viewer_jobs:
-            missing.append("jobs")
+    missing: list[str] = inputs.missing if fit_v2_active else []
     if goal_category:
         # A comma-separated list matches any value; a single value behaves as before (R-SF-A).
         wanted_categories = [c.strip() for c in goal_category.split(",") if c.strip()]
@@ -435,11 +306,14 @@ async def list_discoverable_statics(
 
     items: list[DiscoveryListItem] = []
     for group, member_count in rows:
-        if not _is_discoverable(group):
+        if not is_discoverable(group):
             continue
 
-        discovery = _get_discovery(group.settings)
+        discovery = get_discovery(group.settings)
         assert discovery is not None
+        # The response keeps the raw stored string (R-RH-A); the status filter below
+        # compares normalised values, so a non-string stored status can't 500 it.
+        response_status = _response_status(discovery)
 
         # Text search
         if q and not _matches_text_query(q, group.name, discovery.get("description")):
@@ -457,7 +331,9 @@ async def list_discoverable_statics(
             continue
         if intensity and not _matches_string_filter(intensity, discovery.get("intensity")):
             continue
-        if recruitment_status and not _matches_string_filter(recruitment_status, discovery.get("recruitmentStatus")):
+        if recruitment_status and not _matches_status_filter(
+            recruitment_status, discovery.get("recruitmentStatus")
+        ):
             continue
         if data_center and not _matches_string_filter(data_center, discovery.get("dataCenter")):
             continue
@@ -527,7 +403,7 @@ async def list_discoverable_statics(
                 continue
             if schedule_overlap and schedule_fit["status"] not in ("match", "partial"):
                 continue
-            fit_v2_obj = _build_fit_v2(raw_v2)
+            fit_v2_obj = FitV2.from_raw(raw_v2)
             local_days = [n["local_day"] for n in schedule_fit["nights"] if n["local_day"]]
         elif v1_fit_enabled and raw_fit is not None:
             # Fit-based filters
@@ -546,6 +422,7 @@ async def list_discoverable_statics(
         items.append(_to_list_item(
             group, discovery, member_count, categories, goal_alignment, fit_summary,
             fit_v2=fit_v2_obj, static_id=group.id if fit_v2_active else None,
+            recruitment_status=response_status,
         ))
 
     # Sort: best = tier rank, then match reasons, then recency (R-SF-G); for guests or

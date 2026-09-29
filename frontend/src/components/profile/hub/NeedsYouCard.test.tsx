@@ -101,6 +101,40 @@ describe('NeedsYouCard — empty', () => {
     expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
   });
 
+  it('an item of a type the card does not know (join_requests, RH1a) renders no row and no button', () => {
+    // The backend emits `join_requests` before the card learns it (RH1d); the
+    // union does not include it yet, hence the cast.
+    const unknownItem = {
+      ...lootItem,
+      type: 'join_requests',
+      title: '2 join requests waiting',
+      detail: 'Recruit Static',
+      href: '/group/XYZ789/recruit',
+    } as unknown as OverviewActionItem;
+
+    renderCard({ data: overviewOf([unknownItem]), error: null });
+    expect(screen.queryByText('2 join requests waiting')).toBeNull();
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
+  });
+
+  it('an unknown-type item is dropped while a known type next to it still renders', () => {
+    const unknownItem = {
+      ...lootItem,
+      type: 'join_requests',
+      title: '2 join requests waiting',
+      href: '/group/XYZ789/recruit',
+    } as unknown as OverviewActionItem;
+
+    renderCard({ data: overviewOf([unknownItem, rsvpItem]), error: null });
+    expect(screen.getByText('RSVP for Prog Night')).toBeInTheDocument();
+    expect(screen.queryByText('2 join requests waiting')).toBeNull();
+    // Exactly one action button, and it is the labelled one.
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveTextContent('RSVP');
+  });
+
   it('shows the empty-state description naming RSVPs, loot and out-of-date BiS', () => {
     renderCard({ data: overviewOf([]), error: null });
     expect(

@@ -1,0 +1,142 @@
+{
+  "response": {
+    "items": [
+      {
+        "availabilityNote": null,
+        "availabilitySummary": null,
+        "characterAvatarUrlAtApply": null,
+        "characterDcAtApply": null,
+        "characterLodestoneIdAtApply": null,
+        "characterNameAtApply": null,
+        "characterWorldAtApply": null,
+        "contactDiscord": null,
+        "createdAt": "2026-09-20T10:00:00+00:00",
+        "fitSnapshot": null,
+        "gearSnapshotSummary": null,
+        "goalAlignmentSnapshot": null,
+        "id": "00000000-0000-4000-8000-0000000000d1",
+        "includedAltJobs": null,
+        "jobInterest": [
+          "drg"
+        ],
+        "message": "Friday DRG here",
+        "playerCharacterId": null,
+        "playerProfileId": null,
+        "profileShareCodeAtApply": null,
+        "profileShareEnabledAtApply": null,
+        "profileVisibilityAtApply": null,
+        "readinessAtApply": null,
+        "requester": {
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/1.png",
+          "displayName": "rh1a_pending",
+          "id": "00000000-0000-4000-8000-000000000002"
+        },
+        "requesterUserId": "00000000-0000-4000-8000-000000000002",
+        "resolvedAt": null,
+        "resolvedByUserId": null,
+        "roleInterest": [
+          "melee"
+        ],
+        "rosterPlayerId": null,
+        "selectedJob": "drg",
+        "selectedRole": "melee",
+        "staticGroupId": "00000000-0000-4000-8000-0000000000b1",
+        "staticGroupName": "Pinned Static",
+        "status": "pending",
+        "updatedAt": "2026-09-20T10:00:00+00:00"
+      },
+      {
+        "availabilityNote": null,
+        "availabilitySummary": null,
+        "characterAvatarUrlAtApply": null,
+        "characterDcAtApply": null,
+        "characterLodestoneIdAtApply": null,
+        "characterNameAtApply": null,
+        "characterWorldAtApply": null,
+        "contactDiscord": null,
+        "createdAt": "2026-09-19T10:00:00+00:00",
+        "fitSnapshot": null,
+        "gearSnapshotSummary": null,
+        "goalAlignmentSnapshot": null,
+        "id": "00000000-0000-4000-8000-0000000000d2",
+        "includedAltJobs": null,
+        "jobInterest": [
+          "drg",
+          "blm"
+        ],
+        "message": "Can flex to caster",
+        "playerCharacterId": null,
+        "playerProfileId": null,
+        "profileShareCodeAtApply": null,
+        "profileShareEnabledAtApply": null,
+        "profileVisibilityAtApply": null,
+        "readinessAtApply": null,
+        "requester": {
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/1.png",
+          "displayName": "rh1a_review",
+          "id": "00000000-0000-4000-8000-000000000003"
+        },
+        "requesterUserId": "00000000-0000-4000-8000-000000000003",
+        "resolvedAt": null,
+        "resolvedByUserId": null,
+        "roleInterest": [
+          "melee",
+          "caster"
+        ],
+        "rosterPlayerId": null,
+        "selectedJob": "drg",
+        "selectedRole": "melee",
+        "staticGroupId": "00000000-0000-4000-8000-0000000000b1",
+        "staticGroupName": "Pinned Static",
+        "status": "under_review",
+        "updatedAt": "2026-09-19T12:00:00+00:00"
+      },
+      {
+        "availabilityNote": null,
+        "availabilitySummary": null,
+        "characterAvatarUrlAtApply": null,
+        "characterDcAtApply": null,
+        "characterLodestoneIdAtApply": null,
+        "characterNameAtApply": null,
+        "characterWorldAtApply": null,
+        "contactDiscord": null,
+        "createdAt": "2026-09-18T10:00:00+00:00",
+        "fitSnapshot": null,
+        "gearSnapshotSummary": null,
+        "goalAlignmentSnapshot": null,
+        "id": "00000000-0000-4000-8000-0000000000d3",
+        "includedAltJobs": null,
+        "jobInterest": [
+          "war"
+        ],
+        "message": null,
+        "playerCharacterId": null,
+        "playerProfileId": null,
+        "profileShareCodeAtApply": null,
+        "profileShareEnabledAtApply": null,
+        "profileVisibilityAtApply": null,
+        "readinessAtApply": null,
+        "requester": {
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/1.png",
+          "displayName": "rh1a_declined",
+          "id": "00000000-0000-4000-8000-000000000004"
+        },
+        "requesterUserId": "00000000-0000-4000-8000-000000000004",
+        "resolvedAt": "2026-09-18T12:00:00+00:00",
+        "resolvedByUserId": "00000000-0000-4000-8000-000000000001",
+        "roleInterest": [
+          "tank"
+        ],
+        "rosterPlayerId": null,
+        "selectedJob": "war",
+        "selectedRole": "tank",
+        "staticGroupId": "00000000-0000-4000-8000-0000000000b1",
+        "staticGroupName": "Pinned Static",
+        "status": "declined",
+        "updatedAt": "2026-09-18T12:00:00+00:00"
+      }
+    ],
+    "pendingCount": 2
+  },
+  "statements": 7
+}

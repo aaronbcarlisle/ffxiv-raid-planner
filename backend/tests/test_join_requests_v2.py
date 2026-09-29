@@ -281,3 +281,95 @@ async def test_fit_snapshot_stable_after_profile_change(
     assert jr.fit_snapshot.get("job") == "DNC"
     # snapshotAt matches what was in the response
     assert jr.fit_snapshot.get("snapshotAt") == original_snap.get("snapshotAt")
+
+
+# ─── Create-request gate on the recruitment status (RH1a, R-RH-A) ────────────
+
+NOT_TAKING = "This static is not taking join requests right now"
+ALREADY_PENDING = "You already have a pending request for this static"
+
+
+def _status_settings(status: str) -> dict:
+    return {"discovery": {"enabled": True, "recruitmentStatus": status}}
+
+
+async def _apply(client: AsyncClient, share_code: str, headers: dict):
+    return await client.post(
+        f"/api/static-groups/{share_code}/join-requests",
+        json={"message": "Hello", "roleInterest": ["melee"]},
+        headers=headers,
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["paused", "closed"])
+async def test_create_rejected_when_paused_or_closed(
+    client: AsyncClient, session, test_user: User, applicant_headers: dict, status: str
+):
+    group = await create_static_group(
+        session, owner=test_user, name="Not Taking", is_public=True,
+        settings=_status_settings(status),
+    )
+    response = await _apply(client, group.share_code, applicant_headers)
+    assert response.status_code == 409
+    assert response.json()["detail"] == NOT_TAKING
+
+
+@pytest.mark.asyncio
+async def test_create_private_but_open_still_403(
+    client: AsyncClient, session, test_user: User, applicant_headers: dict
+):
+    group = await create_static_group(
+        session, owner=test_user, name="Private Open", is_public=False,
+        settings=_status_settings("open"),
+    )
+    response = await _apply(client, group.share_code, applicant_headers)
+    assert response.status_code == 403
+    assert response.json()["detail"] == (
+        "This static is not accepting join requests. "
+        "It must be public with discovery enabled."
+    )
+
+
+@pytest.mark.asyncio
+async def test_second_request_while_under_review_is_409(
+    client: AsyncClient, session, auth_headers: dict, applicant_headers: dict,
+    public_discoverable_group: StaticGroup,
+):
+    first = await _apply(client, public_discoverable_group.share_code, applicant_headers)
+    assert first.status_code == 201
+    review = await client.post(
+        f"/api/join-requests/{first.json()['id']}/under-review", headers=auth_headers,
+    )
+    assert review.status_code == 200
+    assert review.json()["status"] == "under_review"
+
+    second = await _apply(client, public_discoverable_group.share_code, applicant_headers)
+    assert second.status_code == 409
+    assert second.json()["detail"] == ALREADY_PENDING
+
+
+@pytest.mark.asyncio
+async def test_pending_and_under_review_rows_give_409_not_500(
+    client: AsyncClient, session, applicant: User, applicant_headers: dict,
+    public_discoverable_group: StaticGroup,
+):
+    """M6: two waiting rows for one user (inserted through the ORM) must not 500 the check."""
+    now = datetime.now(timezone.utc).isoformat()
+    for status in ("pending", "under_review"):
+        session.add(
+            JoinRequest(
+                id=str(uuid.uuid4()),
+                static_group_id=public_discoverable_group.id,
+                requester_user_id=applicant.id,
+                status=status,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+    await session.flush()
+    await session.commit()
+
+    response = await _apply(client, public_discoverable_group.share_code, applicant_headers)
+    assert response.status_code == 409
+    assert response.json()["detail"] == ALREADY_PENDING

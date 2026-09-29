@@ -28,10 +28,10 @@ class OverviewStatic(CamelModel):
 
 
 class OverviewActionItem(CamelModel):
-    """One "needs you" item: a pending RSVP, a loot drop you're first for, or an
-    out-of-date Hub BiS set."""
+    """One "needs you" item: a pending RSVP, a loot drop you're first for, an
+    out-of-date Hub BiS set, or join requests waiting on a static you lead."""
 
-    type: Literal["rsvp_pending", "loot_priority", "bis_stale"]
+    type: Literal["rsvp_pending", "loot_priority", "bis_stale", "join_requests"]
     static_id: str
     static_name: str
     title: str

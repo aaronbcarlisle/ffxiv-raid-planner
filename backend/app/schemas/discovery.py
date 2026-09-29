@@ -145,6 +145,30 @@ class FitV2(CamelModel):
     schedule: FitV2Schedule
     reasons: list[FitReason] = Field(default_factory=list)
 
+    @classmethod
+    def from_raw(cls, raw: dict) -> "FitV2":
+        """Convert `finder_fit.compute_fit_v2()` dict output to the schema object."""
+        role = raw["role"]
+        schedule = raw["schedule"]
+        return cls(
+            tier=raw["tier"],
+            missing=raw["missing"],
+            role=FitV2Role(
+                status=role["status"],
+                matched_job=role["matched_job"],
+                matched_role=role["matched_role"],
+                priority=role["priority"],
+                is_main=role["is_main"],
+                as_role=role["as_role"],
+            ),
+            schedule=FitV2Schedule(
+                status=schedule["status"],
+                basis=schedule["basis"],
+                nights=[FitNight(**night) for night in schedule["nights"]],
+            ),
+            reasons=[FitReason(**reason) for reason in raw["reasons"]],
+        )
+
 
 class FitCounts(CamelModel):
     """Tier counts over the whole filtered set, before pagination (R-SF-F)."""
