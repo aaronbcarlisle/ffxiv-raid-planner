@@ -1,6 +1,6 @@
 # Recruiting home (V2, lead side) — design
 
-**Status:** spec approved in brainstorm 2026-09-27; plan pending. Closes Stage 4 once RH1a–RH1c merge; `RECONCILIATION.md` B3 then moves from `[PARTIAL]` to built.
+**Status:** spec approved 2026-09-27; plan `plans/2026-09-28-rh1-recruit-home.md` director-vetted and owner-approved 2026-09-28 (four stacked PRs RH1a–RH1d, OWNER-7; where the plan's rulings amend this text, the plan wins until its Finish write-back). Closes Stage 4 once RH1a–RH1d merge; `RECONCILIATION.md` B3 then moves from `[PARTIAL]` to built.
 **Roadmap home:** Stage 4 (B3), `V2_COVERAGE_PLAN.md:122-126`: "unifies Discover + recruitment settings + invitations (recruitment-as-matching, Ring 1)". The Finder half shipped as SF1 (#309–#311); this spec is the lead-side half carried by SF-1.
 **Inputs:**
 - `specs/2026-09-27-static-finder-design.md` (SF-1…SF-7, the `fitV2` engine and contract this reuses).
@@ -29,9 +29,9 @@ A lead's recruiting is an active loop (post a listing, watch who asks, accept or
 - **RH-5 Approach A: re-home, reuse the editor.** The inbox, the status card and the invites block are V2-native. The listing editor is the existing `DiscoveryTab` body hosted inside the V2 page, the same seam pattern V2 Settings uses. Rejected: a V2-native editor rewrite (roughly doubles the stage, no mockup, forks editor bugs across shells).
 - **RH-6 Live fit; applying is consent.** The row shows current fit from the applicant's availability template and job profiles, not the apply-time snapshot. Applicants already hand over an availability summary and a job by applying, so no visibility gate. `fit_snapshot` stays as the historical record.
 - **RH-7 One redirect seam.** Under V2, every `openSettings({tab: 'recruitment', …})` call lands on the recruit route with the matching tab instead of opening the dock. The `new_application` notification href stays `/group/{code}` for V1 parity. No new notification types and no Discord webhook.
-- **RH-8 Three stacked slices** (§10), run with `slice-loop`.
+- **RH-8 Four stacked PRs** (§10; amended from three on 2026-09-28, OWNER-7: RH1b and RH1c merge together), run with `slice-loop`.
 
-## 3. Page (RH1b frame, RH1c fill)
+## 3. Page (RH1b frame; RH1c Applicants tab; RH1d Listing and Invites tabs)
 
 - **Route:** `/group/:shareCode/recruit`, a child of the V2 group route (`App.tsx:170`), V2 only. Managers only (`canManage`, owner or lead); a member or viewer is replaced-navigated to `/group/:shareCode`. Under V1 the path is not registered, so V1 is untouched. Admin View As follows the usual rules.
 - **Header:** `PageHeader` "Recruiting". Subtitle is the listing state: "Live · Open · 3 waiting", "Live · Paused · 2 still waiting", "Listing off". A status `Select` (open / selective / paused / closed) sits in the header and saves `settings.discovery.recruitmentStatus` through `updateGroup`, so a lead can flip status without entering the editor. Legacy `limited` reads as `selective`.
@@ -42,7 +42,7 @@ A lead's recruiting is an active loop (post a listing, watch who asks, accept or
 - **Empty states:** listing live and no requests: "No one has asked yet" with a link to the static's own Finder card. Listing off, paused or closed: the inbox says which and offers the status `Select`, since after RH-3 those states genuinely stop requests. No listing saved at all: the Applicants tab points at the Listing tab.
 - **Width and mobile:** the page uses the 120rem layout, left-aligned. No mobile pass this stage, but the route must render at phone width with no horizontal scroll.
 
-## 4. Applicants (RH1b)
+## 4. Applicants (RH1c)
 
 Data: `GET /api/static-groups/{id}/join-requests?include_resolved=1&fit=1` (§5). Pending and `under_review` first, newest on top; a collapsed "Resolved" list (accepted, declined, cancelled) below.
 
@@ -61,9 +61,9 @@ A row shows:
 - **Player Hub item.** `OverviewActionItem.type` (`schemas/player_overview.py:34`) gains `join_requests`. `services/player_overview.py` emits one per static the caller leads (owner or lead) with a non-zero pending-or-under-review count: title "N join requests waiting", detail the static name, href `/group/{shareCode}/recruit`. `NeedsYouCard.tsx` gains the label and icon entry (RH1c renders it).
 - **V1 label fix.** `RecruitmentTab.tsx` `STATUS_LABEL` gains `selective: 'Selective'` and `paused: 'Paused'`.
 - **Untouched:** invitation semantics, accept/decline/under-review/link-roster, notification types and hrefs, `discord_webhook.py`, the plugin endpoints. The listing stays JSON in `settings.discovery`, so `StaticGroupResponse.settings` is unchanged for the plugin.
-- **Release note:** public, one entry: closed and paused listings now leave the Finder and stop requests; the overview status label is fixed. `CURRENT_VERSION` bumps per the `pr-checklist` rules.
+- **Release note:** one public `fix` entry: closed and paused listings now leave the Finder and stop requests, the join banner says so, the overview status label is fixed; plus one `internal: true` entry for the additive `fit` field (V2 preview plumbing, as SF1's `fitV2` entry). `CURRENT_VERSION` bumps once per the `pr-checklist` rules.
 
-## 6. Entry points and the Settings seam (RH1b seam, RH1c entry points)
+## 6. Entry points and the Settings seam (RH1b seam, RH1d entry points)
 
 - **The seam (RH-7).** In the V2 shell, a subscriber on `settingsPanelStore` (or a guard in `V2SettingsHost`) intercepts `open({tab: 'recruitment', section, highlightCreateInvite})`: it closes the store and navigates to `/group/:shareCode/recruit?rtab=<mapped section>` (`&create=1` when `highlightCreateInvite`). All current openers go through it unchanged: `NewShell.tsx:67,83`, `GroupViewContent.tsx:917`, `TopBar.tsx:90-107`, `SettingsPanelController.tsx:38` (`OPEN_SETTINGS_INVITATIONS`), `MorePage.tsx:97`, `Header.tsx:352`, `useGroupViewKeyboardShortcuts.ts:220`, `LeadingStaticRow.tsx:34-43`. A `?rcsub=` param arriving on a V2 group route is mapped and redirected the same way, then stripped. V1 sees none of this.
 - **V2 Settings hides Recruitment.** `SettingsPanel` takes a shell-gated `hiddenTabs` (or equivalent) that V2 passes as `['recruitment']`; V1 passes nothing. The gear badge count moves with it; the bell's pending count on `/group/*` routes stays.
@@ -107,9 +107,10 @@ A row shows:
 
 ## 10. Delivery
 
-- **Three stacked PRs (RH-8):**
-  - **RH1a:** backend only: status enforcement, the viewer-input extraction and applicant fit, the overview item, the V1 label fix, the public release note (§5).
-  - **RH1b:** the route, guard, header, Tabs, Applicants tab, the redirect seam and the hidden V2 Settings tab (§3 frame, §4, §6 seam).
-  - **RH1c:** Listing tab (status card + hosted editor), Invites tab, Static Home line, TopBar/Roster/Finder rewiring, Needs-you rendering, doc status flips (`V2_COVERAGE_PLAN.md` Stage 4 closed, `RECONCILIATION.md` B3 built, `PRODUCT_MODEL.md:164` wording).
+- **Four stacked PRs (RH-8, amended 2026-09-28, OWNER-7):**
+  - **RH1a:** backend plus two V1 fixes: status enforcement, the fit-input extraction and applicant fit, the overview item, the V1 label fix, the join-banner gate, the release notes (§5).
+  - **RH1b:** the route, guard, header, Tabs, the redirect seam, and placeholder Listing/Invites tabs that open the dock (§3 frame, §6 seam). Merges together with RH1c: a frame with no inbox is not shippable.
+  - **RH1c:** the Applicants tab (§4).
+  - **RH1d:** Listing tab (status card + hosted editor), Invites tab, the hidden V2 Settings tab, Static Home line, TopBar/Roster/Finder rewiring, Needs-you rendering, the spec write-backs, doc status flips (`V2_COVERAGE_PLAN.md` Stage 4 closed, `RECONCILIATION.md` B3 built, `PRODUCT_MODEL.md:164` wording).
 - **Process:** each from a plan in `design/redesign/plans/`, director plan-vet first, run with `slice-loop`; PRs opened with `/ship` after the slice review, with light and dark screenshots.
-- **Done for Stage 4:** all three merged; a manager in V2 recruits end to end without opening Settings; V1 changes only by the two public fixes.
+- **Done for Stage 4:** all four merged; a manager in V2 recruits end to end without opening Settings; V1 changes only by the two public fixes.
