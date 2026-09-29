@@ -89,8 +89,14 @@ describe('withCarriedParams', () => {
     );
   });
 
-  it('drops the extra keys it is told to (a consumed rcsub)', () => {
-    expect(withCarriedParams('/group/abc/recruit?rtab=listing', 'rcsub=listing&adminMode=true', ['rcsub'])).toBe(
+  it('drops the extra keys it is told to (an arbitrary consumed param)', () => {
+    expect(withCarriedParams('/group/abc/recruit?rtab=listing', 'foo=bar&adminMode=true', ['foo'])).toBe(
+      '/group/abc/recruit?rtab=listing&adminMode=true',
+    );
+  });
+
+  it('always drops rcsub, even with no explicit drop list (M5: a dock-written rcsub never reaches a seam-built recruit URL)', () => {
+    expect(withCarriedParams('/group/abc/recruit?rtab=listing', 'rcsub=listing&adminMode=true')).toBe(
       '/group/abc/recruit?rtab=listing&adminMode=true',
     );
   });

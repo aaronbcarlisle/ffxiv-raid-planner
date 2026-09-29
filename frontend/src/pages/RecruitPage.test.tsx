@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   group: null as Record<string, unknown> | null,
   canEdit: true,
   applicants: null as { groupId: string; items: unknown[]; pendingCount: number } | null,
+  fetchApplicants: vi.fn(),
   updateGroup: vi.fn(),
   clearGroupError: vi.fn(),
   toastError: vi.fn(),
@@ -32,7 +33,7 @@ vi.mock('../hooks/useStaticPermissions', () => ({
 }));
 vi.mock('../stores/joinRequestStore', () => ({
   useJoinRequestStore: (sel: (s: Record<string, unknown>) => unknown) =>
-    sel({ applicants: mocks.applicants }),
+    sel({ applicants: mocks.applicants, fetchApplicants: mocks.fetchApplicants }),
 }));
 vi.mock('../stores/toastStore', () => ({
   toast: { error: mocks.toastError, success: vi.fn() },
@@ -87,6 +88,7 @@ beforeEach(() => {
   mocks.group = makeGroup({ enabled: true, recruitmentStatus: 'open' });
   mocks.canEdit = true;
   mocks.applicants = null;
+  mocks.fetchApplicants.mockReset().mockResolvedValue(undefined);
   mocks.updateGroup.mockReset().mockResolvedValue(undefined);
   mocks.clearGroupError.mockReset();
   mocks.toastError.mockReset();
@@ -161,6 +163,14 @@ describe('RecruitPage guard (R-RH-G)', () => {
 });
 
 describe('RecruitPage tabs (R-RH-H, R-RH-J)', () => {
+  it('arriving at ?rtab=listing still fetches applicants once, so the header count is not empty on arrival (IMPORTANT 1)', () => {
+    mocks.applicants = { groupId: 'g1', items: [], pendingCount: 2 };
+    renderAt(['/group/abc/recruit?rtab=listing']);
+    expect(mocks.fetchApplicants).toHaveBeenCalledTimes(1);
+    expect(mocks.fetchApplicants).toHaveBeenCalledWith('g1');
+    expect(screen.getByText('Live · Open · 2 waiting')).toBeInTheDocument();
+  });
+
   it('?rtab=listing selects Listing and hides the status select; the placeholder opens the dock via openDock past a redirect', () => {
     const redirect = vi.fn(() => true);
     useSettingsPanelStore.getState().setRecruitRedirect(redirect);

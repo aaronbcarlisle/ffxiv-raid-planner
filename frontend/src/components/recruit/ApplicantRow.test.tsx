@@ -5,11 +5,17 @@
  *
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { ApplicantRow, type ApplicantRowProps } from './ApplicantRow';
 import type { JoinRequest } from '../../types';
 import type { FitV2 } from '../finder/types';
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (orig) => ({
+  ...(await orig<typeof import('react-router-dom')>()),
+  useNavigate: () => mockNavigate,
+}));
 
 vi.mock('../static-group/JoinRequestReviewModal', () => ({
   JoinRequestReviewModal: ({ isOpen, request }: { isOpen: boolean; request: JoinRequest }) =>
@@ -17,6 +23,10 @@ vi.mock('../static-group/JoinRequestReviewModal', () => ({
 }));
 
 vi.mock('../../stores/toastStore', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+beforeEach(() => {
+  mockNavigate.mockClear();
+});
 
 function request(overrides: Partial<JoinRequest> = {}): JoinRequest {
   return {
@@ -76,9 +86,12 @@ describe('ApplicantRow — identity', () => {
     expect(screen.getByText('SGE · Healer')).toBeInTheDocument();
   });
 
-  it('shows View profile when shareable with a code', () => {
+  it('navigates via the router (SPA), not a raw <a href>, when shareable with a code', () => {
     renderRow({ request: request({ profileVisibilityAtApply: 'shareable', profileShareCodeAtApply: 'abc123' }) });
-    expect(screen.getByRole('link', { name: 'View profile' })).toHaveAttribute('href', '/profile/abc123');
+    const link = screen.getByText('View profile');
+    expect(link.closest('a')).toBeNull();
+    fireEvent.click(link);
+    expect(mockNavigate).toHaveBeenCalledWith('/profile/abc123');
   });
 
   it('hides View profile for a private applicant', () => {
@@ -113,6 +126,28 @@ describe('ApplicantRow — fit', () => {
     renderRow({ request: request({ fit: null }) });
     expect(screen.queryByText(/fit$/)).toBeNull();
     expect(screen.queryByText(/No typical week/)).toBeNull();
+  });
+
+  it('ignores an unrecognized missing key rather than rendering an empty hint', () => {
+    const { container } = renderRow({
+      request: request({ fit: fit({ missing: ['template', 'bogus' as unknown as 'template'] }) }),
+    });
+    expect(screen.getByText('No typical week yet')).toBeInTheDocument();
+    expect(Array.from(container.querySelectorAll('p')).some((p) => p.textContent === '')).toBe(false);
+  });
+
+  it('a resolved row (declined) does not render reason rows or missing hints, even though its fit is retained (M2)', () => {
+    renderRow({
+      request: request({
+        status: 'declined',
+        fit: fit({ tier: 'good', missing: ['template'], reasons: [{ kind: 'bis', status: 'match', params: {} }] }),
+      }),
+    });
+    expect(screen.queryByText('Their BiS is ready to share')).toBeNull();
+    expect(screen.queryByText('No typical week yet')).toBeNull();
+    // The resolved status tag still shows, not the fit tier tag.
+    expect(screen.getByText('Declined')).toBeInTheDocument();
+    expect(screen.queryByText('Good fit')).toBeNull();
   });
 });
 
@@ -166,6 +201,27 @@ describe('ApplicantRow — actions per status', () => {
     renderRow({ request: request({ status: 'pending' }), onAccept });
     fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
     expect(onAccept).toHaveBeenCalledWith('r1');
+  });
+
+  it('a double-click on Accept only calls it once while the first call is in flight (M3)', async () => {
+    let resolveAccept!: () => void;
+    const onAccept = vi.fn().mockReturnValue(new Promise<void>((resolve) => { resolveAccept = resolve; }));
+    renderRow({ request: request({ status: 'pending' }), onAccept });
+    const button = screen.getByRole('button', { name: 'Accept' });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(onAccept).toHaveBeenCalledTimes(1);
+    expect(button).toBeDisabled();
+    resolveAccept();
+  });
+
+  it('Under review is disabled while Accept is in flight', async () => {
+    let resolveAccept!: () => void;
+    const onAccept = vi.fn().mockReturnValue(new Promise<void>((resolve) => { resolveAccept = resolve; }));
+    renderRow({ request: request({ status: 'pending' }), onAccept });
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    expect(screen.getByRole('button', { name: 'Under review' })).toBeDisabled();
+    resolveAccept();
   });
 
   it('decline needs two clicks', () => {

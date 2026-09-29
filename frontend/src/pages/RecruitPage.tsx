@@ -12,6 +12,7 @@
  * hand off to the Settings dock through `openDock` (R-RH-J) until RH1d moves
  * the editor and the invite list here.
  */
+import { useEffect } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/primitives';
 import { CardShell, PageSkeleton, Tabs } from '../components/ui';
@@ -20,6 +21,7 @@ import { RecruitHeader } from '../components/recruit/RecruitHeader';
 import { RECRUIT_TAB_VALUES, withCarriedParams, type RecruitTab } from '../components/recruit/recruitTabs';
 import { useUrlTabState } from '../hooks/useUrlTabState';
 import { useStaticPermissions } from '../hooks/useStaticPermissions';
+import { useJoinRequestStore } from '../stores/joinRequestStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useSettingsPanelStore } from '../stores/settingsPanelStore';
 import type { RecruitmentSection } from '../components/settings';
@@ -69,6 +71,19 @@ function RecruitPageBody({
   /** `?create=1`: the Invites hand-off keeps the create-invite highlight it carried. */
   createRequested: boolean;
 }) {
+  // The header's waiting count (RecruitHeader) reads `applicants` regardless
+  // of which tab is active, so the page fetches it here rather than only
+  // inside the Applicants tab (IMPORTANT 1, whole-branch review): a deep link
+  // straight to Listing or Invites must not show a stale/empty count. The
+  // Applicants tab's own effect stays — the store's sequence guard absorbs
+  // the duplicate call when both land. A failure here is silent (no tab is
+  // showing the inbox to explain a toast against); the Applicants tab's own
+  // effect toasts if the applicant ever opens it.
+  const fetchApplicants = useJoinRequestStore((s) => s.fetchApplicants);
+  useEffect(() => {
+    fetchApplicants(group.id).catch(() => {});
+  }, [group.id, fetchApplicants]);
+
   return (
     <div data-testid="recruit-page" className="w-full max-w-[120rem] px-3 sm:px-6 pb-6">
       <RecruitHeader group={group} tab={tab} />

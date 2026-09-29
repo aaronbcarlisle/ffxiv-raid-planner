@@ -7,6 +7,7 @@
  * goal-alignment snapshot, exact availability windows all stay there).
  */
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Check, Clock, Copy } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
@@ -69,9 +70,24 @@ export function ApplicantRow({
   onUnderReview,
   onLinkRoster,
 }: ApplicantRowProps) {
+  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  // Mirrors the review modal's isProcessing guard (M3): without it, a
+  // double-click on Accept or Under review fires the handler twice, and the
+  // second call gets a 400 plus a spurious error toast and refetch.
+  const [isProcessing, setIsProcessing] = useState(false);
   const decline = useDoubleClickConfirm({ onConfirm: () => onDecline(request.id), timeout: 3000 });
+  const busy = isProcessing || decline.isLoading;
+
+  const runAction = async (action: () => Promise<void>) => {
+    setIsProcessing(true);
+    try {
+      await action();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const requester = request.requester;
   const avatar = request.characterAvatarUrlAtApply ?? requester?.avatarUrl;
@@ -117,7 +133,7 @@ export function ApplicantRow({
             </p>
             <p className="text-xs text-text-muted">{relativeTime(request.createdAt)}</p>
             {canViewProfile && (
-              <LinkText href={`/profile/${request.profileShareCodeAtApply}`} className="text-xs">
+              <LinkText onClick={() => navigate(`/profile/${request.profileShareCodeAtApply}`)} className="text-xs">
                 View profile
               </LinkText>
             )}
@@ -130,10 +146,10 @@ export function ApplicantRow({
         ) : null}
       </div>
 
-      {fit && (
+      {isActionable && fit && (
         <div className="flex flex-col gap-1">
           <ReasonRows reasons={fit.reasons} nights={fit.schedule.nights} subject="they" />
-          {fit.missing.map((m) => (
+          {fit.missing.filter((m) => MISSING_HINTS[m]).map((m) => (
             <p key={m} className="text-xs text-text-muted">{MISSING_HINTS[m]}</p>
           ))}
         </div>
@@ -170,7 +186,12 @@ export function ApplicantRow({
           {isActionable && (
             <>
               {isPending && (
-                <Button variant="secondary" size="sm" onClick={() => void onUnderReview(request.id)}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void runAction(() => onUnderReview(request.id))}
+                >
                   Under review
                 </Button>
               )}
@@ -179,11 +200,18 @@ export function ApplicantRow({
                 size="sm"
                 onClick={decline.handleClick}
                 onBlur={decline.handleBlur}
-                disabled={decline.isLoading}
+                disabled={busy}
               >
                 {decline.isArmed ? 'Confirm decline' : 'Decline'}
               </Button>
-              <Button variant="primary" size="sm" onClick={() => void onAccept(request.id)}>Accept</Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={busy}
+                onClick={() => void runAction(() => onAccept(request.id))}
+              >
+                Accept
+              </Button>
             </>
           )}
           {isAcceptedNoRoster && onLinkRoster && (

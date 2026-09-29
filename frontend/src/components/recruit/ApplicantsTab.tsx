@@ -16,6 +16,7 @@ import { Button } from '../primitives/Button';
 import { CardShell } from '../ui/CardShell';
 import { EmptyState } from '../ui/EmptyState';
 import { LinkText } from '../ui/LinkText';
+import { CardSkeleton } from '../ui/Skeleton';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { toast } from '../../stores/toastStore';
 import { useGroupAddToRoster } from '../../pages/groupActionsContext';
@@ -43,16 +44,31 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
   const [showResolved, setShowResolved] = useState(false);
 
   useEffect(() => {
-    void fetchApplicants(group.id);
+    fetchApplicants(group.id).catch(() => {
+      toast.error("Couldn't load applicants.");
+    });
   }, [group.id, fetchApplicants]);
 
-  const items: JoinRequest[] = applicants?.groupId === group.id ? applicants.items : [];
+  const refetch = () => {
+    fetchApplicants(group.id).catch(() => {
+      toast.error("Couldn't load applicants.");
+    });
+  };
+
+  if (!applicants || applicants.groupId !== group.id) {
+    return (
+      <div data-testid="applicants-loading" className="flex flex-col gap-3">
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
+    );
+  }
+
+  const items: JoinRequest[] = applicants.items;
   const waiting = items
     .filter((r) => WAITING_STATUSES.has(r.status))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const resolved = items.filter((r) => !WAITING_STATUSES.has(r.status));
-
-  const refetch = () => void fetchApplicants(group.id);
 
   const handleAccept = async (id: string) => {
     try {

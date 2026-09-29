@@ -8,7 +8,7 @@ import { api } from '../services/api';
 
 /** The Applicants tab's own slice (R-RH-R): independent of `groupRequests`,
  *  which the V2 bell and the Settings dock keep polling without `fit`. */
-export interface ApplicantsState {
+interface ApplicantsState {
   groupId: string;
   items: JoinRequest[];
   pendingCount: number;
@@ -45,6 +45,30 @@ let applicantsRequestSeq = 0;
  *  `fit` — accept/decline/under-review responses carry `fit: null`. */
 function mergeApplicantRow(row: JoinRequest, updated: JoinRequest): JoinRequest {
   return { ...updated, fit: updated.fit ?? row.fit };
+}
+
+/**
+ * Shared write for every request-mutation action (accept/decline/under-review/
+ * link-roster): updates the row in `groupRequests`, and in `applicants.items`
+ * when that slice is loaded (keeping the row's previous `fit`), and moves both
+ * pending counts by `pendingDelta` (0 for actions that don't resolve a
+ * waiting request, per §R-RH-R).
+ */
+function patchApplicants(
+  state: Pick<JoinRequestState, 'groupRequests' | 'pendingCount' | 'applicants'>,
+  requestId: string,
+  updated: JoinRequest,
+  pendingDelta: number,
+): Pick<JoinRequestState, 'groupRequests' | 'pendingCount' | 'applicants'> {
+  return {
+    groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
+    pendingCount: Math.max(0, state.pendingCount - pendingDelta),
+    applicants: state.applicants && {
+      ...state.applicants,
+      items: state.applicants.items.map((r) => (r.id === requestId ? mergeApplicantRow(r, updated) : r)),
+      pendingCount: Math.max(0, state.applicants.pendingCount - pendingDelta),
+    },
+  };
 }
 
 export const useJoinRequestStore = create<JoinRequestState>((set) => ({
@@ -101,6 +125,7 @@ export const useJoinRequestStore = create<JoinRequestState>((set) => ({
     } catch (error) {
       if (seq !== applicantsRequestSeq) return;
       set({ error: error instanceof Error ? error.message : 'Failed to fetch applicants' });
+      throw error;
     }
   },
 
@@ -125,41 +150,19 @@ export const useJoinRequestStore = create<JoinRequestState>((set) => ({
   acceptRequest: async (requestId: string) => {
     set({ error: null });
     const updated = await api.post<JoinRequest>(`/api/join-requests/${requestId}/accept`);
-    set((state) => ({
-      groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
-      pendingCount: Math.max(0, state.pendingCount - 1),
-      applicants: state.applicants && {
-        ...state.applicants,
-        items: state.applicants.items.map((r) => (r.id === requestId ? mergeApplicantRow(r, updated) : r)),
-        pendingCount: Math.max(0, state.applicants.pendingCount - 1),
-      },
-    }));
+    set((state) => patchApplicants(state, requestId, updated, 1));
   },
 
   declineRequest: async (requestId: string) => {
     set({ error: null });
     const updated = await api.post<JoinRequest>(`/api/join-requests/${requestId}/decline`);
-    set((state) => ({
-      groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
-      pendingCount: Math.max(0, state.pendingCount - 1),
-      applicants: state.applicants && {
-        ...state.applicants,
-        items: state.applicants.items.map((r) => (r.id === requestId ? mergeApplicantRow(r, updated) : r)),
-        pendingCount: Math.max(0, state.applicants.pendingCount - 1),
-      },
-    }));
+    set((state) => patchApplicants(state, requestId, updated, 1));
   },
 
   markUnderReview: async (requestId: string) => {
     set({ error: null });
     const updated = await api.post<JoinRequest>(`/api/join-requests/${requestId}/under-review`);
-    set((state) => ({
-      groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
-      applicants: state.applicants && {
-        ...state.applicants,
-        items: state.applicants.items.map((r) => (r.id === requestId ? mergeApplicantRow(r, updated) : r)),
-      },
-    }));
+    set((state) => patchApplicants(state, requestId, updated, 0));
   },
 
   linkRoster: async (requestId: string, rosterPlayerId: string) => {
@@ -168,13 +171,7 @@ export const useJoinRequestStore = create<JoinRequestState>((set) => ({
       `/api/join-requests/${requestId}/link-roster`,
       { rosterPlayerId },
     );
-    set((state) => ({
-      groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
-      applicants: state.applicants && {
-        ...state.applicants,
-        items: state.applicants.items.map((r) => (r.id === requestId ? mergeApplicantRow(r, updated) : r)),
-      },
-    }));
+    set((state) => patchApplicants(state, requestId, updated, 0));
   },
 
   clearError: () => set({ error: null }),

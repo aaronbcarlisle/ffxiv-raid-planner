@@ -58,8 +58,13 @@ export function recruitUrlForOpen(shareCode: string, opts: OpenOptions, tier?: s
   return recruitUrl(shareCode, tab, { create: tab === 'invites' && !!opts.highlightCreateInvite, tier });
 }
 
-/** The route's own params: never carried onto another URL. */
-const RECRUIT_ROUTE_PARAMS: readonly string[] = ['rtab', 'create'];
+/**
+ * The route's own params: never carried onto another URL. `rcsub` is the
+ * dock's old sub-nav param (SF1c's seed, bookmarks) — a seam-built recruit
+ * URL (the settings-panel redirect) must not carry a leftover `rcsub` from
+ * the current location onto it (M5, RH1c whole-branch review).
+ */
+const RECRUIT_ROUTE_PARAMS: readonly string[] = ['rtab', 'create', 'rcsub'];
 
 /**
  * Carries the current location's params onto a same-static URL built from it.

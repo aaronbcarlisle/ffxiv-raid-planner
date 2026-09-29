@@ -75,7 +75,10 @@ function renderTab(g: StaticGroup, onTabChange = vi.fn()) {
 }
 
 beforeEach(() => {
-  mocks.applicants = null;
+  // Loaded-and-empty by default so the existing empty-state/ordering tests
+  // exercise their own branch rather than the loading skeleton; the loading
+  // and error tests below set `applicants` back to null themselves.
+  mocks.applicants = { groupId: 'g1', items: [], pendingCount: 0 };
   mocks.fetchApplicants.mockReset().mockResolvedValue(undefined);
   mocks.acceptRequest.mockReset().mockResolvedValue(undefined);
   mocks.declineRequest.mockReset().mockResolvedValue(undefined);
@@ -90,6 +93,29 @@ describe('ApplicantsTab — mount', () => {
     renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
     expect(mocks.fetchApplicants).toHaveBeenCalledTimes(1);
     expect(mocks.fetchApplicants).toHaveBeenCalledWith('g1');
+  });
+});
+
+describe('ApplicantsTab — loading and error (IMPORTANT 2)', () => {
+  it('not-loaded → a loading skeleton, never the positive empty state', () => {
+    mocks.applicants = null;
+    renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
+    expect(screen.getByTestId('applicants-loading')).toBeInTheDocument();
+    expect(screen.queryByText('No one has asked yet')).toBeNull();
+  });
+
+  it('a stale applicants slice for another static also shows the skeleton', () => {
+    mocks.applicants = { groupId: 'other-group', items: [], pendingCount: 0 };
+    renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
+    expect(screen.getByTestId('applicants-loading')).toBeInTheDocument();
+  });
+
+  it('a rejected fetch toasts an error message (never "group")', async () => {
+    mocks.applicants = null;
+    mocks.fetchApplicants.mockRejectedValueOnce(new Error('Network error'));
+    renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1));
+    expect(mocks.toastError.mock.calls[0][0]).not.toMatch(/group/i);
   });
 });
 
