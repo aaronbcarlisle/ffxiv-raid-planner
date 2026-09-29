@@ -408,4 +408,57 @@ describe('Home', () => {
     expect(last.floors).toEqual(['M9S', 'M10S']);
     expect(last.settings).toEqual(DEFAULT_SETTINGS);
   });
+
+  // ── Recruiting line (R-RH-P) ────────────────────────────────────────────────
+  describe('Recruiting line', () => {
+    function liveGroup(overrides: { recruitmentStatus?: string; isPublic?: boolean; enabled?: boolean } = {}) {
+      return {
+        ...group,
+        isPublic: overrides.isPublic ?? true,
+        settings: {
+          discovery: {
+            enabled: overrides.enabled ?? true,
+            recruitmentStatus: overrides.recruitmentStatus ?? 'open',
+          },
+        },
+      } as unknown as StaticGroup;
+    }
+
+    it('is shown for canManage only', () => {
+      mocks.pendingCount = 2;
+      const { unmount } = renderHome({ group: liveGroup(), canManage: false });
+      expect(screen.queryByRole('button', { name: 'Manage' })).not.toBeInTheDocument();
+      unmount();
+
+      renderHome({ group: liveGroup(), canManage: true });
+      expect(screen.getByRole('button', { name: 'Manage' })).toBeInTheDocument();
+    });
+
+    it('renders "Recruiting · Live · Open · 2 waiting"', () => {
+      mocks.pendingCount = 2;
+      renderHome({ group: liveGroup({ recruitmentStatus: 'open' }), canManage: true });
+      expect(screen.getByText('Recruiting · Live · Open · 2 waiting')).toBeInTheDocument();
+    });
+
+    it('renders "Listing off" when discovery is disabled', () => {
+      mocks.pendingCount = 0;
+      renderHome({ group: liveGroup({ enabled: false }), canManage: true });
+      expect(screen.getByText(/Listing off/)).toBeInTheDocument();
+    });
+
+    it('zero waiting renders no count', () => {
+      mocks.pendingCount = 0;
+      renderHome({ group: liveGroup(), canManage: true });
+      expect(screen.getByText('Recruiting · Live · Open')).toBeInTheDocument();
+      expect(screen.queryByText(/waiting/)).not.toBeInTheDocument();
+    });
+
+    it('Manage calls onOpenRequests', () => {
+      mocks.pendingCount = 1;
+      const onOpenRequests = vi.fn();
+      renderHome({ group: liveGroup(), canManage: true, onOpenRequests });
+      fireEvent.click(screen.getByRole('button', { name: 'Manage' }));
+      expect(onOpenRequests).toHaveBeenCalledTimes(1);
+    });
+  });
 });

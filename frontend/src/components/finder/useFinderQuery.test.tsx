@@ -186,6 +186,14 @@ describe('useFinderQuery', () => {
     expect(search()).not.toContain('job=');
   });
 
+  it('(h2b) recruitmentStatus=closed reads as Any — Paused/Closed are removed from the V2 filter (RH1d, R-RH-N)', async () => {
+    renderHarness('/discover?recruitmentStatus=closed');
+    await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));
+    expect(latest.state.recruitmentStatus).toBe('');
+    expect(lastRequestParams().has('recruitmentStatus')).toBe(false);
+    expect(search()).not.toContain('recruitmentStatus=');
+  });
+
   it('(h3) server is dropped without a valid dataCenter (PR re-review fix item 2)', async () => {
     renderHarness('/discover?server=Balmung');
     await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));

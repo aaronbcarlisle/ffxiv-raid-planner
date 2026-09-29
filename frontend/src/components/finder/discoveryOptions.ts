@@ -81,12 +81,17 @@ export function buildServerOptions(dataCenter: string): SelectOption[] {
  * V2's own recruitment-status list (m9). V1's RECRUITMENT_OPTIONS
  * (Discover.tsx) is not moved: it lacks 'selective' and 'paused', which the
  * recruitment form writes (components/settings/DiscoveryTab.tsx). This list
- * matches the form's four values, labels and order.
+ * matches the form's values, labels and order.
+ *
+ * Paused and Closed are dropped from the V2 filter (RH1d, R-RH-N, M12): a
+ * static in either state never appears in `/discover` results (the backend
+ * only lists Open/Selective statics), so filtering BY Paused or Closed always
+ * returned zero rows. `useFinderQuery`'s `readOption` already falls back to
+ * Any for a value outside its option list, so an old `?recruitmentStatus=
+ * paused|closed` link degrades to Any rather than erroring.
  */
 export const FINDER_RECRUITMENT_OPTIONS: SelectOption[] = [
   { value: '', label: 'Any status' },
   { value: 'open', label: 'Open' },
   { value: 'selective', label: 'Selective' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'closed', label: 'Closed' },
 ];
