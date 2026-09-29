@@ -52,6 +52,14 @@ describe('fetchApplicants', () => {
     expect(useJoinRequestStore.getState().applicants).toEqual({ groupId: 'g1', items, pendingCount: 1 });
   });
 
+  it('a single failing call rejects (throws to its caller), so a mount effect\'s .catch sees it', async () => {
+    vi.mocked(api.get).mockRejectedValueOnce(new Error('Network error'));
+
+    await expect(useJoinRequestStore.getState().fetchApplicants('g1')).rejects.toThrow('Network error');
+
+    expect(useJoinRequestStore.getState().applicants).toBeNull();
+  });
+
   it('never touches groupRequests', async () => {
     useJoinRequestStore.setState({ groupRequests: [request({ id: 'existing' })], pendingCount: 5 });
     vi.mocked(api.get).mockResolvedValue(listResponse([request({ id: 'r1' })], 1));

@@ -1,7 +1,10 @@
 /**
  * ApplicantsTab — the Recruiting page's Applicants tab (RH1c, spec §4).
  *
- * Fetches the applicants slice on mount (R-RH-R). Waiting (`pending` |
+ * The mount fetch lives in `RecruitPage` (fix wave round 2: two mount
+ * fetches raced the store's sequence guard and could swallow a real
+ * failure) — this component only reads `applicants` and renders a loading
+ * skeleton until the slice belongs to this group. Waiting (`pending` |
  * `under_review`) rows sort newest first; resolved rows sit behind a
  * collapsed toggle. Action handlers wrap the store's accept/decline/under-
  * review calls with a toast and, on failure (Review Focus 5: the backend's
@@ -9,7 +12,7 @@
  * the row reflects what actually happened. Empty states read the listing's
  * live/public/enabled state and its normalised status (spec §3).
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
 import { Button } from '../primitives/Button';
@@ -42,12 +45,6 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
   const onLinkRoster = useGroupAddToRoster();
   const { status } = useRecruitStatus(group);
   const [showResolved, setShowResolved] = useState(false);
-
-  useEffect(() => {
-    fetchApplicants(group.id).catch(() => {
-      toast.error("Couldn't load applicants.");
-    });
-  }, [group.id, fetchApplicants]);
 
   const refetch = () => {
     fetchApplicants(group.id).catch(() => {

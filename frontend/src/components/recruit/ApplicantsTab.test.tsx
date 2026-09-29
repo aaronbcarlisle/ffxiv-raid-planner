@@ -1,7 +1,8 @@
 /**
- * ApplicantsTab — RH1c. Mount fetch, waiting/resolved ordering, the resolved
- * toggle, the rejected-accept refetch (Review Focus 5), and each empty state
- * (spec §3).
+ * ApplicantsTab — RH1c. No mount fetch of its own (RecruitPage owns it,
+ * fix wave round 2) and a loading skeleton until `applicants` matches this
+ * group; waiting/resolved ordering, the resolved toggle, the rejected-accept
+ * refetch (Review Focus 5), and each empty state (spec §3).
  *
  * @vitest-environment jsdom
  */
@@ -88,15 +89,14 @@ beforeEach(() => {
   mocks.toastError.mockReset();
 });
 
-describe('ApplicantsTab — mount', () => {
-  it('fetches applicants for the group once', () => {
+describe('ApplicantsTab — mount (fix wave round 2: the page owns this fetch)', () => {
+  it('does NOT call fetchApplicants on mount — RecruitPage is the sole mount fetch', () => {
     renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
-    expect(mocks.fetchApplicants).toHaveBeenCalledTimes(1);
-    expect(mocks.fetchApplicants).toHaveBeenCalledWith('g1');
+    expect(mocks.fetchApplicants).not.toHaveBeenCalled();
   });
 });
 
-describe('ApplicantsTab — loading and error (IMPORTANT 2)', () => {
+describe('ApplicantsTab — loading (IMPORTANT 2)', () => {
   it('not-loaded → a loading skeleton, never the positive empty state', () => {
     mocks.applicants = null;
     renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
@@ -108,14 +108,6 @@ describe('ApplicantsTab — loading and error (IMPORTANT 2)', () => {
     mocks.applicants = { groupId: 'other-group', items: [], pendingCount: 0 };
     renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
     expect(screen.getByTestId('applicants-loading')).toBeInTheDocument();
-  });
-
-  it('a rejected fetch toasts an error message (never "group")', async () => {
-    mocks.applicants = null;
-    mocks.fetchApplicants.mockRejectedValueOnce(new Error('Network error'));
-    renderTab(group({ enabled: true, recruitmentStatus: 'open' }));
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1));
-    expect(mocks.toastError.mock.calls[0][0]).not.toMatch(/group/i);
   });
 });
 
@@ -200,6 +192,8 @@ describe('ApplicantsTab — accept error refetch', () => {
     fireEvent.click(screen.getByText('accept-r1'));
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Already accepted'));
-    expect(mocks.fetchApplicants).toHaveBeenCalledTimes(2);
+    // The tab no longer fetches on mount (fix wave round 2) — this is the
+    // refetch-after-a-failed-action call alone.
+    expect(mocks.fetchApplicants).toHaveBeenCalledTimes(1);
   });
 });

@@ -24,6 +24,7 @@ import { useStaticPermissions } from '../hooks/useStaticPermissions';
 import { useJoinRequestStore } from '../stores/joinRequestStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useSettingsPanelStore } from '../stores/settingsPanelStore';
+import { toast } from '../stores/toastStore';
 import type { RecruitmentSection } from '../components/settings';
 import type { StaticGroup } from '../types';
 
@@ -71,17 +72,20 @@ function RecruitPageBody({
   /** `?create=1`: the Invites hand-off keeps the create-invite highlight it carried. */
   createRequested: boolean;
 }) {
-  // The header's waiting count (RecruitHeader) reads `applicants` regardless
-  // of which tab is active, so the page fetches it here rather than only
-  // inside the Applicants tab (IMPORTANT 1, whole-branch review): a deep link
-  // straight to Listing or Invites must not show a stale/empty count. The
-  // Applicants tab's own effect stays — the store's sequence guard absorbs
-  // the duplicate call when both land. A failure here is silent (no tab is
-  // showing the inbox to explain a toast against); the Applicants tab's own
-  // effect toasts if the applicant ever opens it.
+  // The page is the SOLE mount fetch for `applicants` (fix wave round 2): the
+  // header's waiting count reads it regardless of which tab is active, so a
+  // deep link straight to Listing or Invites must not show a stale/empty
+  // count, and having both the page and the Applicants tab fetch on mount
+  // raced two sequence numbers against the store's stale-response guard — the
+  // page's own call could lose to the tab's and its rejection then got
+  // swallowed, leaving a permanent skeleton with no toast and no retry. The
+  // tab keeps `refetch()` for the action-error path (Review Focus 5) but no
+  // longer fetches on mount.
   const fetchApplicants = useJoinRequestStore((s) => s.fetchApplicants);
   useEffect(() => {
-    fetchApplicants(group.id).catch(() => {});
+    fetchApplicants(group.id).catch(() => {
+      toast.error("Couldn't load applicants.");
+    });
   }, [group.id, fetchApplicants]);
 
   return (

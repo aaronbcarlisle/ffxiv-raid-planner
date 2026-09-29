@@ -171,6 +171,14 @@ describe('RecruitPage tabs (R-RH-H, R-RH-J)', () => {
     expect(screen.getByText('Live · Open · 2 waiting')).toBeInTheDocument();
   });
 
+  it('a rejected fetchApplicants on arrival toasts an error (never "group") — the page is the sole mount fetch (fix wave round 2)', async () => {
+    mocks.fetchApplicants.mockRejectedValueOnce(new Error('Network error'));
+    renderAt(['/group/abc/recruit']);
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1));
+    expect(mocks.toastError).toHaveBeenCalledWith("Couldn't load applicants.");
+    expect(mocks.toastError.mock.calls[0][0]).not.toMatch(/group/i);
+  });
+
   it('?rtab=listing selects Listing and hides the status select; the placeholder opens the dock via openDock past a redirect', () => {
     const redirect = vi.fn(() => true);
     useSettingsPanelStore.getState().setRecruitRedirect(redirect);
