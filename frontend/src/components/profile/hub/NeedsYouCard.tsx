@@ -8,7 +8,7 @@
 
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BellRing, CalendarClock, Gem, Shirt } from 'lucide-react';
+import { BellRing, CalendarClock, Gem, Inbox, Shirt } from 'lucide-react';
 import { CardShell } from '../../ui/CardShell';
 import { AttentionRow } from '../../ui/AttentionRow';
 import { EmptyStateInvite } from '../../ui/EmptyStateInvite';
@@ -28,24 +28,29 @@ const ACTION_LABEL: Record<OverviewActionItemType, string> = {
   rsvp_pending: 'RSVP',
   loot_priority: 'View loot',
   bis_stale: 'Review BiS',
+  join_requests: 'Review',
 };
 
-// The item types this card knows how to label. The backend may emit a newer
-// type (RH1a adds `join_requests`, which RH1d's card work picks up); until the
-// card carries its label, icon and route, that item is dropped rather than
-// rendered as a row with an empty button (director F13).
+// The item types this card knows how to label. An unknown type is dropped
+// rather than rendered as a row with an empty button (director F13).
 const KNOWN_TYPES = new Set<string>(Object.keys(ACTION_LABEL));
 
 function itemIcon(type: OverviewActionItemType): ReactNode {
   if (type === 'rsvp_pending') return <CalendarClock size={18} />;
   if (type === 'bis_stale') return <Shirt size={18} />;
+  if (type === 'join_requests') return <Inbox size={18} />;
   return <Gem size={18} />;
 }
 
-function itemMeta(item: OverviewActionItem): string {
+function itemMeta(item: OverviewActionItem): string | undefined {
   if (item.type === 'rsvp_pending' && item.startsAt != null) {
     return `${formatSessionStart(item.startsAt)} · ${item.detail}`;
   }
+  // `join_requests`' `detail` is the backend's `group.name` — the same value
+  // already shown as the title's static-name Tag (live fix: this duplicated
+  // the static's name on the row). The backend item shape (RH1a) is
+  // unchanged; only the card drops the redundant meta line.
+  if (item.type === 'join_requests') return undefined;
   return item.detail;
 }
 

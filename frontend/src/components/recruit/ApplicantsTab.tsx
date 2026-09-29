@@ -30,7 +30,7 @@ import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { toast } from '../../stores/toastStore';
 import { useGroupAddToRoster } from '../../pages/groupActionsContext';
 import { ApplicantRow } from './ApplicantRow';
-import { useRecruitStatus } from './useRecruitStatus';
+import { useRecruitmentStatus } from './useRecruitStatus';
 import type { RecruitTab } from './recruitTabs';
 import type { JoinRequest, StaticGroup } from '../../types';
 
@@ -49,12 +49,13 @@ interface ApplicantsTabProps {
 export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
   const navigate = useNavigate();
   const applicants = useJoinRequestStore((s) => s.applicants);
+  const loadError = useJoinRequestStore((s) => s.error);
   const fetchApplicants = useJoinRequestStore((s) => s.fetchApplicants);
   const acceptRequest = useJoinRequestStore((s) => s.acceptRequest);
   const declineRequest = useJoinRequestStore((s) => s.declineRequest);
   const markUnderReview = useJoinRequestStore((s) => s.markUnderReview);
   const onLinkRoster = useGroupAddToRoster();
-  const { status } = useRecruitStatus(group);
+  const status = useRecruitmentStatus(group);
   const [showResolved, setShowResolved] = useState(false);
 
   const refetch = async () => {
@@ -70,6 +71,11 @@ export function ApplicantsTab({ group, onTabChange }: ApplicantsTabProps) {
       <div data-testid="applicants-loading" className="flex flex-col gap-3">
         <CardSkeleton />
         <CardSkeleton />
+        {loadError && (
+          <div className="text-center">
+            <LinkText onClick={refetch}>Retry</LinkText>
+          </div>
+        )}
       </div>
     );
   }

@@ -39,6 +39,7 @@ import { AttentionRow } from '../ui/AttentionRow';
 import { SessionRsvpCard } from '../ui/SessionRsvpCard';
 import { EmptyStateInvite } from '../ui/EmptyStateInvite';
 import { Tag } from '../ui/Tag';
+import { Button } from '../primitives';
 
 import { WeeklyLootSummaryCard } from './WeeklyLootSummaryCard';
 import { RosterReadinessCard } from './RosterReadinessCard';
@@ -50,6 +51,7 @@ import { FairnessSummary } from '../loot/FairnessSummary';
 
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
+import { normalizeRecruitmentStatus, STATUS_LABEL } from '../../utils/recruitmentStatus';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
@@ -93,6 +95,8 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   const fetchSessions = useScheduleStore((s) => s.fetchSessions);
 
   const groupRequests = useJoinRequestStore((s) => s.groupRequests);
+  const storePendingCount = useJoinRequestStore((s) => s.pendingCount);
+  const requestsGroupId = useJoinRequestStore((s) => s.groupRequestsGroupId);
   const fetchGroupRequests = useJoinRequestStore((s) => s.fetchGroupRequests);
 
   const lootLog = useLootTrackingStore((s) => s.lootLog);
@@ -307,6 +311,21 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
     return items;
   }, [tier?.players, groupRequests, canManage, onNavigate, onOpenRequests]);
 
+  // ── Recruiting line (manage-only, R-RH-P): "Recruiting · Live/Listing off
+  // · {status label} · {n} waiting". The store's `pendingCount` is kept warm
+  // by this screen's own manage-only `fetchGroupRequests` above — no extra
+  // fetch here — but it is one global count, so it only counts when it was
+  // fetched for this static (a static switch shows no count until it lands).
+  const pendingCount = requestsGroupId === group.id ? storePendingCount : 0;
+  const recruitingLine = useMemo(() => {
+    const discovery = group.settings?.discovery;
+    const live = !!group.isPublic && !!discovery?.enabled;
+    const status = normalizeRecruitmentStatus(discovery?.recruitmentStatus);
+    const parts = ['Recruiting', live ? 'Live' : 'Listing off', STATUS_LABEL[status]];
+    if (pendingCount > 0) parts.push(`${pendingCount} waiting`);
+    return parts.join(' · ');
+  }, [group.settings, group.isPublic, pendingCount]);
+
   // ── Hero next-session card (RSVP) or empty-state invite ───────────────────
   const heroSession = nextSession ? (
     <SessionRsvpCard
@@ -363,6 +382,14 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
               </div>
             )}
           </CardShell>
+          {canManage && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border-default bg-surface-card px-4 py-2.5">
+              <p className="text-sm text-text-secondary">{recruitingLine}</p>
+              <Button variant="ghost" size="sm" onClick={onOpenRequests}>
+                Manage
+              </Button>
+            </div>
+          )}
           <RoleBisCard />
           {group.userRole && <TeamSummaryCard groupId={group.id} tierId={tierId} />}
         </div>

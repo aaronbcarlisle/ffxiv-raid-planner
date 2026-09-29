@@ -639,24 +639,19 @@ test.describe('Settings access', () => {
     }
   });
 
-  test('13 — Owner settings panel has all management tabs', async ({ page }) => {
+  test('13 — Owner settings panel has all management tabs, minus Recruitment (RH1d, R-RH-J: the Recruiting route owns Listing/Invites now)', async ({ page }) => {
     await loginAsOwner(page);
-    await goToTestStatic(page);
+    await goToTestStatic(page); // pins ?shell=v2
 
     await page.getByRole('button', { name: 'Settings' }).click();
 
     const dialog = page.getByRole('dialog', { name: 'Static settings' });
     await expect(dialog).toBeVisible({ timeout: 3_000 });
 
-    for (const tab of ['General', 'Priority', 'Members', 'Recruitment', 'Integrations']) {
+    for (const tab of ['General', 'Priority', 'Members', 'Integrations']) {
       await expect(dialog.getByRole('button', { name: tab, exact: true })).toBeVisible();
     }
-
-    await dialog.getByRole('button', { name: 'Recruitment', exact: true }).click();
-    // The Recruitment sub-nav (Overview/Listing/Requests/Invitations) renders as
-    // role="tab" (SettingsSubNav), unlike the top-level settings tabs above
-    // (plain buttons) — see task-5-report.md for the brief-vs-reality note.
-    await expect(dialog.getByRole('tab', { name: 'Invitations', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Recruitment', exact: true })).toHaveCount(0);
   });
 });
 

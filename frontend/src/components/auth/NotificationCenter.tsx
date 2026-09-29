@@ -17,6 +17,7 @@ import { Button } from '../primitives';
 import { useNotificationStore } from '../../stores/notificationStore';
 import type { AppNotification } from '../../stores/notificationStore';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { useResolvedShell } from '../../lib/shellPreference';
 import {
   getSyntheticNotifications,
   markSyntheticRead,
@@ -71,6 +72,7 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
     useNotificationStore();
   const { currentGroup } = useStaticGroupStore();
   const navigate = useNavigate();
+  const shell = useResolvedShell();
   const [filter, setFilter] = useState<Filter>('all');
 
   const [syntheticNotifications, setSyntheticNotifications] = useState<AppNotification[]>(
@@ -120,7 +122,14 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
       }
     }
     if (n.href) {
-      navigate(n.href);
+      // The host (`NotificationCenterHost`) sits outside `AppChrome`, so the
+      // V2 shell context is never true there (R-RH-N, M7) — resolve the shell
+      // directly instead. Every other notification type is unchanged.
+      if (n.notification_type === 'new_application' && shell === 'v2') {
+        navigate(`${n.href}/recruit`);
+      } else {
+        navigate(n.href);
+      }
       onClose();
     }
   }

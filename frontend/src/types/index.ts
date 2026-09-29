@@ -8,8 +8,36 @@
 // Re-export job/role types from gamedata
 export type { Job, Role, JobInfo } from '../gamedata';
 
-// Static Finder fit (R-RH-C): JoinRequest.fit reuses the SF1 shape.
-import type { FitV2 } from '../components/finder/types';
+// Static Finder fit (R-RH-C): JoinRequest.fit reuses the SF1 shape. `FitV2`
+// is homed here (RH1d) rather than in `finder/types.ts`, which re-exports it
+// for its existing call sites — `FitV2Role`/`FitV2Schedule` are ONLY used as
+// its own field types (never imported by name elsewhere), so they stay
+// unexported, module-private types, like the file's other "V1 kept for
+// parity" shapes below.
+import type { FitNight, FitReason } from '../components/finder/types';
+
+interface FitV2Role {
+  status: 'match' | 'partial' | 'none' | 'unknown';
+  matchedJob: string | null;
+  matchedRole: string | null;
+  priority: 'needed' | 'nice_to_have' | null;
+  isMain: boolean;
+  asRole: string | null;
+}
+
+interface FitV2Schedule {
+  status: 'match' | 'partial' | 'conflict' | 'unknown';
+  basis: 'time' | 'day';
+  nights: FitNight[];
+}
+
+export interface FitV2 {
+  tier: 'strong' | 'good' | 'partial' | 'weak' | 'unknown';
+  missing: ('template' | 'jobs')[];
+  role: FitV2Role;
+  schedule: FitV2Schedule;
+  reasons: FitReason[];
+}
 
 // Gear slot identifiers
 export type GearSlot =

@@ -161,7 +161,7 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 | Schedule event categories (raid/farm/reclear/prog/social) | ✅ |
 | Discord webhooks (session lifecycle, schedule links, reminders) | ✅ cross-cutting |
 | Find a Static (discovery board, filters) | ♻️ **recruitment-as-matching** (Person↔Static), not a social surface |
-| Listing setup + preview, join requests + applicant inbox | ✅ keep; live in static settings + a clean applicant inbox |
+| Listing setup + preview, join requests + applicant inbox | ✅ keep; listing setup + applicant inbox + invites live in the static's Recruiting page (V2); V1 keeps them in static settings |
 | Strats reference (per-fight links) | 🆕 not built; Ring 1 reference |
 
 ### Ring 2 — Intelligence (Static)

@@ -1,43 +1,37 @@
 /**
  * useRecruitStatus — the Recruiting header's status control (R-RH-L).
  *
- * Reads the stored `discovery.recruitmentStatus` exactly as the backend's
- * `discovery_settings.normalize_status` does (`limited` → `selective`;
- * missing, empty, non-string or unknown → `open`) and writes a change back
- * through `updateGroup` with the rest of the settings untouched. A failed
- * write surfaces as a toast (the action-error pattern, R-RH-Q); the group
- * store's error is cleared so the shell's error modal does not double it.
+ * `useRecruitmentStatus` is the READ-ONLY half: just the normalised status,
+ * for callers that never write it (ApplicantsTab, the Listing tab's status
+ * card — M9: the editor's own status cards are the single write path there).
+ * `useRecruitStatus` adds the write path (`setStatus`, `isSaving`) for the
+ * header's `Select`. A failed write surfaces as a toast (the action-error
+ * pattern, R-RH-Q); the group store's error is cleared so the shell's error
+ * modal does not double it.
  */
 import { useCallback, useState } from 'react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
+import { normalizeRecruitmentStatus, STATUS_LABEL, type RecruitmentStatus } from '../../utils/recruitmentStatus';
 import type { DiscoverySettings, StaticGroup } from '../../types';
 
-export type RecruitmentStatus = 'open' | 'selective' | 'paused' | 'closed';
+export type { RecruitmentStatus };
 
-export const RECRUITMENT_STATUS_LABEL: Record<RecruitmentStatus, string> = {
-  open: 'Open',
-  selective: 'Selective',
-  paused: 'Paused',
-  closed: 'Closed',
-};
+export const RECRUITMENT_STATUS_LABEL = STATUS_LABEL;
 
 export const RECRUITMENT_STATUS_OPTIONS = (Object.keys(RECRUITMENT_STATUS_LABEL) as RecruitmentStatus[]).map(
   (value) => ({ value, label: RECRUITMENT_STATUS_LABEL[value] }),
 );
 
-// Module-private until RH1d extracts the shared `utils/recruitmentStatus.ts`.
-function normalizeRecruitmentStatus(raw: unknown): RecruitmentStatus {
-  if (raw === 'limited') return 'selective';
-  if (raw === 'open' || raw === 'selective' || raw === 'paused' || raw === 'closed') return raw;
-  return 'open';
+export function useRecruitmentStatus(group: StaticGroup): RecruitmentStatus {
+  return normalizeRecruitmentStatus(group.settings?.discovery?.recruitmentStatus);
 }
 
 export function useRecruitStatus(group: StaticGroup) {
   const updateGroup = useStaticGroupStore((s) => s.updateGroup);
   const clearGroupError = useStaticGroupStore((s) => s.clearError);
   const [isSaving, setIsSaving] = useState(false);
-  const status = normalizeRecruitmentStatus(group.settings?.discovery?.recruitmentStatus);
+  const status = useRecruitmentStatus(group);
 
   const setStatus = useCallback(
     async (next: RecruitmentStatus) => {

@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { NotificationCenter } from './NotificationCenter';
 import type { AppNotification } from '../../stores/notificationStore';
 
@@ -41,6 +41,12 @@ const staticGroupStoreState = {
 
 vi.mock('../../stores/staticGroupStore', () => ({
   useStaticGroupStore: () => staticGroupStoreState,
+}));
+
+// ── Shell resolver mock (R-RH-N) ──────────────────────────────────────────────
+const shellState = { shell: 'legacy' as 'legacy' | 'v2' };
+vi.mock('../../lib/shellPreference', () => ({
+  useResolvedShell: () => shellState.shell,
 }));
 
 // ── React Router mock — avoid needing MemoryRouter ────────────────────────────
@@ -129,6 +135,7 @@ describe('NotificationCenter', () => {
     notificationStoreState.loading = false;
     notificationStoreState.error = null;
     staticGroupStoreState.currentGroup = null;
+    shellState.shell = 'legacy';
     // Clear localStorage synthetic read state
     localStorage.clear();
   });
@@ -283,6 +290,52 @@ describe('NotificationCenter', () => {
       fireEvent.click(screen.getByText('This static'));
 
       expect(screen.getByText('No notifications for this static.')).toBeInTheDocument();
+    });
+  });
+
+  // ── new_application → the Recruiting route (R-RH-N) ─────────────────────────
+
+  describe('new_application click routing', () => {
+    it('under the v2 shell, navigates to the href + /recruit', async () => {
+      shellState.shell = 'v2';
+      notificationStoreState.notifications = [
+        makeNotification({
+          notification_type: 'new_application',
+          title: 'New application',
+          href: '/group/ABC123',
+        }),
+      ];
+
+      renderCenter();
+      fireEvent.click(screen.getByText('New application'));
+
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/group/ABC123/recruit'));
+    });
+
+    it('under the legacy shell, navigates to the href unchanged', async () => {
+      shellState.shell = 'legacy';
+      notificationStoreState.notifications = [
+        makeNotification({
+          notification_type: 'new_application',
+          title: 'New application',
+          href: '/group/ABC123',
+        }),
+      ];
+
+      renderCenter();
+      fireEvent.click(screen.getByText('New application'));
+
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/group/ABC123'));
+    });
+
+    it('under the v2 shell, an unrelated type still navigates to the href unchanged', async () => {
+      shellState.shell = 'v2';
+      notificationStoreState.notifications = [makeNotification()];
+
+      renderCenter();
+      fireEvent.click(screen.getByText('Someone voted on your suggestion'));
+
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/group/ABC123?tab=goals'));
     });
   });
 });

@@ -27,6 +27,14 @@ vi.mock('../../services/api', () => ({
   authRequest: vi.fn(),
 }));
 
+// Shell-aware pointer copy (live fix): defaults to legacy so every existing
+// test below keeps rendering V1's copy unchanged; the two shell-specific
+// tests set it explicitly.
+const shellState: { shell: 'legacy' | 'v2' } = { shell: 'legacy' };
+vi.mock('../../lib/shellPreference', () => ({
+  useResolvedShell: () => shellState.shell,
+}));
+
 // ── Helpers ───────────────────────────────────────────────────
 
 function makeGroup(overrides: Partial<StaticGroup> = {}): StaticGroup {
@@ -50,6 +58,7 @@ describe('DiscoveryTab', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    shellState.shell = 'legacy';
   });
 
   it('renders listing toggle', () => {
@@ -73,6 +82,27 @@ describe('DiscoveryTab', () => {
     });
     render(<DiscoveryTab group={group} onClose={onClose} />);
     expect(screen.getByText(/enable Public Static/)).toBeInTheDocument();
+  });
+
+  it('private-static copy points at the General tab in V1 (byte-identical, live fix)', () => {
+    shellState.shell = 'legacy';
+    const group = makeGroup({
+      isPublic: false,
+      settings: { discovery: { enabled: true, recruitmentStatus: 'open' } },
+    });
+    render(<DiscoveryTab group={group} onClose={onClose} />);
+    expect(screen.getByText(/enable Public Static in the General tab/)).toBeInTheDocument();
+  });
+
+  it('private-static copy points at the Static tab in V2, where that toggle actually lives (live fix)', () => {
+    shellState.shell = 'v2';
+    const group = makeGroup({
+      isPublic: false,
+      settings: { discovery: { enabled: true, recruitmentStatus: 'open' } },
+    });
+    render(<DiscoveryTab group={group} onClose={onClose} />);
+    expect(screen.getByText(/enable Public Static in the Static tab/)).toBeInTheDocument();
+    expect(screen.queryByText(/General tab/)).toBeNull();
   });
 
   it('shows status cards and description when enabled', () => {
@@ -143,6 +173,17 @@ describe('DiscoveryTab', () => {
 
     expect(screen.getByText('Show member count')).toBeInTheDocument();
     expect(screen.getByText(/lets applicants see how full/)).toBeInTheDocument();
+  });
+
+  it('reads a stored listing with no status as open, like the backend', () => {
+    // Saving from the editor writes its status state back, so a missing
+    // status must not normalise to closed (that would delist the static).
+    const group = makeGroup({ settings: { discovery: { enabled: true } } } as Partial<StaticGroup>);
+    render(<DiscoveryTab group={group} onClose={onClose} />);
+
+    // The preview pill renders the raw status value (CSS capitalises it).
+    expect(screen.getByText('open')).toBeInTheDocument();
+    expect(screen.queryByText('closed')).not.toBeInTheDocument();
   });
 
   it('shows Save Listing and Cancel buttons', () => {

@@ -77,9 +77,9 @@ Ordered user-facing / functional first. These are honestly-deferred or silently-
 - **Intent:** `REDESIGN_SPEC.md §5.5` — a first-class blueprint screen.
 - **Code:** Rail "Player Hub" → `/profile`, the **legacy** `Profile` page (`NewShell.tsx:319`; `App.tsx:160`). `FOUNDATION_ROADMAP.md:48` concedes it was "light-passed (Ring-1, deferred)."
 
-### B3. `[PARTIAL]` Static Finder (recruitment-as-matching)
+### B3. `[BUILT]` Static Finder (recruitment-as-matching) — built 2026-09-29
 - **Intent:** `REDESIGN_SPEC.md §5.6`.
-- **Code:** SF1 (#309/#310/#311) built the V2-native Finder (matching engine + body) per `specs/2026-09-27-static-finder-design.md`; the lead-side home (listing management, invitations, join requests unifying into one surface) is carried past SF1 (spec §9), so Stage 4 stays open.
+- **Code:** SF1 (#309/#310/#311) built the V2-native Finder (matching engine + body) per `specs/2026-09-27-static-finder-design.md`. RH1 (#313–#315, #316) built the lead-side home per `specs/2026-09-27-recruit-home-design.md`: the `/group/:shareCode/recruit` route unifies listing management, the applicant inbox (with live fit) and invitations into one V2-native surface, reached from Static Home (attention rows + the Recruiting line), the TopBar Invite action, Alt+I, the More page, the bell's `new_application` notification, the Finder's "Post a listing"/"Choose a static" and the Hub's Needs-you item, with V2 Settings' Recruitment tab hidden behind it. Stage 4 is closed.
 
 ### B8. `[PARTIAL]` Person-layer context rail — built only as an in-static switcher
 - **Intent:** `PRODUCT_MODEL.md §3.1` / `REDESIGN_SPEC.md §3.1` — a persistent Person-layer rail across the app.

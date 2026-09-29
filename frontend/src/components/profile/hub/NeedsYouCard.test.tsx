@@ -45,6 +45,21 @@ const bisItem: OverviewActionItem = {
   startsAt: null,
 };
 
+// The backend (player_overview.py `_build_join_request_item`) sets
+// `detail: group.name` — the SAME value as `staticName` — because the item
+// has nothing else to say. This fixture matches that on purpose (live bug:
+// the card rendered `staticName`'s Tag AND `detail` as the meta line, so the
+// static's name appeared twice on one row).
+const joinRequestsItem: OverviewActionItem = {
+  type: 'join_requests',
+  staticId: 's5',
+  staticName: 'Recruit Static',
+  title: '2 join requests waiting',
+  detail: 'Recruit Static',
+  href: '/group/abc/recruit',
+  startsAt: null,
+};
+
 function renderCard(props: Partial<ComponentProps<typeof NeedsYouCard>> = {}) {
   const retry = vi.fn();
   render(
@@ -101,19 +116,19 @@ describe('NeedsYouCard — empty', () => {
     expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
   });
 
-  it('an item of a type the card does not know (join_requests, RH1a) renders no row and no button', () => {
-    // The backend emits `join_requests` before the card learns it (RH1d); the
-    // union does not include it yet, hence the cast.
+  it('an item of a type the card does not know renders no row and no button', () => {
+    // A future backend type the card has not learned yet; the union does not
+    // include it, hence the cast. `join_requests` is now a known type (RH1d).
     const unknownItem = {
       ...lootItem,
-      type: 'join_requests',
-      title: '2 join requests waiting',
+      type: 'mystery_type',
+      title: 'Something unfamiliar',
       detail: 'Recruit Static',
       href: '/group/XYZ789/recruit',
     } as unknown as OverviewActionItem;
 
     renderCard({ data: overviewOf([unknownItem]), error: null });
-    expect(screen.queryByText('2 join requests waiting')).toBeNull();
+    expect(screen.queryByText('Something unfamiliar')).toBeNull();
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
   });
@@ -121,14 +136,14 @@ describe('NeedsYouCard — empty', () => {
   it('an unknown-type item is dropped while a known type next to it still renders', () => {
     const unknownItem = {
       ...lootItem,
-      type: 'join_requests',
-      title: '2 join requests waiting',
+      type: 'mystery_type',
+      title: 'Something unfamiliar',
       href: '/group/XYZ789/recruit',
     } as unknown as OverviewActionItem;
 
     renderCard({ data: overviewOf([unknownItem, rsvpItem]), error: null });
     expect(screen.getByText('RSVP for Prog Night')).toBeInTheDocument();
-    expect(screen.queryByText('2 join requests waiting')).toBeNull();
+    expect(screen.queryByText('Something unfamiliar')).toBeNull();
     // Exactly one action button, and it is the labelled one.
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(1);
@@ -205,5 +220,24 @@ describe('NeedsYouCard — rows', () => {
     expect(screen.getAllByRole('button', { name: 'Review BiS' })).toHaveLength(2);
     expect(screen.getByText('Prog Static')).toBeInTheDocument();
     expect(screen.getByText('Other Static')).toBeInTheDocument();
+  });
+
+  it('renders a join_requests row with its title, static tag and a Review button, linking to /group/abc/recruit', () => {
+    renderCard({ data: overviewOf([joinRequestsItem]), error: null });
+
+    expect(screen.getByText('2 join requests waiting')).toBeInTheDocument();
+    expect(screen.getByText('Recruit Static')).toBeInTheDocument();
+
+    const button = screen.getByRole('button', { name: 'Review' });
+    button.click();
+    expect(mockNavigate).toHaveBeenCalledWith('/group/abc/recruit');
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render the static name twice (live fix): detail duplicates staticName, so no meta line is shown', () => {
+    renderCard({ data: overviewOf([joinRequestsItem]), error: null });
+    // Exactly one "Recruit Static" — the title's Tag — not a second copy as
+    // a meta line below it.
+    expect(screen.getAllByText('Recruit Static')).toHaveLength(1);
   });
 });
