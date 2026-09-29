@@ -4,9 +4,10 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 
 from ..logging_config import get_logger
+from ..services.audit import audit
 
 logger = get_logger(__name__)
 from sqlalchemy import select, update
@@ -26,7 +27,9 @@ from .lodestone import _apply_ring_slot_equivalence, _stored_gear_to_equipped_lo
 from ..permissions import (
     NotFound,
     PermissionDenied,
+    admin_override_for,
     check_view_permission,
+    create_admin_membership,
     create_membership_for_assignment,
     get_static_group,
     get_user_membership,
@@ -1314,6 +1317,10 @@ async def _assign_player_impl(
     tier_id: str,
     player_id: str,
     data: schemas.AssignPlayerRequest,
+    *,
+    audit_actor: User | None = None,
+    request: Request | None = None,
+    admin_override: bool = False,
 ) -> SnapshotPlayerResponse:
     """
     Common implementation for assigning/unassigning a user to a player card.
@@ -1331,6 +1338,10 @@ async def _assign_player_impl(
         tier_id: Tier identifier (e.g., "aac-lightweight")
         player_id: Player UUID
         data: Assignment request data
+        audit_actor: When set, emits ``player.admin_assigned`` for this actor in the
+            same transaction as the assignment (admin-assign only in AD1b)
+        request: The route's request, for the audit row's credential/request id
+        admin_override: Whether the actor's access rode the admin bypass
 
     Returns:
         Updated player response
@@ -1356,6 +1367,15 @@ async def _assign_player_impl(
     if not player:
         raise NotFound("Player not found")
 
+    # Audit locals, captured before any call that can roll back:
+    # create_membership_for_assignment's IntegrityError handler expires every
+    # loaded object (player and target_user included).
+    old_user_id = player.user_id
+    player_name = player.name
+    new_user_id: str | None = None
+    membership_created = False
+    unlinked_player_id: str | None = None
+
     # If assigning a user, verify the user exists
     if data.user_id:
         # Support both Discord ID and internal user ID
@@ -1365,6 +1385,7 @@ async def _assign_player_impl(
         target_user = user_result.scalar_one_or_none()
         if not target_user:
             raise NotFound(f"User with ID {data.user_id} not found")
+        new_user_id = target_user.id
 
         # Check if target user is already linked to another player in this tier
         existing_link = await session.execute(
@@ -1378,6 +1399,7 @@ async def _assign_player_impl(
         existing_player = existing_link.scalar_one_or_none()
         if existing_player:
             # Automatically unlink from the old player (reassignment)
+            unlinked_player_id = existing_player.id
             existing_player.user_id = None
             existing_player.updated_at = datetime.now(timezone.utc).isoformat()
 
@@ -1393,6 +1415,7 @@ async def _assign_player_impl(
                         detail=f"Invalid membership role: {data.membership_role}. Must be 'member' or 'lead'.",
                     )
                 await create_membership_for_assignment(session, target_user.id, group_id, role)
+                membership_created = True
 
         # Assign the user
         player.user_id = target_user.id
@@ -1402,6 +1425,26 @@ async def _assign_player_impl(
         player.user_id = None
 
     player.updated_at = datetime.now(timezone.utc).isoformat()
+
+    # After the last call that can raise or roll back, before the commit (R-AD-B/E)
+    if audit_actor is not None:
+        await audit(
+            session,
+            actor=audit_actor,
+            action="player.admin_assigned",
+            target_type="player",
+            target_id=player_id,
+            target_label=player_name,
+            static_group_id=group_id,
+            old={"user_id": old_user_id},
+            new={
+                "user_id": new_user_id,
+                "membership_created": membership_created,
+                "unlinked_player_id": unlinked_player_id,
+            },
+            request=request,
+            admin_override=admin_override,
+        )
 
     await session.flush()
     await session.commit()
@@ -1430,6 +1473,7 @@ async def admin_assign_player(
     group_id: str,
     tier_id: str,
     player_id: str,
+    request: Request,
     data: schemas.AssignPlayerRequest = Body(...),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_admin),
@@ -1440,7 +1484,26 @@ async def admin_assign_player(
     # Verify admin has view permission (should always pass for admins, but check anyway)
     await check_view_permission(session, group, current_user)
 
-    return await _assign_player_impl(session, group_id, tier_id, player_id, data)
+    # No require_* gate here (require_admin is the gate); the non-admin twin
+    # owner_assign_player needs OWNER, so the override is measured against that.
+    admin_override = await admin_override_for(
+        session,
+        current_user.id,
+        group_id,
+        create_admin_membership(current_user.id, group_id),
+        MemberRole.OWNER,
+    )
+
+    return await _assign_player_impl(
+        session,
+        group_id,
+        tier_id,
+        player_id,
+        data,
+        audit_actor=current_user,
+        request=request,
+        admin_override=admin_override,
+    )
 
 
 @router.post("/{group_id}/tiers/{tier_id}/players/{player_id}/owner-assign", response_model=SnapshotPlayerResponse)
