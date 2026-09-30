@@ -7,7 +7,7 @@
 > artifact linked in memory `project-holistic-review-2026-07`).
 >
 > **Current state (2026-09-30):** where the redesign stands and the definition of done
-> (un-gate → 3.0.0 → V1 deletion) live in
+> (release 3.0.0 → V1 deletion; two gates since 2026-09-30, HS-25 merged the un-gate into 3.0.0) live in
 > [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done).
 > This roadmap keeps the phase history, rulings and process rules.
 >
@@ -49,6 +49,8 @@ H  Feedback loop → flip default to v2 (3.0.0) → criteria sunset → delete l
 →  Rings 1–3 per PRODUCT_MODEL §7 (Person layer, tracks, More dissolution)
 ```
 
+> *Amended 2026-09-30 (HS-25, `HOME_STRETCH.md`): ⚑ and H's 3.0.0 flip are now one release. The admin gate stays until 3.0.0 makes v2 the default for everyone; there is no separate opt-in un-gate. The soak and V1 deletion follow ([PRODUCT_MODEL §6.2](../../docs/PRODUCT_MODEL.md#62-definition-of-done)).*
+
 Status as of 2026-09-30 (verified against merged PRs; current state lives in
 [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done)):
 
@@ -63,7 +65,7 @@ Status as of 2026-09-30 (verified against merged PRs; current state lives in
 | E | ✅ E1 #275, E2 #276/#277 |
 | F | ⬜ open (seams carried below) |
 | P | ⬜ not started (includes the consolidated mobile pass) |
-| ⚑ | ⬜ not shipped — v2 still admin-gated (`TryNewUiBanner.tsx`) |
+| ⚑ | ⬜ not shipped — v2 still admin-gated (`TryNewUiBanner.tsx`). 2026-09-30: merged into release 3.0.0 (HS-25; `HOME_STRETCH.md` §4 R2) |
 | H | ⬜ not started |
 | → | Now tracked as `V2_COVERAGE_PLAN.md` stages (2026-07-25 re-sequencing note below): Stage 1 chrome ✅ #178–#181; Stage 3 Player Hub ✅ PH1 #280–#282, PH2 #286–#288, PH3 #304–#306; Stage 4 Static Finder ✅ SF1 #308–#311 + Recruit Home ✅ RH1 #312–#316; Stage 2 (IA collapse / More dissolution), Stage 5 and Stage 6 ⬜ open |
 
@@ -95,6 +97,10 @@ highest user-priority item after A.
 > initial experience. Until then v2 stays admin-gated; `?shell=v2` remains the
 > power-user escape hatch; admins keep dogfooding in prod. Phase H's opt-in clock now
 > starts at that final un-gate.
+>
+> **→ Amended 2026-09-30 (HS-25, `HOME_STRETCH.md`):** there is no separate un-gate and no
+> opt-in clock. The admin gate stays until release 3.0.0 makes v2 the default for everyone,
+> and the V1-deletion clock starts there.
 
 ---
 
@@ -448,7 +454,8 @@ D13's R-D13-E, #271).
 ## 8. Phase H — Default flip → sunset
 
 - **Definition of done** (un-gate → flip v2 to default at 3.0.0 → sunset / delete
-  legacy) now lives in
+  legacy; *two gates since 2026-09-30, HS-25: release 3.0.0 with v2 the default, then
+  V1 deletion*) now lives in
   [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done);
   this section's former flip and sunset criteria (2026-07-11, proposed) moved there on
   2026-09-30. Unique detail kept here: legacy deletion re-runs the P3 checklist — this
@@ -471,4 +478,4 @@ D13's R-D13-E, #271).
 - Effort: ultracode for specs/adjudication, high for implement loops (per memory
   `feedback-effort-allocation`).
 - After G, release notes go back to normal public-entry discipline per CLAUDE.md.
-- Admin V2 (off the ring roadmap): 2026-09-29: Admin runs as its own workstream — spec `specs/2026-08-08-admin-v2-spec.md`, plan `plans/2026-08-08-admin-v2-plan.md` (AD1a #241 merged; AD1b = wave-1 audit emits + Logs API, plan `plans/2026-09-29-ad1b-audit-emits.md` → ✅ merged AD1b-A #317, AD1b-B #318, 2026-09-30). AD2+ is parked (owner picks next) and does not block the un-gate.
+- Admin V2 (off the ring roadmap): 2026-09-29: Admin runs as its own workstream — spec `specs/2026-08-08-admin-v2-spec.md`, plan `plans/2026-08-08-admin-v2-plan.md` (AD1a #241 merged; AD1b = wave-1 audit emits + Logs API, plan `plans/2026-09-29-ad1b-audit-emits.md` → ✅ merged AD1b-A #317, AD1b-B #318, 2026-09-30). AD2+ is parked (owner picks next) and does not block the un-gate. *(2026-09-30: nor release 3.0.0, which replaced the un-gate; HS-14, HS-25 in `HOME_STRETCH.md`.)*

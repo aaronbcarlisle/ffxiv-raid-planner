@@ -58,7 +58,7 @@ Judge every plan and change against these, in order:
    — must be verified NOT to alter V1's behavior or appearance. Flag shared-layer
    drift with the exact V1 render path it reaches (**SHARED-DRIFT**).
 4. **IA discipline.** The redesign's thesis (shipped through Phase C, still
-   binding law for new work): four-tab Spine (+ Progress as 5th tab per F-01),
+   binding law for new work): four-tab Spine (+ Progress as 5th tab per F-03),
    ≤2 levels deep, the "More" junk drawer deleted with every item genuinely
    re-homed (not hidden off-spine and still reachable via ⌘K/mobile nav),
    Tracking folded into the Progress Engine, Plugin re-homed to Settings/Player

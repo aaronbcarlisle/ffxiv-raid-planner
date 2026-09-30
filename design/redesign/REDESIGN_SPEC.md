@@ -309,6 +309,8 @@ How every screen and action connects. Three views: the macro journey, the weekly
                     └──────┘  └────────┘   └──────┘   └──────────┘
 ```
 
+> *Amended 2026-09-30: the spine is five tabs. Progress, the tracks surface, is the fifth (F-03, reaffirmed HS-2 in `HOME_STRETCH.md`); this diagram predates it.*
+
 ### 9.2 The weekly loop in motion (the spine, as a clock)
 
 ```
@@ -356,7 +358,7 @@ UI copy uses these words and *only* these words for these concepts (rule 4 / *Co
 | **Track** | the abstraction a static progresses through (one Progress Engine, many tracks); adding non-savage content = "add a track" | "goal," "content" (vague), "activity" |
 | **Tier** | the current savage raid tier — the flagship track (e.g. "AAC Heavyweight") | — |
 | **Fight** | one named encounter inside a Tier (e.g. M9S, M12S) | ~~"floor" in user-facing copy (floor is an internal/code term)~~ **as built: "Floor N" is the primary user-facing label for a floor, and the fight name (e.g. M12S) is its tag; compact controls may show the fight name alone — ruled 2026-09-25 (U-1), E1 plan R-E1-J** |
-| **Prog / Progress** | a *status* — how far along a static is on a fight or tier | a page name, a tab, a noun-place ("the Progress page"); say "Floor 3 prog," not "go to Progress" |
+| **Prog / Progress** | a *status* — how far along a static is on a fight or tier | a page name, a tab, a noun-place ("the Progress page"); say "Floor 3 prog," not "go to Progress" **→ Amended 2026-09-30 (HS-29, `HOME_STRETCH.md`): "Progress" now names the fifth spine tab, the tracks surface (Goals, Farms, Collections, Split Clears; F-03). "Prog" stays the status word ("Floor 3 prog")** |
 | **Roster** | the people in the static + their gear toward BiS | — |
 | **BiS** | the best-in-slot target set for a job | — |
 | **Loot** | the domain of distributing drops (priority + log + history) | "gear" (for the domain) |

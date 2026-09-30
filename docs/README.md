@@ -9,14 +9,14 @@ This folder is intentionally small. It holds the **source of truth** for what th
 | Doc | What it is |
 |---|---|
 | **[PRODUCT_MODEL.md](./PRODUCT_MODEL.md)** | The canonical model — vision, the Person↔Static layers, the weekly-loop spine, the Progress Engine + content tracks, the rings, the "where does it go?" rule, the full feature inventory, and the roadmap. **Read first.** |
-| **[PRODUCT_MODEL.md §6](./PRODUCT_MODEL.md#6-current-state-and-definition-of-done)** | **Where the redesign stands and what "done" means** (un-gate → 3.0.0 → V1 deletion). The only place status is stated; everything else links here. |
+| **[PRODUCT_MODEL.md §6](./PRODUCT_MODEL.md#6-current-state-and-definition-of-done)** | **Where the redesign stands and what "done" means** (release 3.0.0 → V1 deletion; two gates since 2026-09-30, when HS-25 merged the old un-gate into 3.0.0). The only place status is stated; everything else links here. |
 
 ## The redesign (`design/redesign/`)
 
 | Doc | What it is |
 |---|---|
 | [REDESIGN_SPEC.md](../design/redesign/REDESIGN_SPEC.md) | The IA, navigation, visual language, and core user flows that realize the model — with coded mockups. |
-| [HOME_STRETCH.md](../design/redesign/HOME_STRETCH.md) | **What is left, in order:** every item from now to V1 deletion, with sizes, acceptance criteria and the owner rulings (HS-1…HS-25). |
+| [HOME_STRETCH.md](../design/redesign/HOME_STRETCH.md) | **What is left, in order:** every item from now to V1 deletion, with sizes, acceptance criteria and the owner rulings (HS-1…HS-29). |
 | [ROLLOUT_ROADMAP.md](../design/redesign/ROLLOUT_ROADMAP.md) | The plan of record: the dual-shell rollout, phases R→H, and their rulings. |
 | [V2_COVERAGE_PLAN.md](../design/redesign/V2_COVERAGE_PLAN.md) | Coverage Stages 0–6: taking every route and surface to V2. |
 | [RECONCILIATION.md](../design/redesign/RECONCILIATION.md) | The 2026-07-23 intent-vs-built audit; still the register for the B1–B9 IDs the roadmaps cite. |

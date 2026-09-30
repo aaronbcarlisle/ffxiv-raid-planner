@@ -80,7 +80,7 @@ The old "data pages have no sidebar" rule is **retired**. The app now has a pers
 
 - **Rail** = Person layer (you, Player Hub, Static Finder, your statics). Always present. `72px`.
 - **Top bar** = static/track/week context + global actions. Present inside a static.
-- **Spine** = the 4 job tabs. Present inside a static. The Person layer has **no spine** (Player Hub/Finder are railed). The V2 Player Hub has an in-page tab bar under its identity header (`Tabs`, Overview · Characters & gear · Availability · Tracking · Sharing — PH1, spec H-3), not a spine.
+- **Spine** = the 4 job tabs. Present inside a static. The Person layer has **no spine** (Player Hub/Finder are railed). The V2 Player Hub has an in-page tab bar under its identity header (`Tabs`, Overview · Characters & gear · Availability · Tracking · Sharing — PH1, spec H-3), not a spine. *(Amended 2026-09-30: the spine is five tabs. Progress, the tracks surface, is the fifth (F-03, reaffirmed HS-2 in `HOME_STRETCH.md`); the diagram above predates it. Stage 2 updates this section when it ships.)*
 - **No fourth nav surface.** "More" is deleted. Settings is one place (top-bar gear).
 
 **Visual containment principle (kept, re-stated):** regions must read as defined zones, not elements floating on one identical background. Rail and top bar sit on `surface-raised`; content on `surface-base`; cards on `surface-card`. Depth = hierarchy.
@@ -109,7 +109,7 @@ Drawn from and kept in sync with `REDESIGN_SPEC.md §10`. The full glossary (wit
 - **Track** — the abstraction a static progresses through (one Progress Engine, many tracks); adding non-savage content = "add a track"
 - **Tier** — the flagship savage track (e.g. "AAC Heavyweight"), containing its **fights** (e.g. M9S–M12S)
 - **Fight** — one named encounter inside a Tier (replaces "floor" in user-facing copy)
-- **Prog / Progress** — a *status*, never a page or noun-tab (say "Floor 3 prog," not "Progress page")
+- **Prog / Progress** — a *status*, never a page or noun-tab (say "Floor 3 prog," not "Progress page") *(Amended 2026-09-30, HS-29 in `HOME_STRETCH.md`: **Progress** now names the fifth spine tab, the tracks surface (Goals, Farms, Collections, Split Clears; F-03). **Prog** stays the status word ("Floor 3 prog").)*
 - **Roster** · **BiS** · **Loot** (the distribution domain) · **Drop** · **Priority**
 - **Log (v.)** — an action, never a tab; the record is "History"
 - **Book / Page** · **Week** · **Lead / Member / Viewer** (roles, not apps)
