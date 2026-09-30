@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.51';
+export const CURRENT_VERSION = '2.1.52';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,30 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.52',
+    date: '2026-09-30T12:00:00Z',
+    title: 'Ownership transfer fix',
+    items: [
+      {
+        category: 'fix',
+        title: 'Transferring ownership of a static no longer shows an error',
+        description:
+          'Transferring ownership of a static went through, but the server answered with an error, so the app reported a failure. The transfer now confirms normally.',
+        pr: 317,
+        prTitle: 'feat(v2): AD1b-A — admin_override seam and wave-1 audit emits',
+      },
+      {
+        category: 'improvement',
+        title: 'Admin and destructive actions are written to the audit log',
+        description:
+          'Admin V2 plumbing: error reviews, catalog sync and seed, admin player assignment, static update/delete/duplicate/ownership transfer, member add/remove/role change, tier and player delete, and week revert each write an audit row, marked admin_override when access came only from admin status. Webhook secrets and tokens never enter a row. Also fixes the admin catalog sync reporting synced_from_api=false after a successful sync.',
+        pr: 317,
+        prTitle: 'feat(v2): AD1b-A — admin_override seam and wave-1 audit emits',
+        internal: true,
+      },
+    ],
+  },
   {
     version: '2.1.51',
     date: '2026-09-28T18:00:00Z',
