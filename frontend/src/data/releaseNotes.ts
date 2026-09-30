@@ -69,6 +69,8 @@ export const RELEASES: Release[] = [
         title: 'Schedule shows one card per recurring series and one message for a denied RSVP',
         description:
           'V2 preview: the schedule shows one card per recurring series instead of one per occurrence, past sessions read Played with their date, and a recurring card notes that an RSVP applies to every week. A denied RSVP now shows a single error message instead of two.',
+        pr: 328,
+        prTitle: 'fix(v2): P0d — one card per recurring series, Played state, one RSVP error (RSVP-0, #324)',
         internal: true,
       },
     ],
