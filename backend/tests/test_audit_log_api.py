@@ -179,6 +179,18 @@ class TestFilters:
         assert response.status_code == 200
         assert response.json()["total"] == 2
 
+    async def test_empty_from_and_to_are_unset(
+        self, client: AsyncClient, session: AsyncSession, admin_headers: dict, actor_a
+    ):
+        await _insert_row(session, actor=actor_a, action="static.updated", created_at=_iso(T1))
+        await _insert_row(session, actor=actor_a, action="member.added", created_at=_iso(T2))
+
+        response = await client.get(
+            "/api/admin/logs", params={"from": "", "to": ""}, headers=admin_headers
+        )
+        assert response.status_code == 200
+        assert response.json()["total"] == 2
+
     async def test_target_type_and_id_filter(
         self, client: AsyncClient, session: AsyncSession, admin_headers: dict, actor_a
     ):

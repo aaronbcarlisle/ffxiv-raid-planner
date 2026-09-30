@@ -69,9 +69,9 @@ async def list_audit_logs(
         query = query.where(AuditLog.static_group_id == static_id)
     if credential is not None:
         query = query.where(AuditLog.credential == credential)
-    if from_ is not None:
+    if from_:
         query = query.where(AuditLog.created_at >= _parse_boundary(from_, "from"))
-    if to is not None:
+    if to:
         query = query.where(AuditLog.created_at < _parse_boundary(to, "to"))
 
     count_query = select(func.count()).select_from(query.subquery())
