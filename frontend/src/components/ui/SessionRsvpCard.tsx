@@ -199,6 +199,17 @@ type SessionPhase = 'upcoming' | 'in-progress' | 'ended';
  * passed, `in-progress` from the start until then. An unparseable start yields
  * null; an unparseable end counts as ending at the start.
  */
+function sessionPhase(startIso: string, endIso: string): SessionPhase | null {
+  const startMs = new Date(startIso).getTime();
+  if (Number.isNaN(startMs)) return null;
+  const parsedEndMs = new Date(endIso).getTime();
+  const endMs = Number.isNaN(parsedEndMs) ? startMs : parsedEndMs;
+  const nowMs = Date.now();
+  if (endMs <= nowMs) return 'ended';
+  if (startMs <= nowMs) return 'in-progress';
+  return 'upcoming';
+}
+
 /** `setTimeout` stores its delay as a signed 32-bit int; a longer one fires at once. */
 const MAX_TIMEOUT_MS = 2_147_483_647;
 /** Lands the phase timer just past the boundary so the re-render reads the new phase. */
@@ -220,17 +231,6 @@ function usePhaseTimer(startIso: string, endIso: string): void {
     const id = setTimeout(() => setTick((t) => t + 1), delay);
     return () => clearTimeout(id);
   }, [startIso, endIso, tick]);
-}
-
-function sessionPhase(startIso: string, endIso: string): SessionPhase | null {
-  const startMs = new Date(startIso).getTime();
-  if (Number.isNaN(startMs)) return null;
-  const parsedEndMs = new Date(endIso).getTime();
-  const endMs = Number.isNaN(parsedEndMs) ? startMs : parsedEndMs;
-  const nowMs = Date.now();
-  if (endMs <= nowMs) return 'ended';
-  if (startMs <= nowMs) return 'in-progress';
-  return 'upcoming';
 }
 
 /**
