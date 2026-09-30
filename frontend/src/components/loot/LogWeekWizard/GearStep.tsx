@@ -5,7 +5,7 @@ import { FLOOR_LOOT_TABLES, FLOOR_COLORS, UPGRADE_MATERIAL_DISPLAY_NAMES, isSlot
 import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, type GearSlot, type MaterialType } from '../../../types';
 import { getEligibleSlotsForAugmentation, needsTomeWeaponAugmentation } from '../../../utils/materialCoordination';
 import type { SnapshotPlayer } from '../../../types';
-import type { FloorNumber, FloorEntries, SelectOption } from './types';
+import type { FloorNumber, FloorEntries, SelectOption, SlotEntry } from './types';
 
 interface GearStepProps {
   floors: string[];
@@ -47,6 +47,29 @@ export function GearStep({
   const currentFloorName = floors[selectedFloor - 1];
 
   if (!currentLootTable || !currentFloorData) return null;
+
+  // "No Drops" / "Restore All" act on the UNLOCKED slots only (V1). With
+  // nothing unlocked on the floor there is nothing to toggle, so no button.
+  const unlockedEntries = [
+    ...Object.values(currentFloorData.gear),
+    ...Object.values(currentFloorData.materials),
+  ].filter((e) => !e.locked);
+  const allUnlockedNoDrops = unlockedEntries.length > 0 && unlockedEntries.every((e) => e.didNotDrop);
+
+  const alsoLoggedHint = (label: string, entry: SlotEntry) =>
+    entry.alsoLogged && entry.alsoLogged.length > 0 ? (
+      <p className="mt-1 text-xs text-text-muted">
+        Also logged this week: {entry.alsoLogged.map((e) => `${label} → ${e.recipientName} (${e.method})`).join(', ')}
+      </p>
+    ) : null;
+
+  const lockedRow = (label: string, entry: SlotEntry, iconSrc?: string) => (
+    <div className="flex items-center gap-3 text-text-muted">
+      {iconSrc && <img alt="" className="w-4 h-4 brightness-[3.0] opacity-60" src={iconSrc} />}
+      <Check className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+      <span className="text-sm">{`${label} → ${entry.locked?.recipientName} · logged`}</span>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -133,16 +156,15 @@ export function GearStep({
                 <Package className="w-4 h-4" />
                 {singleFloorMode ? '' : `${currentFloorName} - `}Gear
               </h4>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleAllNoDrops(selectedFloor)}
-              >
-                {Object.values(currentFloorData.gear).every((e) => e.didNotDrop) &&
-                 Object.values(currentFloorData.materials).every((e) => e.didNotDrop)
-                  ? 'Restore All'
-                  : 'No Drops'}
-              </Button>
+              {unlockedEntries.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleAllNoDrops(selectedFloor)}
+                >
+                  {allUnlockedNoDrops ? 'Restore All' : 'No Drops'}
+                </Button>
+              )}
             </div>
 
             <div className="divide-y divide-border-subtle">
@@ -151,6 +173,15 @@ export function GearStep({
                 if (!entry) return null;
                 const slotName = GEAR_SLOT_NAMES[slot as GearSlot] || slot;
                 const iconSlot = slot === 'ring1' || slot === 'ring2' ? 'ring' : slot;
+
+                if (entry.locked) {
+                  return (
+                    <div key={slot} className="py-3 first:pt-0 last:pb-0">
+                      {lockedRow(slotName, entry, `/images/gear-slots/white/${iconSlot}.png`)}
+                      {alsoLoggedHint(slotName, entry)}
+                    </div>
+                  );
+                }
 
                 return (
                   <div key={slot} className="py-3 first:pt-0 last:pb-0">
@@ -169,6 +200,7 @@ export function GearStep({
                           onChange={(v) => handleSlotChange(selectedFloor, 'gear', slot, v || null)}
                           options={getRecipientOptions(slot as GearSlot)}
                           disabled={entry.didNotDrop}
+                          aria-label={`${slotName} recipient`}
                         />
                       </div>
                       <Toggle
@@ -179,6 +211,7 @@ export function GearStep({
                         size="sm"
                       />
                     </div>
+                    {alsoLoggedHint(slotName, entry)}
                   </div>
                 );
               })}
@@ -218,6 +251,15 @@ export function GearStep({
                     : materialType === 'solvent' ? 'text-material-solvent'
                     : 'text-material-tomestone';
 
+                  if (entry.locked) {
+                    return (
+                      <div key={materialType} className="py-3 first:pt-0 last:pb-0">
+                        {lockedRow(shortMaterialName, entry)}
+                        {alsoLoggedHint(shortMaterialName, entry)}
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={materialType} className="py-3 first:pt-0 last:pb-0">
                       <div className="flex items-center gap-3">
@@ -231,6 +273,7 @@ export function GearStep({
                               onChange={(v) => handleMaterialPlayerChange(selectedFloor, materialType, v || null)}
                               options={getMaterialRecipientOptions(materialType as UpgradeMaterialType)}
                               disabled={entry.didNotDrop}
+                              aria-label={`${materialName} recipient`}
                             />
                           </div>
                           {!entry.didNotDrop && entry.playerId && hasEligibleOptions && (eligibleSlots.length > 1 || (eligibleSlots.length > 0 && canAugmentTomeWeapon)) && (
@@ -258,6 +301,7 @@ export function GearStep({
                           size="sm"
                         />
                       </div>
+                      {alsoLoggedHint(shortMaterialName, entry)}
                     </div>
                   );
                 })}

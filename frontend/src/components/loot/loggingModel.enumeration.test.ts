@@ -31,7 +31,7 @@ import { describe, it, expect } from 'vitest';
  *     `WeaponPriorityBridge.tsx:15,80` → `Loot.tsx:1476` → `NewShell.tsx:13`.
  *     Origin: 86655c59 "Loot Tracking System Redesign (Phases 2-5) (#4)" —
  *     predates the Phase-D slices entirely.
- *   - `markFloorCleared` @ `LogWeekWizard/index.tsx:603` — a DIRECT store call,
+ *   - `markFloorCleared` @ `LogWeekWizard/index.tsx:683` — a DIRECT store call,
  *     not routed through `MarkFloorClearedModal` (unlike `BookLedgerCard.tsx:475`,
  *     which is that modal's own `onSubmit`). Origin: b1b2da94 "fix: address
  *     remaining PR #66 review feedback (#67)".
@@ -266,21 +266,21 @@ const EXPECTED: Array<{
   {
     file: 'LogWeekWizard/index.tsx',
     fn: 'logLootAndUpdateGear',
-    line: 561,
+    line: 641,
     tag: 'v2-reachable',
     via: 'Loot.tsx:1555 -> NewShell.tsx:13',
   },
   {
     file: 'LogWeekWizard/index.tsx',
     fn: 'logMaterialAndUpdateGear',
-    line: 574,
+    line: 654,
     tag: 'v2-reachable',
     via: 'Loot.tsx:1555 -> NewShell.tsx:13',
   },
   {
     file: 'LogWeekWizard/index.tsx',
     fn: 'markFloorCleared',
-    line: 603,
+    line: 683,
     tag: 'v2-reachable',
     // Extra beyond DoD-2's text: a direct store call, not routed through
     // MarkFloorClearedModal.
