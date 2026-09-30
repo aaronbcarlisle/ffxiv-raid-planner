@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
-from app.models import MemberRole, User
+from app.models import MemberRole, Membership, User
 from app.models.reward_drop_log import RewardDropLog
 from app.models.reward_participant_state import RewardParticipantState
 from tests.factories import create_membership, create_static_group, create_user
@@ -81,6 +81,11 @@ async def _drops(client: AsyncClient, group, goal: dict, reader: User) -> list[d
 async def _drop_count(session: AsyncSession, goal_id: str) -> int:
     result = await session.execute(select(RewardDropLog).where(RewardDropLog.goal_id == goal_id))
     return len(result.scalars().all())
+
+
+async def _drop_row(session: AsyncSession, drop_id: str) -> RewardDropLog:
+    result = await session.execute(select(RewardDropLog).where(RewardDropLog.id == drop_id))
+    return result.scalar_one()
 
 
 async def _add_participant(
@@ -319,6 +324,27 @@ async def test_viewer_cannot_delete_drop(
     assert await _state_of(async_client, group, goal, member, owner) == "have"
 
 
+async def test_creator_demoted_to_viewer_cannot_delete_own_drop(
+    async_client, session, group, goal, participants, member, owner
+):
+    """The viewer gate, not the creator rule: the creator would otherwise be allowed."""
+    drop = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    membership = (
+        await session.execute(
+            select(Membership).where(
+                Membership.user_id == member.id, Membership.static_group_id == group.id
+            )
+        )
+    ).scalar_one()
+    membership.role = MemberRole.VIEWER.value
+    await session.flush()
+
+    resp = await _delete(async_client, group, goal["id"], drop["id"], member)
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "Viewers cannot delete drops"
+    assert await _state_of(async_client, group, goal, member, owner) == "have"
+
+
 async def test_delete_with_wrong_goal_is_404(
     async_client, session, group, goal, participants, lead, member, owner
 ):
@@ -421,6 +447,80 @@ async def test_delete_skips_restore_when_manually_overridden_after_drop(
 
     assert (await _delete(async_client, group, goal["id"], drop["id"], lead)).status_code == 204
     assert await _state_of(async_client, group, goal, member, owner) == "have"
+
+
+async def test_restore_leaves_source_and_manual_override_untouched(
+    async_client, session, group, goal, participants, lead, member, owner
+):
+    row = participants["member"]
+    row.source = "plugin"
+    row.last_manual_override_at = "2026-01-01T00:00:00+00:00"  # before the drop: no skip
+    await session.flush()
+
+    drop = (await _log(async_client, group, goal, lead, recipient_id=member.id)).json()
+    assert (await _delete(async_client, group, goal["id"], drop["id"], lead)).status_code == 204
+    rows = await _participants(async_client, group, goal, owner)
+    p = next(p for p in rows if p["user_id"] == member.id)
+    assert p["state"] == "need"
+    assert p["source"] == "plugin"
+    assert p["last_manual_override_at"] == "2026-01-01T00:00:00+00:00"
+
+
+# ── R-P0-2 fix: a state write between two drops wins in either delete order ──
+
+
+async def _log_a_write_b(
+    async_client, session, group, goal, participants, lead, member, column: str
+) -> tuple[dict, dict]:
+    """A at t1 flips need→have; `column` is written at t1+1min; B at t1+2min has prior NULL."""
+    a = (await _log(async_client, group, goal, lead, recipient_id=member.id)).json()
+    assert a["recipient_prior_state"] == "need"
+    setattr(participants["member"], column, _later_than(a["created_at"], minutes=1))
+    await session.flush()
+    b = (await _log(async_client, group, goal, lead, recipient_id=member.id)).json()
+    assert b["recipient_prior_state"] is None
+    (await _drop_row(session, b["id"])).created_at = _later_than(a["created_at"], minutes=2)
+    await session.flush()
+    return a, b
+
+
+_STATE_WRITE_COLUMNS = ["last_synced_at", "last_manual_override_at"]
+
+
+@pytest.mark.parametrize("column", _STATE_WRITE_COLUMNS)
+async def test_state_write_between_drops_keeps_have_deleting_a_then_b(
+    async_client, session, group, goal, participants, lead, member, owner, column
+):
+    a, b = await _log_a_write_b(
+        async_client, session, group, goal, participants, lead, member, column
+    )
+    assert (await _delete(async_client, group, goal["id"], a["id"], lead)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "have"
+    assert (await _delete(async_client, group, goal["id"], b["id"], lead)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "have"
+
+
+@pytest.mark.parametrize("column", _STATE_WRITE_COLUMNS)
+async def test_state_write_between_drops_keeps_have_deleting_b_then_a(
+    async_client, session, group, goal, participants, lead, member, owner, column
+):
+    a, b = await _log_a_write_b(
+        async_client, session, group, goal, participants, lead, member, column
+    )
+    assert (await _delete(async_client, group, goal["id"], b["id"], lead)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "have"
+    assert (await _delete(async_client, group, goal["id"], a["id"], lead)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "have"
+
+
+async def test_handoff_carries_the_flip_timestamp(
+    async_client, session, group, goal, two_drops, lead, member, owner
+):
+    a, b = two_drops
+    assert (await _delete(async_client, group, goal["id"], a["id"], lead)).status_code == 204
+    b_row = await _drop_row(session, b["id"])
+    assert b_row.recipient_prior_state == "need"
+    assert b_row.recipient_prior_state_at == a["created_at"]
 
 
 # ── R-P0-3: participant self-upsert ──────────────────────────────────────────

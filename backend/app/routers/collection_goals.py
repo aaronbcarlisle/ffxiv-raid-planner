@@ -704,21 +704,17 @@ async def log_drop(
     if recipient_id and recipient_id != current_user.id and membership.role_level < _LEAD_LEVEL:
         raise PermissionDenied("Only leads and owners can log a drop for another member")
     if recipient_id:
-        recipient_result = await session.execute(
-            select(Membership.id).where(
-                Membership.static_group_id == group_id,
-                Membership.user_id == recipient_id,
-                Membership.role != MemberRole.VIEWER.value,
-            )
-        )
-        if recipient_result.first() is None:
+        recipient_role = await _member_role(session, group_id, recipient_id)
+        if recipient_role is None or recipient_role == MemberRole.VIEWER.value:
             raise HTTPException(status_code=400, detail="Recipient must be a member of this static")
 
     now = _now()
 
     # If the recipient is identified, auto-advance their state to "have" if currently
-    # need/want, and remember the state it replaced so a delete can restore it (R-P0-2).
+    # need/want, and remember the state it replaced, and when, so a delete can restore
+    # it (R-P0-2).
     recipient_prior_state: str | None = None
+    recipient_prior_state_at: str | None = None
     if recipient_id:
         p_result = await session.execute(
             select(RewardParticipantState).where(
@@ -729,6 +725,7 @@ async def log_drop(
         participant = p_result.scalar_one_or_none()
         if participant and participant.state in ("need", "want"):
             recipient_prior_state = participant.state
+            recipient_prior_state_at = now
             participant.state = "have"
             participant.updated_at = now
 
@@ -742,6 +739,7 @@ async def log_drop(
         dropped_at=body.dropped_at or now,
         notes=body.notes,
         recipient_prior_state=recipient_prior_state,
+        recipient_prior_state_at=recipient_prior_state_at,
         created_at=now,
     )
     session.add(drop)
@@ -799,8 +797,9 @@ async def delete_drop(
     """Leads, owners, or the member who logged it delete a drop (R-P0-2).
 
     Restoring the recipient's state doesn't depend on delete order: the prior
-    state hands off to the earliest remaining drop, and only the last drop to go
-    restores it, unless the plugin or a manual edit set the state since.
+    state, with the timestamp of the flip that recorded it, hands off to the
+    earliest remaining drop, and only the last drop to go restores it, unless
+    the plugin or a manual edit set the state after that flip.
     """
     await get_static_group(session, group_id)
     membership = await require_membership(session, current_user.id, group_id)
@@ -822,10 +821,13 @@ async def delete_drop(
 
     recipient_id = drop.recipient_user_id
     prior_state = drop.recipient_prior_state
-    drop_created_at = drop.created_at
+    # The flip's own timestamp, carried through hand-offs; a row logged before the
+    # column existed falls back to its created_at.
+    prior_at = drop.recipient_prior_state_at or drop.created_at
     await session.delete(drop)
     await session.flush()
 
+    outcome = "no_change"
     if recipient_id is not None:
         remaining_result = await session.execute(
             select(RewardDropLog)
@@ -838,15 +840,18 @@ async def delete_drop(
         remaining = list(remaining_result.scalars().all())
         if remaining:
             # 1. Other drops remain: the recipient still received one, so they stay
-            #    "have" and the prior moves to the earliest remaining drop without one.
+            #    "have" and the prior (with its flip time) moves to the earliest
+            #    remaining drop without one.
             if prior_state is not None:
                 for other in remaining:
                     if other.recipient_prior_state is None:
                         other.recipient_prior_state = prior_state
+                        other.recipient_prior_state_at = prior_at
+                        outcome = "handed_off"
                         break
         elif prior_state is not None:
             # 2. This was their last drop: restore the state the flip replaced, unless
-            #    the plugin or a manual edit set the state since the drop.
+            #    the plugin or a manual edit set the state after that flip.
             p_result = await session.execute(
                 select(RewardParticipantState).where(
                     RewardParticipantState.goal_id == goal_id,
@@ -854,14 +859,15 @@ async def delete_drop(
                 )
             )
             participant = p_result.scalar_one_or_none()
-            if (
-                participant
-                and participant.state == "have"
-                and not _is_after(participant.last_synced_at, drop_created_at)
-                and not _is_after(participant.last_manual_override_at, drop_created_at)
-            ):
-                participant.state = prior_state
-                participant.updated_at = _now()
+            if participant and participant.state == "have":
+                if _is_after(participant.last_synced_at, prior_at) or _is_after(
+                    participant.last_manual_override_at, prior_at
+                ):
+                    outcome = "skipped"
+                else:
+                    participant.state = prior_state
+                    participant.updated_at = _now()
+                    outcome = "restored"
 
     await session.commit()
     logger.info(
@@ -870,5 +876,6 @@ async def delete_drop(
         goal_id=goal_id,
         drop_id=drop_id,
         recipient=recipient_id,
-        restored_state=prior_state,
+        prior_state=prior_state,
+        outcome=outcome,
     )
