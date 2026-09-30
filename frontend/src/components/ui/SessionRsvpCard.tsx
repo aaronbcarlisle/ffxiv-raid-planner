@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { CardShell } from './CardShell';
 import { InitialsAvatar } from './InitialsAvatar';
 import { PlayerIdentity } from './PlayerIdentity';
@@ -199,6 +199,29 @@ type SessionPhase = 'upcoming' | 'in-progress' | 'ended';
  * passed, `in-progress` from the start until then. An unparseable start yields
  * null; an unparseable end counts as ending at the start.
  */
+/** `setTimeout` stores its delay as a signed 32-bit int; a longer one fires at once. */
+const MAX_TIMEOUT_MS = 2_147_483_647;
+/** Lands the phase timer just past the boundary so the re-render reads the new phase. */
+const PHASE_TIMER_MARGIN_MS = 100;
+
+/**
+ * Re-render the card at its next phase boundary (the start, then the end) so
+ * "in N days" turns into "In progress" and the RSVP controls close at the end
+ * instant with no store update. Nothing is scheduled once the end has passed.
+ */
+function usePhaseTimer(startIso: string, endIso: string): void {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const nowMs = Date.now();
+    const boundaries = [new Date(startIso).getTime(), new Date(endIso).getTime()]
+      .filter((ms) => Number.isFinite(ms) && ms > nowMs);
+    if (boundaries.length === 0) return;
+    const delay = Math.min(Math.min(...boundaries) - nowMs + PHASE_TIMER_MARGIN_MS, MAX_TIMEOUT_MS);
+    const id = setTimeout(() => setTick((t) => t + 1), delay);
+    return () => clearTimeout(id);
+  }, [startIso, endIso, tick]);
+}
+
 function sessionPhase(startIso: string, endIso: string): SessionPhase | null {
   const startMs = new Date(startIso).getTime();
   if (Number.isNaN(startMs)) return null;
@@ -324,6 +347,7 @@ export function SessionRsvpCard({
   const showViewerTime = Boolean(viewerTime) && viewerTz !== sessionTz;
   const dayPill = showDayPill ? formatDayPill(session.startTime, sessionTz) : null;
 
+  usePhaseTimer(session.startTime, session.endTime);
   const phase = sessionPhase(session.startTime, session.endTime);
   const ended = phase === 'ended';
   // A recurring series' RSVPs are series-wide, so on an ended card they would

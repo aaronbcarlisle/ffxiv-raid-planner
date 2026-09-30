@@ -293,14 +293,25 @@ describe('SessionList — R-P0-12 one card per recurring series', () => {
     expect(onManageOccurrences).toHaveBeenCalledWith(series);
   });
 
-  it('the next week shows one card with the scope note but NO RSVP buttons', () => {
+  it('the next week shows one card with the scope note (no "next" date from an earlier week) but NO RSVP buttons', () => {
     renderSeries({ occurrences: weekOf(NEXT_WEEK), isCurrentWeek: false });
     expect(screen.getAllByTestId('session-daytime')).toHaveLength(1);
     expect(screen.getByTestId('session-daytime').textContent).toMatch(/Tuesday, Jul 14/);
-    expect(screen.getByText(NOTE_NEXT_FRI)).toBeInTheDocument();
+    expect(screen.getByTestId('session-scope-note').textContent).toBe('Every Tue/Fri · RSVP applies to every week');
     expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /tentative/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /can't make it/i })).not.toBeInTheDocument();
+  });
+
+  it('the current week with every occurrence ended shows one Played card whose note still names the next start', () => {
+    vi.setSystemTime(new Date('2026-07-11T12:00:00.000Z')); // Sat, after Fri's raid
+    renderSeries({ occurrences: weekOf(THIS_WEEK), isCurrentWeek: true });
+    expect(screen.getAllByTestId('session-daytime')).toHaveLength(1);
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Fri Jul 10');
+    expect(screen.getByTestId('session-scope-note').textContent).toBe(
+      'Every Tue/Fri · next Tue Jul 14 · RSVP applies to every week',
+    );
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
   });
 
   it('the previous week shows one card reading Played, with no RSVP buttons', () => {

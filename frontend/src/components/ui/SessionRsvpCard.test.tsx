@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { SessionRsvpCard } from './SessionRsvpCard';
 import type { ScheduleSession, ScheduleRsvp, RsvpStatus } from '../../types';
@@ -529,6 +529,81 @@ describe('SessionRsvpCard — R-P0-12 Played / In progress', () => {
       />,
     );
     expect(screen.getByTestId('countdown-chip').textContent).toBe('In progress');
+  });
+
+  it('closes its RSVP at the end instant with no store update: buttons gone, chip reads Played', () => {
+    // setTimeout must be fake too so the card's own phase timer can be advanced.
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(new Date('2026-07-03T02:59:00Z'));
+    const onRsvp = vi.fn();
+    render(
+      <SessionRsvpCard
+        session={makeSession({ startTime: '2026-07-03T00:00:00Z', endTime: '2026-07-03T03:00:00Z' })}
+        variant="later"
+        members={gridMembers}
+        memberDetail="grid"
+        onRsvp={onRsvp}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('In progress');
+    expect(screen.getByRole('button', { name: /i'm in/i })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(61_000);
+    });
+    // Played is dated in the SESSION zone (fixture: New York → Thu Jul 2 20:00).
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Thu Jul 2');
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /tentative/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /can't make it/i })).not.toBeInTheDocument();
+    expect(onRsvp).not.toHaveBeenCalled();
+  });
+
+  it('turns "tomorrow"-style countdown into "In progress" at the start instant and keeps the buttons', () => {
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(new Date('2026-07-02T23:59:00Z'));
+    render(
+      <SessionRsvpCard
+        session={makeSession({ startTime: '2026-07-03T00:00:00Z', endTime: '2026-07-03T03:00:00Z' })}
+        variant="later"
+        members={gridMembers}
+        memberDetail="grid"
+        onRsvp={vi.fn()}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('tomorrow');
+
+    act(() => {
+      vi.advanceTimersByTime(61_000);
+    });
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('In progress');
+    expect(screen.getByRole('button', { name: /i'm in/i })).toBeInTheDocument();
+  });
+
+  it('an ended recurring series also drops its answers at the end instant', () => {
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(new Date('2026-07-03T02:59:00Z'));
+    render(
+      <SessionRsvpCard
+        session={makeSession({ isRecurring: true, recurrenceRule: 'FREQ=WEEKLY;BYDAY=FR' })}
+        variant="later"
+        members={gridMembers}
+        memberDetail="grid"
+        onRsvp={vi.fn()}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('rsvp-member-grid')).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(61_000);
+    });
+    expect(screen.queryByTestId('rsvp-member-grid')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rsvp-counts')).not.toBeInTheDocument();
   });
 
   it('scopeNote renders one muted text-xs line, and nothing without it', () => {

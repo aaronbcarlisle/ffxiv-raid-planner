@@ -128,21 +128,26 @@ function weekdayInZone(iso: string, timeZone: string): string {
 /**
  * "Every Tue/Fri · next Fri Oct 2 · RSVP applies to every week". The days come
  * from BYDAY in rule order, joined with "/" like `deriveRecurringSummary`;
- * "next" is the series' next start after now, and is dropped when there is none.
- * Both are in the SESSION's zone (BYDAY is matched there), never the viewer's.
+ * "next" is the series' next start after now, and is dropped when there is none
+ * or when `includeNext` is false. Only a card that points forward to it carries
+ * it (the live card, or an ended one — where the next RSVP lives); a future
+ * week's card is headlined by a date after it, so naming an earlier "next"
+ * there would contradict the card. Both dates are in the SESSION's zone (BYDAY
+ * is matched there), never the viewer's.
  */
 function buildScopeNote(
   session: ScheduleSession & { recurrenceRule: string },
   nowMs: number,
   cancelled: ReadonlySet<string> | undefined,
+  includeNext: boolean,
 ): string {
   const rule = parseRRule(session.recurrenceRule);
   const days = rule && rule.byday.length > 0
     ? rule.byday.map((d) => WEEKDAY_LABEL[d]).join('/')
     : weekdayInZone(session.startTime, session.timezone);
-  const next = computeNextOccurrence(
-    session.startTime, session.recurrenceRule, new Date(nowMs), cancelled, session.timezone,
-  );
+  const next = includeNext
+    ? computeNextOccurrence(session.startTime, session.recurrenceRule, new Date(nowMs), cancelled, session.timezone)
+    : null;
   const nextLabel = next ? formatShortDate(next, session.timezone) : null;
   return [`Every ${days}`, nextLabel && `next ${nextLabel}`, 'RSVP applies to every week']
     .filter(Boolean)
@@ -187,10 +192,11 @@ function buildCardEntries(
       session.startTime, session.recurrenceRule, new Date(nowMs - sessionDurationMs(session)),
       cancelled, session.timezone,
     );
+    const takesRsvp = live !== null && live.getTime() === new Date(shown.occursAt).getTime();
     entries.push({
       occ: shown,
-      scopeNote: buildScopeNote(session, nowMs, cancelled),
-      takesRsvp: live !== null && live.getTime() === new Date(shown.occursAt).getTime(),
+      scopeNote: buildScopeNote(session, nowMs, cancelled, takesRsvp || occurrenceEndMs(shown) <= nowMs),
+      takesRsvp,
     });
   }
   entries.sort((a, b) => a.occ.occursAt.localeCompare(b.occ.occursAt));
