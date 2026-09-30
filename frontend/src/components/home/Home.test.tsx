@@ -7,6 +7,7 @@ import type {
   StaticGroup,
   TierSnapshot,
 } from '../../types';
+import { ApiError } from '../../services/api';
 
 // ─── Store mocks (all stores Home + its child cards consume) ────────────────────
 const mocks = vi.hoisted(() => ({
@@ -262,6 +263,28 @@ describe('Home', () => {
   it('toasts "Failed to save RSVP" exactly once when submitRsvp rejects', async () => {
     mocks.sessions = [futureSession()];
     mocks.submitRsvp = vi.fn().mockRejectedValue(new Error('boom'));
+    renderHome();
+    fireEvent.click(screen.getByRole('button', { name: /i'm in/i }));
+    await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Failed to save RSVP'));
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not toast again when submitRsvp rejects with an error the API client already toasted (#324)', async () => {
+    mocks.sessions = [futureSession()];
+    const rejected = vi.fn().mockRejectedValue(new ApiError(403, 'Only leads can do that', true));
+    mocks.submitRsvp = rejected;
+    renderHome();
+    fireEvent.click(screen.getByRole('button', { name: /i'm in/i }));
+    await vi.waitFor(() => expect(rejected).toHaveBeenCalledTimes(1));
+    // Let the handler's catch run before asserting the absence.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it('toasts once when submitRsvp rejects with an ApiError the client did not toast', async () => {
+    mocks.sessions = [futureSession()];
+    mocks.submitRsvp = vi.fn().mockRejectedValue(new ApiError(403, 'Session expired - please log in again'));
     renderHome();
     fireEvent.click(screen.getByRole('button', { name: /i'm in/i }));
     await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Failed to save RSVP'));

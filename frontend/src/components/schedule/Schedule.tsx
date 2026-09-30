@@ -23,6 +23,7 @@ import { useWeekClock } from '../../hooks/useWeekClock';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
 import { toast } from '../../stores/toastStore';
+import { wasToastedByApi } from '../../services/api';
 import { getTierById } from '../../gamedata';
 import { computeNextOccurrence, getOccurrenceDateKey } from '../../utils/recurrence';
 import {
@@ -211,8 +212,9 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
   const handleRsvp = async (sessionId: string, status: RsvpStatus) => {
     try {
       await submitRsvp(group.id, sessionId, status);
-    } catch {
-      toast.error('Failed to save RSVP');
+    } catch (err) {
+      // A true 403 was already toasted by the API client (#324).
+      if (!wasToastedByApi(err)) toast.error('Failed to save RSVP');
     }
   };
 

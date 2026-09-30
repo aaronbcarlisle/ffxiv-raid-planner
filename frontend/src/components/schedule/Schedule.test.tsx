@@ -11,6 +11,8 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, it, expect, vi, type Mock } from 'vitest';
+import { ApiError } from '../../services/api';
+import { toast } from '../../stores/toastStore';
 
 // Task 10: AvailabilityGrid + CreateSessionModal are mounted only inside the
 // edit/create modals — mocked to prop-capturing stubs (project convention, see
@@ -322,6 +324,38 @@ describe('Schedule', () => {
     renderSchedule();
     fireEvent.click(screen.getByText("I'm in"));
     expect(useScheduleStore.getState().submitRsvp).toHaveBeenCalledWith('g1', 's2', 'available');
+  });
+
+  describe('a failed RSVP (#324)', () => {
+    function rejectRsvpWith(err: unknown) {
+      // s2 (Jul 1) must still be upcoming: an ended session hides RSVP (R-P0-12).
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-06-25T00:00:00Z'));
+      const submitRsvp = vi.fn().mockRejectedValue(err);
+      useScheduleStore.setState({ submitRsvp } as never);
+      const toastError = vi.spyOn(toast, 'error').mockReturnValue('toast-id');
+      renderSchedule();
+      fireEvent.click(screen.getByText("I'm in"));
+      return { submitRsvp, toastError };
+    }
+
+    it('toasts once when submitRsvp rejects with a plain Error', async () => {
+      const { toastError } = rejectRsvpWith(new Error('boom'));
+      await waitFor(() => expect(toastError).toHaveBeenCalledWith('Failed to save RSVP'));
+      expect(toastError).toHaveBeenCalledTimes(1);
+      toastError.mockRestore();
+    });
+
+    it('does not toast again when the API client already toasted the error', async () => {
+      const { submitRsvp, toastError } = rejectRsvpWith(
+        new ApiError(403, 'Only leads can do that', true),
+      );
+      await waitFor(() => expect(submitRsvp).toHaveBeenCalledTimes(1));
+      // Let the handler's catch run before asserting the absence.
+      await act(async () => {});
+      expect(toastError).not.toHaveBeenCalled();
+      toastError.mockRestore();
+    });
   });
 
   it('hides "Add session" affordances when the viewer cannot manage', () => {

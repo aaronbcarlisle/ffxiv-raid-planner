@@ -60,6 +60,21 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.58',
+    date: '2026-09-30T23:30:00Z',
+    title: 'Schedule: one card per series, and one error for a denied RSVP (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Schedule shows one card per recurring series and one message for a denied RSVP',
+        description:
+          'V2 preview: the schedule shows one card per recurring series instead of one per occurrence, past sessions read Played with their date, and a recurring card notes that an RSVP applies to every week. A denied RSVP now shows a single error message instead of two.',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.57',
     date: '2026-09-30T18:00:00Z',
     title: 'Log Week respects what is already logged',
