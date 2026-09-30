@@ -76,7 +76,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '2.1.52',
-    date: '2026-09-30T12:00:00Z',
+    date: '2026-09-30T04:59:00Z',
     title: 'Admin action log disclosure and an ownership transfer fix',
     items: [
       {
