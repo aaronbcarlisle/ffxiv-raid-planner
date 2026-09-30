@@ -118,13 +118,16 @@ def _drop_to_response(
     )
 
 
-async def _get_goal(session: AsyncSession, group_id: str, goal_id: str) -> CollectionGoal:
-    result = await session.execute(
-        select(CollectionGoal).where(
-            CollectionGoal.id == goal_id,
-            CollectionGoal.static_group_id == group_id,
-        )
+async def _get_goal(
+    session: AsyncSession, group_id: str, goal_id: str, *, for_update: bool = False
+) -> CollectionGoal:
+    stmt = select(CollectionGoal).where(
+        CollectionGoal.id == goal_id,
+        CollectionGoal.static_group_id == group_id,
     )
+    if for_update:
+        stmt = stmt.with_for_update()
+    result = await session.execute(stmt)
     goal = result.scalar_one_or_none()
     if not goal:
         raise NotFound("Collection goal not found")
@@ -694,7 +697,7 @@ async def log_drop(
 ) -> RewardDropResponse:
     await get_static_group(session, group_id)
     membership = await require_membership(session, current_user.id, group_id)
-    await _get_goal(session, group_id, goal_id)
+    await _get_goal(session, group_id, goal_id, for_update=True)
 
     # R-P0-1: checked in this order, before any write. The recipient's membership is
     # checked last so a member can't probe who belongs to the static.
@@ -802,12 +805,16 @@ async def delete_drop(
     (then this one is discarded), so the latest flip's prior always survives.
     Only the last drop to go restores it, unless the plugin or a manual edit set
     the state after that flip.
+
+    The goal row is locked before the drop is read, so concurrent deletes (and a
+    log) on one goal serialize: the second sees the first's hand-off committed.
     """
     await get_static_group(session, group_id)
     membership = await require_membership(session, current_user.id, group_id)
     if membership.role == MemberRole.VIEWER:
         raise PermissionDenied("Viewers cannot delete drops")
 
+    await _get_goal(session, group_id, goal_id, for_update=True)
     result = await session.execute(
         select(RewardDropLog).where(
             RewardDropLog.id == drop_id,

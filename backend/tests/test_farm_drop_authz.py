@@ -706,3 +706,57 @@ async def test_drop_response_carries_recipient_prior_state(
     by_id = {d["id"]: d for d in await _drops(async_client, group, goal, owner)}
     assert by_id[created["id"]]["recipient_prior_state"] == "need"
     assert by_id[unassigned["id"]]["recipient_prior_state"] is None
+
+
+# ── Concurrency guard: the goal row is locked on every drop write ────────────
+# SQLite ignores FOR UPDATE, so the race itself can't run here. These compile each
+# statement the route issues for PostgreSQL and assert the lock is there (and, for a
+# delete, taken before the drop is read).
+
+
+def _record_pg_sql(session: AsyncSession, monkeypatch) -> list[str]:
+    from sqlalchemy.dialects import postgresql
+
+    seen: list[str] = []
+    real_execute = session.execute
+
+    async def recording_execute(statement, *args, **kwargs):
+        try:
+            seen.append(str(statement.compile(dialect=postgresql.dialect())))
+        except Exception:  # raw text / DDL: not a select we care about
+            seen.append("")
+        return await real_execute(statement, *args, **kwargs)
+
+    monkeypatch.setattr(session, "execute", recording_execute)
+    return seen
+
+
+def _goal_lock_index(sql: list[str]) -> int | None:
+    for i, text in enumerate(sql):
+        if "FROM collection_goals" in text and "FOR UPDATE" in text:
+            return i
+    return None
+
+
+async def test_delete_drop_locks_the_goal_row_before_reading_the_drop(
+    async_client, session, group, goal, participants, lead, member, monkeypatch
+):
+    drop = (await _log(async_client, group, goal, lead, recipient_id=member.id)).json()
+
+    sql = _record_pg_sql(session, monkeypatch)
+    resp = await _delete(async_client, group, goal["id"], drop["id"], lead)
+    assert resp.status_code == 204
+
+    lock = _goal_lock_index(sql)
+    first_drop_read = next(i for i, text in enumerate(sql) if "FROM reward_drop_log" in text)
+    assert lock is not None, "delete_drop must SELECT the goal FOR UPDATE"
+    assert lock < first_drop_read, "the lock must precede the drop read"
+
+
+async def test_log_drop_locks_the_goal_row(
+    async_client, session, group, goal, participants, lead, member, monkeypatch
+):
+    sql = _record_pg_sql(session, monkeypatch)
+    resp = await _log(async_client, group, goal, lead, recipient_id=member.id)
+    assert resp.status_code == 201
+    assert _goal_lock_index(sql) is not None, "log_drop must SELECT the goal FOR UPDATE"
