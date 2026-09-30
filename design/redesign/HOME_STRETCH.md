@@ -55,7 +55,7 @@ These close every item in the session-1 decision list (groups A–E, 22 items). 
 
 ```
 now ─ H0 this plan
-   ├─ P1 safety + quick parity ─────┐ (worktree)
+   ├─ P1 safety + quick parity ─────┐ (worktree; ✅ #323)
    ├─ V1B item 1, not-found flow ───┤ (worktree; V1B's only gate, HS-28; ✅ #322)
    └─ S2 Stage 2 spec (session 3) ─► S2a Progress ─► S2b More/Plugin + mobile switch ─► S2c mobile nav + B7
                                           └─► P2b Home rows
@@ -78,7 +78,7 @@ Each item lists its scope, dependencies, acceptance criteria, size and rulings. 
 - **Scope:** this doc; PRODUCT_MODEL §6 rewritten to the two gates and linked here; the "four tabs" text written before the amendment corrected in REDESIGN_SPEC §11 #7 / review checklist, V2_COVERAGE Stage 2, RECONCILIATION B7 and the DESIGN_SYSTEM Spine contract; amendment notes where ROLLOUT §7b and V2_COVERAGE D7 describe the un-gate. Director vet 1 added dated amendments where DESIGN_SYSTEM §2.1/§2.3 and REDESIGN_SPEC §9.1/§10 still read "four tabs" or "Progress is never a tab" (HS-29), and where `docs/README.md`, ROLLOUT (the header note, §1, §8, §9) and V2_COVERAGE (the status line, Stage 5, D2, D7) still describe three gates; `xivrp-director.md` cites F-03 for Progress.
 - **Acceptance:** the director says READY; merged; §6 links here; no owner question is left open.
 
-### P1 · Safety + quick parity — S · HS-9, HS-12, HS-20, HS-30
+### P1 · Safety + quick parity — S · HS-9, HS-12, HS-20, HS-30 — ✅ #323 (2026-09-30)
 - **Scope:**
   - **D-50, a V1-visible sanctioned edit scoped to View As (HS-30):** under View As, hide Delete Static in `components/settings/StaticTab.tsx:305` and `components/group/MorePage.tsx:379-386` (both shells mount both), matching Leave (`GroupViewContent.tsx:1191`). The client sends the `X-View-As` header only while `viewAsStore.viewAsUser` is set (View As state is per-static, `stores/viewAsStore.ts:20`, and clears when the group view unmounts, `hooks/useViewAsUrlSync.ts:38-44`); `services/audit.py:140-145` already reads it, but no client sends it today. When that header is present, the backend refuses a static delete (`static_groups.py:682`) and the View-As Leave. Under View As the client's Leave is `DELETE …/members/{viewed user id}` (`effectiveUserId`, `GroupViewContent.tsx:374`, `:1192-1194`), which the backend sees as an admin removing another member, not a self-removal, so the guard refuses `DELETE …/members/{user_id}` when `user_id` equals the header's user id (the value audit stores, `audit.py:145`). Other member removals under View As are not blocked (that would need a new ruling). This closes the §13.3 residual in the parity matrix. Admin-mode moderation delete (`?adminMode`, `StaticTab.tsx:305`) is unchanged: no admin UI deletes a static (`AdminStatics` has none; Admin V2 is parked, HS-14), so it stays the admins' moderation path. (Owners can also delete from `dashboard/MyStaticsPanel.tsx:284` and `profile/hub/YourStaticsCard.tsx:60`; neither is an admin path.)
   - **D-58:** a "View Schedule" link on Home's next-session card (`Home.tsx:331-335`).

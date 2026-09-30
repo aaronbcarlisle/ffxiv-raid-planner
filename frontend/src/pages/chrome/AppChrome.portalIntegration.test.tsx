@@ -55,6 +55,8 @@ vi.mock('../../services/api', () => ({
     put: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
   },
+  // viewAsStore's module-scope subscription calls this on every store set.
+  setViewAsHeaderUserId: vi.fn(),
 }));
 
 import { AppChrome } from './AppChrome';

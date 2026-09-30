@@ -191,14 +191,10 @@ const PHASES: Phase[] = [
     id: 'phase-9',
     number: '9',
     title: 'Mobile Optimization',
-    status: 'in-progress',
+    status: 'planned',
     icon: Smartphone,
     items: [
-      { title: 'Responsive layouts for phone screens', description: 'Complete - all major views optimized' },
-      { title: 'Touch-friendly controls and bottom navigation', description: 'Complete - MobileBottomNav, touch targets' },
-      { title: 'PWA support for home screen install', description: 'Complete - manifest and icons added' },
-      { title: 'Device capability detection', description: 'Complete - useDevice hook' },
-      { title: 'Additional polish and refinements', description: 'In progress - edge cases and UX improvements' },
+      { title: 'Mobile layout for the new interface', description: 'Planned - part of the new interface' },
     ],
   },
   {
@@ -358,13 +354,9 @@ interface Issue {
   priority: 'critical' | 'high' | 'medium';
 }
 
-const KNOWN_ISSUES: Issue[] = [
-  {
-    title: 'Large component files',
-    description: 'Some view components exceed 500 lines. Refactoring into smaller components planned.',
-    priority: 'medium',
-  },
-];
+// Empty on purpose: the section and its nav entry stay and show an
+// "all clear" line (OQ-1).
+const KNOWN_ISSUES: Issue[] = [];
 
 function StatusBadge({ status }: { status: Phase['status'] }) {
   const config = {
@@ -688,22 +680,28 @@ export default function RoadmapDocs() {
             <h2 className="text-2xl font-semibold text-accent mb-6 pb-2 border-b border-border-default">
               Known Issues
             </h2>
-            <div className="bg-surface-card border border-border-subtle rounded-xl overflow-hidden">
-              <div className="divide-y divide-border-subtle">
-                {KNOWN_ISSUES.map((issue, idx) => (
-                  <div key={idx} className="p-4 flex items-start gap-4">
-                    <PriorityBadge priority={issue.priority} />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-text-primary">{issue.title}</h3>
-                      <p className="text-sm text-text-muted mt-1">{issue.description}</p>
-                    </div>
+            {KNOWN_ISSUES.length > 0 ? (
+              <>
+                <div className="bg-surface-card border border-border-subtle rounded-xl overflow-hidden">
+                  <div className="divide-y divide-border-subtle">
+                    {KNOWN_ISSUES.map((issue, idx) => (
+                      <div key={idx} className="p-4 flex items-start gap-4">
+                        <PriorityBadge priority={issue.priority} />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-text-primary">{issue.title}</h3>
+                          <p className="text-sm text-text-muted mt-1">{issue.description}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-            <p className="text-sm text-text-muted mt-4">
-              These issues are tracked internally and addressed incrementally across releases.
-            </p>
+                </div>
+                <p className="text-sm text-text-muted mt-4">
+                  These issues are tracked internally and addressed incrementally across releases.
+                </p>
+              </>
+            ) : (
+              <p className="text-text-secondary">No known issues right now.</p>
+            )}
           </section>
         </main>
       </div>

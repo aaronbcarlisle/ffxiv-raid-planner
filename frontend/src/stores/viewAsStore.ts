@@ -2,11 +2,13 @@
  * ViewAs Store - Admin "View As" functionality
  *
  * Allows admins to view the application from another user's perspective.
- * This is read-only - actual API calls still go through as the admin.
+ * Writes still go through as the admin; while View As is active every
+ * request carries the X-View-As header (see setViewAsHeaderUserId), and the
+ * API refuses only the static delete and removing the viewed member (HS-30).
  */
 
 import { create } from 'zustand';
-import { api } from '../services/api';
+import { api, setViewAsHeaderUserId } from '../services/api';
 // eslint-disable-next-line boundaries/dependencies -- impersonation is inherently auth-coupled: view-as reads the real admin identity (isAuthenticated / user.isAdmin) to impersonate from. The second store wanting auth must add its own justified entry.
 import { useAuthStore } from './authStore';
 import type { MemberRole } from '../types';
@@ -42,6 +44,15 @@ interface ViewAsState {
   clearError: () => void;
 }
 
+/**
+ * Generation counter for startViewAs. A start captures the generation before
+ * its await and writes nothing on resolve or reject unless it is still the
+ * latest, so a GET that resolves after stopViewAs (the admin already left the
+ * group view) can't bring View As back, and a newer start supersedes an older
+ * one.
+ */
+let viewAsGeneration = 0;
+
 export const useViewAsStore = create<ViewAsState>((set) => ({
   viewAsUser: null,
   isLoading: false,
@@ -55,6 +66,7 @@ export const useViewAsStore = create<ViewAsState>((set) => ({
       return;
     }
 
+    const gen = ++viewAsGeneration;
     set({ isLoading: true, error: null });
 
     try {
@@ -62,8 +74,10 @@ export const useViewAsStore = create<ViewAsState>((set) => ({
       const data = await api.get<ViewAsUserInfo>(
         `/api/static-groups/admin/user-role/${groupId}/${userId}`
       );
+      if (gen !== viewAsGeneration) return;
       set({ viewAsUser: data, isLoading: false });
     } catch (error) {
+      if (gen !== viewAsGeneration) return;
       set({
         error: error instanceof Error ? error.message : 'Failed to start View As',
         isLoading: false,
@@ -72,13 +86,20 @@ export const useViewAsStore = create<ViewAsState>((set) => ({
   },
 
   stopViewAs: () => {
-    set({ viewAsUser: null, error: null });
+    // Bump the generation so an in-flight start is dropped, and clear
+    // isLoading here since that dropped start will no longer clear it.
+    viewAsGeneration++;
+    set({ viewAsUser: null, error: null, isLoading: false });
   },
 
   clearError: () => {
     set({ error: null });
   },
 }));
+
+// Keeps services/api.ts's X-View-As header in step with the store without
+// api.ts importing the store (which would add an import cycle).
+useViewAsStore.subscribe((s) => setViewAsHeaderUserId(s.viewAsUser?.userId ?? null));
 
 /**
  * Hook to get the effective role for permission checks.

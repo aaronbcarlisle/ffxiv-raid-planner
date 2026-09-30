@@ -9,6 +9,7 @@ import type { MemberRole, PageMode } from '../../types';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useIsViewingAs } from '../../stores/viewAsStore';
 import { DashboardCard, IconMedallion, SectionLabel } from '../ui/DashboardCard';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { Button } from '../primitives';
@@ -73,6 +74,11 @@ export function MorePage({
 
   const isOwner = userRole === 'owner';
   const isMember = !!userRole && userRole !== 'viewer';
+  const isViewingAs = useIsViewingAs();
+  // D-50 (HS-30): Delete is withheld under View As; Leave already is (the host
+  // doesn't wire onLeaveStatic), so the whole Danger Zone can be empty.
+  const showDelete = isOwner && !isViewingAs;
+  const showLeave = !isOwner && !!onLeaveStatic;
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   return (
@@ -348,7 +354,7 @@ export function MorePage({
 
       {/* Danger Zone — hidden entirely when it would render no buttons
           (non-owner member whose host didn't wire onLeaveStatic). */}
-      {isMember && (isOwner || !!onLeaveStatic) && (
+      {isMember && (showDelete || showLeave) && (
         <section>
           <SectionLabel color="red" className="mb-3">Danger Zone</SectionLabel>
           <div
@@ -368,7 +374,7 @@ export function MorePage({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {!isOwner && onLeaveStatic && (
+              {showLeave && (
                 <button
                   onClick={() => setShowLeaveConfirm(true)}
                   className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
@@ -376,7 +382,7 @@ export function MorePage({
                   Leave Static
                 </button>
               )}
-              {isOwner && (
+              {showDelete && (
                 <button
                   onClick={() => onOpenSettings('static')}
                   className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"

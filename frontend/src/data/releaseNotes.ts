@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.55';
+export const CURRENT_VERSION = '2.1.56';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,39 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.56',
+    date: '2026-09-30T12:00:00Z',
+    title: 'Safer View As, and a roadmap cleanup',
+    items: [
+      {
+        category: 'fix',
+        title: 'Site admins can no longer delete a static while viewing as another user',
+        description:
+          'While a site admin is viewing a static as another user, they can no longer delete the static or remove the member they are viewing as. The Delete Static button is hidden in that mode, and the server refuses both actions. Everything else in View As works as before.',
+        pr: 323,
+        prTitle: 'fix(view-as): P1 — refuse static delete under View As, Home schedule link, roadmap cleanup',
+      },
+      {
+        category: 'fix',
+        title: 'The roadmap lists mobile as planned for the new interface',
+        description:
+          'The roadmap now shows the mobile phase as planned for the new interface instead of in progress, and the known issue about large component files, which no longer applies, is gone.',
+        link: { href: '/docs/roadmap', label: 'View the roadmap' },
+        pr: 323,
+        prTitle: 'fix(view-as): P1 — refuse static delete under View As, Home schedule link, roadmap cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Home links to the schedule and reports a failed RSVP',
+        description:
+          'The next-session card on the new Home now has a View schedule link, and an RSVP that fails to save shows an error instead of failing silently.',
+        pr: 323,
+        prTitle: 'fix(view-as): P1 — refuse static delete under View As, Home schedule link, roadmap cleanup',
+        internal: true,
+      },
+    ],
+  },
   {
     version: '2.1.55',
     date: '2026-09-30T07:00:00Z',

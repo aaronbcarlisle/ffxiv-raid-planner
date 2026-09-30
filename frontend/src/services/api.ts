@@ -121,6 +121,24 @@ export function isAuthRelated403(message: string): boolean {
   return AUTH_RELATED_403_PATTERNS.some((pattern) => lowerMessage.includes(pattern));
 }
 
+// ==================== View As header ====================
+
+// Must match backend permissions.VIEW_AS_HEADER.
+const VIEW_AS_HEADER_NAME = 'X-View-As';
+
+/**
+ * The user id an admin is currently viewing as (View As), or null.
+ * viewAsStore keeps it in sync through one subscription; authRequest sends
+ * it as X-View-As on every request while it is set, so the backend refuses
+ * the static delete and the viewed member's removal (HS-30 / D-50) and the
+ * audit log records the impersonation.
+ */
+let viewAsUserId: string | null = null;
+
+export function setViewAsHeaderUserId(id: string | null): void {
+  viewAsUserId = id || null;
+}
+
 // ==================== Authenticated Request ====================
 
 /**
@@ -139,6 +157,16 @@ export async function authRequest<T>(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+
+  // Only while admin View As is active. Lives in `headers`, which is spread
+  // after options.headers (callers can't override it) and reused by the retry.
+  // Snapshot on purpose: the header describes the View As state the request
+  // was made in. A Delete clicked under View As stays refused even if View As
+  // stops during the CSRF-refresh await or before the 401 retry; re-reading it
+  // late would let that delete through as a plain admin delete (HS-30).
+  if (viewAsUserId) {
+    headers[VIEW_AS_HEADER_NAME] = viewAsUserId;
+  }
 
   // Add CSRF token for state-changing requests
   // If token is missing, try refresh first (cookie may have been cleared by browser)

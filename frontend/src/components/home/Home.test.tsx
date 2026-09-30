@@ -241,6 +241,33 @@ describe('Home', () => {
     expect(mocks.submitRsvp).toHaveBeenCalledWith('g1', 's1', 'available');
   });
 
+  it('shows a "View schedule" button on the next-session card that navigates to the schedule (D-58)', () => {
+    mocks.sessions = [futureSession()];
+    const onNavigate = vi.fn();
+    renderHome({ onNavigate });
+    fireEvent.click(screen.getByRole('button', { name: /view schedule/i }));
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+    expect(onNavigate).toHaveBeenCalledWith('schedule');
+  });
+
+  it('has no "View schedule" button without a session, and keeps the "Add session" invite', () => {
+    mocks.sessions = [];
+    const onNavigate = vi.fn();
+    renderHome({ onNavigate });
+    expect(screen.queryByRole('button', { name: /view schedule/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /add session/i }));
+    expect(onNavigate).toHaveBeenCalledWith('schedule');
+  });
+
+  it('toasts "Failed to save RSVP" exactly once when submitRsvp rejects', async () => {
+    mocks.sessions = [futureSession()];
+    mocks.submitRsvp = vi.fn().mockRejectedValue(new Error('boom'));
+    renderHome();
+    fireEvent.click(screen.getByRole('button', { name: /i'm in/i }));
+    await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Failed to save RSVP'));
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+  });
+
   it('builds an Import BiS attention row for a claimed raider with no BiS', () => {
     const noBis = player({ id: 'A', userId: 'uA', name: 'Caster One', job: 'BLM', role: 'caster', gear: [] });
     const tierWithPlayer = { tierId: 't1', players: [noBis] } as unknown as TierSnapshot;

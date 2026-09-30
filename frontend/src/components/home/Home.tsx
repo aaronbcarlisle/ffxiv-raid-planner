@@ -39,6 +39,7 @@ import { AttentionRow } from '../ui/AttentionRow';
 import { SessionRsvpCard } from '../ui/SessionRsvpCard';
 import { EmptyStateInvite } from '../ui/EmptyStateInvite';
 import { Tag } from '../ui/Tag';
+import { LinkText } from '../ui/LinkText';
 import { Button } from '../primitives';
 
 import { WeeklyLootSummaryCard } from './WeeklyLootSummaryCard';
@@ -327,11 +328,22 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   }, [group.settings, group.isPublic, pendingCount]);
 
   // ── Hero next-session card (RSVP) or empty-state invite ───────────────────
+  // submitRsvp rethrows on failure (scheduleStore); without the catch the
+  // rejection is unhandled and the member gets no feedback.
+  const handleRsvp = async (sessionId: string, status: RsvpStatus) => {
+    try {
+      await submitRsvp(group.id, sessionId, status);
+    } catch {
+      toast.error('Failed to save RSVP');
+    }
+  };
+
   const heroSession = nextSession ? (
     <SessionRsvpCard
       session={nextSession}
       currentUserRsvp={currentUserRsvp}
-      onRsvp={(status: RsvpStatus) => submitRsvp(group.id, nextSession.id, status)}
+      onRsvp={(status: RsvpStatus) => handleRsvp(nextSession.id, status)}
+      headerActions={<LinkText onClick={() => onNavigate('schedule')}>View schedule</LinkText>}
     />
   ) : (
     <CardShell title="Next session">
