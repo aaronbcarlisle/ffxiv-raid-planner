@@ -255,7 +255,7 @@ Two gates, in order. *(Ratified 2026-09-30, HS-6; merged into two gates by HS-25
 
 1. **Release 3.0.0: V2 is the default for everyone.** Every user is flipped to V2: the shell choice made before the release isn't migrated, and a switch-back made after it persists (HS-23). The way back is "Switch back to legacy UI" in the user menu or Settings, reachable on mobile (HS-24). `TryNewUiBanner` is deleted; the legacy user-menu item that enters V2 stays for everyone, without its `isAdmin` gate and renamed, so switching back is never a one-way door (HS-26). Requires every build item in `HOME_STRETCH.md` §4 that isn't marked *not a gate* (HS-28; HS-14 for admin-only items):
    - every parity-matrix row executed;
-   - the not-found fix (V1B item 1; broken in V2 too, HS-28) — PR pending;
+   - the not-found fix (V1B item 1; broken in V2 too, HS-28) — ✅ #322;
    - Stage 2, Stages 5–6 and Phase F;
    - H-10 and the typical-week layer;
    - account delete and export (Plan M);

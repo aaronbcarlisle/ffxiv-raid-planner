@@ -358,7 +358,7 @@ D12 row):
   #11 `Badge.tsx` contrast-harness exclusion · the `fetchCurrentWeek` stale-response race (declined on
   #274, user-approved 2026-09-25 to carry).
   **New from E1:**
-  - **✅ CLOSED (V1B item 1, PR pending):** a bad share code reaches "Static Not Found" in both shells.
+  - **✅ CLOSED (V1B item 1, #322):** a bad share code reaches "Static Not Found" in both shells.
     `staticGroupStore.fetchGroupByShareCode` maps a 404 to not-found, clears a stale static on other
     failures, and drops superseded responses.
   - `no-tiny-text` doesn't reach a class string held in a const (found via `GearBoardCell.tsx`'s

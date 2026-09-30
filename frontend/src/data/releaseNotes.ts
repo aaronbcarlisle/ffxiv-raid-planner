@@ -69,9 +69,8 @@ export const RELEASES: Release[] = [
         title: 'A broken static link shows "Static Not Found"',
         description:
           'Opening a link to a static that doesn\'t exist showed a bare error, and following one from another static left that static on screen under the wrong link. Both now show "Static Not Found", with a button back to your statics. A private static opened from another static now shows its own page instead of the one you came from.',
-        // Task 1's real SHA keeps the "pr or real commit" gate green until the PR opens;
-        // replace this with `pr` + `prTitle` at PR time.
-        commits: [{ hash: '4cc0b3a7', message: 'fix(v1): V1B Task 1 — not-found store state' }],
+        pr: 322,
+        prTitle: 'fix(v1): broken static links reach Static Not Found in both shells (V1B item 1)',
       },
     ],
   },
