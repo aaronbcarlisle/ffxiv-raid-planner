@@ -137,6 +137,7 @@ async def catalog_audit(
 
 @router.post("/admin/collection-catalog/import-verified-ids", response_model=VerifiedIdImportResult)
 async def import_catalog_verified_ids(
+    request: Request,
     mappings: list[VerifiedIdMapping],
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -152,6 +153,8 @@ async def import_catalog_verified_ids(
     is a live caller (RaidPlannerClient.cs) — this is the sole admin endpoint
     that keeps API-key-accepting auth. is_admin-gated, idempotent,
     never-overwrites.
+
+    Commits the import and records a catalog.ids_imported audit row.
     """
     if not current_user.is_admin:
         raise PermissionDenied("Admin access required")
@@ -164,6 +167,24 @@ async def import_catalog_verified_ids(
         skipped=result.skipped,
         errors=len(result.errors),
     )
+    # R-AD-D (OWNER-2): the service only flushes, so nothing persisted before this commit.
+    # One transaction for the ID writes and the audit row; emitted even when nothing updated.
+    await audit(
+        session,
+        actor=current_user,
+        action="catalog.ids_imported",
+        target_type="catalog",
+        target_id="collection-catalog",
+        target_label="Collection catalog",
+        new={
+            "updated": result.updated,
+            "already_set": result.already_set,
+            "skipped": result.skipped,
+            "errors": len(result.errors),
+        },
+        request=request,
+    )
+    await session.commit()
     return result
 
 
