@@ -129,12 +129,12 @@ function weekdayInZone(iso: string, timeZone: string): string {
  * "Every Tue/Fri · next Fri Oct 2 · RSVP applies to every week". The days come
  * from BYDAY in rule order, joined with "/" like `deriveRecurringSummary`;
  * "next" is the series' next start after now, and is dropped when there is none.
+ * Both are in the SESSION's zone (BYDAY is matched there), never the viewer's.
  */
 function buildScopeNote(
   session: ScheduleSession & { recurrenceRule: string },
   nowMs: number,
   cancelled: ReadonlySet<string> | undefined,
-  viewerTimezone: string | undefined,
 ): string {
   const rule = parseRRule(session.recurrenceRule);
   const days = rule && rule.byday.length > 0
@@ -143,7 +143,7 @@ function buildScopeNote(
   const next = computeNextOccurrence(
     session.startTime, session.recurrenceRule, new Date(nowMs), cancelled, session.timezone,
   );
-  const nextLabel = next ? formatShortDate(next, viewerTimezone) : null;
+  const nextLabel = next ? formatShortDate(next, session.timezone) : null;
   return [`Every ${days}`, nextLabel && `next ${nextLabel}`, 'RSVP applies to every week']
     .filter(Boolean)
     .join(' · ');
@@ -165,7 +165,6 @@ function buildCardEntries(
   occurrences: SessionOccurrence[],
   isCurrentWeek: boolean,
   cancelledBySession: ReadonlyMap<string, ReadonlySet<string>>,
-  viewerTimezone: string | undefined,
 ): { entries: SessionCardEntry[]; nextIndex: number } {
   const nowMs = Date.now();
   const bySession = new Map<string, SessionOccurrence[]>();
@@ -190,7 +189,7 @@ function buildCardEntries(
     );
     entries.push({
       occ: shown,
-      scopeNote: buildScopeNote(session, nowMs, cancelled, viewerTimezone),
+      scopeNote: buildScopeNote(session, nowMs, cancelled),
       takesRsvp: live !== null && live.getTime() === new Date(shown.occursAt).getTime(),
     });
   }
@@ -316,7 +315,7 @@ export function SessionList({
     );
   }
 
-  const { entries, nextIndex } = buildCardEntries(occurrences, isCurrentWeek, cancelledBySession, viewerTimezone);
+  const { entries, nextIndex } = buildCardEntries(occurrences, isCurrentWeek, cancelledBySession);
 
   return (
     <div className="grid gap-3.5">

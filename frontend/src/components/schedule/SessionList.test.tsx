@@ -358,6 +358,25 @@ describe('SessionList — R-P0-12 one card per recurring series', () => {
     expect(screen.getAllByText(/RSVP applies to every week/)).toHaveLength(1);
   });
 
+  it('the scope note names the next day in the session zone, not the viewer zone (LA Tue/Fri 20:00 seen from UTC)', () => {
+    // 20:00 PDT Tue/Fri is Wed/Sat 03:00 UTC. The days (BYDAY) are session-zone,
+    // so "next" must be too: Fri Oct 2, not the viewer's Sat Oct 3.
+    vi.setSystemTime(new Date('2026-09-30T12:00:00.000Z'));
+    const la = makeSession({
+      id: 'la', title: 'LA Series', isRecurring: true, recurrenceRule: 'FREQ=WEEKLY;BYDAY=TU,FR',
+      startTime: '2026-09-30T03:00:00.000Z', endTime: '2026-09-30T05:00:00.000Z',
+      timezone: 'America/Los_Angeles',
+    });
+    const start = new Date('2026-09-28T00:00:00.000Z');
+    const occurrences = sessionOccurrencesInRange(
+      [la], { start, end: new Date(start.getTime() + 6 * DAY_MS) }, new Map(),
+    );
+    renderSeries({ occurrences, isCurrentWeek: true, viewerTimezone: 'UTC' });
+    const note = screen.getByTestId('session-scope-note').textContent ?? '';
+    expect(note).toBe('Every Tue/Fri · next Fri Oct 2 · RSVP applies to every week');
+    expect(note).not.toMatch(/Sat/);
+  });
+
   it('the schedule-session-{id} anchor and the highlight sit on the series card', () => {
     renderSeries({ occurrences: weekOf(THIS_WEEK), isCurrentWeek: true, highlightedSessionId: 'rec' });
     const anchors = document.querySelectorAll('[id="schedule-session-rec"]');

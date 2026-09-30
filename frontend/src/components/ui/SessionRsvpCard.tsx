@@ -26,9 +26,10 @@ import type { ScheduleSession, ScheduleRsvp, RsvpStatus } from '../../types';
  *     · 3-button RSVP strip (I'm in / Tentative / Can't make it)
  *
  * Time states (R-P0-12): once `endTime` has passed the chip reads
- * "Played · Mon Sep 28" and the RSVP block (grid or stack, counts, note,
- * strip) is not rendered — it shows the series' CURRENT answers, which would
- * read as that week's attendance. From start until end the chip reads
+ * "Played · Mon Sep 28" (session zone) and the RSVP strip is not rendered. For
+ * a recurring series the rest of the block (grid or stack, counts, note) goes
+ * too — it shows the series' CURRENT answers, which would read as that week's
+ * attendance; a one-off keeps its own answers. From start until end the chip reads
  * "In progress" and RSVP stays open.
  *
  * Avatar-ring coloring decision: `ScheduleRsvp` carries no member ROLE field
@@ -210,15 +211,22 @@ function sessionPhase(startIso: string, endIso: string): SessionPhase | null {
 }
 
 /**
- * Countdown chip text. Ended → "Played · Mon Sep 28"; running → "In progress";
- * upcoming → a calendar-day countdown ("today" / "tomorrow" / "in N days")
- * measured in the viewer's timezone so "today" matches their clock. Only an
- * upcoming start reaches the countdown, so a past start never reads "today".
+ * Countdown chip text. Ended → "Played · Mon Sep 28", dated in the SESSION's
+ * timezone like every other absolute date on the card; running → "In
+ * progress"; upcoming → a calendar-day countdown ("today" / "tomorrow" / "in N
+ * days") measured in the viewer's timezone so "today" matches their clock.
+ * Only an upcoming start reaches the countdown, so a past start never reads
+ * "today".
  */
-function countdownLabel(iso: string, phase: SessionPhase | null, viewerTz?: string): string | null {
+function countdownLabel(
+  iso: string,
+  phase: SessionPhase | null,
+  viewerTz?: string,
+  sessionTz?: string,
+): string | null {
   if (phase === null) return null;
   if (phase === 'ended') {
-    const day = formatShortDate(iso, viewerTz);
+    const day = formatShortDate(iso, sessionTz);
     return day ? `Played · ${day}` : 'Played';
   }
   if (phase === 'in-progress') return 'In progress';
@@ -318,7 +326,11 @@ export function SessionRsvpCard({
 
   const phase = sessionPhase(session.startTime, session.endTime);
   const ended = phase === 'ended';
-  const countdown = countdownLabel(session.startTime, phase, viewerTz);
+  // A recurring series' RSVPs are series-wide, so on an ended card they would
+  // read as that week's attendance: hide the whole answer block. A one-off's
+  // answers are that session's own and stay visible (R-P0-12).
+  const hideAnswers = ended && session.isRecurring && Boolean(session.recurrenceRule);
+  const countdown = countdownLabel(session.startTime, phase, viewerTz, sessionTz);
 
   const availableCount = session.rsvps.filter((r) => r.status === 'available').length;
   const tentativeCount = session.rsvps.filter((r) => r.status === 'tentative').length;
@@ -424,8 +436,8 @@ export function SessionRsvpCard({
           dayTimeBlock
         )}
 
-        {/* Ended (R-P0-12): no RSVP block at all — see the header comment. */}
-        {ended ? null : trackingOff ? (
+        {/* Ended recurring series (R-P0-12): no answers at all — see the header comment. */}
+        {hideAnswers ? null : trackingOff ? (
           <div data-testid="availability-not-required" className="text-xs text-text-tertiary">
             Availability not required
           </div>
@@ -474,8 +486,8 @@ export function SessionRsvpCard({
               </div>
             )}
 
-            {/* RSVP button strip — omitted for Schedule viewers */}
-            {!omitStrip && (
+            {/* RSVP button strip — omitted for Schedule viewers and on every ended card */}
+            {!omitStrip && !ended && (
               <div className="flex gap-2">
                 {RSVP_OPTIONS.map(({ status, label }) => {
                   const isActive = currentUserRsvp === status;

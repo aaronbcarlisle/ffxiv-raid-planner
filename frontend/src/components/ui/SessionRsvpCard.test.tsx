@@ -387,14 +387,17 @@ describe('SessionRsvpCard — R-P0-12 Played / In progress', () => {
     { userId: 'u-Melee', username: 'Melee' },
   ];
 
-  it('an ended session reads "Played · Mon Sep 28" with no RSVP buttons, no member grid and no "today"', () => {
+  it('an ended recurring series reads "Played · Tue Sep 29" in the SESSION zone with no buttons, grid, counts or "today"', () => {
     vi.setSystemTime(new Date('2026-09-28T23:00:00Z'));
     // Session zone Tokyo (Tue Sep 29 05:00) vs viewer UTC (Mon Sep 28 20:00):
-    // the Played date must be the VIEWER's calendar day.
+    // the Played date is the SESSION's calendar day, like the day line above it.
+    // (Sanctioned change: this used to expect the viewer's "Mon Sep 28".)
     const session = makeSession({
       startTime: '2026-09-28T20:00:00Z',
       endTime: '2026-09-28T22:00:00Z',
       timezone: 'Asia/Tokyo',
+      isRecurring: true,
+      recurrenceRule: 'FREQ=WEEKLY;BYDAY=TU',
     });
     const onRsvp = vi.fn();
     const { rerender } = render(
@@ -407,8 +410,9 @@ describe('SessionRsvpCard — R-P0-12 Played / In progress', () => {
         viewerTimezone="UTC"
       />,
     );
+    expect(screen.getByTestId('session-daytime').textContent).toMatch(/Tuesday, Sep 29/);
     const chip = screen.getByTestId('countdown-chip');
-    expect(chip.textContent).toBe('Played · Mon Sep 28');
+    expect(chip.textContent).toBe('Played · Tue Sep 29');
     expect(chip.textContent).not.toMatch(/today/i);
     expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /tentative/i })).not.toBeInTheDocument();
@@ -419,10 +423,67 @@ describe('SessionRsvpCard — R-P0-12 Played / In progress', () => {
     expect(screen.queryByTestId('rsvp-counts')).not.toBeInTheDocument();
     expect(screen.queryByTestId('rsvp-warning-note')).not.toBeInTheDocument();
 
-    // Home's mount (no members, a live callback) hides the strip the same way.
+    // Home's mount (no members, a live callback) hides the strip the same way,
+    // and the avatar stack with it.
     rerender(<SessionRsvpCard session={session} onRsvp={onRsvp} viewerTimezone="UTC" />);
-    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Mon Sep 28');
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Tue Sep 29');
     expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rsvp-avatar')).not.toBeInTheDocument();
+    expect(onRsvp).not.toHaveBeenCalled();
+  });
+
+  it('an ended recurring series with availability off hides "Availability not required" too', () => {
+    vi.setSystemTime(new Date('2026-09-28T23:00:00Z'));
+    render(
+      <SessionRsvpCard
+        session={makeSession({
+          startTime: '2026-09-28T20:00:00Z', endTime: '2026-09-28T22:00:00Z',
+          isRecurring: true, recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO', trackAvailability: false,
+        })}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('countdown-chip').textContent).toMatch(/^Played/);
+    expect(screen.queryByTestId('availability-not-required')).not.toBeInTheDocument();
+  });
+
+  it('an ended ONE-OFF session keeps its counts, avatars and warning note, but no RSVP buttons', () => {
+    vi.setSystemTime(new Date('2026-09-28T23:00:00Z'));
+    const session = makeSession({
+      startTime: '2026-09-28T20:00:00Z',
+      endTime: '2026-09-28T22:00:00Z',
+      timezone: 'UTC',
+    });
+    const onRsvp = vi.fn();
+    const { rerender } = render(
+      <SessionRsvpCard
+        session={session}
+        variant="later"
+        members={gridMembers}
+        memberDetail="grid"
+        onRsvp={onRsvp}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Mon Sep 28');
+    expect(screen.getByTestId('rsvp-member-grid')).toBeInTheDocument();
+    expect(screen.getByTestId('rsvp-counts').textContent).toMatch(/1 in/);
+    expect(screen.getByTestId('rsvp-warning-note').textContent).toMatch(/Healer Two tentative/);
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /tentative/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /can't make it/i })).not.toBeInTheDocument();
+
+    // Home's mount (no members): the avatar stack and counts stay, the strip doesn't.
+    rerender(<SessionRsvpCard session={session} onRsvp={onRsvp} viewerTimezone="UTC" />);
+    expect(screen.getAllByTestId('rsvp-avatar')).toHaveLength(2);
+    expect(screen.getByTestId('rsvp-counts')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+
+    // Availability off: a one-off keeps its "not required" line.
+    rerender(
+      <SessionRsvpCard session={{ ...session, trackAvailability: false }} onRsvp={onRsvp} viewerTimezone="UTC" />,
+    );
+    expect(screen.getByTestId('availability-not-required')).toBeInTheDocument();
     expect(onRsvp).not.toHaveBeenCalled();
   });
 
@@ -455,7 +516,8 @@ describe('SessionRsvpCard — R-P0-12 Played / In progress', () => {
       />,
     );
     expect(screen.getByTestId('countdown-chip').textContent).not.toMatch(/today/i);
-    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Fri Jul 3');
+    // Dated in the session zone (fixture: New York → Thu Jul 2 20:00), not the viewer's UTC Fri Jul 3.
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Thu Jul 2');
     unmount();
 
     // Started before midnight, still running after it → In progress, not "today".
