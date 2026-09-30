@@ -205,9 +205,10 @@ const PHASES: Phase[] = [
     id: 'phase-10',
     number: '10',
     title: 'Discord Bot',
-    status: 'planned',
+    status: 'in-progress',
     icon: Bot,
     items: [
+      { title: 'Link your Discord server', description: 'Complete - /xrp link connects your server, and scheduled sessions sync to Discord Events' },
       { title: 'Slash commands for common actions' },
       { title: 'Loot notifications in Discord' },
       { title: 'Priority queries from chat' },
@@ -222,8 +223,8 @@ const PHASES: Phase[] = [
     icon: Bell,
     items: [
       {
-        title: 'Notification bell with unread badge',
-        description: 'Per-static notification inbox with support for join requests, roster changes, session updates, and announcements.',
+        title: 'Notification inbox with unread badge',
+        description: 'Complete - one inbox for all your statics: join requests, roster changes, session updates, and announcements.',
       },
       {
         title: 'Activity feed panel',
@@ -231,7 +232,7 @@ const PHASES: Phase[] = [
       },
       {
         title: 'Read / unread state persistence',
-        description: 'Notifications track read state per user. Unread count persists across page loads.',
+        description: 'Complete - notifications track read state per user, and the unread count persists across page loads.',
       },
     ],
   },
@@ -239,16 +240,16 @@ const PHASES: Phase[] = [
     id: 'phase-12',
     number: '12',
     title: 'Static Dashboard',
-    status: 'in-progress',
+    status: 'complete',
     icon: LayoutDashboard,
     items: [
       {
-        title: 'Home tab for static groups',
-        description: 'First tab in GroupView: roster quick-stats (size, avg iLv, pending applications), next scheduled session, and a pending applications panel for leaders.',
+        title: 'Overview tab for your static',
+        description: 'Roster quick-stats (size, avg iLv), your next scheduled session, and a pending applications panel for leaders.',
       },
       {
         title: 'Goals progress widget',
-        description: 'Compact widget showing raid-tier completion goals and individual BiS progress at a glance.',
+        description: 'Goals & Farms: raid-tier objectives and farm progress at a glance.',
       },
     ],
   },
@@ -332,16 +333,16 @@ const PHASES: Phase[] = [
     id: 'phase-17',
     number: '17',
     title: 'Multi-BiS / External Gear Plan Integration',
-    status: 'planned',
+    status: 'in-progress',
     icon: Link2,
     items: [
       {
         title: 'Per-job external BiS plan links',
-        description: 'Players can attach an external BiS plan URL (Etro, XIVGear) to each job profile. Leaders see all job BiS links in the roster.',
+        description: 'Complete - save Etro and XIVGear links as named BiS targets for each of your jobs.',
       },
       {
         title: 'Multi-job gear target tracking',
-        description: 'Track gear progress toward BiS across multiple jobs simultaneously, with per-job completion percentages.',
+        description: 'Complete - multiple BiS targets per job, with a per-job gear view in your Player Hub.',
       },
       {
         title: 'Cross-job loot planning',
@@ -624,7 +625,8 @@ export default function RoadmapDocs() {
               <p className="text-text-secondary mb-4">
                 FFXIV Raid Planner is fully functional for managing static raid groups. Core features
                 including gear tracking, loot priority, BiS import, scheduling, Lodestone sync, the mount
-                farm tracker, the Dalamud plugin, and multi-user support are complete and in active use.
+                farm tracker, the Static Finder, notifications, the Dalamud plugin, and multi-user support
+                are complete and in active use.
               </p>
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="bg-surface-elevated rounded-lg p-4">
@@ -632,11 +634,11 @@ export default function RoadmapDocs() {
                   <div className="text-sm text-text-muted">Jobs Supported</div>
                 </div>
                 <div className="bg-surface-elevated rounded-lg p-4">
-                  <div className="text-2xl font-bold text-accent mb-1">5</div>
-                  <div className="text-sm text-text-muted">Permission Levels</div>
+                  <div className="text-2xl font-bold text-accent mb-1">4</div>
+                  <div className="text-sm text-text-muted">Static Roles</div>
                 </div>
                 <div className="bg-surface-elevated rounded-lg p-4">
-                  <div className="text-2xl font-bold text-accent mb-1">4</div>
+                  <div className="text-2xl font-bold text-accent mb-1">3</div>
                   <div className="text-sm text-text-muted">BiS Import Sources</div>
                 </div>
               </div>
