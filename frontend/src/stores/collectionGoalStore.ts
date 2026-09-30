@@ -582,6 +582,8 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
       drops: { ...s.drops, [goalId]: (s.drops[goalId] ?? []).filter((d) => d.id !== dropId) },
     }));
     // The server restores the recipient's prior state, so participants and goal counts changed.
+    // It also hands the prior state to the earliest remaining drop, so the cached rows are stale.
+    await get().fetchDrops(groupId, goalId);
     await get().fetchParticipants(groupId, goalId);
     await get().fetchGoals(groupId);
   },

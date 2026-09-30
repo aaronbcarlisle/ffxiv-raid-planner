@@ -73,11 +73,52 @@ describe('collectionGoalStore', () => {
     expect(api.delete).toHaveBeenCalledWith(
       '/api/static-groups/group-1/collection-goals/goal-1/drops/d1',
     );
-    expect(useCollectionGoalStore.getState().drops['goal-1'].map((d) => d.id)).toEqual(['d2']);
     expect(api.get).toHaveBeenCalledWith(
       '/api/static-groups/group-1/collection-goals/goal-1/participants',
     );
     expect(api.get).toHaveBeenCalledWith('/api/static-groups/group-1/collection-goals');
+  });
+
+  it('deleteDrop refetches the drops so the prior-state hand-off reaches the remaining rows', async () => {
+    // Cached: d2 holds no prior. The server hands d1's prior ('need') to d2 on delete.
+    useCollectionGoalStore.setState({ drops: { 'goal-1': [makeDrop('d1'), makeDrop('d2')] } });
+    vi.mocked(api.delete).mockResolvedValue(undefined);
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url.endsWith('/drops')) {
+        return [
+          {
+            id: 'd2', goal_id: 'goal-1', static_group_id: 'group-1', recipient_user_id: null,
+            created_by_id: 'u1', quantity: 1, dropped_at: '2026-09-30T00:00:00Z', notes: null,
+            created_at: '2026-09-30T00:00:00Z', recipient_display_name: null,
+            recipient_prior_state: 'need',
+          },
+        ];
+      }
+      return [];
+    });
+
+    await useCollectionGoalStore.getState().deleteDrop('group-1', 'goal-1', 'd1');
+
+    expect(api.get).toHaveBeenCalledWith('/api/static-groups/group-1/collection-goals/goal-1/drops');
+    const remaining = useCollectionGoalStore.getState().drops['goal-1'];
+    expect(remaining.map((d) => d.id)).toEqual(['d2']);
+    expect(remaining[0].recipientPriorState).toBe('need');
+  });
+
+  it('deleteDrop hides the row immediately, before the refetched drops arrive', async () => {
+    useCollectionGoalStore.setState({ drops: { 'goal-1': [makeDrop('d1'), makeDrop('d2')] } });
+    vi.mocked(api.delete).mockResolvedValue(undefined);
+    let idsAtFirstGet: string[] = [];
+    vi.mocked(api.get).mockImplementation(async () => {
+      if (idsAtFirstGet.length === 0) {
+        idsAtFirstGet = (useCollectionGoalStore.getState().drops['goal-1'] ?? []).map((d) => d.id);
+      }
+      return [];
+    });
+
+    await useCollectionGoalStore.getState().deleteDrop('group-1', 'goal-1', 'd1');
+
+    expect(idsAtFirstGet).toEqual(['d2']);
   });
 
   it('deleteDrop keeps the drop locally when the server refuses', async () => {
