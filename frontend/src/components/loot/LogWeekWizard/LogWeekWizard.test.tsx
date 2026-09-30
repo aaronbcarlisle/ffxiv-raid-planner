@@ -18,6 +18,11 @@ const mocks = vi.hoisted(() => ({
   logLootAndUpdateGear: vi.fn(),
   logMaterialAndUpdateGear: vi.fn(),
   markFloorCleared: vi.fn(),
+  /** What the wizard reads from the store: the write action and the in-flight flags. */
+  storeState: {
+    markFloorCleared: undefined as unknown,
+    loadingStates: { lootLog: false, materialLog: false },
+  },
 }));
 
 vi.mock('../../../utils/lootCoordination', async (importOriginal) => ({
@@ -29,7 +34,8 @@ vi.mock('../../../utils/materialCoordination', async (importOriginal) => ({
   logMaterialAndUpdateGear: mocks.logMaterialAndUpdateGear,
 }));
 vi.mock('../../../stores/lootTrackingStore', () => ({
-  useLootTrackingStore: () => ({ markFloorCleared: mocks.markFloorCleared }),
+  useLootTrackingStore: (selector?: (s: typeof mocks.storeState) => unknown) =>
+    selector ? selector(mocks.storeState) : mocks.storeState,
 }));
 
 import { LogWeekWizard } from './index';
@@ -44,25 +50,27 @@ import {
 
 type WizardProps = ComponentProps<typeof LogWeekWizard>;
 
+function wizardProps(onClose: () => void, overrides: Partial<WizardProps> = {}): WizardProps {
+  return {
+    isOpen: true,
+    onClose,
+    groupId: 'g1',
+    tierId: DEVTST_TIER_ID,
+    players: DEVTST_PLAYERS,
+    settings: DEVTST_SETTINGS,
+    floors: DEVTST_FLOORS,
+    currentWeek: 11,
+    maxWeek: 12,
+    lootLog: DEVTST_LOOT_LOG,
+    materialLog: DEVTST_MATERIAL_LOG,
+    ...overrides,
+  };
+}
+
 function renderWizard(overrides: Partial<WizardProps> = {}) {
   const onClose = vi.fn();
-  render(
-    <LogWeekWizard
-      isOpen
-      onClose={onClose}
-      groupId="g1"
-      tierId={DEVTST_TIER_ID}
-      players={DEVTST_PLAYERS}
-      settings={DEVTST_SETTINGS}
-      floors={DEVTST_FLOORS}
-      currentWeek={11}
-      maxWeek={12}
-      lootLog={DEVTST_LOOT_LOG}
-      materialLog={DEVTST_MATERIAL_LOG}
-      {...overrides}
-    />,
-  );
-  return { onClose };
+  const { rerender } = render(<LogWeekWizard {...wizardProps(onClose, overrides)} />);
+  return { onClose, rerender: (next: Partial<WizardProps>) => rerender(<LogWeekWizard {...wizardProps(onClose, { ...overrides, ...next })} />) };
 }
 
 const floorTab = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) });
@@ -90,6 +98,8 @@ beforeEach(() => {
   mocks.logLootAndUpdateGear.mockReset().mockResolvedValue(undefined);
   mocks.logMaterialAndUpdateGear.mockReset().mockResolvedValue(undefined);
   mocks.markFloorCleared.mockReset().mockResolvedValue(undefined);
+  mocks.storeState.markFloorCleared = mocks.markFloorCleared;
+  mocks.storeState.loadingStates = { lootLog: false, materialLog: false };
   document.body.removeAttribute('style');
   // jsdom has no scrollIntoView; Radix Select calls it when keyboard-opened.
   Element.prototype.scrollIntoView = vi.fn();
@@ -222,6 +232,25 @@ describe('LogWeekWizard — seeding and locking (R-P0-9)', () => {
     expect(screen.getByText(LOCKED_EARRING)).toBeInTheDocument();
   });
 
+  it('an isExtra drop does not lock its slot: the row stays editable, shows the hint, and is submitted (fix wave)', async () => {
+    // devtst: week 1 / M9S / ring / drop / isExtra (id 64) is not the ring's real award.
+    const { onClose } = renderWizard({ currentWeek: 1 });
+    clearOnlyM9S();
+
+    expect(screen.queryByText(/^R\. Ring → .+ · logged$/)).toBeNull();
+    expect(gearCombo('ring1')).toHaveTextContent(/Top Priority/);
+    expect(screen.getByText('Also logged this week: R. Ring → Ranged One (drop, extra)')).toBeInTheDocument();
+    // The earring's real drop (id 63) still locks.
+    expect(screen.getByText(LOCKED_EARRING)).toBeInTheDocument();
+
+    goToConfirm();
+    submit(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    const calls = gearCalls();
+    expect(calls.filter((c) => c.itemSlot === 'ring1')).toHaveLength(1);
+    expect(calls.filter((c) => c.itemSlot === 'earring')).toHaveLength(0);
+  });
+
   it('with enhanced scoring on, the preselected player carries the "Top Priority" label (V5)', () => {
     const settings = { ...DEVTST_SETTINGS, enableEnhancedScoring: true };
     renderWizard({ settings, currentWeek: 12 });
@@ -263,6 +292,75 @@ describe('LogWeekWizard — seeding and locking (R-P0-9)', () => {
       compared += 1;
     }
     expect(compared).toBeGreaterThan(0);
+  });
+});
+
+describe('LogWeekWizard — logs that arrive after open (fix wave)', () => {
+  const GONE_LOGS = { lootLog: [] as LootLogEntry[], materialLog: [] };
+
+  it('a log that arrives after the wizard opened locks its row and is never sent', async () => {
+    mocks.storeState.loadingStates = { lootLog: true, materialLog: true };
+    const { onClose, rerender } = renderWizard(GONE_LOGS);
+    clearOnlyM9S();
+    expect(gearCombo('earring')).toBeInTheDocument();
+
+    // The fetch lands: the earring drop is now in the log.
+    mocks.storeState.loadingStates = { lootLog: false, materialLog: false };
+    rerender({ lootLog: DEVTST_LOOT_LOG, materialLog: DEVTST_MATERIAL_LOG });
+
+    expect(screen.getByText(LOCKED_EARRING)).toBeInTheDocument();
+    expect(queryGearCombo('earring')).toBeNull();
+    // Rows the log does not hold are still editable and suggested.
+    expect(gearCombo('necklace')).toHaveTextContent(/Top Priority/);
+
+    goToConfirm();
+    expect(screen.getByText('1 already logged this week')).toBeInTheDocument();
+    submit(11);
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(gearCalls().filter((c) => c.itemSlot === 'earring')).toHaveLength(0);
+    expect(gearCalls().length).toBeGreaterThan(0);
+  });
+
+  it('a late log does not reset an edit the user already made on another row', () => {
+    mocks.storeState.loadingStates = { lootLog: true, materialLog: true };
+    const { rerender } = renderWizard(GONE_LOGS);
+    clearOnlyM9S();
+    fireEvent.click(dropToggle('necklace'));
+
+    mocks.storeState.loadingStates = { lootLog: false, materialLog: false };
+    rerender({ lootLog: DEVTST_LOOT_LOG, materialLog: DEVTST_MATERIAL_LOG });
+
+    expect(screen.getByText(LOCKED_EARRING)).toBeInTheDocument();
+    expect(dropToggle('necklace')).not.toBeChecked(); // still marked "didn't drop"
+  });
+
+  it.each(['lootLog', 'materialLog'])('submit is disabled with a reason while the %s fetch is in flight, and re-enables when it lands', (key) => {
+    mocks.storeState.loadingStates = { lootLog: key === 'lootLog', materialLog: key === 'materialLog' };
+    const { rerender } = renderWizard();
+    clearOnlyM9S();
+    goToConfirm();
+
+    expect(screen.getByRole('button', { name: 'Log Week 11' })).toBeDisabled();
+    expect(screen.getByText(/Loading this week.s existing log/)).toBeInTheDocument();
+
+    mocks.storeState.loadingStates = { lootLog: false, materialLog: false };
+    rerender({});
+    expect(screen.getByRole('button', { name: 'Log Week 11' })).toBeEnabled();
+    expect(screen.queryByText(/Loading this week.s existing log/)).toBeNull();
+  });
+
+  it('submit is disabled with a reason when the logs failed to load', async () => {
+    const { rerender } = renderWizard({ logsFailed: true });
+    clearOnlyM9S();
+    goToConfirm();
+
+    expect(screen.getByRole('button', { name: 'Log Week 11' })).toBeDisabled();
+    expect(screen.getByText(/Couldn.t load the existing log/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Log Week 11' }));
+    expect(mocks.logLootAndUpdateGear).not.toHaveBeenCalled();
+
+    rerender({ logsFailed: false });
+    expect(screen.getByRole('button', { name: 'Log Week 11' })).toBeEnabled();
   });
 });
 

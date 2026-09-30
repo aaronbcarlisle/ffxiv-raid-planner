@@ -78,6 +78,18 @@ describe('loggedSlotsForWeek', () => {
     expect(out[2].otherMethods.head).toEqual([book]);
   });
 
+  it('an isExtra drop never locks: it goes to otherMethods, and a real drop on the same slot still locks', () => {
+    const extra = { ...loot(1, 'M9S', 'ring', 'Ranged One'), isExtra: true };
+    const real = loot(1, 'M9S', 'ring1', 'Melee One');
+    const onlyExtra = loggedSlotsForWeek({ floors: FLOORS, week: 1, lootLog: [extra], materialLog: [] });
+    expect(onlyExtra[1].gear).toEqual({});
+    expect(onlyExtra[1].otherMethods.ring1).toEqual([extra]);
+
+    const both = loggedSlotsForWeek({ floors: FLOORS, week: 1, lootLog: [extra, real], materialLog: [] });
+    expect(both[1].gear.ring1).toBe(real);
+    expect(both[1].otherMethods.ring1).toEqual([extra]);
+  });
+
   it('materials follow the same rule: a non-drop material entry does not lock', () => {
     const bought = mat(3, 'M11S', 'twine', 'Caster One', 'purchase');
     const dropped = mat(3, 'M11S', 'solvent', 'Melee One', 'drop');

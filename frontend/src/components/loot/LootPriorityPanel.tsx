@@ -215,6 +215,8 @@ interface LootPriorityPanelProps {
   // Optional props for enhanced priority display
   lootLog?: LootLogEntry[];
   materialLog?: MaterialLogEntry[];
+  /** The caller's load of `lootLog`/`materialLog` failed: the Log Floor wizard refuses to submit. */
+  logsFailed?: boolean;
   showEnhancedScores?: boolean;
   // Optional props for URL-controlled subtab (for deep linking)
   activeSubTab?: LootSubTabType;
@@ -285,6 +287,7 @@ export function LootPriorityPanel({
   onLogSuccess,
   lootLog = [],
   materialLog = [],
+  logsFailed = false,
   showEnhancedScores = false,
   activeSubTab: controlledSubTab,
   onSubTabChange,
@@ -797,6 +800,7 @@ export function LootPriorityPanel({
           maxWeek={effectiveMaxWeek}
           lootLog={lootLog}
           materialLog={materialLog}
+          logsFailed={logsFailed}
           onSuccess={(_loggedWeek: number) => {
             setLogFloorWizardOpen(false);
             onLogSuccess?.();

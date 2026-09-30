@@ -59,7 +59,7 @@ export function GearStep({
   const alsoLoggedHint = (label: string, entry: SlotEntry) =>
     entry.alsoLogged && entry.alsoLogged.length > 0 ? (
       <p className="mt-1 text-xs text-text-muted">
-        Also logged this week: {entry.alsoLogged.map((e) => `${label} → ${e.recipientName} (${e.method})`).join(', ')}
+        Also logged this week: {entry.alsoLogged.map((e) => `${label} → ${e.recipientName} (${e.isExtra ? `${e.method}, extra` : e.method})`).join(', ')}
       </p>
     ) : null;
 

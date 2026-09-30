@@ -16,6 +16,8 @@ export const STEP_ORDER: WizardStep[] = ['gear', 'books', 'confirm'];
 interface LoggedRecipient {
   recipientName: string;
   method: LootMethod;
+  /** An extra/off-job drop: shown in the hint, never a lock. */
+  isExtra?: boolean;
 }
 
 export interface SlotEntry {
@@ -33,7 +35,7 @@ export interface SlotEntry {
    * flag on top of that (V1).
    */
   locked?: LoggedRecipient;
-  /** Same-slot entries logged another way (tome, book, purchase): shown as a hint, never a lock (V4). */
+  /** Same-slot entries logged another way (tome, book, purchase) or as an extra: shown as a hint, never a lock (V4). */
   alsoLogged?: LoggedRecipient[];
 }
 

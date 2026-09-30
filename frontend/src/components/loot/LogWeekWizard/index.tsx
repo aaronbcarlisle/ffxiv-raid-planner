@@ -9,7 +9,10 @@
  * LOG-1 (R-P0-9, R-P0-10): the wizard seeds from the week's loot and material
  * logs. A slot the week already holds as a DROP is locked — shown read-only,
  * skipped by every handler, "Restore All" and both submit filters — and the
- * seed re-runs when the in-modal week changes. Suggestions and the
+ * seed re-runs when the in-modal week changes. Only `drop && !isExtra` locks
+ * (extras and other methods are a hint). Logs that land after open lock their
+ * rows live, and submit is disabled while the logs are in flight or failed
+ * (`logsFailed`), since no mount gates opening on them. Suggestions and the
  * Top/2nd/3rd labels come from the same ranking Queues uses
  * (`buildRecipientEntries` / `materialPriorityEntries`, with FloorCard's
  * enhanced-scoring gate), so the two surfaces can't disagree on who is next.
@@ -41,7 +44,7 @@ import {
   needsTomeWeaponAugmentation,
   logMaterialAndUpdateGear,
 } from '../../../utils/materialCoordination';
-import type { SnapshotPlayer, StaticSettings, LootLogEntry, MaterialLogEntry, LootLogEntryCreate, MarkFloorClearedRequest } from '../../../types';
+import type { SnapshotPlayer, StaticSettings, LootMethod, LootLogEntry, MaterialLogEntry, LootLogEntryCreate, MarkFloorClearedRequest } from '../../../types';
 import { STEP_ORDER, STEP_TITLES, type WizardStep, type FloorNumber, type FloorEntries, type SlotEntry } from './types';
 import { loggedSlotsForWeek } from './loggedSlots';
 import { GearStep } from './GearStep';
@@ -61,6 +64,12 @@ interface LogWeekWizardProps {
   maxWeek?: number;
   lootLog?: LootLogEntry[];
   materialLog?: MaterialLogEntry[];
+  /**
+   * The mount's load of the loot/material logs failed. The wizard cannot tell
+   * "nothing logged" from "couldn't load", so it refuses to submit (LOG-1).
+   * The in-flight case it reads from the store itself.
+   */
+  logsFailed?: boolean;
   /** Called after successful submission. Receives the week number entries were logged to. */
   onSuccess?: (loggedWeek: number) => void;
   /** Single floor mode - only log specified floor, skip floor tabs */
@@ -81,6 +90,7 @@ export function LogWeekWizard({
   maxWeek: maxWeekProp,
   lootLog = [],
   materialLog = [],
+  logsFailed = false,
   onSuccess,
   singleFloorMode = false,
   initialFloor = 1,
@@ -96,7 +106,12 @@ export function LogWeekWizard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { markFloorCleared } = useLootTrackingStore();
+  const markFloorCleared = useLootTrackingStore((s) => s.markFloorCleared);
+  // A fetch in flight means `lootLog`/`materialLog` may still be the previous
+  // load (or empty): no submit until it lands. None of the three mounts gates
+  // opening on this, so the wizard gates its own submit.
+  const logsLoading = useLootTrackingStore((s) => s.loadingStates.lootLog || s.loadingStates.materialLog);
+  const logsUnknown = logsLoading || logsFailed;
 
   // Configured main roster players
   const mainRosterPlayers = useMemo(() => {
@@ -237,7 +252,7 @@ export function LogWeekWizard({
       // Gear slots: locked when already logged, otherwise the suggested player
       lootTable.gearDrops.forEach((slot) => {
         const existing = floorLogged.gear[slot];
-        const alsoLogged = floorLogged.otherMethods[slot]?.map((e) => ({ recipientName: e.recipientPlayerName, method: e.method }));
+        const alsoLogged = floorLogged.otherMethods[slot]?.map((e) => ({ recipientName: e.recipientPlayerName, method: e.method, isExtra: e.isExtra }));
         if (existing) {
           gear[slot] = {
             slot,
@@ -323,6 +338,47 @@ export function LogWeekWizard({
     }
     wasOpenRef.current = isOpen;
   }, [isOpen, initFloorData, singleFloorMode, initialFloor, currentWeek]);
+
+  // Logs that arrive (or change) after the wizard opened: lock every row the
+  // live logs now hold as a drop. Lock-only — never unlocks (a partial-failure
+  // lock is not in the props yet) and never touches an unlocked row's pick, so
+  // it is safe on every log change. The open and week-change seeds read the
+  // same logs; this covers the fetch that lands after them.
+  useEffect(() => {
+    if (!isOpen) return;
+    const logged = loggedSlotsForWeek({ floors, week: selectedWeek, lootLog, materialLog });
+    setFloorData((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const floorNum of [1, 2, 3, 4] as FloorNumber[]) {
+        const floor = prev[floorNum];
+        if (!floor) continue;
+        const lockRows = (
+          rows: Record<string, SlotEntry>,
+          found: Record<string, { recipientPlayerName: string; method: LootMethod }>,
+        ) => {
+          let out = rows;
+          for (const [slot, entry] of Object.entries(rows)) {
+            const hit = found[slot];
+            if (!hit || entry.locked) continue;
+            if (out === rows) out = { ...rows };
+            out[slot] = {
+              ...entry,
+              playerId: null,
+              didNotDrop: true,
+              locked: { recipientName: hit.recipientPlayerName, method: hit.method },
+            };
+          }
+          if (out !== rows) changed = true;
+          return out;
+        };
+        const gear = lockRows(floor.gear, logged[floorNum].gear);
+        const materials = lockRows(floor.materials, logged[floorNum].materials);
+        if (gear !== floor.gear || materials !== floor.materials) next[floorNum] = { ...floor, gear, materials };
+      }
+      return changed ? next : prev;
+    });
+  }, [isOpen, floors, selectedWeek, lootLog, materialLog]);
 
   // Handle slot assignment change
   const handleSlotChange = useCallback(
@@ -610,6 +666,8 @@ export function LogWeekWizard({
 
   // Submit all entries
   const handleSubmit = async () => {
+    // Belt and braces: the button is disabled while the logs are unknown.
+    if (logsUnknown) return;
     setIsSubmitting(true);
     setError(null);
 
@@ -866,6 +924,16 @@ export function LogWeekWizard({
           </div>
         )}
 
+        {/* Logs unknown: a submit now could duplicate what the week already holds */}
+        {logsUnknown && (
+          <div role="status" className="p-3 bg-status-warning/10 border border-status-warning/30 rounded text-text-primary text-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-status-warning" aria-hidden="true" />
+            {logsFailed
+              ? 'Couldn\'t load the existing log, so Log Week can\'t tell what is already logged. Reload the page to try again.'
+              : 'Loading this week\'s existing log. You can submit once it has loaded.'}
+          </div>
+        )}
+
         {/* Step content - min-height only for input steps, not confirm */}
         <div className={step !== 'confirm' ? 'min-h-[350px]' : ''}>
           {step === 'gear' && (
@@ -934,7 +1002,7 @@ export function LogWeekWizard({
               <Button
                 variant="primary"
                 onClick={handleSubmit}
-                disabled={isSubmitting || summary.total === 0}
+                disabled={isSubmitting || summary.total === 0 || logsUnknown}
               >
                 {isSubmitting ? (
                   <>

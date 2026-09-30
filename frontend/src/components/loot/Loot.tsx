@@ -1568,6 +1568,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         maxWeek={clock.maxWeek}
         lootLog={lootLog}
         materialLog={materialLog}
+        logsFailed={logsFailed}
         singleFloorMode={wizardState?.floor != null}
         initialFloor={wizardState?.floor ?? 1}
         onSuccess={(w) => { refresh(); if (lview === 'log') logWeek.setWeek(w); }}
