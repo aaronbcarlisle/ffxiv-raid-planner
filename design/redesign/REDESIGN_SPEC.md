@@ -358,7 +358,7 @@ UI copy uses these words and *only* these words for these concepts (rule 4 / *Co
 | **Track** | the abstraction a static progresses through (one Progress Engine, many tracks); adding non-savage content = "add a track" | "goal," "content" (vague), "activity" |
 | **Tier** | the current savage raid tier — the flagship track (e.g. "AAC Heavyweight") | — |
 | **Fight** | one named encounter inside a Tier (e.g. M9S, M12S) | ~~"floor" in user-facing copy (floor is an internal/code term)~~ **as built: "Floor N" is the primary user-facing label for a floor, and the fight name (e.g. M12S) is its tag; compact controls may show the fight name alone — ruled 2026-09-25 (U-1), E1 plan R-E1-J** |
-| **Prog / Progress** | a *status* — how far along a static is on a fight or tier | a page name, a tab, a noun-place ("the Progress page"); say "Floor 3 prog," not "go to Progress" **→ Amended 2026-09-30 (HS-29, `HOME_STRETCH.md`): "Progress" now names the fifth spine tab, the tracks surface (Goals, Farms, Collections, Split Clears; F-03). "Prog" stays the status word ("Floor 3 prog")** |
+| **Prog / Progress** | a *status* — how far along a static is on a fight or tier | ~~a page name, a tab, a noun-place ("the Progress page"); say "Floor 3 prog," not "go to Progress"~~ "prog" as a page name ("Floor 3 prog" is a status) **→ Amended 2026-09-30 (HS-29, `HOME_STRETCH.md`): "Progress" now names the fifth spine tab, the tracks surface (Goals, Farms, Collections, Split Clears; F-03). "Prog" stays the status word ("Floor 3 prog")** |
 | **Roster** | the people in the static + their gear toward BiS | — |
 | **BiS** | the best-in-slot target set for a job | — |
 | **Loot** | the domain of distributing drops (priority + log + history) | "gear" (for the domain) |
@@ -414,4 +414,4 @@ These were the three open structural decisions gating F3. All are now canon:
 3. **Roadmap re-scope** — map the A–M plans + open PRs onto the rings: enforcement/F/H/M survive as execution; structural nav plans are superseded by this IA. Ring 0 ships first.
 4. **Component & states sheet** — after the screen set is approved.
 
-> **Review checklist for this doc (2026-06-27; answered — the spine is five tabs per §3.2):** Is the 4-tab spine right (§3.2)? Do the re-homings (§7) all feel correct? Any flow in §9 that doesn't match how you'd actually use the app? Answer the five open decisions (§11) and I'll lock the spec and start the mockup pass.
+> **Review checklist for this doc (2026-06-27; answered — the spine is five tabs per §3.2):** Is the ~~4-tab~~ spine right (§3.2)? *(asked as four tabs; answered five)* Do the re-homings (§7) all feel correct? Any flow in §9 that doesn't match how you'd actually use the app? Answer the five open decisions (§11) and I'll lock the spec and start the mockup pass.

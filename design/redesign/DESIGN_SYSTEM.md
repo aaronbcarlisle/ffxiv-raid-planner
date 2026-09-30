@@ -109,7 +109,7 @@ Drawn from and kept in sync with `REDESIGN_SPEC.md §10`. The full glossary (wit
 - **Track** — the abstraction a static progresses through (one Progress Engine, many tracks); adding non-savage content = "add a track"
 - **Tier** — the flagship savage track (e.g. "AAC Heavyweight"), containing its **fights** (e.g. M9S–M12S)
 - **Fight** — one named encounter inside a Tier (replaces "floor" in user-facing copy)
-- **Prog / Progress** — a *status*, never a page or noun-tab (say "Floor 3 prog," not "Progress page") *(Amended 2026-09-30, HS-29 in `HOME_STRETCH.md`: **Progress** now names the fifth spine tab, the tracks surface (Goals, Farms, Collections, Split Clears; F-03). **Prog** stays the status word ("Floor 3 prog").)*
+- **Prog / Progress** — ~~a *status*, never a page or noun-tab (say "Floor 3 prog," not "Progress page")~~ **Prog** is a *status*, never a page ("Floor 3 prog"); **Progress** is the fifth spine tab *(Amended 2026-09-30, HS-29 in `HOME_STRETCH.md`: **Progress** now names the fifth spine tab, the tracks surface (Goals, Farms, Collections, Split Clears; F-03). **Prog** stays the status word ("Floor 3 prog").)*
 - **Roster** · **BiS** · **Loot** (the distribution domain) · **Drop** · **Priority**
 - **Log (v.)** — an action, never a tab; the record is "History"
 - **Book / Page** · **Week** · **Lead / Member / Viewer** (roles, not apps)

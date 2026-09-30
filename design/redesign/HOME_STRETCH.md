@@ -11,7 +11,7 @@ The two gates are defined in [PRODUCT_MODEL §6.2](../../docs/PRODUCT_MODEL.md#6
 - **Gate 1, release 3.0.0, is R2.** R2 requires every §4 item above it except those marked **not a gate** (V1B items 2–3 and X1, HS-28; F1's two admin-only items, HS-14). Admin V2 isn't a prerequisite (HS-14).
 - **Gate 2, V1 deleted, is D1.** T1 measures its switch-back and error-rate criteria from R2's first day.
 
-**Standing rules that still apply to every item:** no surface is replaced without an owner-reviewed affordance-parity matrix. The legacy path stays byte-identical until D1. Every V1-visible edit carries a sanctioned-edit justification and a release note. Every UI PR embeds screenshots. `xivrp-director` vets each slice (`V2_COVERAGE_PLAN.md` §5 hard gates).
+**Standing rules that still apply to every item:** no surface is replaced without an owner-reviewed affordance-parity matrix. The legacy path stays byte-identical until D1, except for the sanctioned V1 edits this plan names (P1, V1B, and the F1–F3 items labelled sanctioned V1). Every V1-visible edit carries a sanctioned-edit justification and a release note. Every UI PR embeds screenshots. `xivrp-director` vets each slice (`V2_COVERAGE_PLAN.md` §5 hard gates).
 
 ## 2. Owner rulings (session 2, 2026-09-30)
 
