@@ -431,7 +431,9 @@ Process: same SDD gates (screenshots per change, director on anything touching s
 code), but the *acceptance* on each page is the user saying "next." Exit = every page
 walked, every punch-list item fixed or explicitly deferred by the user → **then the
 D7 un-gate ships** (remove `isAdmin` from `TryNewUiBanner` + the S1 UserMenu item
-together).
+together). **→ Amended 2026-09-30 (HS-25, `HOME_STRETCH.md`): the un-gate and 3.0.0 merge
+into one release: V2 becomes the default for everyone, with "Switch back to legacy UI".
+Phase P's exit leads to the release plan (R1) and that release (R2).**
 
 **Consolidated mobile pass (user ruling at the C1 checkpoint, 2026-07-26):** ALL v2
 mobile work is deferred out of the build slices into ONE dedicated pass here, before

@@ -16,6 +16,7 @@ This folder is intentionally small. It holds the **source of truth** for what th
 | Doc | What it is |
 |---|---|
 | [REDESIGN_SPEC.md](../design/redesign/REDESIGN_SPEC.md) | The IA, navigation, visual language, and core user flows that realize the model — with coded mockups. |
+| [HOME_STRETCH.md](../design/redesign/HOME_STRETCH.md) | **What is left, in order:** every item from now to V1 deletion, with sizes, acceptance criteria and the owner rulings (HS-1…HS-25). |
 | [ROLLOUT_ROADMAP.md](../design/redesign/ROLLOUT_ROADMAP.md) | The plan of record: the dual-shell rollout, phases R→H, and their rulings. |
 | [V2_COVERAGE_PLAN.md](../design/redesign/V2_COVERAGE_PLAN.md) | Coverage Stages 0–6: taking every route and surface to V2. |
 | [RECONCILIATION.md](../design/redesign/RECONCILIATION.md) | The 2026-07-23 intent-vs-built audit; still the register for the B1–B9 IDs the roadmaps cite. |

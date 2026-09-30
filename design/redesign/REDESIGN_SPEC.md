@@ -398,7 +398,7 @@ These were the three open structural decisions gating F3. All are now canon:
 4. **Tab wording — "Loot" vs "Loot & Priority":** the tab owns priority + logging + history. Is "Loot" enough scent, or label it to surface priority? *(Spec assumes "Loot," with Priority as the default sub-view.)*
 5. **Schedule as a tab vs. woven into Home:** scheduling is foundational *because* it's the clock. Does it warrant a full tab, or is "Next session + RSVP on Home + an availability view" enough, with the deep calendar one level down? *(Spec keeps it a tab; it's a distinct job.)*
 6. **Player Hub vs. personal Home:** is the Person-layer landing the Player Hub itself, or a lighter "your statics + what needs you" home that *contains* the Hub? *(Spec treats Player Hub as the front door.)* **Closed 2026-09-25 (Player Hub H-1):** the Hub is the player's glance-first dashboard; it is the landing page only for static-less users (L-2). See `specs/2026-09-25-player-hub-design.md`.
-7. **Tracks surfacing:** do non-flagship tracks (mounts, ultimates) each get a nav entry inside a static, or live only as cards on Home + a track detail view? *(Spec: cards on Home + detail, no nav entry — preserves the 4-tab spine.)*
+7. **Tracks surfacing:** do non-flagship tracks (mounts, ultimates) each get a nav entry inside a static, or live only as cards on Home + a track detail view? *(Spec: cards on Home + detail, no nav entry — preserves the 4-tab spine.)* **→ Superseded 2026-07-26 by flow-map F-03 (Progress is the 5th spine tab, the tracks surface), reaffirmed 2026-09-30 (HS-2, `HOME_STRETCH.md`).**
 8. **PR #154 / Plan F:** keep merging the standardization stack (it's pure conformance work the redesign *wants*), or freeze it to avoid churn on screens about to be restructured? *(Recommend: keep the token/lint/shared-component work, pause the per-screen restyling of screens being replaced.)* **→ Moot: #154 closed unmerged.**
 
 ---
@@ -412,4 +412,4 @@ These were the three open structural decisions gating F3. All are now canon:
 3. **Roadmap re-scope** — map the A–M plans + open PRs onto the rings: enforcement/F/H/M survive as execution; structural nav plans are superseded by this IA. Ring 0 ships first.
 4. **Component & states sheet** — after the screen set is approved.
 
-> **Review checklist for this doc:** Is the 4-tab spine right (§3.2)? Do the re-homings (§7) all feel correct? Any flow in §9 that doesn't match how you'd actually use the app? Answer the five open decisions (§11) and I'll lock the spec and start the mockup pass.
+> **Review checklist for this doc (2026-06-27; answered — the spine is five tabs per §3.2):** Is the 4-tab spine right (§3.2)? Do the re-homings (§7) all feel correct? Any flow in §9 that doesn't match how you'd actually use the app? Answer the five open decisions (§11) and I'll lock the spec and start the mockup pass.

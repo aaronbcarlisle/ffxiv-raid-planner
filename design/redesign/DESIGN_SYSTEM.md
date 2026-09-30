@@ -291,7 +291,7 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
 - **Usage rules:**
   - In-surface view switch only — calls `setPageMode`, never `navigate()`. Same discriminated-union rule as the generic `Tabs` primitive (§2.4): tabs switch content, the rail/spine switches context.
   - Present inside a static only (below the top bar in the v2 shell). Not present on Person-layer screens.
-  - Do not add dynamic or role-conditional tabs — the 4-tab set is locked per the redesign spec.
+  - Do not add dynamic or role-conditional tabs — the tab set is locked per the redesign spec. *(2026-09-30: the locked set is five tabs — F-03 adds Progress, reaffirmed HS-2 in `HOME_STRETCH.md`; Stage 2 updates this contract when it ships.)*
 
 ### 3.14 SettingsGear — F6a
 
