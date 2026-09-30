@@ -251,7 +251,9 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 - the spine's tab count (F-01/R2's fifth Progress tab vs `REDESIGN_SPEC.md` §11 #7's four-tab spine);
 - Plugin's home;
 - which owed parity rows, plus H-10 and the static typical-week layer, gate the un-gate rather than 3.0.0;
-- ratifying gates 2–3 below. The sequenced plan with sizes and owner decisions is session 2's deliverable (`design/redesign/HOME_STRETCH.md`, not yet written).
+- ratifying gates 2–3 below.
+
+The sequenced plan with sizes and owner decisions is session 2's deliverable (`design/redesign/HOME_STRETCH.md`, not yet written).
 
 ### 6.2 Definition of done
 
