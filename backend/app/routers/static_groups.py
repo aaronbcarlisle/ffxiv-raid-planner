@@ -1152,6 +1152,10 @@ async def update_member_role(
 
     # Get actor's membership
     actor_membership = await require_can_manage_members(session, current_user.id, group_id)
+    # Before any seat mutates: admin_override_for re-reads the actor's real row.
+    admin_override = await admin_override_for(
+        session, current_user.id, group_id, actor_membership, MemberRole.LEAD
+    )
 
     # Get target membership
     target_membership = await get_user_membership(session, user_id, group_id)
@@ -1182,9 +1186,6 @@ async def update_member_role(
     await session.flush()
 
     target_user = await session.get(User, user_id)
-    admin_override = await admin_override_for(
-        session, current_user.id, group_id, actor_membership, MemberRole.LEAD
-    )
     await audit(
         session,
         actor=current_user,
@@ -1353,6 +1354,10 @@ async def transfer_ownership(
 
     # Only owner can transfer
     membership = await require_owner(session, current_user.id, group_id)
+    # Before any seat mutates: admin_override_for re-reads the actor's real row.
+    admin_override = await admin_override_for(
+        session, current_user.id, group_id, membership, MemberRole.OWNER
+    )
 
     # Get new owner's membership
     new_owner_membership = await get_user_membership(session, new_owner_id, group_id)
@@ -1378,9 +1383,6 @@ async def transfer_ownership(
         old_owner_membership.role = MemberRole.LEAD.value  # Demote to lead
         old_owner_membership.updated_at = now
 
-    admin_override = await admin_override_for(
-        session, current_user.id, group_id, membership, MemberRole.OWNER
-    )
     await audit(
         session,
         actor=current_user,

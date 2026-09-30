@@ -324,6 +324,33 @@ class TestOwnershipTransferEmits:
         assert await _role_of(session, new_id, group_id) == MemberRole.OWNER.value
 
 
+    async def test_admin_real_owner_transfer_is_not_override(
+        self,
+        client: AsyncClient,
+        session,
+        test_user_2,
+        admin_user,
+        admin_headers,
+    ):
+        own_group = await create_static_group(session, owner=admin_user, name="Admin Owned 3")
+        await create_membership(session, test_user_2, own_group, role=MemberRole.MEMBER)
+        group_id, admin_id, new_id = own_group.id, admin_user.id, test_user_2.id
+
+        response = await client.post(
+            f"/api/static-groups/{group_id}/transfer-ownership?new_owner_id={new_id}",
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+
+        session.expire_all()
+        assert await _role_of(session, admin_id, group_id) == MemberRole.LEAD.value
+        assert await _role_of(session, new_id, group_id) == MemberRole.OWNER.value
+        rows = await _audit_rows(session)
+        assert len(rows) == 1
+        assert rows[0].admin_override is False
+
+
+
 class TestDuplicateEmits:
     async def test_duplicate_emits_source_and_target_ids(
         self, client: AsyncClient, session, test_group, auth_headers
@@ -390,6 +417,24 @@ class TestMemberRoleChangeEmits:
         assert row.action == "member.role_changed"
         assert row.old_values == {"role": "member"}
         assert row.new_values == {"role": "lead"}
+
+    async def test_admin_member_seat_self_role_change_is_override(
+        self, client: AsyncClient, session, test_group, admin_user, admin_headers
+    ):
+        await create_membership(session, admin_user, test_group, role=MemberRole.MEMBER)
+        group_id, admin_id = test_group.id, admin_user.id
+
+        response = await client.put(
+            f"/api/static-groups/{group_id}/members/{admin_id}",
+            json={"role": "lead"},
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+
+        rows = await _audit_rows(session)
+        assert len(rows) == 1
+        assert rows[0].action == "member.role_changed"
+        assert rows[0].admin_override is True
 
     async def test_role_change_with_api_key_is_api_key_credential(
         self,
