@@ -15,9 +15,10 @@ interface GoalsPageProps {
   groupId: string;
   currentUserId: string;
   canManage: boolean;
+  isViewer: boolean;
 }
 
-export function GoalsPage({ groupId, currentUserId, canManage }: GoalsPageProps) {
+export function GoalsPage({ groupId, currentUserId, canManage, isViewer }: GoalsPageProps) {
   // Sub-tab in the URL (?goal=objectives|farms) — deep-linkable, reload-safe, and
   // follows back/forward. Links like "Open Mount Farms" target Farms via this param.
   const [subTab, setSubTab] = useUrlTabState('goal', GOALS_SUB_TABS, 'objectives');
@@ -50,6 +51,7 @@ export function GoalsPage({ groupId, currentUserId, canManage }: GoalsPageProps)
           groupId={groupId}
           currentUserId={currentUserId}
           canManage={canManage}
+          isViewer={isViewer}
         />
       )}
     </div>

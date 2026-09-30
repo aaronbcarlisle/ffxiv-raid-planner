@@ -18,6 +18,7 @@ interface RewardGoalDetailModalProps {
   groupId: string;
   currentUserId: string;
   canManage: boolean;
+  isViewer: boolean;
   onEdit: (goal: CollectionGoal) => void;
 }
 
@@ -28,6 +29,7 @@ export function RewardGoalDetailModal({
   groupId,
   currentUserId,
   canManage,
+  isViewer,
   onEdit,
 }: RewardGoalDetailModalProps) {
   const { upsertMyState, deleteGoal } = useCollectionGoalStore();
@@ -114,10 +116,15 @@ export function RewardGoalDetailModal({
                 goalId={goal.id}
                 currentUserId={currentUserId}
                 canManage={canManage}
-                onSetMyState={handleSetMyState}
+                onSetMyState={isViewer ? undefined : handleSetMyState}
               />
             ) : (
-              <DropHistoryPanel groupId={groupId} goalId={goal.id} />
+              <DropHistoryPanel
+                groupId={groupId}
+                goalId={goal.id}
+                currentUserId={currentUserId}
+                canManage={canManage}
+              />
             )}
           </div>
         </div>

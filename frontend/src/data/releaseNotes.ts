@@ -76,9 +76,15 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'A wrongly logged farm drop can be deleted',
         description:
-          'A lead, an owner or the member who logged a drop can now delete it. If it was the recipient\'s only drop, their previous progress (Need or Want) comes back.',
+          'A lead, an owner or the member who logged a drop can now delete it from the drop history, after a confirmation. If it was the recipient\'s only drop, their previous progress (Need or Want) comes back.',
         pr: 329,
         prTitle: 'fix(api): P0a — farm-drop rules, drop delete and the viewer write gaps (SEC-1)',
+      },
+      {
+        category: 'improvement',
+        title: 'Farm and claim controls are hidden from viewers',
+        description:
+          'Viewers no longer see Log Drop, their own farm status or Take Ownership, since they can\'t use them. When you log a drop, the recipient list offers only yourself unless you are a lead or owner, and never a viewer.',
       },
       {
         category: 'fix',

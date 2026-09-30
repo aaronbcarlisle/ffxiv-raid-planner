@@ -253,6 +253,32 @@ describe('useRosterCardActions', () => {
     expect(result.current.menuItems.map(labelOrHeader)).not.toContain('Take Ownership');
   });
 
+  it('hides Take Ownership from a viewer who holds no card, but keeps Release on their own card', () => {
+    const claim = {
+      ...base,
+      userRole: 'viewer' as const,
+      currentUserId: 'u1',
+      userHasClaimedPlayer: false,
+    };
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...claim,
+        player: makePlayer({ userId: undefined }),
+        actions: { onUpdate: vi.fn(), onCopy: vi.fn(), onDuplicate: vi.fn(), onClaimPlayer: vi.fn() },
+      }),
+    );
+    expect(result.current.menuItems.map(labelOrHeader)).not.toContain('Take Ownership');
+
+    const { result: own } = renderHook(() =>
+      useRosterCardActions({
+        ...claim,
+        player: makePlayer({ userId: 'u1' }),
+        actions: { onUpdate: vi.fn(), onCopy: vi.fn(), onDuplicate: vi.fn(), onReleasePlayer: vi.fn() },
+      }),
+    );
+    expect(own.current.menuItems.map(labelOrHeader)).toContain('Release Ownership');
+  });
+
   it('opens the BiS import modal via its menu item', () => {
     const { result } = renderHook(() => useRosterCardActions({ ...base, player: makePlayer() }));
     const item = result.current.menuItems.find((i) => 'label' in i && i.label === 'Import BiS')!;

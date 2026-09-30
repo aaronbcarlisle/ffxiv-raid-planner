@@ -309,7 +309,8 @@ export const PlayerCard = memo(function PlayerCard({
   // Ownership status
   const isLinkedToMe = player.userId === currentUserId;
   // Can claim if: card not claimed, user is logged in, handler exists, and user hasn't claimed another card
-  const canClaim = !player.userId && currentUserId && onClaimPlayer && !userHasClaimedPlayer;
+  // Viewers are read-only, and the server refuses their claims (they may still release).
+  const canClaim = !player.userId && currentUserId && onClaimPlayer && !userHasClaimedPlayer && userRole !== 'viewer';
   const canRelease = (isLinkedToMe || isGroupOwner) && player.userId && onReleasePlayer;
 
   const bisStore = useSharedBisStore();
