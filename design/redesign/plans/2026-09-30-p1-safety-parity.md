@@ -67,7 +67,7 @@ No owner questions are open.
   - `authRequest` adds `'X-View-As': viewAsUserId` to its `headers` record only when the id is non-empty. That record comes after `options.headers`, so callers can't override the header, and the retry reuses it.
   - `stores/viewAsStore.ts` adds one line at module scope: `useViewAsStore.subscribe((s) => setViewAsHeaderUserId(s.viewAsUser?.userId ?? null))`.
   - **Generation guard (V1).** `viewAsStore.ts` keeps a module-level `let viewAsGeneration = 0`:
-    - `stopViewAs` does `viewAsGeneration++` before it clears the user;
+    - `stopViewAs` (`viewAsStore.ts:74-76`) does `viewAsGeneration++`, then sets `{ viewAsUser: null, error: null, isLoading: false }`. The `isLoading: false` is required: without it, a dropped resolve would leave `isLoading` true forever (fold-check 1);
     - `startViewAs` captures `const gen = ++viewAsGeneration` before its `await`, and on resolve or reject writes nothing unless `gen === viewAsGeneration`.
 
     So a late resolve after a stop is dropped, and a newer start supersedes an older one.
@@ -138,8 +138,9 @@ No owner questions are open.
    - A 401 → refresh → retry still carries the header (mock `useAuthStore.getState().refreshAccessToken` to resolve `true`).
    - `setState` with `viewAsUser.userId === ''` sends no key.
    - **The race (V1),** tested in a new `stores/viewAsStore.test.ts`:
-     - Mock `api.get` with a deferred promise and set an admin in `useAuthStore`. Call `startViewAs('g1', 'u-view')`, then `stopViewAs()`, then resolve the GET. Afterwards `viewAsUser` is `null`, and a following `api.delete` (real `api.ts`, stubbed `fetch`) sends no `X-View-As`.
-     - Two overlapping starts where the older one resolves last: the newer user wins.
+     - Stub `api.get` with `vi.spyOn(api, 'get')` returning a deferred promise. **Never** `vi.mock('../services/api')`: a module mock drops the real `api.delete` and `setViewAsHeaderUserId`, so the no-header assertion would prove nothing, or the listener would throw (fold-check 2).
+     - Set an admin in `useAuthStore`. Call `startViewAs('g1', 'u-view')`, then `stopViewAs()`, then resolve the GET. Afterwards `viewAsUser` is `null` and `isLoading` is `false`, and a following `api.delete` (real `api.ts`, stubbed `fetch`) sends no `X-View-As`.
+     - Two overlapping starts where the older one resolves last: the newer user wins, **and** a following request's `X-View-As` equals the newer user's id.
 4. Implement R-P1-B, including the generation guard and the `viewAsStore.ts:5` comment fix.
 5. **Gates.** From `<worktree>/backend`: `D:/FFXIV/Dev/xrp-dev/ffxiv-raid-planner/backend/venv/Scripts/python.exe -m pytest tests/test_view_as_guard.py tests/test_audit_emits_static.py tests/test_audit_helper.py tests/test_static_groups.py -q`, then `… -m pytest tests/ -q` (paste the count), then `D:/FFXIV/Dev/xrp-dev/ffxiv-raid-planner/backend/venv/Scripts/ruff.exe check app/permissions.py app/routers/static_groups.py tests/test_view_as_guard.py` (0 new). From the worktree root: `pnpm -C frontend test src/services/api.test.ts`, `pnpm -C frontend build`, and `pnpm -C frontend test` (the whole suite, so the 12 `viewAsStore`-mocking files are re-run). No release note in this task (Task 3 owns it).
 
@@ -153,7 +154,7 @@ No owner questions are open.
 
 ## Task 2 — D-50 frontend: Delete Static hidden under View As (`xivrp-implementer`)
 
-**Files.** Create `frontend/src/components/settings/StaticTab.viewAs.test.tsx`. Modify `frontend/src/components/settings/StaticTab.tsx`, `frontend/src/components/group/MorePage.tsx` and `frontend/src/components/group/MorePage.test.tsx`.
+**Files.** Create `frontend/src/components/settings/StaticTab.viewAs.test.tsx`. Modify `frontend/src/components/settings/StaticTab.tsx`, `frontend/src/components/group/MorePage.tsx` and `frontend/src/components/group/MorePage.test.tsx`, plus the `viewAsStore`-mocking suites that the full run fails on (test-only, pre-authorized in step 3).
 **Interfaces consumed:** `useIsViewingAs` (existing). Nothing from Task 1 at runtime.
 
 1. **Tests first.** Use the real `viewAsStore` through `setState`, and reset it in `afterEach`.
@@ -170,7 +171,8 @@ No owner questions are open.
 2. Implement R-P1-C.
 3. **Gates:**
    - `pnpm -C frontend test src/components/settings src/components/group/MorePage.test.tsx`.
-   - The **full** `pnpm -C frontend test` (V4). Twelve suites mock `viewAsStore` with only `useViewAsStore`, for example `GroupViewContent.test.tsx:80` and `Header.settings.test.tsx:18`, so the new `useIsViewingAs` import in `MorePage`/`StaticTab` can throw there. If it does, report `NEEDS_CONTEXT` with the failing suites rather than editing them unasked.
+   - The **full** `pnpm -C frontend test` (V4). Twelve suites mock `viewAsStore` with only `useViewAsStore`, for example `GroupViewContent.test.tsx:80` and `Header.settings.test.tsx:18`, so the new `useIsViewingAs` import in `MorePage`/`StaticTab` **will** fail there. Those mocks ignore the selector and export no `useIsViewingAs`. A direct selector would not help either: under those mocks it gets a truthy object back and hides Delete.
+   - **Pre-authorized, test-only:** add `useIsViewingAs: () => false` to each failing `viewAsStore` mock factory, with no assertion changes. Those test files join this task's file list, and the report lists every one edited (fold-check 3).
    - `pnpm -C frontend lint` (0 errors) and `pnpm -C frontend check:design-system:strict`.
 
 **Ad hoc mutation check:** keep the button gate but restore the old section gate. The "no Danger Zone" test should fail.
@@ -208,7 +210,7 @@ No owner questions are open.
 2. **Write-backs, one commit, made on the draft after `gh pr create`** so the real PR number is known (V9):
    - The matrix rows D-50 (`:413`) and D-58 (`:476`) get `**✅ SHIPPED (P1 #<real PR>, <date>)**`.
    - §13.3 item 2 closes with the corrected premise (V3): Delete showed under View As of **any role** in `StaticTab`, and only as owner in `MorePage`.
-   - A dated note in the admin V2 docs' AD7 rows (`plans/2026-08-08-admin-v2-plan.md:52`, `specs/2026-08-08-admin-v2-spec.md:174`) says P1 delivered the `X-View-As` header (V8).
+   - A dated note in the admin V2 docs' AD7 rows (`plans/2026-08-08-admin-v2-plan.md:52`, `specs/2026-08-08-admin-v2-spec.md:174`) says **only** that the `X-View-As` header landed in P1 (V8). The rest of AD7 stays open: the read-only middleware, the telemetry exemptions, the `admin.view_as_started` emit and the banner hint (fold-check 4).
    - The PRODUCT_MODEL §6.1 "Parity rows still owed" row (`docs/PRODUCT_MODEL.md:244`) drops D-50 and D-58.
    - HOME_STRETCH §4 P1 is ticked with the PR.
 3. **PR:**
