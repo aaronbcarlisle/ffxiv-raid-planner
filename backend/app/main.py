@@ -21,6 +21,7 @@ from .middleware import (
     SecurityHeadersMiddleware,
 )
 from .rate_limit import limiter
+from .routers.admin.audit import router as admin_audit_router
 from .services.catalog_import_service import seed_from_internal
 from .tasks.analytics_retention import retention_loop
 from .tasks.auto_sync import auto_sync_loop
@@ -183,6 +184,7 @@ register_exception_handlers(app)
 
 # Include routers
 app.include_router(discord_interactions_router)
+app.include_router(admin_audit_router)
 app.include_router(analytics_router)
 app.include_router(api_keys_router)
 app.include_router(auth_router)

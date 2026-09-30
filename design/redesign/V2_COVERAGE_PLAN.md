@@ -129,6 +129,8 @@ Same discipline per §5.6 + mockup-06 re-validation; unifies Discover + recruitm
 
 Docs: light restyle inside v2 chrome (pulls Phase F's docs scope in). Admin: **stays a separate gated area** (PRODUCT_MODEL §5 — no port mandate) but v2-chromed from Stage 1; deeper restyle optional; admin boundary-lint constraints noted (ring→admin edges are fail-on-new).
 
+2026-09-29: Admin runs as its own workstream — spec `specs/2026-08-08-admin-v2-spec.md`, plan `plans/2026-08-08-admin-v2-plan.md` (AD1a #241 merged; AD1b = wave-1 audit emits + Logs API, plan `plans/2026-09-29-ad1b-audit-emits.md`).
+
 ### Stage 6 — ⌘K actions (B1)
 
 Unchanged, last.

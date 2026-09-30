@@ -434,3 +434,4 @@ D13's R-D13-E, #271).
 - Effort: ultracode for specs/adjudication, high for implement loops (per memory
   `feedback-effort-allocation`).
 - After G, release notes go back to normal public-entry discipline per CLAUDE.md.
+- Admin V2 (off the ring roadmap): 2026-09-29: Admin runs as its own workstream — spec `specs/2026-08-08-admin-v2-spec.md`, plan `plans/2026-08-08-admin-v2-plan.md` (AD1a #241 merged; AD1b = wave-1 audit emits + Logs API, plan `plans/2026-09-29-ad1b-audit-emits.md`).
