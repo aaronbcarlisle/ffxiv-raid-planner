@@ -175,7 +175,8 @@ AD1b shipped as two stacked PRs: A (plan + Tasks 1–2) and B (Tasks 3–4). Tas
   - An admin in a real lead seat who promotes someone to lead records `adminOverride: false`: the check's `min_role` is LEAD, even though the promotion itself needs owner rank. R-AD-A prescribes this. Revisit if AD8 moves the role check into the permission layer.
   - `create_admin_membership` logs `admin_access_granted` every time it is called. That includes the call made only to feed `admin_override_for` in admin-assign (`tiers.py`), which also runs for real-owner admins. A log-free constructor belongs with AD8.
 - **AD3 (the admin Logs UI):**
-  - An invalid `from`/`to` returns 422 with `{"detail": "<string>"}`. FastAPI's own 422s (`page`, `pageSize`, `credential`) return `{"detail": [...]}`. Handle both shapes.
+  - An invalid `from`/`to` returns 422 with `{"detail": "<string>"}`. FastAPI's own 422s (`page`, `page_size`, `credential`) return `{"detail": [...]}`. Handle both shapes.
+  - Request query params are snake_case (`page_size`, `target_type`, `static_id`, …) while response keys are camelCase (`pageSize`, `targetType`, …); an empty-string filter is treated as unset.
   - `new_values` can omit a key whose value is `None` when the old side lacks it (e.g. `unlinked_player_id`). Treat value keys as optional.
   - The `action` filter lowercases the input. SQLite tests can't prove this, because LIKE is case-insensitive there.
 - **Latent bugs found and fixed:**
