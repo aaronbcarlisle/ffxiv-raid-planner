@@ -296,23 +296,23 @@ class TestDateRange:
     async def test_from_inclusive_to_exclusive_at_exact_timestamp(
         self, client: AsyncClient, session: AsyncSession, admin_headers: dict, actor_a
     ):
-        await _insert_row(session, actor=actor_a, action="static.updated", created_at=_iso(T1))
+        row_t1 = await _insert_row(session, actor=actor_a, action="static.updated", created_at=_iso(T1))
         row_at_t2 = await _insert_row(
             session, actor=actor_a, action="static.deleted", created_at=_iso(T2)
         )
-        await _insert_row(session, actor=actor_a, action="error.reviewed", created_at=_iso(T3))
+        row_t3 = await _insert_row(session, actor=actor_a, action="error.reviewed", created_at=_iso(T3))
 
         from_response = await client.get(
             "/api/admin/logs", params={"from": _iso(T2)}, headers=admin_headers
         )
         from_ids = {item["id"] for item in from_response.json()["items"]}
-        assert row_at_t2.id in from_ids
+        assert from_ids == {row_at_t2.id, row_t3.id}
 
         to_response = await client.get(
             "/api/admin/logs", params={"to": _iso(T2)}, headers=admin_headers
         )
         to_ids = {item["id"] for item in to_response.json()["items"]}
-        assert row_at_t2.id not in to_ids
+        assert to_ids == {row_t1.id}
 
     async def test_to_format_variants_select_same_rows(
         self, client: AsyncClient, session: AsyncSession, admin_headers: dict, actor_a
