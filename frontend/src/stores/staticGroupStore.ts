@@ -6,8 +6,11 @@
 
 import { create } from 'zustand';
 import type { StaticGroup, StaticGroupListItem, StaticGroupSettings, MemberRole, Membership } from '../types';
-import { authRequest } from '../services/api';
+import { authRequest, ApiError } from '../services/api';
 import { analytics } from '../services/analytics';
+
+// Monotonic id of the latest fetchGroupByShareCode call (R-V1B-3).
+let shareCodeRequestSeq = 0;
 
 interface StaticGroupState {
   // List of user's static groups (dashboard)
@@ -99,13 +102,30 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
    * Fetch a static group by share code
    */
   fetchGroupByShareCode: async (shareCode: string) => {
+    // R-V1B-3: only the latest request may write; a superseded response is dropped.
+    const seq = ++shareCodeRequestSeq;
     set({ isLoading: true, error: null, errorSource: null });
 
     try {
       const group = await authRequest<StaticGroup>(`/api/static-groups/by-code/${shareCode}`);
+      if (seq !== shareCodeRequestSeq) return;
       set({ currentGroup: group, isLoading: false });
     } catch (error) {
+      if (seq !== shareCodeRequestSeq) return;
+
+      // R-V1B-1: a 404 is the not-found state (no group, no error), even for the same code.
+      if (error instanceof ApiError && error.status === 404) {
+        set({ currentGroup: null, error: null, errorStack: null, errorSource: null, isLoading: false });
+        return;
+      }
+
+      // R-V1B-2: any other failure for a different code must not leave the old static on
+      // screen. Read the group here, after the await, never a value captured before it.
+      const current = get().currentGroup;
+      const isStale =
+        current !== null && current.shareCode.toUpperCase() !== shareCode.toUpperCase();
       set({
+        ...(isStale ? { currentGroup: null } : {}),
         error: error instanceof Error ? error.message : 'Failed to fetch group',
         errorStack: error instanceof Error ? error.stack || null : null,
         errorSource: 'load',

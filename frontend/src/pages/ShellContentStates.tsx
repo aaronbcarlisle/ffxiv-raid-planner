@@ -12,7 +12,7 @@
  * v2 (PageSkeleton / CardShell / EmptyState / Modal, tokens only). Precedence,
  * top → bottom:
  *   1. loading   — group fetch in flight, nothing loaded yet
- *   2. error     — group fetch failed and nothing loaded (private vs raw error)
+ *   2. error     — group fetch failed and nothing loaded (private vs raw error; a 404 arrives as not-found via the store's R-V1B-1 mapping, not here)
  *   3. not-found — load finished, still no group
  *   4. no-tiers  — group loaded but it has zero tiers
  *   5. otherwise — render `children`, plus an error Modal overlay when a group is
@@ -186,6 +186,7 @@ export function ShellContentStates({
           icon={<SearchX className="w-6 h-6" />}
           heading="Static Not Found"
           description="The static you're looking for doesn't exist."
+          action={{ label: 'Go to My Statics', onClick: () => navigate('/profile?tab=statics') }}
         />
       </div>
     );
