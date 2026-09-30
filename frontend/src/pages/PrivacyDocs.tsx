@@ -83,6 +83,12 @@ function DataTable() {
     { field: 'Static Group Data', collected: true, purpose: 'Core app functionality' },
     { field: 'Usage Analytics', collected: true, purpose: 'Anonymous-leaning feature usage (added v1.16.0)' },
     { field: 'Error Reports', collected: true, purpose: 'Automatic crash/error diagnostics (added v1.16.0)' },
+    {
+      field: 'Admin Action Log',
+      collected: true,
+      purpose:
+        'A record of administrative and destructive actions (deleting a static, removing a member, changing a role, an admin reviewing error reports): who acted, when, what changed, and whether it came from the website or the plugin. Visible only to site admins and kept indefinitely. No IP addresses, browser details or secrets.',
+    },
   ];
 
   return (
@@ -457,6 +463,21 @@ export function PrivacyDocs() {
                 <Clock className="w-6 h-6 text-accent" />
                 Privacy Changes History
               </h2>
+
+              <div className="bg-surface-card border border-border-subtle rounded-xl p-6 mb-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-status-success/10 flex items-center justify-center shrink-0">
+                    <Shield className="w-6 h-6 text-status-success" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-text-primary">v2.1.52 - Admin Action Log</h3>
+                    <p className="text-sm text-text-muted mb-3">September 2026</p>
+                    <p className="text-text-secondary">
+                      We added an admin action log. It records administrative and destructive actions — who acted, when and what changed — so site admins can see what happened when something goes wrong. It records actions, not browsing, and does not record IP addresses, browser details or secrets such as webhook URLs or tokens.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               <div className="bg-surface-card border border-border-subtle rounded-xl p-6">
                 <div className="flex items-start gap-4">
