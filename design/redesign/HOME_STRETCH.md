@@ -80,12 +80,12 @@ Each item lists its scope, dependencies, acceptance criteria, size and rulings. 
 
 ### P1 · Safety + quick parity — S · HS-9, HS-12, HS-20, HS-30
 - **Scope:**
-  - **D-50, a V1-visible sanctioned edit scoped to View As (HS-30):** under View As, hide Delete Static in `components/settings/StaticTab.tsx:305` and `components/group/MorePage.tsx:379-386` (both shells mount both), matching Leave (`GroupViewContent.tsx:1191`). The client sends the `X-View-As` header while View As is active; `services/audit.py:140-145` already reads it, but no client sends it today. The backend refuses a static delete (`static_groups.py:682`) and a self-Leave (`DELETE …/members/{user_id}`, `:1216`) only when that header is present (the §13.3 residual in the parity matrix). Admin-mode moderation delete (`?adminMode`, `StaticTab.tsx:305`) is unchanged: no admin UI deletes a static (`AdminStatics` has none; Admin V2 is parked, HS-14), so it stays the admins' moderation path. (Owners can also delete from `dashboard/MyStaticsPanel.tsx:284` and `profile/hub/YourStaticsCard.tsx:60`; neither is an admin path.)
+  - **D-50, a V1-visible sanctioned edit scoped to View As (HS-30):** under View As, hide Delete Static in `components/settings/StaticTab.tsx:305` and `components/group/MorePage.tsx:379-386` (both shells mount both), matching Leave (`GroupViewContent.tsx:1191`). The client sends the `X-View-As` header only while `viewAsStore.viewAsUser` is set (View As state is per-static, `stores/viewAsStore.ts:20`, and clears when the group view unmounts, `hooks/useViewAsUrlSync.ts:38-44`); `services/audit.py:140-145` already reads it, but no client sends it today. When that header is present, the backend refuses a static delete (`static_groups.py:682`) and the View-As Leave. Under View As the client's Leave is `DELETE …/members/{viewed user id}` (`effectiveUserId`, `GroupViewContent.tsx:374`, `:1192-1194`), which the backend sees as an admin removing another member, not a self-removal, so the guard refuses `DELETE …/members/{user_id}` when `user_id` equals the header's user id (the value audit stores, `audit.py:145`). Other member removals under View As are not blocked (that would need a new ruling). This closes the §13.3 residual in the parity matrix. Admin-mode moderation delete (`?adminMode`, `StaticTab.tsx:305`) is unchanged: no admin UI deletes a static (`AdminStatics` has none; Admin V2 is parked, HS-14), so it stays the admins' moderation path. (Owners can also delete from `dashboard/MyStaticsPanel.tsx:284` and `profile/hub/YourStaticsCard.tsx:60`; neither is an admin path.)
   - **D-58:** a "View Schedule" link on Home's next-session card (`Home.tsx:331-335`).
   - **Home RSVP:** catch the rejection from `submitRsvp` (`Home.tsx:334`) and surface it.
   - **Public roadmap (`RoadmapDocs.tsx`):** Phase 9 Mobile → "planned (part of the new interface)"; drop the "Large component files" known issue.
 - **Depends on:** nothing.
-- **Acceptance:** a failing test first for each. D-50: under View As, Delete is hidden on both surfaces, and the API returns 403 for a static delete (and a self-Leave) that carries `X-View-As`; admin-mode moderation delete still works (the button shows under `?adminMode` and the API deletes without the header); a browser check of both. D-50 and D-58 get ship markers; public release note.
+- **Acceptance:** a failing test first for each. D-50: under View As, Delete is hidden on both surfaces, and the API returns 403 for a static delete that carries `X-View-As`, and for `DELETE …/members/{user_id}` whose `user_id` equals the header's user id; admin-mode moderation delete still works (the button shows under `?adminMode` and the API deletes without the header); an admin's own delete outside View As (e.g. `profile/hub/YourStaticsCard.tsx:60`) still succeeds, because the header isn't sent (test); a browser check of each. D-50 and D-58 get ship markers; public release note.
 
 ### V1B · V1 bugfix bundle — M · HS-7, HS-28
 - **Gate:** item 1 only (HS-28). Items 2–3 are **not a gate: run in parallel**, in this PR or a later one.
@@ -158,7 +158,7 @@ Each item lists its scope, dependencies, acceptance criteria, size and rulings. 
 - **Acceptance:** each action works from the keyboard alone, is role-gated, and has tests; shortcut labels come from `lib/platform.ts`.
 
 ### F1–F3 · Phase F, chrome seams + carried items — L
-Each F1, F2 and F3 item says whether its fix is **V2-only** or **sanctioned V1** (a shared file V1 renders: it needs the sanctioned-edit justification and a release note). F3's shared-file edits are sanctioned V1 and behaviour-neutral, with legacy snapshots unchanged; F3 items without a label are tooling or docs and change no V1 render.
+Each F1, F2 and F3 item says whether its fix is **V2-only** or **sanctioned V1** (a shared file V1 renders: it needs the sanctioned-edit justification and a release note). F3's shared-file edits are sanctioned V1 and behaviour-neutral, with legacy snapshots unchanged; F3 items without a label (jscpd, `--max-warnings`, the docs items) are tooling or docs and change no V1 render.
 - **F1, V2 defects (frontend):**
   - HS-11's defects:
     - V2 Roster's applicant-review link (`onOpenRequests` is never used; RH1 plan :269) — V2-only;
@@ -200,9 +200,9 @@ Each F1, F2 and F3 item says whether its fix is **V2-only** or **sanctioned V1**
   - a knip dead-code sweep, including matrix §12 A9's survivors (`history/WeekSelector.tsx` with zero importers, `GearSourceBadge` used only by the design-system page, `GearTable`'s `compact` branch at `:538`) and A8's unreachable `edge-*` drop-zone code (`dnd/useDragAndDrop.ts:288-303`) — sanctioned V1 for `GearTable.tsx` and `useDragAndDrop.ts` (shared), behaviour-neutral;
   - matrix §12 A2: 7 of the 9 `eventBus` listeners in `services/analytics.ts:50-58` have no emitter (only `player_gear_changed` and `member_role_changed` fire); rewire or delete them (T1 may rewire what it needs) — sanctioned V1 (shared service), behaviour-neutral;
   - jscpd back to main's count (RH1 added a clone pair: 340 against 339);
-  - the contrast harness in CI, with the `Badge.tsx` exclusion resolved;
+  - the contrast harness in CI, with the `Badge.tsx` exclusion resolved — the exclusion covers the shared legacy `PositionSelector`/`TankRoleSelector` role badges (`frontend/e2e/contrast.spec.ts:206-215`, about 3.4–4.0:1): sanctioned V1 and V1-visible if resolved by a style change (release note, light and dark shots); keeping a documented exclusion changes no render;
   - `--max-warnings` in `ci.yml`;
-  - `no-tiny-text` reaching const class strings;
+  - `no-tiny-text` reaching const class strings — the rule is tooling, but fixing the shared consts it flags is sanctioned V1 and V1-visible (release note, light and dark shots);
   - the `index.css` `aria-hidden` rule narrowed (`:239-243`; both shells: sanctioned V1);
   - a DESIGN_SYSTEM contract for the Finder card;
   - `home/`, `finder/` and `recruit/` rows in FRONTEND_STRUCTURE;
@@ -312,3 +312,4 @@ Walk these on their page:
 - 2026-09-30: written (session 2). Rulings HS-1…HS-25.
 - 2026-09-30: director vet 1 fixes; HS-26…HS-29.
 - 2026-09-30: director vet 2 fixes; HS-30, HS-31.
+- 2026-09-30: director vet 3 fixes (View-As Leave guard target, `X-View-As` scope, F3 V1 labels).
