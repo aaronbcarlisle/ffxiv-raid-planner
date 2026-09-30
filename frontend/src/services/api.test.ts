@@ -1,5 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { isAuthRelated403 } from './api';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
+import { api, isAuthRelated403 } from './api';
+import { useAuthStore } from '../stores/authStore';
+import { useViewAsStore, type ViewAsUserInfo } from '../stores/viewAsStore';
 
 describe('isAuthRelated403', () => {
   describe('detects auth-related 403 messages', () => {
@@ -59,5 +61,111 @@ describe('isAuthRelated403', () => {
       expect(isAuthRelated403('HTTP 403')).toBe(false);
       expect(isAuthRelated403('Error occurred')).toBe(false);
     });
+
+    it('treats the View-As refusal as a true 403', () => {
+      // Must stay in sync with backend permissions.VIEW_AS_REFUSAL.
+      expect(isAuthRelated403('Not available while viewing as another user')).toBe(false);
+    });
+  });
+});
+
+// ── X-View-As header (P1 Task 1, HS-30) ────────────────────────────────────
+
+const VIEW_AS_HEADER = 'X-View-As';
+
+function viewedUser(userId: string): ViewAsUserInfo {
+  return {
+    userId,
+    discordUsername: 'viewed',
+    displayName: null,
+    avatarUrl: null,
+    groupId: 'g1',
+    groupName: 'Test Static',
+    isMember: true,
+    role: 'member',
+    isLinkedPlayer: false,
+    linkedPlayerId: null,
+    linkedPlayerName: null,
+  };
+}
+
+function noContent(): Response {
+  return new Response(null, { status: 204 });
+}
+
+function sentHeaders(fetchMock: ReturnType<typeof vi.fn>, call = 0): Record<string, string> {
+  const init = fetchMock.mock.calls[call]?.[1] as RequestInit | undefined;
+  return (init?.headers ?? {}) as Record<string, string>;
+}
+
+describe('authRequest X-View-As header', () => {
+  const originalRefresh = useAuthStore.getState().refreshAccessToken;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    document.cookie = 'csrf_token=t';
+    fetchMock = vi.fn().mockResolvedValue(noContent());
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    useViewAsStore.getState().stopViewAs();
+    useAuthStore.setState({ refreshAccessToken: originalRefresh });
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('sends X-View-As on DELETE and GET while viewAsUser is set', async () => {
+    useViewAsStore.setState({ viewAsUser: viewedUser('u-view') });
+
+    await api.delete('/api/static-groups/g1');
+    await api.get('/api/static-groups/g1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sentHeaders(fetchMock, 0)).toHaveProperty(VIEW_AS_HEADER, 'u-view');
+    expect(sentHeaders(fetchMock, 0)).toHaveProperty('X-CSRF-Token', 't');
+    expect(sentHeaders(fetchMock, 1)).toHaveProperty(VIEW_AS_HEADER, 'u-view');
+  });
+
+  it('sends no X-View-As key after stopViewAs', async () => {
+    useViewAsStore.setState({ viewAsUser: viewedUser('u-view') });
+    useViewAsStore.getState().stopViewAs();
+
+    await api.delete('/api/static-groups/g1');
+
+    expect(sentHeaders(fetchMock, 0)).not.toHaveProperty(VIEW_AS_HEADER);
+  });
+
+  it('sends no X-View-As key from a fresh module with the store never set', async () => {
+    vi.resetModules();
+    const fresh = await import('./api');
+
+    await fresh.api.delete('/api/static-groups/g1');
+
+    expect(sentHeaders(fetchMock, 0)).not.toHaveProperty(VIEW_AS_HEADER);
+  });
+
+  it('keeps X-View-As on the retry after a 401 refresh', async () => {
+    useViewAsStore.setState({ viewAsUser: viewedUser('u-view') });
+    useAuthStore.setState({ refreshAccessToken: vi.fn().mockResolvedValue(true) });
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: 'Unauthorized' }), { status: 401 })
+      )
+      .mockResolvedValueOnce(noContent());
+
+    await api.delete('/api/static-groups/g1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sentHeaders(fetchMock, 0)).toHaveProperty(VIEW_AS_HEADER, 'u-view');
+    expect(sentHeaders(fetchMock, 1)).toHaveProperty(VIEW_AS_HEADER, 'u-view');
+  });
+
+  it('sends no X-View-As key when viewAsUser.userId is empty', async () => {
+    useViewAsStore.setState({ viewAsUser: viewedUser('') });
+
+    await api.delete('/api/static-groups/g1');
+
+    expect(sentHeaders(fetchMock, 0)).not.toHaveProperty(VIEW_AS_HEADER);
   });
 });

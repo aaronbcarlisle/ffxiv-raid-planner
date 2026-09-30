@@ -26,6 +26,7 @@ from ..models import (
     User,
 )
 from ..permissions import (
+    VIEW_AS_REFUSAL,
     NotFound,
     PermissionDenied,
     admin_override_for,
@@ -39,6 +40,7 @@ from ..permissions import (
     is_user_admin,
     require_can_manage_members,
     require_owner,
+    view_as_user_id,
 )
 from ..schemas import (
     AdminStaticGroupListItem,
@@ -687,6 +689,11 @@ async def delete_static_group(
     current_user: User = Depends(get_current_user),
 ) -> None:
     """Delete a static group (owner only)"""
+    # Refused under admin View As (HS-30 / D-50), before any DB read so no
+    # audit row is written. The header's presence alone decides it.
+    if view_as_user_id(request):
+        raise PermissionDenied(VIEW_AS_REFUSAL)
+
     group = await get_static_group(session, group_id)
 
     # Only owner can delete
@@ -1229,7 +1236,11 @@ async def remove_member(
         user_id: User ID to remove
         unlink_players: If True (default), also unlink any player cards assigned to this user
     """
-    from ..permissions import PermissionDenied
+    # Removing the viewed member under admin View As is refused (HS-30 /
+    # D-50), before any DB read so no audit row is written. Compared to the
+    # path user_id, never to current_user.id: other removals stay open.
+    if view_as_user_id(request) == user_id:
+        raise PermissionDenied(VIEW_AS_REFUSAL)
 
     group = await get_static_group(session, group_id)
 

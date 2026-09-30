@@ -150,6 +150,8 @@ vi.mock('../../services/api', () => ({
     post: vi.fn().mockResolvedValue(undefined),
     patch: vi.fn().mockResolvedValue(undefined),
   },
+  // viewAsStore's module-scope subscription calls this on every store set.
+  setViewAsHeaderUserId: vi.fn(),
 }));
 
 import { NewShell } from '../../pages/NewShell';

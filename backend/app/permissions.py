@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime, timezone
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,12 +24,25 @@ logger = get_logger(__name__)
 # Id prefix of the unpersisted virtual-owner row create_admin_membership builds.
 ADMIN_VIRTUAL_ID_PREFIX = "admin-virtual-"
 
+# Admin View As (HS-30 / D-50). The client sends the viewed user's id in this
+# header only while View As is active. Its presence alone refuses the static
+# delete and the viewed member's removal; every other verb stays open. The
+# refusal text must not match services/api.ts AUTH_RELATED_403_PATTERNS, so
+# the client toasts it as a true 403 instead of trying a token refresh.
+VIEW_AS_HEADER = "X-View-As"
+VIEW_AS_REFUSAL = "Not available while viewing as another user"
+
 
 class PermissionDenied(HTTPException):
     """Exception for permission denied errors"""
 
     def __init__(self, detail: str = "Permission denied"):
         super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
+def view_as_user_id(request: Request) -> str | None:
+    """The viewed user's id from X-View-As, or None when the header is missing or empty."""
+    return request.headers.get(VIEW_AS_HEADER) or None
 
 
 def create_admin_membership(user_id: str, group_id: str) -> Membership:
