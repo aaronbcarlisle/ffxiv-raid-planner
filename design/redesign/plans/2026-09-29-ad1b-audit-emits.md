@@ -165,3 +165,20 @@ One PR, estimated ~1,300 changed lines (Task 1 ~350, Task 2 ~500, Task 3 ~350, T
    Paste into the PR body.
 2. Screenshot of the PrivacyDocs row and the new history card → `docs/redesign/pr-shots/`.
 3. Plan write-back once (rulings that bind AD2+/AD8: R-AD-A seam, R-AD-B placement, R-AD-G conventions, R-AD-H semantics), memory note update, `pr-checklist`, gates, draft PR with the V1-safety enumeration (every hunk in the shared-file list above, with the V1 path each reaches). File the R-AD-D follow-up as the next PR.
+
+## Outcome (2026-09-30): what binds AD2+ / AD3 / AD8
+
+AD1b shipped as two stacked PRs: A (plan + Tasks 1–2) and B (Tasks 3–4). Tasks 1–2 alone came to ~1,640 lines against the ~1,500 cap. The whole-branch review found C/I/M = 0/0/6 and ruled the slice spec-compliant.
+
+- **R-AD-A, B, G and H hold as written.** Every later emit uses `admin_override_for(session, user.id, group_id, <membership the require_* returned>, <that check's min_role>)`, placed per R-AD-B, with R-AD-G's target conventions. Old and new value keys are snake_case (`share_code`, `is_public`), as the table prescribes. The API's column keys are camelCase.
+- **AD8 (permission layer):**
+  - An admin in a real lead seat who promotes someone to lead records `adminOverride: false`: the check's `min_role` is LEAD, even though the promotion itself needs owner rank. R-AD-A prescribes this. Revisit if AD8 moves the role check into the permission layer.
+  - `create_admin_membership` logs `admin_access_granted` every time it is called. That includes the call made only to feed `admin_override_for` in admin-assign (`tiers.py`), which also runs for real-owner admins. A log-free constructor belongs with AD8.
+- **AD3 (the admin Logs UI):**
+  - An invalid `from`/`to` returns 422 with `{"detail": "<string>"}`. FastAPI's own 422s (`page`, `pageSize`, `credential`) return `{"detail": [...]}`. Handle both shapes.
+  - `new_values` can omit a key whose value is `None` when the old side lacks it (e.g. `unlinked_player_id`). Treat value keys as optional.
+  - The `action` filter lowercases the input. SQLite tests can't prove this, because LIKE is case-insensitive there.
+- **Latent bugs found and fixed:**
+  - `transfer_ownership` 500'd after committing on main (`member_count` lazy-load → `MissingGreenlet`). Fixed with `load_memberships=True`; PR A has a public release line for it.
+  - `CatalogSyncResult.counts` was too narrow for the real sync shape. Widened to `dict[str, Any]`.
+- **Still open:** R-AD-D (import-verified-ids never commits) is its own follow-up PR.
