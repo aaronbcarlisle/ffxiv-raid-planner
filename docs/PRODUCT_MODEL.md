@@ -217,7 +217,7 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 
 ## 6. Current state and definition of done
 
-> **This is the one canonical statement of where the redesign stands and what "done" means.** Other docs link here instead of restating it. Verified 2026-09-30 against `main` `9ff3df3f` (2.1.53 then; the version source of truth is `CURRENT_VERSION` in `frontend/src/data/releaseNotes.ts`). When you change the state, change it here, with PR numbers.
+> **This is the one canonical statement of where the redesign stands and what "done" means.** Other docs link here instead of restating it. Verified 2026-09-30 against `main` `301a1b9e` (2.1.56 then; the version source of truth is `CURRENT_VERSION` in `frontend/src/data/releaseNotes.ts`). When you change the state, change it here, with PR numbers.
 
 ### 6.1 Where we are now
 
@@ -246,14 +246,23 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 | Phase P — beta polish walkthrough with the owner | ⬜ | process in `HOME_STRETCH.md` §5 |
 | Admin V2 | AD1a #241, AD1b #317/#318 ✅; AD2+ parked | **Blocks nothing** (a separate gated area; HS-14) |
 | Account delete / export (old Plan M) | ⬜ never built | no endpoint in `backend/app/routers`; a 3.0.0 prerequisite (HS-13), `HOME_STRETCH.md` §4 M1 |
+| V2 holistic audit (2026-09-30) | ✅ delivered; its revised plan **adopted in full** (HS-32) | 13 agent reports, 3 verified P0s, 31 owner decisions; the plan is [`HOME_STRETCH.md` §6](../design/redesign/HOME_STRETCH.md#6-the-w-plan-v2-audit-adopted-2026-09-30) |
+| W0 — safety and correctness | ◐ V1B-1 ✅ #322; the "View schedule" part of HOME-1 ✅ #323; the three P0s (SEC-1 farm-drop authorization, LOG-1 Log Week double-log, RSVP-0 series vs occurrence), AUTHZ and the rest ⬜ | `HOME_STRETCH.md` §6.3 W0; the P0 safety slice is next (HS-34) |
+| W2 — the 31 owner decisions (DEC-1) | ◐ #28 (adopt gate Q) answered; batches A/B/C open | `HOME_STRETCH.md` §6.5; Stage 2 restarts from canvas DA 10 (batch A #1–#3) |
 
-**What remains, in order, with sizes, dependencies and acceptance criteria:** [`design/redesign/HOME_STRETCH.md`](../design/redesign/HOME_STRETCH.md). Session 2 (2026-09-30) settled every open owner question as rulings HS-1…HS-25, and the same day the owner ruled HS-26…HS-31 on questions the plan's two director vets raised; all are recorded there. In short: the spine is five tabs, with Progress as the tracks surface (F-03, reaffirmed; "prog" stays the status word, HS-29); Plugin setup lives in Player Hub, its guide in Docs and the team Gear-Sync dashboard in Roster (F-05, reaffirmed); every owed parity row gates the release; the un-gate and 3.0.0 merge into one release; and a legacy→V2 entry stays for everyone after it (HS-26).
+**What remains, in order, with sizes, dependencies and acceptance criteria:** [`design/redesign/HOME_STRETCH.md`](../design/redesign/HOME_STRETCH.md). **The order is its §6, [the W-plan](../design/redesign/HOME_STRETCH.md#6-the-w-plan-v2-audit-adopted-2026-09-30)** (waves W0–W8 plus design-quality gate Q, adopted in full 2026-09-30, HS-32): the P0 safety slice first, then Stage 2 co-design from canvas DA 10 (HS-34). No earlier ruling is off-limits; each stands until the owner answers the §6.5 decision that reopens it (HS-33). Session 2 (2026-09-30) settled every open owner question as rulings HS-1…HS-25, and the same day the owner ruled HS-26…HS-31 on questions the plan's two director vets raised; all are recorded there. In short: the spine is five tabs, with Progress as the tracks surface (F-03, reaffirmed; "prog" stays the status word, HS-29); Plugin setup lives in Player Hub, its guide in Docs and the team Gear-Sync dashboard in Roster (F-05, reaffirmed); every owed parity row gates the release; the un-gate and 3.0.0 merge into one release; and a legacy→V2 entry stays for everyone after it (HS-26).
 
 ### 6.2 Definition of done
 
 Two gates, in order. *(Ratified 2026-09-30, HS-6; merged into two gates by HS-25. The 2026-07-11 proposal had three: un-gate, 3.0.0, V1 deletion.)*
 
-1. **Release 3.0.0: V2 is the default for everyone.** Every user is flipped to V2: the shell choice made before the release isn't migrated, and a switch-back made after it persists (HS-23). The way back is "Switch back to legacy UI" in the user menu or Settings, reachable on mobile (HS-24). `TryNewUiBanner` is deleted; the legacy user-menu item that enters V2 stays for everyone, without its `isAdmin` gate and renamed, so switching back is never a one-way door (HS-26). Requires every build item in `HOME_STRETCH.md` §4 that isn't marked *not a gate* (HS-28; HS-14 for admin-only items):
+1. **Release 3.0.0: V2 is the default for everyone.** Every user is flipped to V2: the shell choice made before the release isn't migrated, and a switch-back made after it persists (HS-23). The way back is "Switch back to legacy UI" in the user menu or Settings, reachable on mobile (HS-24). `TryNewUiBanner` is deleted; the legacy user-menu item that enters V2 stays for everyone, without its `isAdmin` gate and renamed, so switching back is never a one-way door (HS-26). Requires every build item in `HOME_STRETCH.md` §4 that isn't marked *not a gate* (HS-28; HS-14 for admin-only items), and every item §6 (the W-plan) marks as a gate unless the owner defers it in writing (HS-32):
+   - W0 safety and correctness: the three P0s, the mutation-route authorization table, guest and role gating, the kill switch with a reversible flip, and CI quality infrastructure (axe, bundle budgets, visual baselines);
+   - the W1 quick-win clusters marked as gates, including the accessibility floor;
+   - the owner's decision batches (DEC-1) and the reconciliation PR that records them;
+   - the W4 surface reworks, each as its §6.5 decision rules;
+   - **design-quality gate Q** (W5): the per-surface rubric with a heuristic floor, WCAG 2.2 AA with zero critical or serious axe findings, performance budgets, the cross-page consistency slice, the states matrix, an accessibility statement, and a 5-raider usability test;
+   - docs content, help, first-run onboarding and a feedback channel (W6);
    - every parity-matrix row executed;
    - the not-found fix (V1B item 1; broken in V2 too, HS-28) — ✅ #322;
    - Stage 2, Stages 5–6 and Phase F;
@@ -264,7 +273,7 @@ Two gates, in order. *(Ratified 2026-09-30, HS-6; merged into two gates by HS-25
    - Phase P;
    - the owner-signed release plan.
 
-   Phase P is done when every V2 surface (in-static screens, non-static routes, mobile variants, guest views) has been walked with the owner, and every punch-list item is either fixed and re-demonstrated before the next page, or explicitly deferred by the owner. A page is accepted when the owner says "next". Admin V2 is not a prerequisite (HS-14).
+   An opt-in beta cohort before the flip is proposed (§6.5 #29) and is not a gate unless the owner rules it one; it would overturn part of HS-25. Phase P follows each surface's Q-1 pre-score (HS-32). Phase P is done when every V2 surface (in-static screens, non-static routes, mobile variants, guest views) has been walked with the owner, and every punch-list item is either fixed and re-demonstrated before the next page, or explicitly deferred by the owner. A page is accepted when the owner says "next". Admin V2 is not a prerequisite (HS-14).
 2. **V1 deleted.** Requires all of:
    - V2 the default for at least 4 weeks;
    - a trailing-2-week switch-back rate under 10% (tune with real data; defined in `HOME_STRETCH.md` §4 T1);
@@ -301,6 +310,6 @@ Steps 1–3 are the redesign; §6 tracks them to done. Every future request is n
 ## 8. How this relates to the other docs
 
 - **§6 is the only place that states current redesign status and the definition of done.** Other docs link to it rather than restating either. `HOME_STRETCH.md` §4's ticks are subordinate to §6.1: a tick records that an item shipped, and if a tick and §6.1 disagree, §6.1 wins and the tick is corrected.
-- **The redesign docs** (`design/redesign/`) derive *from* this doc: [`REDESIGN_SPEC.md`](../design/redesign/REDESIGN_SPEC.md) (IA, visual language, flows, with mockups), [`HOME_STRETCH.md`](../design/redesign/HOME_STRETCH.md) (the sequenced plan from now to V1 deletion, with the session-2 rulings), [`ROLLOUT_ROADMAP.md`](../design/redesign/ROLLOUT_ROADMAP.md) (the plan of record: phases R→H and their rulings), [`V2_COVERAGE_PLAN.md`](../design/redesign/V2_COVERAGE_PLAN.md) (coverage Stages 0–6), and per-slice specs and plans under `specs/` and `plans/`. If a mockup or spec contradicts this model, the model wins or the model is changed deliberately — not by drift.
+- **The redesign docs** (`design/redesign/`) derive *from* this doc: [`REDESIGN_SPEC.md`](../design/redesign/REDESIGN_SPEC.md) (IA, visual language, flows, with mockups), [`HOME_STRETCH.md`](../design/redesign/HOME_STRETCH.md) (the sequenced plan from now to V1 deletion, with the session-2 rulings; its §6 is the adopted W-plan from the 2026-09-30 V2 audit), [`ROLLOUT_ROADMAP.md`](../design/redesign/ROLLOUT_ROADMAP.md) (the plan of record: phases R→H and their rulings), [`V2_COVERAGE_PLAN.md`](../design/redesign/V2_COVERAGE_PLAN.md) (coverage Stages 0–6), and per-slice specs and plans under `specs/` and `plans/`. If a mockup or spec contradicts this model, the model wins or the model is changed deliberately — not by drift.
 - **`CONSOLIDATED_STATUS.md`, `OUTSTANDING_WORK.md`, the A–M UI plans and `ROADMAP.md`** are archived in `docs/archive/2026-06-27-pre-redesign/`. They record what existed before the redesign. The enforcement philosophy (Plan L), design-system standardization (F) and recipient consolidation (H) were carried into the redesign; account controls (Plan M) were never built (§6.1). The structural plans (rail/settings/nav renames A/B/C/I) were superseded by the IA re-architecture.
 - **The changelog** is `frontend/src/data/releaseNotes.ts` (CI-enforced), which is also the version source of truth.

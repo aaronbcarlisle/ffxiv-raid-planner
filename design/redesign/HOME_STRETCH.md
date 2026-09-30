@@ -1,14 +1,14 @@
 # Home Stretch: now → V1 deletion
 
-> **What this is.** The complete, sequenced list of what is left between today and deleting legacy V1, written 2026-09-30 (home-stretch session 2) off `main` `6aec8590`. The current state and the definition of done are in [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done): that section states the state and the gates, and this doc states the order and the detail. Every open owner question is ruled (§2): HS-1…HS-25 in session 2, and HS-26…HS-31 on the questions director vets 1 and 2 raised. If new work turns up, add it here with its ruling. Never add it to another doc's status line.
+> **What this is.** The complete, sequenced list of what is left between today and deleting legacy V1, written 2026-09-30 (home-stretch session 2) off `main` `6aec8590`. The current state and the definition of done are in [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done): that section states the state and the gates, and this doc states the order and the detail. Every open owner question is ruled (§2): HS-1…HS-25 in session 2, and HS-26…HS-31 on the questions director vets 1 and 2 raised. **On 2026-09-30 the owner adopted the V2 audit's revised plan, W0–W8 plus design-quality gate Q (HS-32…HS-34): §6 is now the order, and its 31 decisions (§6.5) are open until the owner answers them in batches.** If new work turns up, add it here with its ruling. Never add it to another doc's status line.
 >
-> **How to use it.** Work the §4 items in order, or run them in parallel where §3 allows. When an item ships, tick it in §4 with its PR, update the §6.1 row it affects in PRODUCT_MODEL, and keep going; if a tick and §6.1 disagree, §6.1 wins (PRODUCT_MODEL §8). Run each build item with the `slice-loop` skill. An item marked **spec first** runs brainstorming → spec → owner-signed parity matrix → plan before any code, as Phase D did. An item marked **not a gate** runs in parallel and doesn't hold the release (HS-28).
+> **How to use it.** Work in §6's order (§6.1 says what's next); §4 holds each pre-audit item's detail, and §6.4 maps it onto its wave. Run §4 items in parallel where §3 and §6 allow. When an item ships, tick it in §4 with its PR, update the §6.1 row it affects in PRODUCT_MODEL, and keep going; if a tick and §6.1 disagree, §6.1 wins (PRODUCT_MODEL §8). Run each build item with the `slice-loop` skill. An item marked **spec first** runs brainstorming → spec → owner-signed parity matrix → plan before any code, as Phase D did. An item marked **not a gate** runs in parallel and doesn't hold the release (HS-28).
 
 ## 1. The finish line
 
 The two gates are defined in [PRODUCT_MODEL §6.2](../../docs/PRODUCT_MODEL.md#62-definition-of-done), and only there. This doc maps them onto §4:
 
-- **Gate 1, release 3.0.0, is R2.** R2 requires every §4 item above it except those marked **not a gate** (V1B items 2–3 and X1, HS-28; F1's two admin-only items, HS-14). Admin V2 isn't a prerequisite (HS-14).
+- **Gate 1, release 3.0.0, is R2.** R2 requires every §4 item above it except those marked **not a gate** (V1B items 2–3 and X1, HS-28; F1's two admin-only items, HS-14), and every §6 item whose Gate column says gate, design-quality gate Q included (HS-32). Admin V2 isn't a prerequisite (HS-14).
 - **Gate 2, V1 deleted, is D1.** T1 measures its switch-back and error-rate criteria from R2's first day.
 
 **Standing rules that still apply to every item:** no surface is replaced without an owner-reviewed affordance-parity matrix. The legacy path stays byte-identical until D1, except for the sanctioned V1 edits this plan names (P1, V1B, and the F1–F3 items labelled sanctioned V1). Every V1-visible edit carries a sanctioned-edit justification and a release note. Every UI PR embeds screenshots. `xivrp-director` vets each slice (`V2_COVERAGE_PLAN.md` §5 hard gates).
@@ -50,8 +50,24 @@ These close every item in the session-1 decision list (groups A–E, 22 items). 
 | HS-29 | Glossary: Progress vs prog (vet F1) | **"Progress"** is the fifth spine tab, the tracks surface (Goals, Farms, Collections, Split Clears). **"Prog"** stays the status word ("Floor 3 prog"). DESIGN_SYSTEM §2.3 and REDESIGN_SPEC §10 carry a dated amendment |
 | HS-30 | D-50's backend scope (vet 2 Q1) | **Only View-As deletes are refused.** P1 makes the client send the `X-View-As` header that `services/audit.py:140-145` already reads, and the backend refuses a static delete, and Leave (per the D-50 wording), only when that header is present. Admins keep moderation delete under `?adminMode` (`StaticTab.tsx:305`) |
 | HS-31 | A11: "Mark floor cleared" in admin mode (vet 2 Q2) | **Keep V2's behaviour.** In admin mode, an admin whose real role in the static is member can mark a floor cleared in V2 but not in legacy. A declared delta, consistent with P-15 (`specs/v1-v2-parity-matrix.md:276`); no work item |
+| HS-32 | The V2 audit's revised plan (2026-09-30) | **Adopted in full:** waves W0–W8, the release waves and design-quality gate Q (§6). **Amends HS-5:** 3.0.0 needs parity (HS-4), gate Q (§6.3 W5) and Phase P, which becomes the owner's taste pass after each surface's Q-1 pre-score. This answers §6.5 #28 |
+| HS-33 | Which earlier rulings the audit may reopen | **None is off-limits.** Any HS-n, S2-n, F-n, H-n, R-n or DESIGN_SYSTEM contract may be overturned by a §6.5 answer (S2-1/S2-2, R-3/R-4/R-14, DS §3.9/§3.13/§3.14/§3.20 and H-3/H-6/H-10 are named). Until the owner answers the decision that reopens it, the earlier ruling stands |
+| HS-34 | Order after P1 | V1B ✅ #322 → P1 ✅ #323 → the docs PR adopting §6 → **the P0 safety slice** (SEC-1, LOG-1, RSVP-0, AUTHZ) → **Stage 2 co-design restarting from canvas DA 10**. The rest of W0 and W1 run in parallel (§6.1) |
 
 ## 3. Sequence at a glance
+
+**The order is now §6's waves (HS-32, HS-34):**
+
+```
+W0 safety + correctness (P0 slice first) ─┬─► W2 DEC-1 decision batches A/B/C ─► CC-5 reconciliation
+W1 quick wins (parallel) ─────────────────┘        │
+                                                   ├─► W3 S2a Progress ─► S2b More/Settings/Hub ─► S2c mobile nav · PAL-1
+                                                   └─► W4 FRAME · HOME · ROSTER · LOOT · SCHED · RECRUIT · FINDER · HUB · ENTRY · M1
+W5 gate Q (rolling from S2c) ─► W6 docs/help/onboarding ─► W7 mobile pass ─► W8 Phase P
+─► BETA (if §6.5 #29) ─► R1 ─► R2 RELEASE 3.0.0 ─► soak ≥4 weeks ─► D1 V1 deletion
+```
+
+The pre-audit sequence below still gives §4's dependencies:
 
 ```
 now ─ H0 this plan
@@ -68,13 +84,13 @@ not gates, in parallel: V1B items 2–3 · X1 hygiene (HS-28) · F1's admin-only
 off the path: Admin V2 (parked) · plugin off-hand (plugin repo) · rings and "After 3.0.0" (post-release)
 ```
 
-Sizes: **S** is one PR under ~300 changed lines; **M** is one PR under ~1,500 (the repo's slice cap); **L** is several PRs, cut by its spec.
+Sizes: **S** is one PR under ~300 changed lines; **M** is one PR under ~1,500 (the repo's slice cap); **L** is several PRs, cut by its spec. §6 uses the audit's recalibration (S < 700 lines including tests), which §6.5 #30 asks the owner to adopt for the whole plan.
 
 ## 4. Items, in order
 
 Each item lists its scope, dependencies, acceptance criteria, size and rulings. "Parity row executed" means the row's ruling is visible in V2 and the matrix row gets a ship marker with its PR.
 
-### H0 · This plan (docs) — S
+### H0 · This plan (docs) — S — ✅ #321 (2026-09-30)
 - **Scope:** this doc; PRODUCT_MODEL §6 rewritten to the two gates and linked here; the "four tabs" text written before the amendment corrected in REDESIGN_SPEC §11 #7 / review checklist, V2_COVERAGE Stage 2, RECONCILIATION B7 and the DESIGN_SYSTEM Spine contract; amendment notes where ROLLOUT §7b and V2_COVERAGE D7 describe the un-gate. Director vet 1 added dated amendments where DESIGN_SYSTEM §2.1/§2.3 and REDESIGN_SPEC §9.1/§10 still read "four tabs" or "Progress is never a tab" (HS-29), and where `docs/README.md`, ROLLOUT (the header note, §1, §8, §9) and V2_COVERAGE (the status line, Stage 5, D2, D7) still describe three gates; `xivrp-director.md` cites F-03 for Progress.
 - **Acceptance:** the director says READY; merged; §6 links here; no owner question is left open.
 
@@ -312,8 +328,211 @@ Walk these on their page:
 - D-60, Command Brief chips as clickable subtitle and prompt elements (Home);
 - Go to My Statics shown to guests on not-found (and on the Error card); the private branch shows them Log In with Discord instead (`ShellContentStates.tsx:163-167`).
 
-## 6. Change log
+## 6. The W-plan (V2 audit, adopted 2026-09-30)
+
+> **What this is.** The revised plan from the V2 holistic audit of 2026-09-30 (§9 and §10 of its synthesis report), which the owner adopted in full: waves W0–W8, the release waves, and design-quality gate Q (HS-32). It is the **order** from now to V1 deletion. §4's items keep their scope, file references and acceptance criteria; §6.4 maps each one onto its wave. Where a W item and a §4 item cover the same work, both acceptance lists apply. Where they conflict, the §4 text stands until the owner answers the §6.5 decision that changes it (HS-33).
+>
+> **Sources.** The audit's report is [the published synthesis](https://claude.ai/artifact/2qL46K63cBihrRsnuyFpEM), and its 18 decision areas are on [the design canvas](https://claude.ai/artifact/FSew85ViFxg3ERcBAbkAQP). The agent reports behind them are in the owner's git-ignored `.superpowers/v2-audit/`. Finding IDs cite them: A1–A6 are the per-surface design reviews (for example `A2 R-1` is finding R-1 of A2, the Home/Roster review), B is the screenshot capture and detector, C1 performance, C2 conformance and accessibility (`C2-08`), D vision drift, E1 internal docs, E2 user docs, and F the audit of this plan (`F §5`, `F G-9`). "DA n" is decision area n on the canvas; "P0-n" is one of the audit's three verified P0s (§6.3 W0).
+>
+> **Reconciled against the synthesis (2026-09-30).** Two internal inconsistencies are corrected here. (1) Its plan table numbered the decision batches B = #11–#20 and C = #21–#31, but its decision list (§6.5) has B = #11–#27 and C = #28–#31; this doc follows the list, and BETA's "§10 #23" is #29. (2) Accessibility tier 1 claimed ≈185 axe nodes and the fix-order section ≈160: both are right. ≈160 is C2-02 + C2-08 alone, and `Field`/`Checkbox` add ≈25 page nodes (C2 §7 #1–2).
+
+### 6.1 Order now (HS-34)
+
+1. ✅ V1B item 1, #322. ✅ P1, #323.
+2. This docs PR: the plan's adoption.
+3. **The P0 safety slice**, from W0: SEC-1 (`log_drop` rules, P0-1), LOG-1 (the Log Week double-log, P0-2), RSVP-0 (series vs occurrence, the P0-3 mitigation), and AUTHZ (a role audit of every mutation route). #324, the V2 RSVP double toast, may ride along.
+4. **Stage 2 co-design, restarting from canvas DA 10** (Progress), not from the old Farms A/B/C question. The DA 10 answer is batch A #1–#3 of DEC-1.
+
+The rest of W0 and the W1 clusters need no design decision and may run in parallel, each in its own worktree, once the P0 slice is under way.
+
+### 6.2 Principles and sizes
+
+This merges the plan audit's revised sequence (F §8) with the audit's findings. Principles: (1) **integrity before parity** — wave 0 needs no design decision and no owner walk; (2) **decisions in batches with defaults**, never one per exchange (F §6); (3) **quality is measured, not felt** — every wave ends with a demonstrable acceptance, and the design-quality gate (Q) sits before Phase P, which becomes the taste pass it was always meant to be; (4) **density rule 11 applies inside the remaining slices** (D §5.4), not after them; (5) **nothing is a release gate unless a user would notice its absence** (S6 actions, F3 hygiene and Admin V2 are not gates).
+
+Sizes: S < 700 lines incl. tests, M < 1,500, L = a slice (F §6's recalibration). "Gate" = required for R2 3.0.0 unless the owner defers it in writing. Acceptance criteria are things a reviewer can *run or see*.
+
+### 6.3 The waves
+
+#### W0 · Safety and correctness (now; parallel; no design decisions)
+
+| Item | Scope | Acceptance (demonstrable) | Size | Depends on | Gate |
+|---|---|---|---|---|---|
+| **SEC-1** log_drop rules | `log_drop`: self = member; others = lead+; recipient must be a non-viewer member; VIEWER refused. `DELETE …/drops/{id}` (lead or creator) that restores the prior participant state. Self-upsert ignores `priority_rank`/`token_count` from non-leads (DA 10 rules 9A) | pytest: viewer → 403 logging for self and others; member → 403 for others, 201 for self; non-member recipient → 400; delete restores `need`; both shells' clients hide the buttons they can't use | S | — | **Gate** (P0-1) |
+| **AUTHZ** route table + tests | One table of every mutation route (142) with its minimum role and ruled intent; one pytest per route asserting a viewer gets 403 where the table says so; the four viewer-accepting routes ruled (§6.5 #2) | Table checked into `backend/tests/authz_matrix.py`; CI fails on a route not in the table | M | SEC-1 | **Gate** |
+| **LOG-1** wizard seeding | `LogWeekWizard` seeds from `lootLog`/`materialLog` for `selectedWeek`; logged slots render locked "✓ Ears → Healer Two · logged" and are excluded from submit; confirm step shows "N already logged this week"; ranking calls `buildRecipientEntries` with the same `enhancedActive` gate (L-02) | Vitest: opening the wizard for a week with one logged Ears submits 0 Ears entries; a consistency test asserts wizard #1 == Queues #1 on the DEVTST fixture | S | — | **Gate** (P0-2) |
+| **RSVP-0** interim | Recurring series render one card ("Every Tue · next Oct 6 · applies to every week") until DA 12's schema lands; no RSVP control on non-next occurrences; `countdownLabel` never returns "today" for a past start; RSVP disabled after `endTime`; Played state on past cards | e2e on a seeded Tue/Fri series: one card per series per week; a past session shows "Played · Mon Sep 28" with no RSVP buttons | S | — | **Gate** (P0-3 mitigation) |
+| **GUEST-1** | Bell, gear and palette "Open Settings" gated on `user` (as `NonGroupTopBar`); `LoginButton` in the group top bar; Schedule/Loot fetches gated on membership with one honest members-only card; guest `by-code` payload omits `discord_username`/avatar for non-members (§6.5 #4) | Guest e2e: no bell, no gear, Log in visible, no 401s in the console, response body has no `discordUsername` | S | §6.5 #4 | **Gate** |
+| **ROLE-1** client gating | Hide (not disable) manage-only controls for non-managers: Roster toolbar, "Add session", "Log this week's loot" (members get "View loot priority" → `lview=log` for leads), farm Track/Log Drop, "Manage characters"; leads get edit-others where the API allows | Member screenshots of Home/Roster/Loot/Tracking show no disabled lead controls | S | — | Gate |
+| **DEL-1** destructive confirms | `ConfirmModal` on farm delete (visible on `focus-visible`, `aria-label` names the goal); Discord mirror/reminder defaults honest in the V2 session modal (pass `discordDeliverySummary`) | Vitest + e2e | S | — | Gate |
+| **HOME-1** session truth | Shared `nextOccurrence(sessions, exceptions)` helper used by Home and Schedule; "Add session" gated on `canManage`; members get "View schedule" (the "View schedule" link ✅ #323) | Home shows a weekly series after its first occurrence | S | — | Gate |
+| **KS** kill switch + reversible flip | Server-side default-shell setting (env or admin) honoured by `resolveShell`; R2 migration saves prior `ui_shell` and `alembic downgrade` restores it; one-page runbook | Staging: flip, verify users land on V2, flip back, verify legacy on next load | S | — | **Gate** (F G-9) |
+| **T1 + T1b** telemetry | Ship T1 now; add 4–6 shell-tagged task-success events (loot logged, RSVP, BiS import, session created, availability painted, invite sent); gate-2 error rate per active user-day | A readout query of task completions per active static per week by shell | S | — | Gate (≥14 days before R2) |
+| **CI-0** quality infra | axe (`wcag2a/2aa/21aa/22aa`) on every V2 route in both themes, `size-limit` per-route budgets, visual baselines per core screen × theme × 1440/390 + key legacy screens, FF/WebKit smoke, `--max-warnings` frozen at today's count, contrast run includes chrome + overlays | CI fails on a new serious/critical axe node, a budget breach or an unapproved pixel diff | M | — | Gate (F G-5/6/10, C2-01) |
+| **V1B-1** merge with write-back | Store root cause (`staticGroupStore.ts:101-115`) fixed; HOME_STRETCH :93 corrected in the same PR | Bad code shows the not-found body with no stale group | S | — | Gate (HS-28) — ✅ #322 |
+
+#### W1 · Quick wins (no design decision; each a small PR; rolling alongside W2)
+
+| Cluster | Items (finding ids) | Acceptance | Size | Gate |
+|---|---|---|---|---|
+| Chrome & wayfinding | Page titles + polite route announcer + focus h1 (D-16); positional keys 1–5 in V2 only + keys in spine tooltips (D-17, §6.5 #12); not-found chrome (clear crumb/spine, h1, "Open Static Finder", V1B copy) (D-18); first landing → Home incl. invite accept (D-20); one unread count, drop the avatar badge (D-23); not-found/404 CTAs for guests vs signed-in (A6-33/34); rail initials `aria-hidden` (A6-39); toasts bottom-right, opaque, `status` for info (A1 §11.9) | axe `region`/`page-has-heading-one` zero; e2e: `document.title` per route; KEY 1 → Home | S each | Gate |
+| Accessibility tier 1 (C2 §7 #1–3) | Badge colour token ≥ 4.5:1 + `Tag tone` for chips (C2-02); Docs copy button name + focus reveal + focusable `<pre>` (C2-08); `Field` primitive + label-aware `Checkbox/Select/Input/NumberInput/DateTimeInput` (C2-03/04, D-38); one global `:focus-visible` token ≥ 3:1 per theme (C2-06) + restore the mobile user-menu ring (§6.5 #21); modal focus restore on unmount (C2-09); dock interim: focus-in, Esc closes, ×, `Tabs` with names (C2-05, A1 M4); `inert` on collapsed catalog cards (A5-09); `Tag variant="filter"` for catalog chips (A5-08); Finder label contrast (A6-23); Board 10 px → 12 px headers (A2 R-4); sub-12 px sweep in `v2-only` files + `no-tiny-text` ratchet | axe dark/light 1440 app pages: 0 critical, 0 serious on Home/Roster/Loot/Schedule/Hub/Finder; ≈185 of the 439 dark-1440 page nodes removed by the first three items alone (≈160 from C2-02 badge colour + C2-08 copy button, ≈25 from `Field`/`Checkbox`, C2 §7 #1–2; plus ≈10 overlay nodes) | S–M | **Gate** (A11Y floor) |
+| Keyboard | Rename in the kebab (A2 R-1); "This is me" on unclaimed cards + Home "Claim your card" row (D-25); picker roving radio + Enter (A3 L-26); wizard `Checkbox` (L-08); availability grid ARIA grid + Space + ≥24 px rows (A6-12); heatmap `role="grid"` roving focus + names in the description (A4 F-S11); Board cell names with player/slot + `<th scope="row">` (C2-22) | Recorded keyboard-only run: rename, claim, assign, paint availability | S–M | Gate |
+| Truth & copy | Availability privacy copy V2-gated (A6-13); plugin install steps corrected (A5-26); `ShareStep.tsx:115` shell-aware; Finder/Discover empty-state pointers (E2 F-17); "group" → "static" sweep in FE strings + a string-literal lint (E2 F-19); `toastError(action, err)` on `errorHandler.ts` + lint for bare "Failed to" (E2 F-18); error modal: details behind a disclosure (A1 §11.10); one login verb + one product name (§6.5 #26); `X-Api-Key` line in CLAUDE.md fixed (✅ with this plan's adoption) | grep: 0 "group" in user-facing FE strings; 0 bare "Failed to" toasts | S | Gate |
+| Home/Roster quick wins (A2 §14 #1) | H-5 `lview:'log'`; H-6/H-7/H-8; R-9 neutral progress fill; R-13; R-21 4 columns from ~1180; R-25 "Assign" primary; X-2 honour or retire (§6.5 #17); Team Summary + duplicate recruiting strip removed from Home (DA 5 C's two deletions); "You're all caught up" icon; Finder card two-row footer (A6-20), `auth_redirect` on "Log in to join" (A6-22), own-static state (A6-21) | Screenshots; Home ≤ 1,200 px at 1440 after the removals | S | Gate |
+| Loot quick wins | L-07 "Skips #1" warning; L-12 one floor order (§6.5 #14); L-18 seed from scope; L-31 Undo toast; L-29 persist the roll + `canEdit`; L-25 helper generated from the configured order; L-24/L-34 plain labels | Vitest on the picker warning | S | — |
+| Perf tier 1 (audit §7, C1) | B1, B2, B3, B4, B5, B9, B10 (drop `mode="wait"` + reduced motion), B13, B16, B17, B18, B20, B21 | Re-run `C1work/throttle.cjs`: slow-4G LCP ≤ 4.5 s on Home/Roster/Loot (from 6.1–6.4); cold Home ≤ 24 requests; JSON gzipped | S each | PERF gate via CI-0 |
+| DS primitive fixes | `SegmentedToggle` selected state = surface + text, not primary fill (A2 X-3, §6.5 #15); `PageHeader` `color-mix()` (C2-29); `Toggle` tokens; `SectionLabel` primitive + adoption (C2-14); silent no-op token check in CI (C2-11); `z-*` tokens (C2-34); `formatShortcut()` everywhere (C2-33); modal `icon` required (C2-30) | design-system strict + the new checks green; before/after screenshots for the owner (X-3) | S–M | Gate (consistency) |
+| Docs mechanics (S5a) | `DocsLayout` + `useDocsScrollSpy` (IO on `#main-content`), per-page titles, 72ch column, CodeBlock fixes, permalinks, prev/next, single `<main>`, sub-12 px removed, FAB "On this page" disclosure on phones | Docs pages: 0 axe critical; hash follows the click, not the load | M | Gate |
+| Dead code | B21 list + `CharacterManageBridge` retirement plan recorded | knip 0 unused files in `layout/` | S | — |
+
+#### W2 · Design decisions (the canvas)
+
+| Item | Scope | Acceptance | Size | Depends on | Gate |
+|---|---|---|---|---|---|
+| **DEC-1** batched rulings | The owner reviews the 18 DA pages on the canvas with the audit's §8 recommendations and answers §6.5 in **three batches** (A: product rulings #1–#10; B: frame, IA and surfaces #11–#27; C: process, plan and release #28–#31), "accept all / amend #n" per batch | Rulings recorded as `HS-35…` in §2 the same day; the CC-5 reconciliation PR opens | — (owner: ≈3 sessions) | canvas mockups | Gate (everything below waits on batch A/B) |
+| **CC-5** reconciliation PR | Eight ruling/canon pairs resolved (glossary "Who Needs It"/"Log"/"Goals", DS §3.20, SPEC §7 re-homing rows, F-12/X1, root PRODUCT/DESIGN five tabs, PM:142/DEF-20); S2 rulings committed to `specs/2026-09-30-stage2-rulings.md`; `RULINGS.md` index; new IDs are HS-n only | grep finds no retired term in DS-canonical docs that the UI ships; `check-docs` prototype green | S (docs) | DEC-1 | Gate (E1 M-10) |
+
+#### W3 · Stage 2 as amended (Progress · More dissolution · mobile nav) + palette
+
+| Item | Scope | Acceptance | Size | Depends on | Gate |
+|---|---|---|---|---|---|
+| **S2a** Progress = Tracks matrix | DA 10 1B + Farms-B with the six conditions; Find mode (DA 11) as the shared catalog browser; split plan as the tier row's detail (4B); Objectives → Recruit ▸ Listing + Home (5B); TrackCard → 8A; Settings ▸ Goals & Farms hidden in V2; dead mount-farm trees deleted; status vocabulary Need · Want · Have · Pass | Opens on the tier row for DEVTST (never empty); a member changes their own cell inline; a lead logs a drop from the expanded row with #1 preselected; axe clean; `?track=` deep link; phones show cards | L (2 PRs) | DEC-1 A, SEC-1, DA 6 BiS module | **Gate** (HS-2, D-18) |
+| **PAL-1** palette global navigator | DA 3 Palette-A mounted in `AppChrome`; target groups; labelled search field with `lib/platform.ts` chip; share codes hidden; one-line footer hidden on touch | On `/profile`, `/discover`, `/docs`: ⌘K opens; "recruit", "docs", "hub", "player: Healer Two" all resolve | M | DEC-1 B | **Gate** |
+| **S2b** More dissolution + Settings page + Hub Connections | DA 15 Settings page with Members (own row Leave incl. viewers; owner "Make owner…"); Hub ▸ Account (Preferences, Plugin & API keys, Interface/shell switch, Your data stub); DA 17 Hub tabs renamed + Connections + Sync card state machine; More deleted per A5 §4.3; `/docs/plugin`; "Switch to classic UI" reachable on phones and desktop before More dies | Every More card's destination reachable in ≤ 2 clicks from Home; an owner transfers ownership and leaves; a viewer leaves; no "Coming soon" anywhere; the plugin's three steps match the README | L (2–3 PRs) | DEC-1, X1 ruled, M1 spec for "Your data" | **Gate** (HS-3, F-12, X1) |
+| **S2c** mobile navigation | DA 4 Mobile-A; `MobileBottomNav` and the Controls sheet removed; phone tier switcher in the context header | At 390: one nav, the static name visible, account menu present, spine hidden; no horizontal scroll on Home/Roster/Loot/Schedule | M | S2a, S2b | Gate |
+| **PAL-2** palette actions tranche 1 | Log a drop · RSVP · Jump to player · Switch week (role-gated, with confirms) | Each verb completes end to end from ⌘K in an e2e | S | PAL-1, S2a | **Not a gate** (scheduled; DA 3 note) |
+| **DENS** density rule 11 | Adopt: one toolbar row per screen; ≤ 6 Home modules above the fold at 1440×900; a second door for the same verb goes to ⌘K or an overflow, never a second button; applied inside S2a and every W4 slice, with a rollback list (Roster density toggle, Loot material door, Team Summary, fairness placement, recruiting line) | Each W4 PR body counts toolbar controls before/after | — | DEC-1 (§6.5 #16) | Gate (rule) |
+
+#### W4 · Core surface reworks (from the canvas decisions; each a slice with the density rule)
+
+| Item | Scope (DA) | Acceptance | Size | Depends on | Gate |
+|---|---|---|---|---|---|
+| **FRAME** | DA 1 Context bar: static ▾ / tier ▾ / dated week chip with shared `?week=`; rail 40 px tiles, one "you", "+" tile; guest variant; not-found crumb; DA 3 Inbox-A + Help-A | Top bar, Schedule strip and Loot dropdown show the same week after stepping; a new tier anchors to the reset (§6.5 #5); `?` opens help on every route incl. 390 | M | DEC-1 B | **Gate** |
+| **HOME** | DA 5 Home-A (lead + member) with the state-aware session card; BiS module (DA 6 sub-ruling); TrackCard 8A | Home answers all four questions above the fold at 1440×900 in the Q-3 test; ≤ 6 modules; one BiS number that equals the Board's | M–L | DEC-1 A, DA 6 module, S2a | **Gate** |
+| **ROSTER** | DA 6 Roster-A: Board default with row expansion + row menu; Cards compact only with the labelled needs row; gear atom = letter cells; Display ▾ toolbar; bulk "Import BiS for everyone"; Import BiS on Board no-BiS rows; "Recruit for this seat" | Toolbar ≤ 5 visible controls; Cards and Board render identical state; 8 players' BiS imported in one flow; keyboard run passes | L | DEC-1 A | **Gate** |
+| **LOOT** | DA 7 ranked WNI with Queues folded in + "You" lens; DA 8 inline drop desk with receipts, skip reason, Undo; DA 9 History Rank/Logged columns + Books column + fairness strip; V2 floor log sheet replaces the wizard; Weapons ported; one split primary; History paging (B12) | Raid-night e2e: log a contested drop with a skip reason in ≤ 6 keystrokes; row shows the receipt; a member sees "You · #4"; the wizard is gone from V2; toolbar has one teal per region | L (2–3 PRs) | DEC-1 A, rank-at-award schema | **Gate** (HS-17) |
+| **SCHED** | DA 12 Agenda + Planner + quick-create; per-occurrence RSVP with a standing answer (schema + migration); roster attendance grid; Played state; DA 13 shared availability grid in both mounts; D-48/D-49 inside the Planner (P2a); iCal for members; timezone combobox | "Do we have 8?" readable on the Next-up card; "Can't make Oct 6" affects only Oct 6; Best Times windows appear on the heatmap; `Edit week` stopgap deleted | L (2 PRs) | DEC-1 A, H1(1) | **Gate** (P2a, H1) |
+| **RECRUIT** | DA 14 Recruit-A: V2 listing editor with autosave + `FinderCard` preview; inline applicant rows with "Accept into slot"; parchment tokens; utility-zone entry + palette | A half-written listing survives a tab switch; accept → slot linked in one step; `DiscoveryTab` no longer mounted in V2 | M | DEC-1 B, DA 10 5B | Gate (RH-5 amended) |
+| **FINDER** | DA 16 Finder-A: top filter bar, ranked rows, card states, guest nudge with `auth_redirect`, viewer-local times | ≤ 6 Tab stops to the first result; 0 unnamed controls | M | `Field` (W1) | Gate (SF1 residuals) |
+| **HUB** | DA 17 residue after S2b: Privacy single control, setup = 4 required, "Main" tag, Wants feeding Progress, `underline` Tabs, arrows removed, public-profile CTA | Profile setup reaches 100 % for a private user; Hub tab bar and Spine share one component | M | S2b | Gate |
+| **ENTRY** | DA 18 Landing-A + dispatcher (L-1…L-3); FirstRun-A on the Hub; A6 D6 focused-entry layout for invite/plugin/callback; 404 CTA | Signed-in `/` → last static Home; a 0-statics user sees two doors + their pending application; an expired invite offers "Find a static", not login | M | DEC-1 B | **Gate** (new L1 item; F-02) |
+| **M1** Plan M | Spec now (owner: 5 decisions + privacy AC: PII inventory with export/delete/anonymise per table, OAuth tokens + API keys revoked, audit-log treatment, `PrivacyDocs` updated); build after S2b; ownership-transfer UI is DA 15's | pytest per PII table; a deleted account's tokens fail; Privacy page lists every V2 data category | L | DA 15 | **Gate** (HS-13) |
+
+#### W5 · Design-quality gate Q (rolling from S2c; F §5 as amended here)
+
+| Item | Scope | Acceptance (measurable) | Size | Gate |
+|---|---|---|---|---|
+| **Q-1 rubric per surface** (pass/fail, scored by an agent as each surface becomes final; the owner walk confirms) | 1 Purpose: the page names its core question and a first-time tester answers it in ≤ 10 s (Q-3). 2 Hierarchy: one primary action per region, visible without scrolling at 1440×900 and 390×844. 3 States: every data region meets the STATES matrix. 4 Consistency: `PageHeader`/`PageShell`, shared toolbars, no retired term or "group" in user copy (grep), zero "Coming soon". 5 Accessibility: axe `wcag2a/2aa/21aa/22aa` **0 critical / 0 serious** per route, both themes; focus visible ≥ 3:1; modal focus restored; targets ≥ 24 px. 6 Responsive: MP acceptance (W7). 7 Performance: per-route `size-limit` budget; slow-4G/4× LCP ≤ 4 s and cable ≤ 2.5 s for Home/Loot/Schedule on the largest prod-copy static; INP ≤ 200 ms. 8 Copy: every error message actionable, no dead ends. 9 Visual: design-system strict clean, light and dark, visual baseline recorded; detector in-page count per page not above its W4 baseline. **Heuristic floor:** every core surface (Home, Roster, Loot, Schedule, Progress, Hub, Finder) re-scored ≥ 28/40 with no heuristic below 2; Consistency & standards ≥ 3 everywhere | Every page passes 3–9; core pages pass 1–2 in Q-3; a failure is a P1 unless the owner defers it in writing | rolling | **Gate** (amends HS-5) |
+| **Q-2 cross-page consistency slice** | Inventory every pattern (headers, toolbars, empty/loading/error states, card anatomy, badges, button hierarchy, date/time/week formats, status vocabulary) and converge to one form each; the primitives from C2 §6 (`Field`, `SectionLabel`, `DataTable`, `PageShell`, `useOverlay`, soft-tone tokens, `LoadingBlock`) | One recipe per pattern in the DS; C2's matrices re-run show one row each | L | **Gate** |
+| **STATES** | States matrix (every data region × loading/empty/error/partial/no-permission) in DESIGN_SYSTEM; one primitive per state; error-state tests | Matrix has no empty cell for V2 routes | M | Gate (F G-14) |
+| **A11Y declaration** | WCAG 2.2 AA target + accessibility statement page; NVDA smoke on Home, Loot ▸ Log, Schedule; keyboard-only recording of 5 core tasks | Statement published; recordings attached to R1 | S | Gate |
+| **Q-3 usability test** | 5 raiders (2 leads, 3 members, via Discord), unassisted: next session + RSVP; who gets the next drop; log a drop; set availability; how close is the static; join/find a static | ≥ 80 % task success, no task with > 1 critical error; failures become PP items | S (+ recruiting time) | **Gate** |
+
+#### W6 · Docs, help, onboarding, feedback
+
+| Item | Scope | Acceptance | Size | Depends on | Gate |
+|---|---|---|---|---|---|
+| **S5b** docs content | E2 §6 rewrite list + §7.1 IA (Start by role · Guides · Concepts · Reference · Project); roles matrix generated from `permissions.ts` with a backend parity test; shortcuts generated from `V2_SHORTCUT_GROUPS`; glossary; `/docs/plugin`; What's new + where-did-it-go map; API docs from OpenAPI; Privacy per-feature table; drift-guard manifest test of UI labels used in docs | Manifest test green; 0 claim rows V1-ONLY/FALSE-BOTH in a re-run of E2's tables on Quick Start/How-To/FAQ | L | S2b, W4 surfaces final | **Gate** (F G-4; amends gate 1) |
+| **HELP** | DA 3 Help-A shipped with FRAME; docs link in the landing footer | `?` reachable on every route at 1440 and 390 | (in FRAME) | FRAME | Gate |
+| **ON1** first-run / "what moved" | One-time dismissible V2 intro (five tabs, legacy → new-home map, Switch back link; Create/Join/Find for static-less users); the new-member claim prompt after invite accept | Shown once (persisted); keyboard/SR accessible; T1 events shown/dismissed/switched-back | S/M | S2c | **Gate** (F G-3) |
+| **FB** feedback channel | "Send feedback about the new UI" in the V2 account menu; switch-back asks one optional reason (logged with T1); `v2-parity` label + intake rule | Feedback lands in the tracker with shell + route | S | T1 | Gate (F G-8) |
+| **DOCS-INT** internal docs | E1 §7.7 order: M-1/M-2/M-6/M-7/M-9 fixes and S2 rulings committed before the S2 spec PR; banners + the five archives + `RULINGS.md` + generated slice `INDEX.md` with the S2 spec PR; DS contract sync, one privacy source, `ENFORCEMENT.md`, `check-docs` in CI before Phase P; §4 tracker table | `check-docs` green; §4 has a state per item | M | — | Gate (docs of record) |
+
+#### W7 · Mobile pass (MP; per surface once S2c lands; measurable)
+
+| Scope | Acceptance | Size | Gate |
+|---|---|---|---|
+| Every V2 route (in-static, Hub, Finder, Recruit, Settings page, notifications, landing, entry pages, docs) at 360–430 px | No horizontal scroll; the primary task of each route completable at 390×844; primary actions ≥ 44 px, all targets ≥ 24 px (Roster's disabled circles gone with DA 6); no chrome overlap; screenshots per route in both themes; axe 390 runs 0 critical/serious | L (rolling) | **Gate** (F G-11; MP acceptance rewritten) |
+
+#### W8 · Phase P (owner taste pass, timeboxed, rolling)
+
+| Scope | Acceptance | Gate |
+|---|---|---|
+| The owner walks each surface after its Q-1 pre-score with the punch list pre-filed; fixed sessions per week; anything above M goes to "After 3.0.0" unless P0/P1; deferrals recorded by the owner only | Every core page has an owner sign-off line in §4; the "revisit when whole" list (memory) closed or deferred in writing | **Gate** (HS-5 as amended: parity + Q + P) |
+
+#### Release, soak, deletion
+
+| Item | Scope | Acceptance | Gate |
+|---|---|---|---|
+| **BETA** | Lift the admin gate for opted-in volunteers (a Discord call for statics) for 1–2 weeks with T1 live | ≥ N statics (owner picks N) used V2 for 2 raid weeks; switch-back reasons collected; every reported P0/P1 fixed or deferred in writing | **Gate** (overturns part of HS-25; §6.5 #29) |
+| **R1** release plan | Comms (what's new + where-did-it-go), KS runbook, soak playbook (named reviewer and day; KS triggers e.g. V2 error rate > 2× V1 for 48 h or switch-back > 25 % in week 1; written exit review against gate 2), browser-support statement, plugin deep-link table verified | Documents linked from §4 | Gate |
+| **R2 3.0.0** | Reversible flip migration; plugin deep links land on the intended V2 view (table + test per link); `/plugin-auth` works in V2 chrome; rehearsal on the prod DB copy (:5433) | All R2 AC green on staging | Gate |
+| **Soak** ≥ 4 weeks | Playbook executed weekly | Exit review signed | Gate for D1 |
+| **D1** V1 deletion | New D1 plan written at R2 (the 2026-07-03 plan is history); removes `GroupView`, the legacy host, the V1↔V2 twins (C1 §5), the shared wizard; frees §7 B8 | Bundle: V2 static route ≤ 550 KB gzip; knip clean; the DS/spec archive per E1 §7.5 | — |
+| **After 3.0.0 / not a gate** | S6 tranches 2+ (content search); F3 docs/tooling hygiene (jscpd count, FRONTEND_STRUCTURE rows, suppressions count, CLAUDE.md map); Admin V2 (AD2+); plugin off-hand mapping; Ring 2/3; DA 17 Wants-as-side-card; A2 DA-4 B revisit | — | — |
+
+**Net effect vs the plan audit's (F) §8 sequence:** same skeleton, plus a named W0 (safety), the W1 quick-win clusters with acceptance, the DA-driven W4 with per-surface gates, the heuristic floor and detector baseline in Q-1, S5b/HELP/ON1 explicitly gated, and PAL-2 scheduled but un-gated (reconciling D CC-4 with F #3). Estimated PRs to R2: ≈55–70; owner touchpoints ≈45–55 (three decision batches + Phase P walks + R1 sign-off).
+
+### 6.4 How §4's items map onto the waves
+
+| §4 item | Wave | What changes |
+|---|---|---|
+| H0 this plan | — | ✅ #321 |
+| P1 safety + quick parity | W0 | ✅ #323; it shipped HOME-1's "View schedule" link. HOME-1's shared `nextOccurrence` helper and the `canManage` gate on "Add session" remain |
+| V1B item 1 | W0 V1B-1 | ✅ #322 |
+| V1B items 2–3, X1 | — | Still **not a gate** (HS-28), in parallel |
+| S2 Stage 2 | W3 S2a · S2b · S2c, PAL-1, DENS | The spec-first boundary stands; S2a's scope becomes DA 10's answer, S2b adds the Settings page (DA 15) and Hub Connections (DA 17), S2c is DA 4. The settled inputs listed in §4 S2 are open again where a §6.5 answer overturns them (HS-33) |
+| P2a Schedule rows | W4 SCHED | D-48/D-49 land inside DA 12's Planner |
+| P2b Home rows | W4 HOME | If §6.5 #10 is answered A, P2b becomes a Home information-hierarchy spec rather than four restored V1 modules |
+| M1 Plan M | W4 M1 | Spec now; build after S2b; privacy acceptance added |
+| H1 typical-week + H-10 | W4 SCHED (depends on H1(1)), DA 13 | Unchanged dependency: P2a/SCHED waits on H1(1) |
+| T1 telemetry | W0 T1 + T1b | Adds 4–6 task-success events |
+| S5 docs restyle | W1 docs mechanics (S5a) + W6 S5b | S5b (content) is a gate |
+| S6 ⌘K actions | W3 PAL-1 (gate) + PAL-2 (not a gate) | The palette becomes a global navigator first; the four-verb action tranche is scheduled after S2a but doesn't gate the release |
+| F1–F3 Phase F | W1 clusters, W5 Q-2 | Items a W1 cluster or Q-2 fixes close there; the rest stay in §4 F1–F3 |
+| MP mobile pass | W7 | Acceptance made measurable |
+| PP Phase P | W8 | Walks follow each surface's Q-1 pre-score |
+| R1, R2, Soak, D1 | Release | KS (W0) adds a kill switch and a reversible flip; BETA waits on §6.5 #29 |
+
+New work with no §4 item: SEC-1, AUTHZ, LOG-1, RSVP-0, GUEST-1, ROLE-1, DEL-1, KS and CI-0 (W0); the W1 clusters; DEC-1 and CC-5 (W2); FRAME, ROSTER, LOOT, RECRUIT, FINDER, HUB and ENTRY (W4); gate Q (W5); HELP, ON1, FB and DOCS-INT (W6); BETA.
+
+### 6.5 Owner decisions (DEC-1)
+
+Batches match §6.3 W2 DEC-1; record each answer as an HS-n ruling in §2. Each line: the question · options · **recommended answer** · what it amends.
+
+#### Batch A — product rulings (unblock W3/W4)
+
+1. **What is Progress?** 1A as ruled (Farms · Split Clears · Objectives, opens on Farms) · 1B Tracks matrix, tier pinned first, Farms as matrix · 1C no tab. **→ 1B with Farms-B.** Overturns S2-1/S2-2; amends F-04, HS-2 wording. (DA 10)
+2. **Who may log a farm drop / write status?** 9A self = member, others = lead, recipient must be a member, viewers refused, delete route · 9B lead-only · 9C open + audit. Plus the four viewer-accepting routes (content suggestions, votes, participant self-state): (a) viewers suggest and vote only · (b) fully read-only · (c) as is. **→ 9A now; routes (a).** Resolves X2. (SEC-1/AUTHZ)
+3. **Objectives' home.** 5A Progress peer view · 5B Recruit ▸ Listing (edit) + Home (read) · 5C track rows flagged "Listed". **→ 5B now, 5C after release.** New ruling; amends HS-2's list. (DA 10)
+4. **Guest payload.** Should an anonymous share-code visitor receive members' Discord usernames/avatars in `by-code`? (a) omit for non-members · (b) keep (Finder/applicants need lead handles) · (c) omit except the owner's handle. **→ (a), with (c) if the Finder needs a contact.** New ruling; privacy. (GUEST-1)
+5. **The week's anchor.** (a) re-bucket every static to the Tuesday reset with a migration now · (b) new tiers anchor to the reset by default; existing tiers get a lead "Align week to the reset" action; chip + shared `?week=` ship independently · (c) keep the tier-creation anchor, make it legible. **→ (b).** PRODUCT_MODEL §3.2-level; A4 DA-4 wanted (a). (DA 1)
+6. **One BiS definition.** A "complete" everywhere · B two quantities, one bar (done + needs-augment + to-go; "has BiS" = has targets) · C "obtained" (V1). **→ B.** New ruling; feeds Home, Roster, Board, Hub, Progress. (DA 6)
+7. **RSVP unit.** A per-occurrence + standing answer (schema) · B per-series with one series card (interim) · C availability-derived + override. **→ A, with B as the interim before 3.0.0 if the schema slips.** Re-opens holistic #34 (U-12). (DA 12)
+8. **Loot view structure.** A ranked Who Needs It with Queues folded in + one split "Log M10S ▾" · B floor-first console · C flat five-way. **→ A**, plus the V2 floor log sheet replacing the wizard. Amends R-1/R-3, D-23; resolves HS-17. (DA 7)
+9. **Contested-drop moment.** A hardened modal · B inline drop desk row · C docked sheet. **→ B**; needs rank-at-award + skip-reason columns (schema). (DA 8/9)
+10. **Home composition.** A week board by floor with a member "You" band · B answer strip · C spec-faithful trim. **→ A**, with C's two removals (Team Summary, duplicate recruiting strip) as a quick win now; P2b becomes a Home information-hierarchy spec, not four restored V1 modules. Amends F-08, D14/R-40 placement, R-RH-P, R-E2-I. (DA 5)
+
+#### Batch B — frame, IA and surfaces
+
+11. **App frame.** A Context bar (static ▾ / tier ▾ / dated week ▾, labelled search, one bell, 40 px rail tiles + "+") · B week pills on the spine + expandable rail · C fix in place. **→ A** (C as the floor if A slips). Amends DS §3.9, §3.20, §3.35. (DA 1)
+12. **Tabs and keys.** A five tabs + utility zone (Recruiting, Settings), keys 1–5 positional in V2 · B Recruiting inside Roster · C status quo. **→ A.** Amends DS §3.13; R-D14 shortcut rows. (DA 2)
+13. **Palette, inbox, help.** Palette-A global navigator (gate) with the four-verb action tranche scheduled after S2a but not gated · Inbox-A popover with one count · Help-A `?` in both bars + ⌘K Help. **→ all three.** Amends DS §3.10, HS-20, PM §6.2 "Stages 5–6". (DA 3)
+14. **Loot floor order.** F1→F4 everywhere (reverses the D3 F4→F1 banding) vs keep two orders. **→ F1→F4.** (A3 L-12)
+15. **`SegmentedToggle` selected state.** Change the DS primitive from primary fill to surface + text (before/after shots attached) vs keep. **→ change.** (A2 X-3)
+16. **Density rule 11.** Adopt (one toolbar row; ≤ 6 Home modules above the fold; a second door for the same verb → ⌘K/overflow) and apply inside the remaining slices with a rollback list · B per-user Simple/Detailed preference · C keep as built. **→ adopt.** Amends D-01 (partial), D8 R-20/R-26, F-08, D14 R-40, R-RH-P. (D CC-3)
+17. **"Hide unclaimed / BiS banners" toggles.** Honour them in V2 vs retire with a ruling. **→ retire** (DA 6's cards no longer show the banners the same way). (A2 X-2)
+18. **Roster model.** A sharper roles (Board default with row expansion, compact Cards with a labelled needs row, letter-cell atom, Display ▾ toolbar, no density toggle) · B one table · C status quo + fixes. **→ A.** Overturns D-01, D-10 fold, R-E2-D; retires the circle atom. (DA 6)
+19. **Schedule layout.** A Agenda + Planner + quick-create · B week board · C repair. **→ A.** Overturns F6e §2.a in part, §2.f, §2.j.4. (DA 12)
+20. **Availability home.** A one grid, two mounts (Schedule Planner + Hub) · B Hub-only · C no heatmap. **→ A.** Amends H-10's home. (DA 13)
+21. **Settings.** A page `/group/:code/settings/:section` + Hub ▸ Account; Leave in Members (own row, incl. viewers) and the Hub kebab; owner "Make owner…"; Delete in Danger zone · B fixed dock · C page + popover. **→ A.** Overturns DS §3.14; amends F-12 detail (X1); also re-rule the mobile user-menu focus-ring exception (`UserMenu.tsx:100`) → **restore the ring** (WCAG 2.4.7). (DA 15)
+22. **Recruiting.** A keep the route + wayfinding + V2 editor + "Accept into slot" · B fold into Roster · C spine tab. **→ A.** Overturns RH-5; keeps RH-4. (DA 14)
+23. **Hub.** A five tabs renamed (Summary · Jobs & BiS · Availability · Wants · Privacy) + Connections with the Sync card state machine · B four tabs · C one page. **→ A.** Overturns H-6 labels only; amends R-PH1-F; refines HS-3. (DA 17)
+24. **Finder.** A top filter bar + ranked rows · B left rail + rebuilt card · C grouped by fit tier. **→ A.** (DA 16)
+25. **Landing and first run.** Landing-A two doors + FirstRun-A Hub block · Landing-B · FirstRun-B Finder. **→ Landing-A + FirstRun-A**; add "L1 · Landing and entry" to HS §4 as a gate. Builds F-02; supersedes `Layout.tsx:71`; narrows V1B Q2. (DA 18)
+26. **Names and verbs.** One product name in-app ("FFXIV Raid Planner") while the plugin listing stays "XIV Raid Planner" as published, or rename the plugin listing too; one login verb "Sign in with Discord". **→ one name in-app now; decide the plugin listing name with the plugin's next release.** (A5-26, A6-31/32)
+27. **Vocabulary.** (a) "Floor" (shipped, ~44 hits) vs "Fight" (DS §2.3) → **keep Floor, amend the glossary (U-1)**; (b) keep "Who Needs It" and amend the glossary vs rename the segment "Priority" → **keep Who Needs It** (the owner's headline); (c) farm status = **Need · Want · Have · Pass**; (d) Hub tab "Tracking" → **"Wants"**. Amends DS §2.3 (CC-5 a/b). (E2 F-14, A5-07, A6-16)
+
+#### Batch C — process, plan and release
+
+28. **Quality bar.** Adopt Q (rubric incl. the heuristic floor ≥ 28/40 per core surface, WCAG 2.2 AA axe-zero-critical/serious, perf budgets, consistency slice, 5-user test) as a 3.0.0 criterion. **→ adopt.** Amends HS-5. (F #1, #16) **Answered 2026-09-30: adopted with the plan (HS-32).**
+29. **Beta and rollback.** Reinstate a 1–2-week opt-in cohort before the flip (a) opt-in banner for all · (b) invite-only via Discord · (c) skip and rely on KS; and build KS + a reversible migration as a gate-1 prerequisite. **→ (b) + KS.** Overturns part of HS-25. (F #2, #11)
+30. **Sequencing and mechanics.** S2a spec/build may start after batch A while B continues (amends HS S2 :106); T1, M1 spec, AUTHZ, KS, CI-0 and the W1 clusters start now; decision batches with defaults; controller-owned engineering rulings (#6/#7 extraction and slice cut); ceremony by risk tier (A/B/C); HS §4 tracker table; ROLLOUT/V2_COVERAGE/RECONCILIATION frozen as history now and the five foundation docs archived (amends HS-16's timing); new rulings are HS-n only; sizes recalibrated (S < 700, M < 1,500). **→ all.** (F #5, #6, #9, #14, #15; E1 §7)
+31. **What is not a gate.** S6 action tranches beyond the four verbs; F3 docs/tooling hygiene; Admin V2; plugin off-hand; content search. **→ confirm not gates**; the four-verb tranche is scheduled after S2a. Amends PM §6.2 gate 1 wording. (F #3, #4; D CC-4)
+
+## 7. Change log
 - 2026-09-30: written (session 2). Rulings HS-1…HS-25.
 - 2026-09-30: director vet 1 fixes; HS-26…HS-29.
 - 2026-09-30: director vet 2 fixes; HS-30, HS-31.
 - 2026-09-30: director vet 3 fixes (View-As Leave guard target, `X-View-As` scope, F3 V1 labels).
+- 2026-09-30: the V2 audit's plan adopted as §6 (W0–W8 + gate Q; decisions §6.5); HS-32…HS-34; H0 ticked (#321).
