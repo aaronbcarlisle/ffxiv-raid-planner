@@ -17,13 +17,28 @@ The shells' branch logic is untouched. Their not-found state only gains the owne
 | `frontend/src/stores/staticGroupStore.ts` (`fetchGroupByShareCode`, one module `let`) | both shells (shared store) | V1-visible, sanctioned (HS-7, HS-28) |
 | `frontend/src/pages/GroupView.tsx:324-332`: heading and line copy, plus a "Go to My Statics" `Button` | legacy only | V1-visible, sanctioned (HS-7; owner Q1 and Q2, 2026-09-30) |
 | `frontend/src/pages/ShellContentStates.tsx:185-189`: `EmptyState` `action` "Go to My Statics" | V2 only | V2-only (owner Q2) |
-| No edit, but newly sees `currentGroup` cleared mid-session: legacy Header's static-scoped controls (`Header.tsx:105-118`, `:237`, `:250`, `:274`, `:313`, `:423`, `:444`), the `NotificationCenter` "static" filter (`NotificationCenter.tsx:107-110`), an open V2 settings dock unmounting (`V2SettingsHost.tsx:34`) | both shells | V1-visible side effects: checked in the browser (Finish 1) and listed in the PR table |
+| No edit, but newly sees `currentGroup` cleared mid-session: legacy Header's static-scoped controls (`Header.tsx:105-118`, `:237`, `:250`, `:274`, `:313`, `:423`, `:444`), the desktop and mobile `TryNewUiBanner` (`Header.tsx:325`, `:444`), the `NotificationCenter` "static" filter (`NotificationCenter.tsx:107-110`), an open legacy settings panel unmounting (`ConnectedSettingsHost`, `GroupView.tsx:403`, sits below the not-found return at `:324`), an open V2 settings dock unmounting (`V2SettingsHost.tsx:33`) | both shells | V1-visible side effects: checked in the browser (Finish 1) and listed in the PR table |
 | `frontend/src/data/releaseNotes.ts` | public note, `CURRENT_VERSION` bump | HOME_STRETCH §1 standing rule |
 | `NewShell.tsx` | — | no edit |
 
 **Spec (binding):** `design/redesign/HOME_STRETCH.md` §4 V1B item 1 and its acceptance (`:90-97`); HS-7 (`:28`) and HS-28 (`:49`); `ROLLOUT_ROADMAP.md` §7 "New from E1" (`:361-364`). Also CLAUDE.md § Pitfalls (`releaseNotes.ts` quoting, LF), § UI rules and § Product rules.
 
-**Plan-vet:** `xivrp-director`, 2026-09-30: **CHANGES**. Findings 1, 4 and 6–10 are folded below (1 → Finish 5; 4 → R-V1B-1/R-V1B-2 and the S6 mutation; 6 → the reach table and Finish 1; 7 → N2; 8 → the red proof; 9 → the legacy stubs; 10 → Finish 1). The owner ruled Q1 and Q2 the same day (R-V1B-6, R-V1B-7). The director confirmed that HS-7's "heading-only fixes" means heading-level skips, not copy. **Fold-check:** pending (director), before Task 1.
+**Plan-vet:** `xivrp-director`, 2026-09-30: **CHANGES**. Every finding has an outcome:
+- 1 → Finish 5.
+- 2, 3 → owner rulings R-V1B-6 and R-V1B-7 (2026-09-30). The director confirmed that HS-7's "heading-only fixes" means heading-level skips, not copy.
+- 4 → R-V1B-1, R-V1B-2 and the S6 mutation.
+- 5 → no plan change: the fold brief carried no action for it.
+- 6 → the reach table and Finish 1(c).
+- 7 → N2.
+- 8 → the red proof.
+- 9 → the legacy stubs.
+- 10 → Finish 1.
+- 11 → no plan change: the fold brief carried no action for it.
+
+**Fold-check** (director, same day): **ALIGNED**, with three doc folds, all folded here:
+- The guest landing → R-V1B-7 and Finish 1(g).
+- Two more side effects → the reach table and Finish 1(c).
+- This outcome list, plus the cites.
 
 ## Spec premises checked against the code
 
@@ -64,6 +79,10 @@ The shells' branch logic is untouched. Their not-found state only gains the owne
   - V2: pass `action={{ label: 'Go to My Statics', onClick: () => navigate('/profile?tab=statics') }}` to `EmptyState`, which renders a primitive `Button` (`EmptyState.tsx:30-33`).
   - Legacy: after the `<p>`, add `<div className="flex justify-center mt-4"><Button onClick={() => navigate('/profile?tab=statics')}>Go to My Statics</Button></div>` (`Button` from `GroupView.tsx:29`, `navigate` from `:106`).
   - It goes in the PR's sanctioned-edits table.
+  - **A logged-out user can land here too.** A share link opens for guests because `by-code` auth is optional (`routers/static_groups.py:315`).
+    - The button then goes to `/profile?tab=statics`. `Profile` renders nothing (`Profile.tsx:269`), then redirects to `/` (`:191-193`).
+    - That matches the Error card's button today, so it is parity, not a regression.
+    - Whether guests should see this button at all is a taste call for the punch list (Finish 5). The Error card's private branch offers them "Log In with Discord" instead (`ShellContentStates.tsx:163-167`).
 - **Out of scope (pre-existing, noted only):**
   - Recent-statics records bad codes (`useStaticNavMemory.ts:25-38`).
   - Late tier-store responses after a switch (the `fetchCurrentWeek`-class race stays in Phase F).
@@ -119,7 +138,7 @@ The shells' branch logic is untouched. Their not-found state only gains the owne
     - `./GroupViewContent`.
     - `./groupActionsContext`, exporting all three names `GroupView.tsx:42` imports: `GroupActionModals` renders its children; `useGroupActions` returns spies for `onTierChange`, `onAddPlayer`, `onNewTier`, `onRollover` and `onDeleteTier`, which `HeaderEventBridge` (`:55-67`) and `CreateFirstTierButton` use; `useGroupAddToRoster` returns a `vi.fn()`.
     - `../components/settings`, `../components/static-group`, `../components/admin/AdminBanners`, `../components/layout/SidebarNav` and `../hooks/useDevice`.
-    - `../components/layout/Header` stays real, or its stub exports `HEADER_EVENTS` (`:36`).
+    - `../components/layout/Header` stays real, or its stub exports `HEADER_EVENTS` (`Header.tsx:33`, imported at `GroupView.tsx:36`).
   - **L1** `/group/ZZZZZZ` shows "Static Not Found" and no "Error" heading. "Go to My Statics" sits beside the heading, and clicking it reaches the probe.
   - **L2** `/group/DEVTST`: wait for "No Raid Tiers", then `router.navigate('/group/ZZZZZZ')`. Expect "Static Not Found", no "No Raid Tiers", and no dialog.
 
@@ -144,22 +163,28 @@ The shells' branch logic is untouched. Their not-found state only gains the owne
    - Per tab (`?shell=legacy`, then `?shell=v2`):
      - (a) `/group/ZZZZZZ` → "Static Not Found". Its "Go to My Statics" lands on `/profile?tab=statics`.
      - (b) `/group/DEVTST`, then nav to `/group/ZZZZZZ` → not-found: no DEVTST name, no "No Raid Tiers", no modal. Back → DEVTST renders; Forward → not-found.
-     - (c) During (b), watch the newly reached chrome from the reach table: legacy Header's static controls hide, and the bell's "static" filter empties. In V2, with the settings dock open before the nav, the dock closes cleanly.
+     - (c) During (b), watch the newly reached chrome from the reach table:
+       - Legacy Header's static controls and the desktop and mobile `TryNewUiBanner` hide.
+       - The bell's "static" filter empties.
+       - Legacy: open the settings panel, nav to the bad code (the panel unmounts), go Back, and check the panel's state on DEVTST.
+       - V2: with the settings dock open before the nav, the dock closes cleanly.
      - (d) Private static:
        - As `login/0`, create a second static (private by default) and note its code.
        - As `login/2` (not an admin, not a member), open `/group/DEVTST` (public after dev login, `dev_auth.py:419-420`) and nav to that code.
        - Expect "Private Static", not DEVTST. The 403 toast (`api.ts:251-253`) is expected.
      - (e) Exit Admin Mode as `login/0` on `/group/DEVTST?adminMode=true`, on the legacy path (`GroupView.tsx:368-373`) and in V2 → the page stays, with no skeleton or not-found flash.
      - (f) A rail or static-switcher switch between two valid statics is unchanged.
+     - (g) Logged out, legacy only: `/group/ZZZZZZ` → not-found → "Go to My Statics" → lands on `/` with no console error (R-V1B-7's guest landing).
    - No console errors beyond the expected 404/403. Screenshots of both shells' not-found state, shrunk.
 2. **Review:** one `redesign-reviewer` pass, then one fix wave. `xivrp-director` change-vets the final diff.
 3. **`pr-checklist`:**
    - Check the release note. Re-check `CURRENT_VERSION` against `origin/main` at PR time.
    - Run `git diff --check`. There are no workflow changes.
-   - The PR body gets a "Sanctioned V1 edits" table: the reach table above, with the store, legacy copy and "Go to My Statics", plus the Header, `NotificationCenter` and dock rows as side effects, citing HS-7/HS-28 and the owner's 2026-09-30 rulings.
+   - The PR body gets a "Sanctioned V1 edits" table: the reach table above, with the store, legacy copy and "Go to My Statics", plus the Header, `TryNewUiBanner`, `NotificationCenter`, legacy settings panel and V2 dock rows as side effects, citing HS-7/HS-28 and the owner's 2026-09-30 rulings.
 4. **Gates, counts pasted:** `pnpm -C frontend build`, `lint` (0 errors), `check:design-system:strict`, `test` and `deadcode` (unchanged). The backend is untouched.
 5. **Write-backs, once (all required):**
    - HOME_STRETCH §4 V1B item 1: tick it with the PR, and **rewrite its mechanism line**: the store maps a 404 to not-found, clears a stale static on other failures and drops superseded responses. The branches were already right (R-V1B-1). Name the not-found "Go to My Statics" action (R-V1B-7).
    - PRODUCT_MODEL §6.2's "the not-found fix" bullet: ✅ with the PR.
    - ROLLOUT_ROADMAP §7's E1 item (`:361-364`): ✅ CLOSED (V1B item 1, #n).
+   - HOME_STRETCH §5.3, Phase P's pre-seeded punch list, which is the holistic-review home for taste calls (HS-11): add "Go to My Statics shown to guests on not-found (and on the Error card); the private branch shows them Log In with Discord instead (`ShellContentStates.tsx:163-167`)".
 6. **PR:** draft first, marked ready once. Merge when green and every thread is resolved, then rewrite `SESSION_HANDOFF.md`.
