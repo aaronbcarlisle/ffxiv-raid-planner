@@ -8,6 +8,7 @@ emits (catalog.seeded / catalog.synced, R-AD-C) and player.admin_assigned
 """
 
 import uuid
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -20,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth_utils import create_access_token
 from app.models import AuditLog, MemberRole, Membership, User
 from app.models.analytics import ErrorReport
+from app.models.collection_catalog_item import CollectionCatalogItem
 from app.permissions import (
     ADMIN_VIRTUAL_ID_PREFIX,
     admin_override_for,
@@ -285,6 +287,36 @@ class TestErrorReviewEmits:
 
 # ── Catalog verbs ─────────────────────────────────────────────────────────────
 
+IMPORT_IDS_URL = "/api/admin/collection-catalog/import-verified-ids"
+
+
+def _mount_row(source_duty_key: str) -> CollectionCatalogItem:
+    """One active mount row with no game_mount_id yet (the import target)."""
+    return CollectionCatalogItem(
+        id=str(uuid.uuid4()),
+        external_source="internal",
+        external_id=source_duty_key,
+        name="Test Mount",
+        category="mount",
+        expansion="dt",
+        source_duty_key=source_duty_key,
+        game_mount_id=None,
+        token_item_id=None,
+        is_active=True,
+        is_curated=True,
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+def _exact_mapping(source_duty_key: str, game_mount_id: int | None = None) -> dict:
+    """A camelCase plugin payload entry (the schema uses an alias generator)."""
+    return {
+        "sourceDutyKey": source_duty_key,
+        "rewardName": "Test Mount",
+        "gameMountId": game_mount_id,
+        "confidence": "exact",
+    }
+
 
 class TestCatalogEmits:
     async def test_seed_emits_counts(
@@ -340,6 +372,126 @@ class TestCatalogEmits:
         assert rows[0].target_id == "collection-catalog"
         assert rows[0].credential == "cookie"
         assert rows[0].new_values == counts
+
+    async def test_import_verified_ids_persists(
+        self, client: AsyncClient, session, admin_headers
+    ):
+        # The test client shares this session, so a flush-only write is visible
+        # to it. The rollback discards anything the route did not commit.
+        item = _mount_row("dt-persist")
+        session.add(item)
+        await session.flush()
+        item_id = item.id
+
+        response = await client.post(
+            IMPORT_IDS_URL,
+            json=[_exact_mapping("dt-persist", game_mount_id=4242)],
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["updated"] == 1
+
+        await session.rollback()
+        persisted = (
+            await session.execute(
+                select(CollectionCatalogItem.game_mount_id).where(
+                    CollectionCatalogItem.id == item_id
+                )
+            )
+        ).scalar_one()
+        assert persisted == 4242
+
+    async def test_import_verified_ids_emits_counts(
+        self, client: AsyncClient, session, admin_user, admin_headers
+    ):
+        session.add(_mount_row("dt-counts"))
+        await session.flush()
+
+        payload = [
+            _exact_mapping("dt-counts", game_mount_id=77),
+            {**_exact_mapping("dt-counts"), "confidence": "ambiguous"},
+            _exact_mapping("dt-unknown-key", game_mount_id=88),
+        ]
+        response = await client.post(
+            IMPORT_IDS_URL, json=payload, headers=admin_headers
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert (body["updated"], body["alreadySet"], body["skipped"]) == (1, 0, 2)
+        assert len(body["errors"]) == 1
+
+        rows = [
+            row
+            for row in await _audit_rows(session)
+            if row.action == "catalog.ids_imported"
+        ]
+        assert len(rows) == 1
+        row = rows[0]
+        assert row.target_type == "catalog"
+        assert row.target_id == "collection-catalog"
+        assert row.target_label == "Collection catalog"
+        assert row.actor_user_id == admin_user.id
+        assert row.credential == "cookie"
+        assert row.admin_override is False
+        assert row.static_group_id is None
+        assert row.new_values == {
+            "updated": body["updated"],
+            "already_set": body["alreadySet"],
+            "skipped": body["skipped"],
+            "errors": len(body["errors"]),
+        }
+
+    async def test_import_verified_ids_emits_when_nothing_updated(
+        self, client: AsyncClient, session, admin_headers
+    ):
+        response = await client.post(IMPORT_IDS_URL, json=[], headers=admin_headers)
+        assert response.status_code == 200
+
+        rows = [
+            row
+            for row in await _audit_rows(session)
+            if row.action == "catalog.ids_imported"
+        ]
+        assert len(rows) == 1
+        assert rows[0].new_values == {
+            "updated": 0,
+            "already_set": 0,
+            "skipped": 0,
+            "errors": 0,
+        }
+
+    async def test_import_verified_ids_api_key_credential(
+        self, client: AsyncClient, session, admin_headers
+    ):
+        # The plugin path: /xrp resolve-ids authenticates with an admin's xrp_ key.
+        created = await client.post(
+            "/api/auth/api-keys", json={"name": "Plugin Key"}, headers=admin_headers
+        )
+        assert created.status_code == 201
+        key_headers = {"Authorization": f"Bearer {created.json()['key']}"}
+
+        response = await client.post(IMPORT_IDS_URL, json=[], headers=key_headers)
+        assert response.status_code == 200
+
+        rows = [
+            row
+            for row in await _audit_rows(session)
+            if row.action == "catalog.ids_imported"
+        ]
+        assert len(rows) == 1
+        assert rows[0].credential == "api_key"
+
+    async def test_import_verified_ids_non_admin_writes_nothing(
+        self, client: AsyncClient, session, auth_headers
+    ):
+        response = await client.post(IMPORT_IDS_URL, json=[], headers=auth_headers)
+        assert response.status_code == 403
+
+        assert [
+            row
+            for row in await _audit_rows(session)
+            if row.action == "catalog.ids_imported"
+        ] == []
 
     async def test_sync_failure_writes_nothing(
         self, client: AsyncClient, session, admin_headers

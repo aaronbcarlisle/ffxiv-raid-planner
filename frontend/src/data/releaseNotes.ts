@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.52';
+export const CURRENT_VERSION = '2.1.53';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -60,8 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.53',
+    date: '2026-09-30T05:15:00Z',
+    title: 'Plugin game ID imports now save',
+    items: [
+      {
+        category: 'fix',
+        title: 'Plugin collection sync can match more mounts and tokens',
+        description:
+          'Game IDs that site admins import with the plugin ID resolver were reported as saved but never stored, so collection sync could not match those mounts and tokens. Imports now save, and each import is recorded in the admin action log. Plugin users: after the next import, syncing from the plugin can mark more mounts as owned and count more tokens on collection goals. Nothing changes in the plugin itself.',
+        pr: 319,
+        prTitle: 'fix(catalog): import-verified-ids commits and records catalog.ids_imported',
+      },
+    ],
+  },
+  {
     version: '2.1.52',
-    date: '2026-09-30T12:00:00Z',
+    date: '2026-09-30T04:59:00Z',
     title: 'Admin action log disclosure and an ownership transfer fix',
     items: [
       {
