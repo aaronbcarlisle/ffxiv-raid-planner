@@ -31,6 +31,7 @@ import { useTierStore } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
 import { useViewAsStore } from '../stores/viewAsStore';
 import { authRequest, ApiError } from '../services/api';
+import type { StaticGroup } from '../types';
 
 const mockAuthRequest = vi.mocked(authRequest);
 
@@ -41,7 +42,7 @@ const devGroup = {
   userRole: 'owner',
   isAdminAccess: false,
   settings: {},
-} as unknown as never;
+} as StaticGroup;
 
 function resetStores() {
   useStaticGroupStore.setState({
