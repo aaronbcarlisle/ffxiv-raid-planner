@@ -1359,10 +1359,11 @@ async def transfer_ownership(
     if not new_owner_membership:
         raise NotFound("New owner must be a member of the group")
 
-    # Get current owner's membership
-    current_owner_membership = await get_user_membership(session, current_user.id, group_id)
-
+    # Demote the real owner's seat, not the caller's: an admin reaching this
+    # route through require_owner may have no seat (virtual membership) or a
+    # non-owner one. A missing owner row is a data anomaly; skip the demotion.
     old_owner_id = group.owner_id
+    old_owner_membership = await get_user_membership(session, old_owner_id, group_id)
     now = datetime.now(timezone.utc).isoformat()
 
     # Update group owner
@@ -1373,8 +1374,9 @@ async def transfer_ownership(
     new_owner_membership.role = MemberRole.OWNER.value
     new_owner_membership.updated_at = now
 
-    current_owner_membership.role = MemberRole.LEAD.value  # Demote to lead
-    current_owner_membership.updated_at = now
+    if old_owner_membership is not None:
+        old_owner_membership.role = MemberRole.LEAD.value  # Demote to lead
+        old_owner_membership.updated_at = now
 
     admin_override = await admin_override_for(
         session, current_user.id, group_id, membership, MemberRole.OWNER

@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
-from app.models import AuditLog, MemberRole, StaticGroup, User
+from app.models import AuditLog, MemberRole, Membership, StaticGroup, User
 from tests.factories import (
     create_membership,
     create_snapshot_player,
@@ -46,6 +46,15 @@ def admin_headers(admin_user: User) -> dict[str, str]:
 async def _audit_rows(session: AsyncSession) -> list[AuditLog]:
     result = await session.execute(select(AuditLog).order_by(AuditLog.id))
     return list(result.scalars().all())
+
+
+async def _role_of(session: AsyncSession, user_id: str, group_id: str) -> str | None:
+    result = await session.execute(
+        select(Membership.role).where(
+            Membership.user_id == user_id, Membership.static_group_id == group_id
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def _mint_api_key(client: AsyncClient, headers: dict[str, str]) -> dict[str, str]:
@@ -244,6 +253,75 @@ class TestOwnershipTransferEmits:
         )
         assert response.status_code == 404
         assert await _audit_rows(session) == []
+
+    async def test_admin_non_member_transfer_demotes_real_owner(
+        self,
+        client: AsyncClient,
+        session,
+        test_user,
+        test_user_2,
+        test_group,
+        admin_user,
+        admin_headers,
+    ):
+        old_id, new_id, admin_id, group_id = (
+            test_user.id,
+            test_user_2.id,
+            admin_user.id,
+            test_group.id,
+        )
+        await create_membership(session, test_user_2, test_group, role=MemberRole.MEMBER)
+
+        response = await client.post(
+            f"/api/static-groups/{group_id}/transfer-ownership"
+            f"?new_owner_id={new_id}",
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+
+        session.expire_all()
+        assert await _role_of(session, old_id, group_id) == MemberRole.LEAD.value
+        assert await _role_of(session, new_id, group_id) == MemberRole.OWNER.value
+        assert await _role_of(session, admin_id, group_id) is None
+        group = await session.get(StaticGroup, group_id)
+        assert group.owner_id == new_id
+
+        rows = await _audit_rows(session)
+        assert len(rows) == 1
+        assert rows[0].admin_override is True
+        assert rows[0].old_values == {"owner_id": old_id}
+        assert rows[0].new_values == {"owner_id": new_id}
+
+    async def test_admin_with_member_seat_keeps_own_row(
+        self,
+        client: AsyncClient,
+        session,
+        test_user,
+        test_user_2,
+        test_group,
+        admin_user,
+        admin_headers,
+    ):
+        old_id, new_id, admin_id, group_id = (
+            test_user.id,
+            test_user_2.id,
+            admin_user.id,
+            test_group.id,
+        )
+        await create_membership(session, test_user_2, test_group, role=MemberRole.MEMBER)
+        await create_membership(session, admin_user, test_group, role=MemberRole.MEMBER)
+
+        response = await client.post(
+            f"/api/static-groups/{group_id}/transfer-ownership"
+            f"?new_owner_id={new_id}",
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+
+        session.expire_all()
+        assert await _role_of(session, admin_id, group_id) == MemberRole.MEMBER.value
+        assert await _role_of(session, old_id, group_id) == MemberRole.LEAD.value
+        assert await _role_of(session, new_id, group_id) == MemberRole.OWNER.value
 
 
 class TestDuplicateEmits:
