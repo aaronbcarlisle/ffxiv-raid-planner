@@ -301,7 +301,7 @@ B–F land as normal PRs.
   v2 equivalents exist; dead-code sweep (knip: 8 files / 179 exports / 139 types as of DC — hold
   anything Phase B might restore); doc updates (CLAUDE.md Key Files/Component Reference,
   UI_COMPONENTS.md, PRODUCT_MODEL §6, REDESIGN_SPEC §7 drop corrections, broken
-  REDESIGN_SPEC link). **Received from E1:** the share-code not-found gap, the `fetchCurrentWeek`
+  REDESIGN_SPEC link). **Received from E1:** the share-code not-found gap (closed by V1B item 1, see §7), the `fetchCurrentWeek`
   stale-response race and the `no-tiny-text`/const-string enforcement gap — see "Carried out of E1"
   below.
 
