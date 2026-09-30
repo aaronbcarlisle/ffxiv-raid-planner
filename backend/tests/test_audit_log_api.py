@@ -317,15 +317,32 @@ class TestDateRange:
     async def test_to_format_variants_select_same_rows(
         self, client: AsyncClient, session: AsyncSession, admin_headers: dict, actor_a
     ):
-        await _insert_row(session, actor=actor_a, action="static.updated", created_at=_iso(T1))
-        await _insert_row(session, actor=actor_a, action="static.deleted", created_at=_iso(T2))
+        inside = await _insert_row(
+            session,
+            actor=actor_a,
+            action="static.updated",
+            created_at=_iso(datetime(2026, 9, 28, 23, 0, 0, tzinfo=timezone.utc)),
+        )
+        # Exactly at the exclusive "to" boundary: outside.
+        await _insert_row(
+            session,
+            actor=actor_a,
+            action="static.deleted",
+            created_at=_iso(datetime(2026, 9, 29, 0, 0, 0, tzinfo=timezone.utc)),
+        )
+        # Outside, but would be inside if the +05:30 offset were dropped and
+        # 05:30 read as UTC.
+        await _insert_row(
+            session,
+            actor=actor_a,
+            action="error.reviewed",
+            created_at=_iso(datetime(2026, 9, 29, 3, 0, 0, tzinfo=timezone.utc)),
+        )
 
-        # All three name the same instant, 2026-09-30T00:00:00 UTC — strictly
-        # after both rows (T1=09:00, T2=10:00 UTC on the 29th) so both are
-        # selected by the exclusive "to" boundary.
-        cutoff_z = "2026-09-30T00:00:00Z"
-        cutoff_offset = "2026-09-30T05:30:00%2B05:30"
-        cutoff_date = "2026-09-30"
+        # All three name the same instant, 2026-09-29T00:00:00 UTC.
+        cutoff_z = "2026-09-29T00:00:00Z"
+        cutoff_offset = "2026-09-29T05:30:00%2B05:30"
+        cutoff_date = "2026-09-29"
 
         r_z = await client.get("/api/admin/logs", params={"to": cutoff_z}, headers=admin_headers)
         r_date = await client.get(
@@ -339,9 +356,9 @@ class TestDateRange:
         ids_z = {item["id"] for item in r_z.json()["items"]}
         ids_date = {item["id"] for item in r_date.json()["items"]}
         ids_offset = {item["id"] for item in r_offset.json()["items"]}
-        assert ids_z == ids_date
-        assert ids_z == ids_offset
-        assert len(ids_z) == 2
+        assert ids_z == {inside.id}
+        assert ids_date == {inside.id}
+        assert ids_offset == {inside.id}
 
     async def test_raw_literal_plus_in_offset_is_422(
         self, client: AsyncClient, session: AsyncSession, admin_headers: dict, actor_a
