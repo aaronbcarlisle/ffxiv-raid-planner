@@ -69,18 +69,24 @@ export const RELEASES: Release[] = [
         title: 'Only leads and owners can log a farm drop for someone else',
         description:
           'Viewers can no longer log farm drops. Members log drops only for themselves, and leads and owners can log a drop for any member of the static. A viewer can no longer be picked as a drop recipient.',
+        pr: 329,
+        prTitle: 'fix(api): P0a — farm-drop rules, drop delete and the viewer write gaps (SEC-1)',
       },
       {
         category: 'fix',
         title: 'A wrongly logged farm drop can be deleted',
         description:
           'A lead, an owner or the member who logged a drop can now delete it. If it was the recipient\'s only drop, their previous progress (Need or Want) comes back.',
+        pr: 329,
+        prTitle: 'fix(api): P0a — farm-drop rules, drop delete and the viewer write gaps (SEC-1)',
       },
       {
         category: 'fix',
         title: 'Viewers can no longer claim player cards or track farms',
         description:
           'Viewers can no longer claim player cards, write their own farm progress or update mount-farm progress, and marking a split run cleared now requires membership in the static. A viewer can still release a card they already hold.',
+        pr: 329,
+        prTitle: 'fix(api): P0a — farm-drop rules, drop delete and the viewer write gaps (SEC-1)',
       },
     ],
   },

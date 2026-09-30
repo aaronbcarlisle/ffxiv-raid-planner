@@ -30,7 +30,7 @@ Progression tool and home base for FFXIV statics: roster, schedule, loot, gear. 
 - No stale store reads on route change or in not-found states — use the selector hooks (`useTierPlayers`, `usePlayersByGroup`).
 - Shortcut labels come from `lib/platform.ts`; never hardcode `Ctrl+K`.
 - `backend/app/database.py`: no edits without owner approval.
-- **Plugin contract:** the Dalamud plugin (`../XIVRaidPlannerPlugin`, released separately and currently behind) calls `auth/me`, `static-groups`, `tiers`, `players` (list, `PUT`, `gear`), tier `priority` and `current-week`, `loot-log`, `material-log`, `mark-floor-cleared`, `split-clear` + `mark-run-cleared`, `plugin/collections/sync` and the admin `collection-catalog/import-verified-ids` (`Api/RaidPlannerClient.cs`) with `Authorization: Bearer xrp_…` (an API key: `dependencies.py` routes `xrp_` tokens to key auth; `middleware/csrf.py` exempts them from CSRF) and camelCase JSON. Keep those contracts backward-compatible.
+- **Plugin contract:** the Dalamud plugin (`../XIVRaidPlannerPlugin`, released separately and currently behind) calls `auth/me`, `static-groups`, `tiers`, `players` (list, `PUT`, `gear`), tier `priority` and `current-week`, `loot-log`, `material-log`, `mark-floor-cleared`, `split-clear` + `mark-run-cleared`, `plugin/collections/sync`, `plugin/mount-farms/{catalog,sync}`, `plugin/player/batch-gear-sync`, `api-keys/plugin-auth/exchange` and the admin `collection-catalog/import-verified-ids` (`Api/RaidPlannerClient.cs`) with `Authorization: Bearer xrp_…` (an API key: `dependencies.py` routes `xrp_` tokens to key auth; `middleware/csrf.py` exempts them from CSRF) and camelCase JSON. Keep those contracts backward-compatible.
 
 ## UI rules (mandatory)
 
