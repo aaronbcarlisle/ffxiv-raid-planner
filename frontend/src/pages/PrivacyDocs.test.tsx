@@ -7,10 +7,28 @@
 
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TooltipProvider } from '../components/primitives';
 import { PrivacyDocs } from './PrivacyDocs';
+
+// jsdom implements neither matchMedia (read by useDevice inside Tooltip) nor scrollTo.
+beforeEach(() => {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  );
+  vi.stubGlobal('scrollTo', vi.fn());
+});
 
 function renderPage() {
   return render(
