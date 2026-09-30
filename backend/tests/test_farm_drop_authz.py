@@ -523,6 +523,71 @@ async def test_handoff_carries_the_flip_timestamp(
     assert b_row.recipient_prior_state_at == a["created_at"]
 
 
+# ── R-P0-2 review fix: both drops carry a prior (manual edit between them) ───
+
+
+async def _flip_edit_flip(
+    async_client, session, group, goal, participants, lead, member
+) -> tuple[dict, dict, str]:
+    """A at tA flips want→have; a manual edit sets `need` at tA+1min; B at tA+2min
+    flips need→have. The priors differ (`want` vs `need`) so a test can tell which
+    one survived. Returns (a, b, tB).
+    """
+    row = participants["member"]
+    row.state = "want"
+    await session.flush()
+    a = (await _log(async_client, group, goal, lead, recipient_id=member.id)).json()
+    assert a["recipient_prior_state"] == "want"
+    row.state = "need"
+    row.last_manual_override_at = _later_than(a["created_at"], minutes=1)
+    await session.flush()
+    b = (await _log(async_client, group, goal, lead, recipient_id=member.id)).json()
+    assert b["recipient_prior_state"] == "need"
+    t_b = _later_than(a["created_at"], minutes=2)
+    b_row = await _drop_row(session, b["id"])
+    b_row.created_at = t_b
+    b_row.recipient_prior_state_at = t_b
+    await session.flush()
+    return a, b, t_b
+
+
+async def test_both_priors_deleting_a_then_b_restores_the_latest_prior(
+    async_client, session, group, goal, participants, lead, member, owner
+):
+    a, b, _ = await _flip_edit_flip(
+        async_client, session, group, goal, participants, lead, member
+    )
+    assert (await _delete(async_client, group, goal["id"], a["id"], lead)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "have"
+    assert (await _delete(async_client, group, goal["id"], b["id"], lead)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "need"
+
+
+async def test_both_priors_deleting_b_then_a_restores_the_latest_prior(
+    async_client, session, group, goal, participants, lead, member, owner
+):
+    a, b, _ = await _flip_edit_flip(
+        async_client, session, group, goal, participants, lead, member
+    )
+    assert (await _delete(async_client, group, goal["id"], b["id"], lead)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "have"
+    assert (await _delete(async_client, group, goal["id"], a["id"], lead)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "need"
+
+
+async def test_both_priors_deleting_b_alone_hands_its_later_prior_to_a(
+    async_client, session, group, goal, participants, lead, member, owner
+):
+    a, b, t_b = await _flip_edit_flip(
+        async_client, session, group, goal, participants, lead, member
+    )
+    assert (await _delete(async_client, group, goal["id"], b["id"], lead)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "have"
+    a_row = await _drop_row(session, a["id"])
+    assert a_row.recipient_prior_state == "need"
+    assert a_row.recipient_prior_state_at == t_b
+
+
 # ── R-P0-3: participant self-upsert ──────────────────────────────────────────
 
 

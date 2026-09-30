@@ -798,8 +798,10 @@ async def delete_drop(
 
     Restoring the recipient's state doesn't depend on delete order: the prior
     state, with the timestamp of the flip that recorded it, hands off to the
-    earliest remaining drop, and only the last drop to go restores it, unless
-    the plugin or a manual edit set the state after that flip.
+    earliest remaining drop unless that drop already holds a later flip's prior
+    (then this one is discarded), so the latest flip's prior always survives.
+    Only the last drop to go restores it, unless the plugin or a manual edit set
+    the state after that flip.
     """
     await get_static_group(session, group_id)
     membership = await require_membership(session, current_user.id, group_id)
@@ -840,15 +842,19 @@ async def delete_drop(
         remaining = list(remaining_result.scalars().all())
         if remaining:
             # 1. Other drops remain: the recipient still received one, so they stay
-            #    "have" and the prior (with its flip time) moves to the earliest
-            #    remaining drop without one.
+            #    "have". The prior (with its flip time) moves to the earliest
+            #    remaining drop when that drop has none or an earlier one; when it
+            #    already holds a later flip's prior, that one wins and this one is
+            #    discarded. The latest flip's prior survives in any delete order.
             if prior_state is not None:
-                for other in remaining:
-                    if other.recipient_prior_state is None:
-                        other.recipient_prior_state = prior_state
-                        other.recipient_prior_state_at = prior_at
-                        outcome = "handed_off"
-                        break
+                earliest = remaining[0]
+                earliest_at = earliest.recipient_prior_state_at or earliest.created_at
+                if earliest.recipient_prior_state is None or _is_after(prior_at, earliest_at):
+                    earliest.recipient_prior_state = prior_state
+                    earliest.recipient_prior_state_at = prior_at
+                    outcome = "handed_off"
+                else:
+                    outcome = "discarded"
         elif prior_state is not None:
             # 2. This was their last drop: restore the state the flip replaced, unless
             #    the plugin or a manual edit set the state after that flip.
