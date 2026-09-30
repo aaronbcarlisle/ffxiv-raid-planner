@@ -3,99 +3,163 @@
 > Run with the `slice-loop` skill (`.claude/skills/slice-loop/`). Never load
 > `superpowers:subagent-driven-development` in this repo. Items 2–3 of V1B are out of scope.
 
-## Owner questions
+**Goal:** a bad share code reaches "Static Not Found" in both shells, whether it's opened directly or from another static. Today a direct bad link shows "Error / Static group not found". From another static, the old static stays on screen under the bad URL, with "No Raid Tiers" and an error modal. Once the modal is dismissed, Create First Tier would write to the old static.
 
-The plan is written on the recommended answers. What changes if an answer differs is stated.
+**Architecture:** `staticGroupStore.fetchGroupByShareCode` is the fix:
+- A 404 produces the state both shells already define as not-found.
+- Any other failure drops a stale group.
+- A superseded response is ignored.
 
-- **Q1 — Legacy's not-found copy.** Legacy's branch reads "Group Not Found" / "The static group you're looking for doesn't exist." (`GroupView.tsx:328-329`); E1 Task 4e renamed only V2's (`ShellContentStates.tsx:187-188`). The branch is unreachable after a load today, so this fix is the first time legacy users see it. Rename it to V2's "Static Not Found" / "The static you're looking for doesn't exist." (two strings, markup and classes unchanged)? **Recommended: yes.** HOME_STRETCH §4 V1B says "Static Not Found" in both shells, and CLAUDE.md § Product rules bans "group" in user-facing text. *If no:* `GroupView.tsx` gets no edit, and L1/L2 assert "Group Not Found".
-- **Q2 — A way out of the not-found state.** Today a bad link lands on the Error card, which has "Go to My Statics" (`ShellContentStates.tsx:169-174`, `GroupView.tsx:312-316`). The not-found branch has no action in either shell. Add one? **Recommended: no, not in this slice.** Both shells keep their navigation chrome around it (the V2 rail and TopBar, the legacy Header). Add "a CTA on not-found" to the holistic-review list. *If yes:* V2 passes `action` to `EmptyState`, legacy adds a `Button` (~10 lines, V1-visible), and L1 and N1 assert it.
+The shells' branch logic is untouched. Their not-found state only gains the owner's copy and "Go to My Statics" action (R-V1B-6, R-V1B-7). Tests: one new store test file and one new integration test file per shell.
 
-**Goal:** a bad share code reaches the not-found state in both shells, whether it's opened directly or from another static. Today a direct bad link shows "Error / Static group not found". From another static, the old static stays on screen under the bad URL, with "No Raid Tiers" and an error modal. Once the modal is dismissed, Create First Tier would write to the old static.
-
-**Architecture:** only `staticGroupStore.fetchGroupByShareCode` changes behaviour. A 404 produces the state both shells already define as not-found. Any other failure drops a stale group. A superseded response is ignored. `ShellContentStates.tsx` isn't edited. `GroupView.tsx` changes only by Q1's two strings. There's one new store test file and one new integration test per shell.
-
-| Edit | Reach | Label |
+| Edit / newly reached code | Reach | Label |
 |---|---|---|
 | `frontend/src/stores/staticGroupStore.ts` (`fetchGroupByShareCode`, one module `let`) | both shells (shared store) | V1-visible, sanctioned (HS-7, HS-28) |
-| `frontend/src/pages/GroupView.tsx:328-329` (Q1) | legacy only | V1-visible, sanctioned (HS-7) |
+| `frontend/src/pages/GroupView.tsx:324-332`: heading and line copy, plus a "Go to My Statics" `Button` | legacy only | V1-visible, sanctioned (HS-7; owner Q1 and Q2, 2026-09-30) |
+| `frontend/src/pages/ShellContentStates.tsx:185-189`: `EmptyState` `action` "Go to My Statics" | V2 only | V2-only (owner Q2) |
+| No edit, but newly sees `currentGroup` cleared mid-session: legacy Header's static-scoped controls (`Header.tsx:105-118`, `:237`, `:250`, `:274`, `:313`, `:423`, `:444`), the `NotificationCenter` "static" filter (`NotificationCenter.tsx:107-110`), an open V2 settings dock unmounting (`V2SettingsHost.tsx:34`) | both shells | V1-visible side effects: checked in the browser (Finish 1) and listed in the PR table |
 | `frontend/src/data/releaseNotes.ts` | public note, `CURRENT_VERSION` bump | HOME_STRETCH §1 standing rule |
-| `ShellContentStates.tsx`, `NewShell.tsx` | — | no edit (V2 gets a test only) |
+| `NewShell.tsx` | — | no edit |
 
-**Spec (binding):** `design/redesign/HOME_STRETCH.md` §4 V1B item 1 and its acceptance (`:90-97`); HS-7 (`:28`), HS-28 (`:49`); `ROLLOUT_ROADMAP.md` §7 "New from E1" (`:361-364`); CLAUDE.md § Pitfalls (`releaseNotes.ts` quoting, LF) and § Product rules.
+**Spec (binding):** `design/redesign/HOME_STRETCH.md` §4 V1B item 1 and its acceptance (`:90-97`); HS-7 (`:28`) and HS-28 (`:49`); `ROLLOUT_ROADMAP.md` §7 "New from E1" (`:361-364`). Also CLAUDE.md § Pitfalls (`releaseNotes.ts` quoting, LF), § UI rules and § Product rules.
 
-**Plan-vet:** pending: `xivrp-director` before Task 1. HOME_STRETCH is READY, but this plan corrects its mechanism (below). R-V1B-1 and R-V1B-3 are new and need the vet.
+**Plan-vet:** `xivrp-director`, 2026-09-30: **CHANGES**. Findings 1, 4 and 6–10 are folded below (1 → Finish 5; 4 → R-V1B-1/R-V1B-2 and the S6 mutation; 6 → the reach table and Finish 1; 7 → N2; 8 → the red proof; 9 → the legacy stubs; 10 → Finish 1). The owner ruled Q1 and Q2 the same day (R-V1B-6, R-V1B-7). The director confirmed that HS-7's "heading-only fixes" means heading-level skips, not copy. **Fold-check:** pending (director), before Task 1.
 
 ## Spec premises checked against the code
 
 | Spec says | Code says | Ruling |
 |---|---|---|
-| `fetchGroupByShareCode` should clear a stale `currentGroup` | **Confirmed:** `staticGroupStore.ts:101-115` writes `currentGroup` only on success (`:106`). The catch (`:108-113`) and the start (`:102`) leave it. The switch effects clear only tiers and errors (`GroupView.tsx:150-155`, `NewShell.tsx:247-252`), and the tier effect keys on the unchanged `currentGroup.id` (`GroupView.tsx:187`, `NewShell.tsx:282`). So both shells render the old static with "No Raid Tiers" (`GroupView.tsx:355`, `ShellContentStates.tsx:267`) and the error modal (`GroupView.tsx:416`, `ShellContentStates.tsx:202`). **Root cause 1.** | R-V1B-2 |
+| `fetchGroupByShareCode` should clear a stale `currentGroup` | **Confirmed:** `staticGroupStore.ts:101-115` writes `currentGroup` only on success (`:106`). The catch (`:108-113`) and the start (`:102`) leave it. The switch effects clear only tiers and errors (`GroupView.tsx:150-155`, `NewShell.tsx:247-252`, `tierStore.ts:244-246`), and the tier effect keys on the unchanged `currentGroup.id` (`GroupView.tsx:187`, `NewShell.tsx:282`). So both shells render the old static with "No Raid Tiers" (`GroupView.tsx:355`, `ShellContentStates.tsx:267`) and the error modal (`GroupView.tsx:416`, `ShellContentStates.tsx:202`). **Root cause 1.** | R-V1B-2 |
 | Error branch `:152` and not-found branch `:182` both require `!currentGroup` | **Confirmed** (`ShellContentStates.tsx:152`, `:182`; legacy `GroupView.tsx:291`, `:324`). E1's `:145`/`:175` are stale. | — |
-| The branches should "let the error through" | **Corrected.** The branches match their contract ("not-found: load finished, still no group", `ShellContentStates.tsx:14-16`). A direct bad code gets `404 {"detail":"Static group not found"}` (`permissions.py:208-209`), then `ApiError(404)` (`api.ts:255`), then the store's `error` (`:108-113`). So the error branch renders "Error" plus the raw message, and no finished load ever produces branch 3's no-error state. **Root cause 2.** Also in legacy (`GroupView.tsx:291`). | R-V1B-1: fix the store, not the branches |
+| The branches should "let the error through" | **Corrected.** The branches match their contract ("not-found: load finished, still no group", `ShellContentStates.tsx:14-16`). A direct bad code gets `404 {"detail":"Static group not found"}` (`permissions.py:208-209`), then `ApiError(404)` (`api.ts:255`), then the store's `error` (`:108-113`). So the error branch renders "Error" plus the raw message (`GroupView.tsx:291` too), and no finished load ever produces branch 3's no-error state. **Root cause 2.** | R-V1B-1: fix the store, not the branches. Write-back to HOME_STRETCH is required (Finish 5) |
 | — (race) | **No guard.** Nothing sequences `fetchGroupByShareCode`, and neither shell cancels it. A late success for an old code overwrites the newer static today. Clearing on failure without a guard would let a late 404 for an old code wipe the newer static. **Root cause 3.** | R-V1B-3 |
-| — (same-code refetch) | Exit Admin Mode refetches the same code (`GroupView.tsx:371`, `NewShell.tsx:153`). The route param can be lowercase, and the backend uppercases it (`routers/static_groups.py:319`). | R-V1B-2 |
-| "legacy snapshots unchanged" | No test renders `GroupView`: `GroupRoute.test.tsx:12` stubs it, and the only snapshot in `frontend/src` is `QuickLogMaterialModal.test.tsx`. `e2e/` has no screenshot baselines. | L1/L2 are the first `GroupView` render tests. The byte check is `git diff origin/main -- frontend/src/pages/GroupView.tsx` = Q1's two strings only |
+| — (same-code refetch) | Exit Admin Mode refetches the same code (`GroupView.tsx:368-373`, `NewShell.tsx:153`). The route param can be lowercase, and the backend uppercases it (`routers/static_groups.py:319`). | R-V1B-1, R-V1B-2 |
+| "legacy snapshots unchanged" | No test renders `GroupView`: `GroupRoute.test.tsx:12` stubs it, and the only snapshot in `frontend/src` is `QuickLogMaterialModal.test.tsx`. `e2e/` has no screenshot baselines. **No V2 test mounts `NewShell` with the real store**, so V2's route wiring (`NewShell.tsx:247-259`) is proven only by the browser check. | L1/L2 are the first `GroupView` render tests. The byte check is `git diff origin/main -- frontend/src/pages/GroupView.tsx`, which must show only R-V1B-6/7 |
 
 ## Rulings (bind every task)
 
-- **R-V1B-1 (a 404 is the not-found state).** In the catch, `error instanceof ApiError && error.status === 404` (precedent `mountFarmStore.ts:78`) → `set({ currentGroup: null, error: null, errorStack: null, errorSource: null, isLoading: false })`. No branch edits in either shell. The only readers of the group store's `error` are the two shells, `GroupViewContent.tsx:102` (content path only), and list/action surfaces fed by other actions. *Cost if wrong:* a reader that expected the 404 message loses it.
-- **R-V1B-2 (stale group on any other failure).** A non-404 failure clears `currentGroup` only when `current.shareCode.toUpperCase() !== shareCode.toUpperCase()`. It sets `error`/`errorStack`/`errorSource: 'load'` as today. A same-code refetch failure keeps the page and the overlay, as today. A private or failing static opened from another static therefore shows its full-page card (Private Static / Error) instead of the old static. *Cost if wrong:* that card, which is the spec's "clears a stale currentGroup".
-- **R-V1B-3 (sequence guard).** Add a module-level `let shareCodeRequestSeq = 0;` (precedent `joinRequestStore.ts:46,129,134,139`). `const seq = ++shareCodeRequestSeq;` runs first. After the `await`, the success path and the catch each `return` when `seq !== shareCodeRequestSeq`, so a superseded response writes nothing, and `isLoading` stays true until the latest request settles.
-- **R-V1B-4 (no clear at fetch start).** A switch between two valid statics keeps today's stale-chrome-while-loading. `ShellContentStates.tsx:262-267` and its test 6b stay unedited. Clearing at start would flash the loading state on every rail switch and on Exit Admin Mode, an unsanctioned V1 change.
+- **R-V1B-1 (a 404 is the not-found state).**
+  - In the catch, after the sequence check, `error instanceof ApiError && error.status === 404` (precedent `mountFarmStore.ts:78`) → `set({ currentGroup: null, error: null, errorStack: null, errorSource: null, isLoading: false })`.
+  - This applies to the **same** code too, and that is intended. Example: Exit Admin Mode on a static that was deleted meanwhile lands on not-found.
+  - No branch-logic edits in either shell.
+  - The group store's `error` is read by the two shells, by `GroupViewContent.tsx:102` (content path only), and by list/action surfaces fed by other actions.
+  - *Cost if wrong:* a reader that expected the 404 message loses it.
+- **R-V1B-2 (stale group on any other failure).**
+  - Inside the catch, **after** the sequence check, read `const current = get().currentGroup`. Never use a value captured before the `await`.
+  - `current` may be null. Clear only when `current !== null && current.shareCode.toUpperCase() !== shareCode.toUpperCase()`.
+  - Set `error`, `errorStack` and `errorSource: 'load'` as today.
+  - A same-code non-404 failure keeps the page and the overlay, as today.
+  - A private or failing static opened from another static shows its full-page card (Private Static / Error) instead of the old static.
+- **R-V1B-3 (sequence guard).**
+  - Add a module-level `let shareCodeRequestSeq = 0;` (precedent `joinRequestStore.ts:46,129,134,139`). `const seq = ++shareCodeRequestSeq;` runs first.
+  - After the `await`, both the success path and the catch `return` when `seq !== shareCodeRequestSeq`. A superseded response writes nothing, and `isLoading` stays true until the latest request settles.
+- **R-V1B-4 (no clear at fetch start).**
+  - A switch between two valid statics keeps today's stale-chrome-while-loading. `ShellContentStates.tsx:262-267` and its test 6b stay unedited.
+  - Clearing at start would flash the loading state on every rail switch and on Exit Admin Mode, an unsanctioned V1 change.
 - **R-V1B-5 (no test-author).** The implementer writes the tests first, as in R-AD-I (`plans/2026-09-29-ad1b-audit-emits.md:99`). No existing test file is edited.
-- **Out of scope (pre-existing, noted only):** recent-statics records bad codes (`useStaticNavMemory.ts:25-38`); late tier-store responses after a switch (the `fetchCurrentWeek`-class race stays in Phase F); `isLoading`/`error` are shared with `fetchGroups` (`staticGroupStore.ts:64`).
+- **R-V1B-6 (owner Q1, 2026-09-30: legacy copy).**
+  - `GroupView.tsx:328-329` becomes "Static Not Found" / "The static you're looking for doesn't exist.", matching `ShellContentStates.tsx:187-188` and `HOME_STRETCH.md:93`.
+  - The markup and classes stay as they are.
+- **R-V1B-7 (owner Q2, 2026-09-30: keep the way out).** The not-found state gets "Go to My Statics" → `/profile?tab=statics` in both shells, as the Error card has today (`ShellContentStates.tsx:169-174`, `GroupView.tsx:312-316`).
+  - V2: pass `action={{ label: 'Go to My Statics', onClick: () => navigate('/profile?tab=statics') }}` to `EmptyState`, which renders a primitive `Button` (`EmptyState.tsx:30-33`).
+  - Legacy: after the `<p>`, add `<div className="flex justify-center mt-4"><Button onClick={() => navigate('/profile?tab=statics')}>Go to My Statics</Button></div>` (`Button` from `GroupView.tsx:29`, `navigate` from `:106`).
+  - It goes in the PR's sanctioned-edits table.
+- **Out of scope (pre-existing, noted only):**
+  - Recent-statics records bad codes (`useStaticNavMemory.ts:25-38`).
+  - Late tier-store responses after a switch (the `fetchCurrentWeek`-class race stays in Phase F).
+  - `fetchGroups` shares `isLoading`/`error` (`staticGroupStore.ts:64`).
 
 ## Review Focus
 
-- A lowercase URL (`/group/devtst`) is never treated as stale. Exit Admin Mode keeps the page with no skeleton flash, and a non-404 failure shows the overlay.
+- A lowercase URL (`/group/devtst`) is never treated as stale. On Exit Admin Mode, a non-404 failure keeps the page with the overlay, and a 404 lands on not-found.
 - A slow 404 for an old code can't clear a newer static, and a slow success can't overwrite one. `isLoading` stays true until the latest request settles.
 - `ShellContentStates.test.tsx` (1–7b, including 6b mid-switch) and every `NewShell.*`/`GroupViewContent.*` suite pass unedited.
-- The `GroupView.tsx` diff is Q1's two strings and nothing else. No `ShellContentStates.tsx` diff.
+- Two diffs only, beyond the store:
+  - `GroupView.tsx`: R-V1B-6's two strings plus R-V1B-7's action block.
+  - `ShellContentStates.tsx`: only the `action` prop.
 
-## Task 1 — Store: 404 is not-found, stale group cleared, stale responses dropped (`xivrp-implementer`, sonnet; ~25 product + ~130 test lines)
+## Task 1 — Store: 404 is not-found, stale group cleared, stale responses dropped (`xivrp-implementer`, sonnet; ~25 product + ~140 test lines)
 
 **Files.** Create `frontend/src/stores/staticGroupStore.fetchByShareCode.test.ts`. Modify `frontend/src/stores/staticGroupStore.ts` (import `ApiError`; R-V1B-1/2/3).
 
-**Failing tests first.** Mock `../services/api` with `importOriginal` so the real `ApiError` survives, and make `authRequest` a `vi.fn()`. Use deferred promises for the races. Reset the store in `beforeEach`. Each test below fails on `main` except S4.
+**Failing tests first.** Mock `../services/api` with `importOriginal` so the real `ApiError` survives, and make `authRequest` a `vi.fn()`. Use deferred promises for the races, and reset the store in `beforeEach`. Every test fails on `main` except S4 and S7.
 - **S1** Direct 404 → `currentGroup: null`, `error: null`, `isLoading: false`. On `main`, `error` is "Static group not found".
-- **S2** Seeded `DEVTST` group, fetch `ZZZZZZ` → 404 → `currentGroup: null`, `error: null`. On `main`, DEVTST is kept and `error` is set.
-- **S3** Seeded `DEVTST`, fetch `PRIV01` → `ApiError(403, 'This static is private')` → `currentGroup: null`, `error` is that message, `errorSource: 'load'`.
-- **S4** Seeded `DEVTST`, fetch `devtst` → `ApiError(500)` → DEVTST is kept and `error` is set (regression lock for Exit Admin Mode and case).
-- **S5** Fetch `ZZZZZZ`, then `BBBBBB`, both deferred. Reject Z with 404: `isLoading` is still true and `error` still null. Resolve B: `currentGroup` is B.
+- **S2** Seed `DEVTST`, fetch `ZZZZZZ`, 404 → `currentGroup: null`, `error: null`. On `main`, DEVTST is kept and `error` is set.
+- **S3** Seed `DEVTST`, fetch `PRIV01` → `ApiError(403, 'This static group is private')` (the real message, `permissions.py:372`) → `currentGroup: null`, `error` is that message, `errorSource: 'load'`.
+- **S4** Seed `DEVTST`, fetch `devtst` → `ApiError(500)` → DEVTST kept, `error` set. This locks in Exit Admin Mode and case-insensitivity.
+- **S5** Fetch `ZZZZZZ`, then `BBBBBB`, both deferred:
+  - Reject Z with 404: `isLoading` is still true and `error` still null.
+  - Resolve B: `currentGroup` is B.
 - **S6** Fetch `AAAAAA`, then `BBBBBB`. B resolves, then A resolves: `currentGroup` is still B.
+- **S7** No group seeded, fetch `PRIV01` → 403 → `currentGroup: null`, `error` set, no throw (a null `current` is handled).
+- **S8** Seed `DEVTST`, fetch `DEVTST` → 404 → `currentGroup: null`. This is the R-V1B-1 same-code case.
 
 **Ad hoc mutation checks (execute and paste):**
 - Drop the catch's seq check → S5 fails.
+- Drop the success path's seq check → S6 fails.
 - Drop `.toUpperCase()` → S4 fails.
-- Route the 404 through the generic path → S1 and S2 fail.
+- Route the 404 through the generic path → S1, S2 and S8 fail.
 
-## Task 2 — Both shells: integration tests, legacy copy, release note (`xivrp-implementer`, sonnet; ~2 product + ~15 note + ~170 test lines)
+## Task 2 — Both shells: integration tests, copy, "Go to My Statics", release note (`xivrp-implementer`, sonnet; ~10 product + ~15 note + ~200 test lines)
 
-**Files.** Create `frontend/src/pages/ShellContentStates.notFound.test.tsx` and `frontend/src/pages/GroupView.notFound.test.tsx`. Modify `frontend/src/pages/GroupView.tsx:328-329` (Q1) and `frontend/src/data/releaseNotes.ts`.
+**Start only after Task 1 is committed** (ledger `Task 1: complete (commits …)`), so the red proof can't touch uncommitted work.
 
-**Tests first.** Use the real stores, and mock `../services/api` as in Task 1.
-- **V2** (the `useDevice` and `groupActionsContext` mocks of `ShellContentStates.test.tsx:20-26`; a new file keeps that suite's "never fetches" contract):
-  - **N1** An empty store; `await act(() => fetchGroupByShareCode('ZZZZZZ'))` with a 404. Expect `shell-state-not-found` and "Static Not Found", and no `shell-state-error`.
-  - **N2** Seed DEVTST plus one tier, with `children` rendered. Fetch `ZZZZZZ` with a 404. Expect not-found, no `content`, no "No Raid Tiers", and `queryByRole('dialog')` null.
-- **Legacy** (`createMemoryRouter` + `RouterProvider`; `authRequest` routed by path: `by-code/DEVTST` returns the group, `/tiers` returns `[]`, `by-code/ZZZZZZ` rejects with 404; stub `./GroupViewContent`, `./groupActionsContext` (`GroupActionModals` renders its children), `../components/settings`, `../components/static-group`, `../components/admin/AdminBanners`, `../components/layout/SidebarNav` and `../hooks/useDevice`):
-  - **L1** `/group/ZZZZZZ` shows "Static Not Found" (Q1) and no "Error" heading.
-  - **L2** `/group/DEVTST`: wait for "No Raid Tiers", then `router.navigate('/group/ZZZZZZ')`. Expect the not-found heading, no "No Raid Tiers", and no dialog.
+**Files.** Create `frontend/src/pages/ShellContentStates.notFound.test.tsx` and `frontend/src/pages/GroupView.notFound.test.tsx`. Modify `frontend/src/pages/GroupView.tsx:324-332` (R-V1B-6/7), `frontend/src/pages/ShellContentStates.tsx:185-189` (R-V1B-7) and `frontend/src/data/releaseNotes.ts`.
+
+**Tests first.** Use the real stores, and mock `../services/api` as in Task 1. Scope each button query `within` the not-found container: the Error card has the same button, so an unscoped query would pass on `main`.
+- **V2** file: reuse the `useDevice` and `groupActionsContext` mocks from `ShellContentStates.test.tsx:20-26`. A new file keeps that suite's "never fetches" contract. It needs a `/profile` probe route.
+  - **N1** Empty store; `await act(() => fetchGroupByShareCode('ZZZZZZ'))` with a 404. Expect:
+    - `shell-state-not-found` and "Static Not Found";
+    - no `shell-state-error`;
+    - "Go to My Statics" within it, and clicking it reaches the `/profile` probe.
+  - **N2** Seed the real mid-switch state: `currentGroup` DEVTST, `tiers: []`, `isLoading: false` (`clearTiers`, `tierStore.ts:244-246`, called at `NewShell.tsx:248-252`). Fetch `ZZZZZZ` with a 404. Expect not-found, no "No Raid Tiers", and `queryByRole('dialog')` null. On `main`, the same seed renders "No Raid Tiers" plus the dialog.
+- **Legacy** file: `createMemoryRouter` + `RouterProvider`, with a `/profile` probe route.
+  - Route `authRequest` by path: `by-code/DEVTST` returns the group, `/tiers` returns `[]`, and `by-code/ZZZZZZ` rejects with a 404.
+  - Stubs:
+    - `./GroupViewContent`.
+    - `./groupActionsContext`, exporting all three names `GroupView.tsx:42` imports: `GroupActionModals` renders its children; `useGroupActions` returns spies for `onTierChange`, `onAddPlayer`, `onNewTier`, `onRollover` and `onDeleteTier`, which `HeaderEventBridge` (`:55-67`) and `CreateFirstTierButton` use; `useGroupAddToRoster` returns a `vi.fn()`.
+    - `../components/settings`, `../components/static-group`, `../components/admin/AdminBanners`, `../components/layout/SidebarNav` and `../hooks/useDevice`.
+    - `../components/layout/Header` stays real, or its stub exports `HEADER_EVENTS` (`:36`).
+  - **L1** `/group/ZZZZZZ` shows "Static Not Found" and no "Error" heading. "Go to My Statics" sits beside the heading, and clicking it reaches the probe.
+  - **L2** `/group/DEVTST`: wait for "No Raid Tiers", then `router.navigate('/group/ZZZZZZ')`. Expect "Static Not Found", no "No Raid Tiers", and no dialog.
 
 **Red proof (the acceptance's "fails before the fix"):**
-1. `git show <Task-1 BASE>:frontend/src/stores/staticGroupStore.ts > frontend/src/stores/staticGroupStore.ts`, then run both files. All four tests go red; paste the output.
-2. `git checkout -- frontend/src/stores/staticGroupStore.ts`, then run them again: green.
+1. Run `git show <Task-1 BASE>:frontend/src/stores/staticGroupStore.ts > frontend/src/stores/staticGroupStore.ts`, then both files. N1, N2, L1 and L2 all go red; paste the output.
+2. Restore with `git show HEAD:frontend/src/stores/staticGroupStore.ts > frontend/src/stores/staticGroupStore.ts` (never `git checkout --`). `git status --short` must not list the store. Rerun: green.
 
-**Release note (public).** Bump `CURRENT_VERSION` to the next patch (`2.1.55` today). Add a `fix` item: title `A broken static link shows "Static Not Found"`. Description: `Opening a link to a static that doesn\'t exist showed a bare error, and following one from another static left that static on screen under the wrong link. Both now show "Static Not Found". A private static opened from another static now shows its own page instead of the one you came from.` Add `pr` and `prTitle` once the PR opens. Single quotes throughout, with `\'` escaped. Edit the file with Edit only.
+**Release note (public).**
+- Bump `CURRENT_VERSION` to `2.1.55`. P1 (`feat/p1-safety-parity`) claims it too; whichever merges second takes the next patch.
+- Add a `fix` item titled `A broken static link shows "Static Not Found"`.
+- Description: `Opening a link to a static that doesn\'t exist showed a bare error, and following one from another static left that static on screen under the wrong link. Both now show "Static Not Found", with a button back to your statics. A private static opened from another static now shows its own page instead of the one you came from.`
+- Add `pr` and `prTitle` once the PR opens.
+- Use single quotes throughout, with `\'` escaped, and edit the file with Edit only.
 
 ## Finish (controller)
 
-1. **Browser check** (dev-auth `/api/dev-auth/login/0`; one tab per shell, because `?shell=` sticks per tab, `shellPreference.ts:110-113`; a full load resets the store, so the stale case must be client-side). In each tab, load `/group/ZZZZZZ?shell=legacy` (then `?shell=v2`) → not-found. Load `/group/DEVTST?shell=…` → content. Run `history.pushState(null,'','/group/ZZZZZZ'); dispatchEvent(new PopStateEvent('popstate'))` → not-found: no DEVTST name, no "No Raid Tiers", no modal. Back → DEVTST renders; Forward → not-found. `/group/DEVTST?shell=v2&adminMode=true` → Exit Admin Mode → no flash. A rail switch between two valid statics is unchanged. No console errors beyond the expected 404. Take screenshots of both shells' not-found state, shrunk.
+1. **Browser check, in both shells.**
+   - Setup:
+     - Log in with dev-auth `/api/dev-auth/login/0` (admin).
+     - Use one tab per shell: `?shell=` sticks per tab (`shellPreference.ts:110-113`).
+     - A full load resets the store, so the stale case must be client-side: `history.pushState(null,'',P); dispatchEvent(new PopStateEvent('popstate'))`, called "nav to P" below.
+   - Per tab (`?shell=legacy`, then `?shell=v2`):
+     - (a) `/group/ZZZZZZ` → "Static Not Found". Its "Go to My Statics" lands on `/profile?tab=statics`.
+     - (b) `/group/DEVTST`, then nav to `/group/ZZZZZZ` → not-found: no DEVTST name, no "No Raid Tiers", no modal. Back → DEVTST renders; Forward → not-found.
+     - (c) During (b), watch the newly reached chrome from the reach table: legacy Header's static controls hide, and the bell's "static" filter empties. In V2, with the settings dock open before the nav, the dock closes cleanly.
+     - (d) Private static:
+       - As `login/0`, create a second static (private by default) and note its code.
+       - As `login/2` (not an admin, not a member), open `/group/DEVTST` (public after dev login, `dev_auth.py:419-420`) and nav to that code.
+       - Expect "Private Static", not DEVTST. The 403 toast (`api.ts:251-253`) is expected.
+     - (e) Exit Admin Mode as `login/0` on `/group/DEVTST?adminMode=true`, on the legacy path (`GroupView.tsx:368-373`) and in V2 → the page stays, with no skeleton or not-found flash.
+     - (f) A rail or static-switcher switch between two valid statics is unchanged.
+   - No console errors beyond the expected 404/403. Screenshots of both shells' not-found state, shrunk.
 2. **Review:** one `redesign-reviewer` pass, then one fix wave. `xivrp-director` change-vets the final diff.
-3. **`pr-checklist`:** check the release note, and re-check `CURRENT_VERSION` against `origin/main` at PR time, because P1 runs in parallel and ships a public note too. Also run `git diff --check`; there are no workflow changes. The PR body gets a "Sanctioned V1 edits" section (the table above, HS-7/HS-28) and the Q1/Q2 answers.
-4. **Gates, counts pasted:** `pnpm -C frontend build`, `lint` (0 errors), `check:design-system:strict`, `test`, `deadcode` (unchanged). Backend is untouched.
-5. **Write-backs, once:**
-   - Tick HOME_STRETCH §4 V1B item 1 with the PR, correcting its mechanism line: the store, not the branches (R-V1B-1).
-   - Mark PRODUCT_MODEL §6.2's "the not-found fix" bullet ✅ with the PR.
-   - Close ROLLOUT_ROADMAP §7's E1 item (`:361-364`): ✅ CLOSED (V1B item 1, #n).
-   - If Q2 is "no": add the not-found CTA to the holistic list.
+3. **`pr-checklist`:**
+   - Check the release note. Re-check `CURRENT_VERSION` against `origin/main` at PR time.
+   - Run `git diff --check`. There are no workflow changes.
+   - The PR body gets a "Sanctioned V1 edits" table: the reach table above, with the store, legacy copy and "Go to My Statics", plus the Header, `NotificationCenter` and dock rows as side effects, citing HS-7/HS-28 and the owner's 2026-09-30 rulings.
+4. **Gates, counts pasted:** `pnpm -C frontend build`, `lint` (0 errors), `check:design-system:strict`, `test` and `deadcode` (unchanged). The backend is untouched.
+5. **Write-backs, once (all required):**
+   - HOME_STRETCH §4 V1B item 1: tick it with the PR, and **rewrite its mechanism line**: the store maps a 404 to not-found, clears a stale static on other failures and drops superseded responses. The branches were already right (R-V1B-1). Name the not-found "Go to My Statics" action (R-V1B-7).
+   - PRODUCT_MODEL §6.2's "the not-found fix" bullet: ✅ with the PR.
+   - ROLLOUT_ROADMAP §7's E1 item (`:361-364`): ✅ CLOSED (V1B item 1, #n).
 6. **PR:** draft first, marked ready once. Merge when green and every thread is resolved, then rewrite `SESSION_HANDOFF.md`.
