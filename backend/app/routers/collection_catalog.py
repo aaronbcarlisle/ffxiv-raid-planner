@@ -1,6 +1,6 @@
 """API router for the collection catalog (read-only for members, sync for admins)"""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from ..models import User
 from ..models.collection_catalog_item import CollectionCatalogItem
 from ..permissions import PermissionDenied
 from ..schemas.collection_catalog import AuditEntry, CatalogAuditReport, CatalogItemResponse, CatalogSyncResult, DtAuditDetail, VerifiedIdImportResult, VerifiedIdMapping
+from ..services.audit import audit
 from ..services.catalog_audit_service import get_catalog_audit
 from ..services.catalog_id_import_service import import_verified_ids
 from ..services.catalog_import_service import (
@@ -79,6 +80,7 @@ async def list_catalog_items(
 
 @router.post("/admin/collection-catalog/sync", response_model=CatalogSyncResult)
 async def sync_catalog(
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> CatalogSyncResult:
@@ -93,10 +95,25 @@ async def sync_catalog(
     try:
         counts = await sync_from_ffxiv_collect(session)
         logger.info("catalog_synced_from_api", counts=counts)
-        return CatalogSyncResult(synced_from_api=True, counts=counts)
+        response = CatalogSyncResult(synced_from_api=True, counts=counts)
     except Exception as exc:
         logger.error("catalog_sync_failed", error=str(exc))
         return CatalogSyncResult(synced_from_api=False, error=str(exc))
+
+    # Success branch only (R-AD-C): the service committed its own transaction;
+    # the audit row commits in a second one. A failure response writes no row.
+    await audit(
+        session,
+        actor=current_user,
+        action="catalog.synced",
+        target_type="catalog",
+        target_id="collection-catalog",
+        target_label="Collection catalog",
+        new=counts,
+        request=request,
+    )
+    await session.commit()
+    return response
 
 
 @router.get("/admin/collection-catalog/audit", response_model=CatalogAuditReport)
@@ -152,6 +169,7 @@ async def import_catalog_verified_ids(
 
 @router.post("/admin/collection-catalog/seed", response_model=CatalogSyncResult)
 async def seed_catalog(
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> CatalogSyncResult:
@@ -165,4 +183,17 @@ async def seed_catalog(
 
     count = await seed_from_internal(session)
     logger.info("catalog_seeded_manually", count=count)
+
+    # The service committed the seed; the audit row commits separately (R-AD-C).
+    await audit(
+        session,
+        actor=current_user,
+        action="catalog.seeded",
+        target_type="catalog",
+        target_id="collection-catalog",
+        target_label="Collection catalog",
+        new={"internal": count},
+        request=request,
+    )
+    await session.commit()
     return CatalogSyncResult(seeded=True, counts={"internal": count})

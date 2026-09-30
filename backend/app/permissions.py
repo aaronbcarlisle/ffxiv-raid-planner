@@ -9,9 +9,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from .logging_config import get_logger
-from .models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
+from .models import (
+    ROLE_HIERARCHY,
+    Membership,
+    MemberRole,
+    SnapshotPlayer,
+    StaticGroup,
+    TierSnapshot,
+    User,
+)
 
 logger = get_logger(__name__)
+
+# Id prefix of the unpersisted virtual-owner row create_admin_membership builds.
+ADMIN_VIRTUAL_ID_PREFIX = "admin-virtual-"
 
 
 class PermissionDenied(HTTPException):
@@ -37,13 +48,37 @@ def create_admin_membership(user_id: str, group_id: str) -> Membership:
     )
     now = datetime.now(timezone.utc).isoformat()
     return Membership(
-        id=f"admin-virtual-{user_id}-{group_id}",
+        id=f"{ADMIN_VIRTUAL_ID_PREFIX}{user_id}-{group_id}",
         user_id=user_id,
         static_group_id=group_id,
         role=MemberRole.OWNER.value,
         joined_at=now,
         updated_at=now,
     )
+
+
+def is_admin_override(membership: Membership | None) -> bool:
+    """True when the membership is the admin virtual-owner row."""
+    return membership is not None and membership.id.startswith(ADMIN_VIRTUAL_ID_PREFIX)
+
+
+async def admin_override_for(
+    session: AsyncSession,
+    user_id: str,
+    group_id: str,
+    membership: Membership | None,
+    min_role: MemberRole | None,
+) -> bool:
+    """True when the action was allowed only by admin status: the actor holds the
+    virtual row AND either has no real membership or a real role below min_role."""
+    if not is_admin_override(membership):
+        return False
+    real = await get_user_membership(session, user_id, group_id)
+    if real is None:
+        return True
+    if min_role is None:
+        return False
+    return real.role_level < ROLE_HIERARCHY.get(min_role, 0)
 
 
 async def create_membership_for_assignment(

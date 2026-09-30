@@ -1,5 +1,7 @@
 """Pydantic schemas for collection catalog items"""
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -37,7 +39,9 @@ class CatalogItemResponse(BaseModel):
 class CatalogSyncResult(BaseModel):
     seeded: bool = False
     synced_from_api: bool = False
-    counts: dict[str, int] = {}
+    # Seed reports {"internal": n}; sync_from_ffxiv_collect reports nested dicts
+    # ("imported", "skipped_by_source", "category_count_after"), so values are Any.
+    counts: dict[str, Any] = {}
     error: str | None = None
 
 

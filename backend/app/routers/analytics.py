@@ -5,6 +5,7 @@ Endpoints for collecting frontend analytics events and error reports,
 plus admin-only dashboard queries for usage metrics and error monitoring.
 """
 
+import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -27,6 +28,7 @@ from ..models import (
 from ..permissions import NotFound
 from .admin.deps import require_admin
 from ..rate_limit import limiter
+from ..services.audit import audit
 from ..schemas.analytics import (
     AnalyticsEventBatch,
     BatchReviewRequest,
@@ -63,6 +65,34 @@ def _parse_range(range_str: str) -> datetime | None:
         return None
     # Default to 30d for unknown values
     return now - timedelta(days=30)
+
+
+_URL_RE = re.compile(r"https?://\S+")
+_API_KEY_RE = re.compile(r"xrp_\S+")
+_TOKEN_RUN_RE = re.compile(r"[A-Za-z0-9_\-+/=.]{24,}")
+
+
+def _redact_error_label(text: str) -> str:
+    """Strip URLs, API keys and token-like runs from an error message.
+
+    Error capture stores str(exc) verbatim, so a message can carry a webhook
+    URL or bearer token; the audit label (and the logs API) must not repeat it.
+    """
+    text = _URL_RE.sub("<url>", text)
+    text = _API_KEY_RE.sub("<api-key>", text)
+    return _TOKEN_RUN_RE.sub("<redacted>", text)
+
+
+async def _error_group_label(session: AsyncSession, fingerprint: str) -> str:
+    """Audit target_label for an error group: its redacted first message, or the fingerprint."""
+    result = await session.execute(
+        select(ErrorReport.message)
+        .where(ErrorReport.fingerprint == fingerprint)
+        .order_by(ErrorReport.created_at, ErrorReport.id)
+        .limit(1)
+    )
+    message = result.scalar_one_or_none()
+    return _redact_error_label(message) if message else fingerprint
 
 
 # --- Authenticated Endpoints (any logged-in user) ---
@@ -550,6 +580,7 @@ async def get_error_groups(
 @router.post("/api/admin/analytics/errors/batch-review")
 async def batch_review_errors(
     body: BatchReviewRequest,
+    request: Request,
     user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
@@ -563,6 +594,21 @@ async def batch_review_errors(
     if result.rowcount == 0:
         raise NotFound("No matching error groups found")
 
+    await audit(
+        session,
+        actor=user,
+        action="error.batch_reviewed",
+        target_type="error",
+        # Client-supplied and not necessarily a stored fingerprint: cap to the column width
+        target_id=body.fingerprints[0][:64],
+        target_label=f"{len(body.fingerprints)} error groups",
+        new={
+            "action": body.action,
+            "fingerprints": body.fingerprints,
+            "rows": result.rowcount,
+        },
+        request=request,
+    )
     await session.commit()
 
     logger.info(
@@ -653,6 +699,7 @@ async def get_error_detail(
 @router.post("/api/admin/analytics/errors/{fingerprint}/review")
 async def mark_error_reviewed(
     fingerprint: str,
+    request: Request,
     user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
@@ -666,6 +713,16 @@ async def mark_error_reviewed(
     if result.rowcount == 0:
         raise NotFound(f"Error group '{fingerprint}' not found")
 
+    await audit(
+        session,
+        actor=user,
+        action="error.reviewed",
+        target_type="error",
+        target_id=fingerprint,
+        target_label=await _error_group_label(session, fingerprint),
+        new={"is_reviewed": True, "rows": result.rowcount},
+        request=request,
+    )
     await session.commit()
 
     logger.info(
@@ -681,6 +738,7 @@ async def mark_error_reviewed(
 @router.post("/api/admin/analytics/errors/{fingerprint}/unreview")
 async def mark_error_unreviewed(
     fingerprint: str,
+    request: Request,
     user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
@@ -694,6 +752,16 @@ async def mark_error_unreviewed(
     if result.rowcount == 0:
         raise NotFound(f"Error group '{fingerprint}' not found")
 
+    await audit(
+        session,
+        actor=user,
+        action="error.unreviewed",
+        target_type="error",
+        target_id=fingerprint,
+        target_label=await _error_group_label(session, fingerprint),
+        new={"is_reviewed": False, "rows": result.rowcount},
+        request=request,
+    )
     await session.commit()
 
     logger.info(
