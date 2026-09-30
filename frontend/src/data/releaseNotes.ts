@@ -62,8 +62,17 @@ export const RELEASES: Release[] = [
   {
     version: '2.1.52',
     date: '2026-09-30T12:00:00Z',
-    title: 'Ownership transfer fix',
+    title: 'Admin action log disclosure and an ownership transfer fix',
     items: [
+      {
+        category: 'improvement',
+        title: 'The privacy page describes the new admin action log',
+        description:
+          'The privacy page now lists the admin action log: a record of administrative and destructive actions (who acted, when, and what changed) that only site admins can see. It records actions, not browsing, and never IP addresses, browser details or secrets such as webhook URLs or tokens.',
+        link: { href: '/docs/privacy', label: 'Read the privacy page' },
+        pr: 318,
+        prTitle: 'feat(v2): AD1b-B — admin Logs API and privacy disclosure',
+      },
       {
         category: 'fix',
         title: 'Transferring ownership of a static no longer shows an error',
@@ -79,6 +88,15 @@ export const RELEASES: Release[] = [
           'Admin V2 plumbing: error reviews, catalog sync and seed, admin player assignment, static update/delete/duplicate/ownership transfer, member add/remove/role change, tier and player delete, and week revert each write an audit row, marked admin_override when access came only from admin status. Webhook secrets and tokens never enter a row. Also fixes the admin catalog sync reporting synced_from_api=false after a successful sync.',
         pr: 317,
         prTitle: 'feat(v2): AD1b-A — admin_override seam and wave-1 audit emits',
+        internal: true,
+      },
+      {
+        category: 'improvement',
+        title: 'Admins can read the audit log through the API',
+        description:
+          'Admin V2 plumbing: GET /api/admin/logs (browser sign-in only; API keys get 403) lists audit rows newest first, filtered by actor, target, static, credential, action prefix and a from-inclusive / to-exclusive time range, 50 rows a page up to 100. The admin UI for it comes in a later update.',
+        pr: 318,
+        prTitle: 'feat(v2): AD1b-B — admin Logs API and privacy disclosure',
         internal: true,
       },
     ],
