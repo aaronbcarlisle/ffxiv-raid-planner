@@ -124,6 +124,7 @@ export function RewardGoalDetailModal({
                 goalId={goal.id}
                 currentUserId={currentUserId}
                 canManage={canManage}
+                isViewer={isViewer}
               />
             )}
           </div>

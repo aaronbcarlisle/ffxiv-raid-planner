@@ -43,8 +43,10 @@ function seed(drops: RewardDrop[]) {
   });
 }
 
-function renderPanel(canManage: boolean) {
-  return render(<DropHistoryPanel groupId="g1" goalId="goal-1" currentUserId="me" canManage={canManage} />);
+function renderPanel(canManage: boolean, isViewer = false) {
+  return render(
+    <DropHistoryPanel groupId="g1" goalId="goal-1" currentUserId="me" canManage={canManage} isViewer={isViewer} />,
+  );
 }
 
 describe('DropHistoryPanel delete', () => {
@@ -99,6 +101,12 @@ describe('DropHistoryPanel delete', () => {
   it("gives a non-manager no button on someone else's drop", () => {
     seed([makeDrop({ createdById: 'someone-else' })]);
     renderPanel(false);
+    expect(screen.queryByRole('button', { name: /Delete drop/ })).not.toBeInTheDocument();
+  });
+
+  it('gives a viewer no button, even on a drop they logged before being demoted', () => {
+    seed([makeDrop({ createdById: 'me' })]);
+    renderPanel(false, true);
     expect(screen.queryByRole('button', { name: /Delete drop/ })).not.toBeInTheDocument();
   });
 

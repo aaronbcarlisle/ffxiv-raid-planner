@@ -12,6 +12,8 @@ interface DropHistoryPanelProps {
   currentUserId: string;
   /** Leads and owners may delete any drop; everyone else only the ones they logged. */
   canManage: boolean;
+  /** Viewers delete nothing, not even a drop they logged before being demoted (the API refuses them). */
+  isViewer: boolean;
 }
 
 const PRIOR_STATE_LABELS: Record<string, string> = { need: 'Need', want: 'Want' };
@@ -20,7 +22,7 @@ function formatDropDate(drop: RewardDrop): string {
   return new Date(drop.droppedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function DropHistoryPanel({ groupId, goalId, currentUserId, canManage }: DropHistoryPanelProps) {
+export function DropHistoryPanel({ groupId, goalId, currentUserId, canManage, isViewer }: DropHistoryPanelProps) {
   const { drops, dropsLoading, fetchDrops, deleteDrop } = useCollectionGoalStore();
   const [pendingDelete, setPendingDelete] = useState<RewardDrop | null>(null);
 
@@ -73,7 +75,7 @@ export function DropHistoryPanel({ groupId, goalId, currentUserId, canManage }: 
     <div className="flex flex-col gap-2">
       {list.map((drop) => {
         const dateStr = formatDropDate(drop);
-        const canDelete = canManage || drop.createdById === currentUserId;
+        const canDelete = !isViewer && (canManage || drop.createdById === currentUserId);
 
         return (
           <div key={drop.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-surface-base">
