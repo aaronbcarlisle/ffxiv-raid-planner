@@ -29,6 +29,11 @@ async def owner(session: AsyncSession) -> User:
 
 
 @pytest_asyncio.fixture
+async def lead(session: AsyncSession) -> User:
+    return await create_user(session, discord_id="cat_lead_1", discord_username="lead")
+
+
+@pytest_asyncio.fixture
 async def member(session: AsyncSession) -> User:
     return await create_user(session, discord_id="cat_member_1", discord_username="member")
 
@@ -39,13 +44,19 @@ def owner_headers(owner: User) -> dict[str, str]:
 
 
 @pytest.fixture
+def lead_headers(lead: User) -> dict[str, str]:
+    return {"Authorization": f"Bearer {create_access_token(lead.id)}"}
+
+
+@pytest.fixture
 def member_headers(member: User) -> dict[str, str]:
     return {"Authorization": f"Bearer {create_access_token(member.id)}"}
 
 
 @pytest_asyncio.fixture
-async def group(session: AsyncSession, owner: User, member: User):
+async def group(session: AsyncSession, owner: User, lead: User, member: User):
     g = await create_static_group(session, owner)
+    await create_membership(session, lead, g, role="lead")
     await create_membership(session, member, g, role="member")
     return g
 
@@ -337,9 +348,8 @@ async def test_expansion_filters_do_not_hide_all_rows(async_client: AsyncClient,
         assert len(items) > 0, f"Expansion filter '{exp}' returned no rows"
 
 
-async def test_token_count_can_buy_check(async_client: AsyncClient, group, owner_headers, member_headers, member):
-    """Member with token_count >= token_cost should be flagged as 'can buy'."""
-    # Create a goal with token cost
+@pytest_asyncio.fixture
+async def token_goal_id(async_client: AsyncClient, group, owner_headers) -> str:
     create_resp = await async_client.post(
         f"/api/static-groups/{group.id}/collection-goals",
         json={
@@ -352,21 +362,42 @@ async def test_token_count_can_buy_check(async_client: AsyncClient, group, owner
         },
         headers=owner_headers,
     )
-    goal_id = create_resp.json()["id"]
+    return create_resp.json()["id"]
 
-    # Member sets state with token count at threshold
+
+async def test_member_token_count_is_not_stored_via_self_upsert(
+    async_client: AsyncClient, group, token_goal_id, owner_headers, member_headers, member
+):
+    """R-P0-3: a member's self-upsert ignores token_count; the plugin sync is their token path."""
     await async_client.patch(
-        f"/api/static-groups/{group.id}/collection-goals/{goal_id}/participants",
+        f"/api/static-groups/{group.id}/collection-goals/{token_goal_id}/participants",
         json={"state": "need", "token_count": 99},
         headers=member_headers,
     )
     participants = (await async_client.get(
-        f"/api/static-groups/{group.id}/collection-goals/{goal_id}/participants",
+        f"/api/static-groups/{group.id}/collection-goals/{token_goal_id}/participants",
         headers=owner_headers,
     )).json()
     p = next(p for p in participants if p["user_id"] == member.id)
+    assert p["state"] == "need"
+    assert p["token_count"] is None
+
+
+async def test_lead_token_count_at_threshold_is_stored(
+    async_client: AsyncClient, group, token_goal_id, owner_headers, lead_headers, lead
+):
+    """Lead sets state with token count at threshold; can_buy is a frontend concern."""
+    await async_client.patch(
+        f"/api/static-groups/{group.id}/collection-goals/{token_goal_id}/participants",
+        json={"state": "need", "token_count": 99},
+        headers=lead_headers,
+    )
+    participants = (await async_client.get(
+        f"/api/static-groups/{group.id}/collection-goals/{token_goal_id}/participants",
+        headers=owner_headers,
+    )).json()
+    p = next(p for p in participants if p["user_id"] == lead.id)
     assert p["token_count"] == 99
-    # can_buy is a frontend concern — backend just stores token_count correctly
 
 
 # ── FFXIV Collect sync filter ─────────────────────────────────────────────────

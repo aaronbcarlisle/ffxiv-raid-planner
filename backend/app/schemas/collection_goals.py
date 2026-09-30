@@ -124,6 +124,8 @@ class ParticipantStateResponse(BaseModel):
     updated_at: str
     # Resolved display fields
     display_name: str | None = None
+    # The user's role in the static; None when they are no longer a member (R-P0-4).
+    member_role: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -148,5 +150,7 @@ class RewardDropResponse(BaseModel):
     notes: str | None
     created_at: str
     recipient_display_name: str | None = None
+    # The state the drop flipped the recipient out of (need/want); None when it caused no flip.
+    recipient_prior_state: str | None = None
 
     model_config = {"from_attributes": True}

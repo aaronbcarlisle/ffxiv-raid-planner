@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..dependencies import get_current_user
-from ..models import SnapshotPlayer, TierSnapshot, User
+from ..models import MemberRole, SnapshotPlayer, TierSnapshot, User
 from ..models.player_character import PlayerCharacter
 from ..models.player_profile import PlayerProfile
 from ..models.split_clear import SplitClearAssignment
@@ -21,6 +21,7 @@ from ..permissions import (
     check_view_permission,
     get_static_group,
     require_can_edit_roster,
+    require_membership,
 )
 from ..schemas.split_clear import (
     MarkSplitRunClearedRequest,
@@ -394,8 +395,8 @@ async def mark_split_run_cleared(
     current_user: User = Depends(get_current_user),
 ) -> None:
     """Mark all players in a split run (A or B) as cleared. Any member can mark their own run."""
-    group = await get_static_group(session, group_id)
-    await check_view_permission(session, group, current_user)
+    await get_static_group(session, group_id)
+    await require_membership(session, current_user.id, group_id, min_role=MemberRole.MEMBER)
 
     result = await session.execute(
         select(SplitClearAssignment).where(SplitClearAssignment.static_group_id == group_id)
