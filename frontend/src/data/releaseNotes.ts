@@ -69,6 +69,8 @@ export const RELEASES: Release[] = [
         title: 'Log Week skips slots already logged that week',
         description:
           'Log Week no longer suggests loot for slots already logged that week: they show as logged and aren\'t sent again, and its suggestions now match the loot priority queues.',
+        pr: 327,
+        prTitle: 'fix(loot): P0c — Log Week locks already-logged slots and ranks like Queues (LOG-1)',
       },
     ],
   },
