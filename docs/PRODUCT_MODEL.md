@@ -240,28 +240,38 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 | **Stage 2 — in-static IA collapse** | ⬜ not started | `Spine.tsx` has 4 tabs (Home/Roster/Loot/Schedule); More still has "Coming soon" stubs (`MorePage.tsx`); `MobileBottomNav` still renders under V2 |
 | Stage 5 — docs and admin fit-and-finish | ◐ docs and admin are V2-chromed since Stage 1; the docs light restyle ⬜ | `V2_COVERAGE_PLAN.md` Stage 5 |
 | Stage 6 — ⌘K actions | ⬜ | `CommandPalette.tsx` is navigate-only |
-| Phase F — chrome seams + carried items | ⬜ | carried list in `ROLLOUT_ROADMAP.md` §7 |
-| Parity rows still owed | ⬜ no slice yet: D-48, D-49, D-63, D-65, D-66, D-70, D-50 (ruled in #184 "suppress both Leave and Delete under View As"; Delete Static still shows, `MorePage.tsx:379-386`), D-58's "View Schedule" link (the countdown chip shipped). Ruled with a named home: D-44 → mobile pass, D-60 → Phase P, D-52 → Stage 2, D-67/D-68 → Stage 2, D-18 above | `specs/v1-v2-parity-matrix.md`; each checked absent in code 2026-09-30. They gate 3.0.0 (every row executed); whether they gate the un-gate is an open owner call |
-| Mobile pass (opens Phase P) | ⬜ | deferred out of every slice by ruling |
-| Phase P — beta polish walkthrough with the owner | ⬜ | — |
-| Admin V2 | AD1a #241, AD1b #317/#318 ✅; AD2+ parked | **Does not block the un-gate** (a separate gated area) |
-| Account delete / export (old Plan M) | ⬜ never built | no endpoint in `backend/app/routers` |
+| Phase F — chrome seams + carried items | ⬜ | carried list in `ROLLOUT_ROADMAP.md` §7, itemised in `HOME_STRETCH.md` §4 F1–F3 |
+| Parity rows still owed | ⬜ no slice yet: D-48, D-49, D-63, D-65, D-66, D-70, D-50 (ruled in #184 "suppress both Leave and Delete under View As"; Delete Static still shows, `MorePage.tsx:379-386`), D-58's "View Schedule" link (the countdown chip shipped). Ruled with a named home: D-44 → mobile pass, D-60 → Phase P, D-52 → Stage 2, D-67/D-68 → Stage 2, D-18 above | `specs/v1-v2-parity-matrix.md`; each checked absent in code 2026-09-30. All of them gate the 3.0.0 release (HS-4); sequenced in [`HOME_STRETCH.md`](../design/redesign/HOME_STRETCH.md) §4 P1/P2a/P2b/S2 |
+| Mobile pass (before Phase P) | ⬜ | deferred out of every slice by ruling; `HOME_STRETCH.md` §4 MP |
+| Phase P — beta polish walkthrough with the owner | ⬜ | process in `HOME_STRETCH.md` §5 |
+| Admin V2 | AD1a #241, AD1b #317/#318 ✅; AD2+ parked | **Blocks nothing** (a separate gated area; HS-14) |
+| Account delete / export (old Plan M) | ⬜ never built | no endpoint in `backend/app/routers`; a 3.0.0 prerequisite (HS-13), `HOME_STRETCH.md` §4 M1 |
 
-**What remains before the un-gate:** Stage 2 (the in-static IA collapse: re-home Plugin, dissolve More, a V2 mobile nav, and the Progress home that D-18, D-67 and D-68 wait on), Stages 5–6, Phase F, the mobile pass, then Phase P. Open owner rulings that shape this list are collected for session 2 and are **not** settled by this section:
-- the spine's tab count (F-01/R2's fifth Progress tab vs `REDESIGN_SPEC.md` §11 #7's four-tab spine);
-- Plugin's home;
-- which owed parity rows, plus H-10 and the static typical-week layer, gate the un-gate rather than 3.0.0;
-- ratifying gates 2–3 below.
-
-The sequenced plan with sizes and owner decisions is session 2's deliverable (`design/redesign/HOME_STRETCH.md`, not yet written).
+**What remains, in order, with sizes, dependencies and acceptance criteria:** [`design/redesign/HOME_STRETCH.md`](../design/redesign/HOME_STRETCH.md). Session 2 (2026-09-30) settled every open owner question as rulings HS-1…HS-25, and the same day the owner ruled HS-26…HS-31 on questions the plan's two director vets raised; all are recorded there. In short: the spine is five tabs, with Progress as the tracks surface (F-03, reaffirmed; "prog" stays the status word, HS-29); Plugin setup lives in Player Hub, its guide in Docs and the team Gear-Sync dashboard in Roster (F-05, reaffirmed); every owed parity row gates the release; the un-gate and 3.0.0 merge into one release; and a legacy→V2 entry stays for everyone after it (HS-26).
 
 ### 6.2 Definition of done
 
-Three gates, in order. Each one's clock starts only when the previous gate ships.
+Two gates, in order. *(Ratified 2026-09-30, HS-6; merged into two gates by HS-25. The 2026-07-11 proposal had three: un-gate, 3.0.0, V1 deletion.)*
 
-1. **Un-gate: V2 opt-in for everyone.** Requires Phases B–F, coverage Stages 2–6, the mobile pass and Phase P. Phase P is done when every V2 surface (in-static screens, non-static routes, mobile variants, guest views) has been walked with the owner and every punch-list item is fixed and re-demonstrated before moving to the next page, or explicitly deferred by the owner; a page is accepted when the owner says "next". The un-gate PR removes the `isAdmin` condition from `TryNewUiBanner` and the Stage 1 user-menu item together. Admin V2 is not a prerequisite (owner call, 2026-09-30).
-2. **3.0.0: V2 becomes the default.** *(Proposed 2026-07-11, pending owner ratification; only the clock start was ruled, 2026-07-25.)* All of: every parity-matrix row executed (restore / drop / redesign); Phases C, D and E shipped; Phase P complete and the un-gate shipped; opt-in open for at least 4 weeks after the un-gate; no unresolved parity complaints from the opt-in cohort; toggle telemetry healthy.
-3. **V1 deleted.** *(Proposed 2026-07-11, pending owner ratification.)* All of: V2 the default for at least 4 weeks; trailing-2-week opt-out rate under 10% (tune with real data); zero open parity-tagged issues. Deletion re-runs the flip-P3 legacy-deletion checklist (`design/redesign/plans/2026-07-03-flip-p3-legacy-deletion.md`; the deletion inventory is §6 of `specs/2026-07-03-parity-flip-design.md`), this time with its verification steps actually executed.
+1. **Release 3.0.0: V2 is the default for everyone.** Every user is flipped to V2: the shell choice made before the release isn't migrated, and a switch-back made after it persists (HS-23). The way back is "Switch back to legacy UI" in the user menu or Settings, reachable on mobile (HS-24). `TryNewUiBanner` is deleted; the legacy user-menu item that enters V2 stays for everyone, without its `isAdmin` gate and renamed, so switching back is never a one-way door (HS-26). Requires every build item in `HOME_STRETCH.md` §4 that isn't marked *not a gate* (HS-28; HS-14 for admin-only items):
+   - every parity-matrix row executed;
+   - the not-found fix (V1B item 1; broken in V2 too, HS-28);
+   - Stage 2, Stages 5–6 and Phase F;
+   - H-10 and the typical-week layer;
+   - account delete and export (Plan M);
+   - shell-switch telemetry;
+   - the mobile pass;
+   - Phase P;
+   - the owner-signed release plan.
+
+   Phase P is done when every V2 surface (in-static screens, non-static routes, mobile variants, guest views) has been walked with the owner, and every punch-list item is either fixed and re-demonstrated before the next page, or explicitly deferred by the owner. A page is accepted when the owner says "next". Admin V2 is not a prerequisite (HS-14).
+2. **V1 deleted.** Requires all of:
+   - V2 the default for at least 4 weeks;
+   - a trailing-2-week switch-back rate under 10% (tune with real data; defined in `HOME_STRETCH.md` §4 T1);
+   - V2's error-log rate no higher than V1's (V1's is the baseline T1 records before the release);
+   - zero open parity-tagged issues.
+
+   Deletion re-runs the flip-P3 legacy-deletion checklist (`design/redesign/plans/2026-07-03-flip-p3-legacy-deletion.md`; the deletion inventory is §6 of `specs/2026-07-03-parity-flip-design.md`), corrected for what has changed since and with its verification steps actually executed.
 
 **Standing rule (permanent):** no surface is replaced without an affordance-parity matrix the owner has reviewed first. Detail on each phase and its rulings lives in [`ROLLOUT_ROADMAP.md`](../design/redesign/ROLLOUT_ROADMAP.md); per-stage detail in [`V2_COVERAGE_PLAN.md`](../design/redesign/V2_COVERAGE_PLAN.md).
 
@@ -282,7 +292,7 @@ The enabling move is a **navigation re-architecture**: one context rail (Person 
 2. **Ring 0 flawless on the new IA:** the weekly loop — roster, the unified week/session clock, loot (one logging model, one recipient picker), the savage gear board. Consolidate every duplicated component into one owned unit. *(✅ in V2 via Phases C–E; D-18 waits on Stage 2.)*
 3. **Ring 1 woven in:** scheduling as the clock (availability as a Person input → Static heatmap), recruitment-as-matching, strat references. *(Availability pipe ✅ PH3 #304/#305; recruitment-as-matching ✅ Stage 4 #309–#316; strat references ⬜ not built.)*
 4. **Ring 2:** FFLogs intelligence. *(⬜ not built, not yet scheduled.)*
-5. **Ring 3:** additional content tracks (ultimates, mounts unified, funneling) on the Progress Engine. *(Stage 2 gives Progress its in-static home, in a shape the owner has yet to rule; new tracks ⬜ not yet scheduled.)*
+5. **Ring 3:** additional content tracks (ultimates, mounts unified, funneling) on the Progress Engine. *(Stage 2 gives Progress its in-static home as the fifth spine tab (F-03, reaffirmed HS-2); new tracks ⬜ not yet scheduled, and may start after the release (HS-15).)*
 
 Steps 1–3 are the redesign; §6 tracks them to done. Every future request is now triaged by §4: *which layer, which ring/track, woven or parked?* That is the long-term clarity — the roadmap is "make the core flawless, then deepen each ring," and the backlog sorts itself.
 
@@ -290,7 +300,7 @@ Steps 1–3 are the redesign; §6 tracks them to done. Every future request is n
 
 ## 8. How this relates to the other docs
 
-- **§6 is the only place that states current redesign status and the definition of done.** Other docs link to it rather than restating either.
-- **The redesign docs** (`design/redesign/`) derive *from* this doc: [`REDESIGN_SPEC.md`](../design/redesign/REDESIGN_SPEC.md) (IA, visual language, flows, with mockups), [`ROLLOUT_ROADMAP.md`](../design/redesign/ROLLOUT_ROADMAP.md) (the plan of record: phases R→H and their rulings), [`V2_COVERAGE_PLAN.md`](../design/redesign/V2_COVERAGE_PLAN.md) (coverage Stages 0–6), and per-slice specs and plans under `specs/` and `plans/`. If a mockup or spec contradicts this model, the model wins or the model is changed deliberately — not by drift.
+- **§6 is the only place that states current redesign status and the definition of done.** Other docs link to it rather than restating either. `HOME_STRETCH.md` §4's ticks are subordinate to §6.1: a tick records that an item shipped, and if a tick and §6.1 disagree, §6.1 wins and the tick is corrected.
+- **The redesign docs** (`design/redesign/`) derive *from* this doc: [`REDESIGN_SPEC.md`](../design/redesign/REDESIGN_SPEC.md) (IA, visual language, flows, with mockups), [`HOME_STRETCH.md`](../design/redesign/HOME_STRETCH.md) (the sequenced plan from now to V1 deletion, with the session-2 rulings), [`ROLLOUT_ROADMAP.md`](../design/redesign/ROLLOUT_ROADMAP.md) (the plan of record: phases R→H and their rulings), [`V2_COVERAGE_PLAN.md`](../design/redesign/V2_COVERAGE_PLAN.md) (coverage Stages 0–6), and per-slice specs and plans under `specs/` and `plans/`. If a mockup or spec contradicts this model, the model wins or the model is changed deliberately — not by drift.
 - **`CONSOLIDATED_STATUS.md`, `OUTSTANDING_WORK.md`, the A–M UI plans and `ROADMAP.md`** are archived in `docs/archive/2026-06-27-pre-redesign/`. They record what existed before the redesign. The enforcement philosophy (Plan L), design-system standardization (F) and recipient consolidation (H) were carried into the redesign; account controls (Plan M) were never built (§6.1). The structural plans (rail/settings/nav renames A/B/C/I) were superseded by the IA re-architecture.
 - **The changelog** is `frontend/src/data/releaseNotes.ts` (CI-enforced), which is also the version source of truth.

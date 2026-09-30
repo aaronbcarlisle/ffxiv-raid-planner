@@ -61,7 +61,7 @@ Ordered user-facing / functional first. These are honestly-deferred or silently-
 - **Work:** Give Exports and Activity Log real homes (or cut them), then delete the More surface.
 
 ### B7. `[PARTIAL]` The 4-tab collapse is cosmetic
-- **Intent:** `REDESIGN_SPEC.md §3.2` — four tabs not five; extra destinations genuinely re-homed; ≤2 levels deep.
+- **Intent:** `REDESIGN_SPEC.md §3.2` — ~~four tabs not five~~ five tabs including Progress (amended by item 5 below, R2/F-03; reaffirmed HS-2 in `HOME_STRETCH.md`); extra destinations genuinely re-homed; ≤2 levels deep.
 - **Code:** Desktop `Spine.tsx:12-17` is a clean 4 tabs, but `goals` / `plugin` / `more` remain full reachable pages via ⌘K and mobile bottom nav (`GroupViewContent.tsx:1140/1154/1219/1239`). Removed from the tab bar, not from the app.
 - **Work:** Depends on B4/B5/B6 landing real homes; then remove the off-spine reachability.
 
