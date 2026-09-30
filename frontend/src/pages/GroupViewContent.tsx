@@ -323,11 +323,25 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
 
   // Initialize loot tracking store when Loot or Players tab is active
   const { currentWeek: storeCurrentWeek, maxWeek: storeMaxWeek, fetchCurrentWeek, fetchLootLog, lootLog, fetchMaterialLog, materialLog } = useLootTrackingStore();
+  // `logsFailed`: the Log Week wizard cannot tell "nothing logged" from "never
+  // loaded", so it refuses to submit while either load has failed. Keyed by
+  // (static, tier) so a failure never outlives a tier switch.
+  const logsKey = currentGroup?.id && currentTier?.tierId ? `${currentGroup.id}:${currentTier.tierId}` : null;
+  const [failedLogsKey, setFailedLogsKey] = useState<string | null>(null);
+  const logsFailed = logsKey !== null && failedLogsKey === logsKey;
   useEffect(() => {
     if ((pageMode === 'gear' || pageMode === 'roster') && currentGroup?.id && currentTier?.tierId) {
+      let cancelled = false;
+      const key = `${currentGroup.id}:${currentTier.tierId}`;
       fetchCurrentWeek(currentGroup.id, currentTier.tierId);
-      fetchLootLog(currentGroup.id, currentTier.tierId);
-      fetchMaterialLog(currentGroup.id, currentTier.tierId);
+      void Promise.allSettled([
+        fetchLootLog(currentGroup.id, currentTier.tierId),
+        fetchMaterialLog(currentGroup.id, currentTier.tierId),
+      ]).then((results) => {
+        if (cancelled) return;
+        setFailedLogsKey(results.some((r) => r.status === 'rejected') ? key : null);
+      });
+      return () => { cancelled = true; };
     }
   }, [pageMode, currentGroup?.id, currentTier?.tierId, fetchCurrentWeek, fetchLootLog, fetchMaterialLog]);
 
@@ -1037,6 +1051,7 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
                 maxWeek={storeMaxWeek}
                 lootLog={lootLog}
                 materialLog={materialLog}
+                logsFailed={logsFailed}
                 showEnhancedScores={true}
                 activeSubTab={lootSubTab}
                 onSubTabChange={setLootSubTab}
@@ -1465,6 +1480,7 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
           maxWeek={storeMaxWeek}
           lootLog={lootLog}
           materialLog={materialLog}
+          logsFailed={logsFailed}
           singleFloorMode={logWeekWizardFloor !== null}
           initialFloor={logWeekWizardFloor ?? 1}
           onSuccess={(loggedWeek) => {

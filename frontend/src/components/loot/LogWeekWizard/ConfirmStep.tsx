@@ -49,6 +49,12 @@ export function ConfirmStep({
         </div>
       </div>
 
+      {summary.alreadyLogged > 0 && (
+        <p className="text-xs text-text-muted">
+          {summary.alreadyLogged} already logged this week
+        </p>
+      )}
+
       {/* Per-floor detail cards - 2 column grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {floors.map((floorName, i) => {
@@ -58,15 +64,16 @@ export function ConfirmStep({
         if (!floor) return null;
         const floorColor = FLOOR_COLORS[floorNum];
 
+        // A locked slot is already in the week's log (R-P0-9): never listed as a send.
         const gearEntries = Object.entries(floor.gear)
-          .filter(([_, e]) => e.playerId && !e.didNotDrop)
+          .filter(([_, e]) => e.playerId && !e.didNotDrop && !e.locked)
           .map(([slot, e]) => ({
             slot,
             player: mainRosterPlayers.find((p) => p.id === e.playerId),
             updateGear: e.updateGear,
           }));
         const materialEntries = Object.entries(floor.materials)
-          .filter(([_, e]) => e.playerId && !e.didNotDrop)
+          .filter(([_, e]) => e.playerId && !e.didNotDrop && !e.locked)
           .map(([slot, e]) => ({
             slot,
             player: mainRosterPlayers.find((p) => p.id === e.playerId),

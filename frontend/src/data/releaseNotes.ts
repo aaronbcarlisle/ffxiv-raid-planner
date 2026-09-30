@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.56';
+export const CURRENT_VERSION = '2.1.57';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.57',
+    date: '2026-09-30T18:00:00Z',
+    title: 'Log Week respects what is already logged',
+    items: [
+      {
+        category: 'fix',
+        title: 'Log Week skips slots already logged that week',
+        description:
+          'Log Week no longer suggests loot for slots already logged that week: they show as logged and aren\'t sent again, and its suggestions now match the loot priority queues.',
+        pr: 327,
+        prTitle: 'fix(loot): P0c — Log Week locks already-logged slots and ranks like Queues (LOG-1)',
+      },
+    ],
+  },
   {
     version: '2.1.56',
     date: '2026-09-30T12:00:00Z',
