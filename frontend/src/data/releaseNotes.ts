@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.54';
+export const CURRENT_VERSION = '2.1.55';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.55',
+    date: '2026-09-30T07:00:00Z',
+    title: 'Broken static links show a clear page',
+    items: [
+      {
+        category: 'fix',
+        title: 'A broken static link shows "Static Not Found"',
+        description:
+          'Opening a link to a static that doesn\'t exist showed a bare error, and following one from another static left that static on screen under the wrong link. Both now show "Static Not Found", with a button back to your statics. A private static opened from another static now shows its own page instead of the one you came from.',
+        pr: 322,
+        prTitle: 'fix(v1): broken static links reach Static Not Found in both shells (V1B item 1)',
+      },
+    ],
+  },
   {
     version: '2.1.54',
     date: '2026-09-30T06:00:00Z',

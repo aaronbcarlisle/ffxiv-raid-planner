@@ -325,8 +325,11 @@ export function GroupView() {
     return (
       <div className="max-w-4xl mx-auto py-8">
         <div className="text-center py-12">
-          <h2 className="text-xl font-display text-accent mb-2">Group Not Found</h2>
-          <p className="text-text-muted">The static group you're looking for doesn't exist.</p>
+          <h2 className="text-xl font-display text-accent mb-2">Static Not Found</h2>
+          <p className="text-text-muted">The static you're looking for doesn't exist.</p>
+          <div className="flex justify-center mt-4">
+            <Button onClick={() => navigate('/profile?tab=statics')}>Go to My Statics</Button>
+          </div>
         </div>
       </div>
     );

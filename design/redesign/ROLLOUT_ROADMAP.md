@@ -301,7 +301,7 @@ B–F land as normal PRs.
   v2 equivalents exist; dead-code sweep (knip: 8 files / 179 exports / 139 types as of DC — hold
   anything Phase B might restore); doc updates (CLAUDE.md Key Files/Component Reference,
   UI_COMPONENTS.md, PRODUCT_MODEL §6, REDESIGN_SPEC §7 drop corrections, broken
-  REDESIGN_SPEC link). **Received from E1:** the share-code not-found gap, the `fetchCurrentWeek`
+  REDESIGN_SPEC link). **Received from E1:** the share-code not-found gap (closed by V1B item 1, see §7), the `fetchCurrentWeek`
   stale-response race and the `no-tiny-text`/const-string enforcement gap — see "Carried out of E1"
   below.
 
@@ -358,10 +358,9 @@ D12 row):
   #11 `Badge.tsx` contrast-harness exclusion · the `fetchCurrentWeek` stale-response race (declined on
   #274, user-approved 2026-09-25 to carry).
   **New from E1:**
-  - **Needs explicit V1 authorization:** a bad share code never reaches "Static Not Found" in either
-    shell — `staticGroupStore.fetchGroupByShareCode` sets `error` but never clears a stale
-    `currentGroup`, and `ShellContentStates.tsx:145` precedes `:175` (frozen `GroupView.tsx` has the
-    same shape); pre-existing on `main`; ~60–90 lines across the store and both shells.
+  - **✅ CLOSED (V1B item 1, #322):** a bad share code reaches "Static Not Found" in both shells.
+    `staticGroupStore.fetchGroupByShareCode` maps a 404 to not-found, clears a stale static on other
+    failures, and drops superseded responses.
   - `no-tiny-text` doesn't reach a class string held in a const (found via `GearBoardCell.tsx`'s
     `BASE`).
 - Next mechanical slice: #40 null-anchor strip (`WeekNavigatorStrip.tsx:49-53,66`).

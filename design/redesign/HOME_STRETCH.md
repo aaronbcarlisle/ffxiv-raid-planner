@@ -56,7 +56,7 @@ These close every item in the session-1 decision list (groups A–E, 22 items). 
 ```
 now ─ H0 this plan
    ├─ P1 safety + quick parity ─────┐ (worktree)
-   ├─ V1B item 1, not-found flow ───┤ (worktree; V1B's only gate, HS-28)
+   ├─ V1B item 1, not-found flow ───┤ (worktree; V1B's only gate, HS-28; ✅ #322)
    └─ S2 Stage 2 spec (session 3) ─► S2a Progress ─► S2b More/Plugin + mobile switch ─► S2c mobile nav + B7
                                           └─► P2b Home rows
    parallel once S2 is specced: M1 Plan M · T1 telemetry · S5 docs · S6 ⌘K (after S2)
@@ -90,7 +90,7 @@ Each item lists its scope, dependencies, acceptance criteria, size and rulings. 
 ### V1B · V1 bugfix bundle — M · HS-7, HS-28
 - **Gate:** item 1 only (HS-28). Items 2–3 are **not a gate: run in parallel**, in this PR or a later one.
 - **Scope (V1-visible, sanctioned):**
-  1. **Not-found flow:** a bad share code reaches "Static Not Found" in both shells. `fetchGroupByShareCode` clears a stale `currentGroup`, and the branches in `ShellContentStates.tsx` let the error through: both the error branch (`:152`) and the not-found branch (`:182`) require `!currentGroup` today (E1 cited them as `:145`/`:175`), and frozen `GroupView.tsx` has the same shape (ROLLOUT §7 E1 carried list; ~60–90 lines).
+  1. ✅ **Not-found flow** (#322): a bad share code reaches "Static Not Found" in both shells. `fetchGroupByShareCode` maps a 404 to not-found, clears a stale static on other failures, and drops superseded responses. The branches were already right (R-V1B-1). The not-found state adds "Go to My Statics" (R-V1B-7).
   2. **Rejections:** `PlayerGrid`/`PlayerCard` catch and surface failed claim, release and reset.
   3. **Clear-on-edit:** BiS targets (`BiSTargetManagerModal:288-290`), goals and objectives (`GoalModal:142`) can be cleared, as #239 did for loot.
 - **Depends on:** nothing.
@@ -174,6 +174,9 @@ Each F1, F2 and F3 item says whether its fix is **V2-only** or **sanctioned V1**
     - #32 the schedule membership-intersection family (`schedule/scheduleWeek.ts`, `AvailabilityHeatmap.tsx`; only V2's `Schedule.tsx` imports them) — V2-only;
     - #38 the boundary-evening week — the holistic list names it without a location (E1 plan :281); the F1 plan locates and labels it, and if it can't, the owner closes it as a residual;
     - the `fetchCurrentWeek` stale-response race (`stores/lootTrackingStore.ts:303`) — sanctioned V1.
+  - V1B carried (out of V1B item 1's scope, seen in its browser check):
+    - late tier-store responses after a static switch: switching to a static with no tiers leaves the previous static's roster on screen (V1B plan, out of scope; the same class as `fetchCurrentWeek`) — sanctioned V1;
+    - on the not-found page, V2's top bar names another static with its role badge, because `StaticPicker` falls back to `groups[0]` (`layout/StaticPicker.tsx:80-81`); this already happened on direct bad links, and V1B's fix now also reaches it from another static — V2-only.
   - **R-D12-F cause 5**, the missing ledger anchor for a folded or hidden section — V2-only.
   - The PH1 test and polish residuals (ROLLOUT §7 "Carried out of PH1") — V2-only.
   - HS-8's check of the V2 roster for the whole-roster re-render — V2-only.
@@ -306,7 +309,8 @@ Walk these on their page:
 - #40 the null-anchor strip (Schedule, `WeekNavigatorStrip.tsx:49-53`);
 - the Hub tile 1 title against its body (Hub);
 - #224's two log buttons (Loot, HS-17);
-- D-60, Command Brief chips as clickable subtitle and prompt elements (Home).
+- D-60, Command Brief chips as clickable subtitle and prompt elements (Home);
+- Go to My Statics shown to guests on not-found (and on the Error card); the private branch shows them Log In with Discord instead (`ShellContentStates.tsx:163-167`).
 
 ## 6. Change log
 - 2026-09-30: written (session 2). Rulings HS-1…HS-25.
