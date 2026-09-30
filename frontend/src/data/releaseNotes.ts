@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.53';
+export const CURRENT_VERSION = '2.1.54';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,22 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.54',
+    date: '2026-09-30T06:00:00Z',
+    title: 'The roadmap page catches up',
+    items: [
+      {
+        category: 'fix',
+        title: 'The roadmap page shows what has already shipped',
+        description:
+          'The roadmap page had fallen behind. The static dashboard is now marked complete. The notification inbox (applications, suggestion votes and webhook failures) and its read state are shown as done; roster, session and announcement notifications stay planned. Discord server linking with event sync and multiple BiS targets per job are marked as shipped, with the rest of those phases still planned. The summary now counts 4 static roles and 3 BiS import sources.',
+        link: { href: '/docs/roadmap', label: 'View the roadmap' },
+        pr: 320,
+        prTitle: 'docs: canonical redesign state + definition of done; stale status and roadmap page fixed',
+      },
+    ],
+  },
   {
     version: '2.1.53',
     date: '2026-09-30T05:15:00Z',

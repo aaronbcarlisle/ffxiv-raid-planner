@@ -1,5 +1,7 @@
 # HANDOFF — Redesign context for Claude Code
 
+> **Superseded (2026-09-30):** frozen at the F6b merge (2026-06-30). Where the redesign stands now: [`PRODUCT_MODEL.md` § 6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done); the plan of record is [`ROLLOUT_ROADMAP.md`](./ROLLOUT_ROADMAP.md); how slices run is the `slice-loop` skill (the `redesign/foundation` branch flow below ended with Phase G #161); a fresh session starts from the git-ignored `SESSION_HANDOFF.md`. The spine target was amended to five tabs on 2026-07-26 (Progress, `REDESIGN_SPEC.md` §3.2); the built `Spine.tsx` still has four. Kept for history.
+
 > **What this is.** A redesign of XIV Raid Planner's UX/IA and design system. This file orients you (a fresh Claude Code instance) to the artifacts, what's decided, what's open, and where execution stands. **Read the files referenced below before acting — they are the source of truth, this is just the map.**
 
 ## Current status & how to resume (updated 2026-06-30)

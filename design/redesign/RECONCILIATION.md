@@ -1,7 +1,7 @@
 # V2 Redesign — Reconciliation & Backlog
 
 **Created:** 2026-07-23
-**Status:** ACTIVE — the durable backlog for the V2 redesign. **Bucket A (doc false-done) was resolved 2026-07-23** — the roadmap status docs now describe the dual-shell / legacy-default reality. **Bucket B is the live backlog.** This doc remains an interim ground-truth for "what is actually done," alongside `PRODUCT_MODEL.md`.
+**Status:** ACTIVE as the Bucket-B ID register (the `B1`–`B9` IDs are cited by `ROLLOUT_ROADMAP.md` and `V2_COVERAGE_PLAN.md`). **Bucket A (doc false-done) was resolved 2026-07-23** (A3's micro-slice landed in #176). **Bucket B as of 2026-09-30:** B2 ✅ (Player Hub, PH1–PH3), B3 ✅ (Static Finder, Stage 4), B8 ✅ (V2 chrome on every route, Stage 1 #178–#181); still open: B1, B4–B7, B9. For where the redesign stands now, read [`PRODUCT_MODEL.md` § 6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done), not this doc.
 **Purpose:** A ground-truth reconciliation of every "done / complete / merged / shipped" claim against the actual code on `redesign/foundation`, plus the real remaining backlog. Produced after an evidence-based audit (three independent read-only agents) triggered by the observation that the autonomous build workflow left the docs asserting more than the code delivers.
 
 > **Decision of record (2026-07-23):** Keep the V2 branch, change how we work. The branch is ~68% pure additions, fully reversible at the DB layer (3 additive migrations, working downgrades, none applied to production), and CI-hardened. The four Ring-0 in-static screens (Home, Roster, Loot, Schedule) are genuinely wired to real data. The failure was **process and plan-fidelity, not code recoverability.** Work resumes step-by-step, gated by a plan-fidelity guardian (`xivrp-director`).
@@ -37,7 +37,7 @@ Type tags: `[REVERTED]` `[STUBBED]` `[NEVER-BUILT]` `[PARTIAL]` `[DOC-STALE-ONLY
 - **Truth:** Deleted at P3, restored at Phase R; it is a live v2 surface. See also B4 (it should ultimately be deleted + re-homed).
 - **Fix:** Correct the claim in `FOUNDATION_ROADMAP.md`; track the real deletion in Bucket B4.
 
-### A3. `[PARTIAL]` Phase A "all 17 items landed" overstates item 10 (void'd-promise sweep)
+### A3. `[PARTIAL]` Phase A "all 17 items landed" overstates item 10 (void'd-promise sweep) → ✅ micro-slice done #176 (2026-07-25)
 - **Claim:** `ROLLOUT_ROADMAP.md:90` — "Phase A ✅ COMPLETE … All 17 items landed as 13 tasks."
 - **Code / self-disclosure:** The same doc (`:95-98`) and `SESSION_HANDOFF.md:69-73` both list a still-owed "void-fix micro-slice": unguarded `Home.tsx` mount fetches, remaining `actionsForPlayer` rejection sites (claim/release/reset/duplicate — the same dropped-rejection class item 10 targeted), and frozen-file void calls (`SplitClearPlanner` ×4, `LodestoneSearchModal` ×12).
 - **Truth:** 16/17 genuinely done; item 10 (the unhandled-rejection sweep) is partial by the roadmap's own admission. Low severity, but the headline overstates.
@@ -73,17 +73,19 @@ Ordered user-facing / functional first. These are honestly-deferred or silently-
 - **Intent:** `PRODUCT_MODEL.md §5` / `REDESIGN_SPEC.md §7` (♻️ Plugin → Player Hub/Settings — "setup, not a daily destination").
 - **Code:** pageMode `plugin` renders legacy `PluginPage` in v2 (`GroupViewContent.tsx:1219`), reachable via ⌘K "Go to Plugin" (`CommandPalette.tsx:127`).
 
-### B2. `[NEVER-BUILT]` Player Hub (Person-layer home)
+### B2. `[BUILT]` Player Hub (Person-layer home) — built 2026-09-26/27 (was `[NEVER-BUILT]`)
 - **Intent:** `REDESIGN_SPEC.md §5.5` — a first-class blueprint screen.
-- **Code:** Rail "Player Hub" → `/profile`, the **legacy** `Profile` page (`NewShell.tsx:319`; `App.tsx:160`). `FOUNDATION_ROADMAP.md:48` concedes it was "light-passed (Ring-1, deferred)."
+- **Code (2026-07-23 audit):** Rail "Player Hub" → `/profile`, the **legacy** `Profile` page (`NewShell.tsx:319`; `App.tsx:160`). `FOUNDATION_ROADMAP.md:48` concedes it was "light-passed (Ring-1, deferred)."
+- **Built (Stage 3):** PH1 #280–#282, PH2 #286–#288, PH3 #304–#306. Under V2 chrome `/profile` renders the V2 `PlayerHub` (`pages/PlayerHub.tsx`, mounted from `Profile.tsx`); V1 keeps the legacy sidebar page.
 
 ### B3. `[BUILT]` Static Finder (recruitment-as-matching) — built 2026-09-29
 - **Intent:** `REDESIGN_SPEC.md §5.6`.
 - **Code:** SF1 (#309/#310/#311) built the V2-native Finder (matching engine + body) per `specs/2026-09-27-static-finder-design.md`. RH1 (#313–#315, #316) built the lead-side home per `specs/2026-09-27-recruit-home-design.md`: the `/group/:shareCode/recruit` route unifies listing management, the applicant inbox (with live fit) and invitations into one V2-native surface, reached from Static Home (attention rows + the Recruiting line), the TopBar Invite action, Alt+I, the More page, the bell's `new_application` notification, the Finder's "Post a listing"/"Choose a static" and the Hub's Needs-you item, with V2 Settings' Recruitment tab hidden behind it. Stage 4 is closed.
 
-### B8. `[PARTIAL]` Person-layer context rail — built only as an in-static switcher
+### B8. `[PARTIAL]` Person-layer context rail — built only as an in-static switcher → ✅ closed at chrome level by Stage 1 (#178–#181, 2026-07-25/26; `pages/chrome/AppChrome.tsx`)
 - **Intent:** `PRODUCT_MODEL.md §3.1` / `REDESIGN_SPEC.md §3.1` — a persistent Person-layer rail across the app.
-- **Code:** `AppRail` mounts **only** inside `/group/:shareCode`; its Person targets are hardcoded `isActive:false` ("NewShell only renders on /group routes", `NewShell.tsx:317`). Everywhere else the app is still the legacy `Layout`/`Header`. The rail is a static-avatar switcher, not the Person layer.
+- **Code (2026-07-23 audit, superseded):** `AppRail` mounts **only** inside `/group/:shareCode`; its Person targets are hardcoded `isActive:false` ("NewShell only renders on /group routes", `NewShell.tsx:317`). Everywhere else the app is still the legacy `Layout`/`Header`. The rail is a static-avatar switcher, not the Person layer.
+- **Code now (Stage 1):** under V2, `Layout.tsx` mounts `AppChrome` (the rail, a top bar and `#main-content`) on every route Layout owns except `/`; `NonGroupTopBar` serves the non-static routes. V1 keeps the legacy `Layout`/`Header`.
 
 ### B1. `[PARTIAL]` ⌘K "do anything" — navigate-only shipped
 - **Intent:** `REDESIGN_SPEC.md §3.4/§5.7` — ⌘K should do anything (log a drop, log the week, RSVP, who-needs-X).
@@ -103,6 +105,7 @@ Ordered user-facing / functional first. These are honestly-deferred or silently-
 3. **Ring-model the Bucket B backlog** — Ring-0 polish (void-fix micro-slice A3, mobile TopBar overlap) → IA collapse (B4/B5/B6/B7) → Person layer (B2/B3/B8) → ⌘K actions (B1). Tasks chosen one-by-one with the user; no surface replacement without a user-reviewed affordance-parity matrix.
 4. **(2026-07-25) Coverage re-sequencing — RATIFIED.** The user directed 100% V2 coverage ("anything that can be clicked, navigated to, or reached via V2 should have 100% coverage of V2 versions"). `V2_COVERAGE_PLAN.md` is the ratified staged plan: it pulls **B8 (v2 chrome on every route) ahead of the IA collapse (B4–B7)**; the ring order in item 3 then resumes (IA collapse → B2/B3 → B1). Intent only — no bucket status changes here; execution starts after Phase G merges (plan §6 D1), and the Stage-1 chrome parity matrix (D5) is a pre-code hard gate.
    **Update (2026-07-25, later): Stages 0–1 EXECUTED and user-merged (PRs #176–#181) — B8 is closed at chrome level** (director matrix sweep + live-validation checklist both passed; see the plan's execution-status header). The v2 opt-in stays DARK behind the D7 admin gate pending the user's un-gate decision. Next per the ring order: Stage 2 (IA collapse B4–B7) → Stage 3 (Player Hub B2) → Stage 4 (Static Finder B3) → Stage 5 (docs/admin fit incl. the /admin v2 scrollbar carry-forward) → Stage 6 (⌘K B1). **(2026-07-25, post-Stage-1 user ruling): the un-gate is re-sequenced to the VERY END, after all build work plus a new Phase P — page-by-page beta-polish walkthrough with the user (ROLLOUT_ROADMAP §7b); Phase B (parity matrix) started same day.**
+   **(2026-09-30):** Stages 3 (Player Hub, #280–#306) and 4 (Static Finder + Recruit Home, #308–#316) shipped ahead of Stage 2, which has not started. The current order and done criteria live in [`PRODUCT_MODEL.md` § 6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done).
 
 5. **(2026-07-26) Phase-B checkpoint + flow map — RULED.** The parity matrix's 68 decision units were all user-ruled in a guided walkthrough (matrix drafted in PR #183, 66 rulings recorded in PR #184, the last two — D-67/D-68 — closed in PR #185 alongside the ruled flow map that carries this entry): §1 Roster D-01…D-10 all `restore` (Phase C = the full legacy gear-table card restyled), the §3 **History-vs-Logging split** (weekly grid = logging surface; History = one find-it table), D-52 **drops the More tab**. The §9 "two competing dashboards" mandate produced `specs/systems-flow-map.md`, itself user-ruled same day (11/12; F-04 Split-Planner entry deferred into Phase-D design): Player Hub → user menu (R1), **Progress = 5th Spine tab** (R2 — this amends B7: the IA-collapse completion target is now the five-tab spine including Progress), static Home relabelled shared hub (R3), Loot = Priority · Log · History, Team Summary → Home, team Gear-Sync dashboard → Roster area, plugin setup → Person layer, Danger-Zone-in-Settings approved as an explicit V1-visible delta. R1/R3 written back into `PRODUCT_MODEL.md` §5; R2 into `REDESIGN_SPEC.md` §3.2. D-67/D-68 closed via F-10/F-11.
 

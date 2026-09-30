@@ -1,5 +1,7 @@
 # Modern UX/UI Design-System Best Practices for an FFXIV Raid-Planning Tool
 
+> **Superseded (2026-09-30):** its conclusions are locked as canon in `DESIGN_SYSTEM.md` §3.9 (context rail), §4.1 (glyph lexicon) and §2.3 (vocabulary) (REDESIGN_SPEC §11, F0 decisions). Kept for history as external research, not canon.
+
 ## TL;DR
 - **Navigation rail:** Your ~72px icon-only left rail is a legitimate, well-supported pattern — Material 3 documents the collapsed rail at exactly 72dp ("reducible to 56 dp and text labels are omitted"), and Discord's guild rail is a 72px container with 48px icons. The real defect is that it floats outside your token system: wire it in as a distinct **semantic surface tier**, give every item a required tooltip + accessible name, and use a filled-icon + active-indicator selected state. If you later add labels or nesting, jump to a 240–256px sidebar (Carbon's expanded UI Shell = 256px/16rem; Shopify Polaris default nav = 240px).
 - **Icon lexicon + design-system structure:** "One icon = one meaning" is a direct application of Nielsen's Consistency & Standards heuristic (NN/g: "stick to the standard magnifying glass for search"). The three-tier W3C DTCG token model (primitive → semantic → component) reached its **first stable spec (2025.10) on October 28, 2025** and is now the industry consensus. Document components as contracts (anatomy, props, states, do/don't) like Polaris/Carbon/Primer, constrain APIs so illegal states can't compile, and enforce tokens via Stylelint/ESLint in CI.

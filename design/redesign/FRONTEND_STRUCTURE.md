@@ -4,6 +4,8 @@
 **Authority:** [`docs/PRODUCT_MODEL.md`](../../docs/PRODUCT_MODEL.md) (§3.1 layers, §3.4 rings, §4 "where does this go?", §5 feature inventory) · [`design/redesign/specs/2026-06-28-f4-frontend-structure-design.md`](specs/2026-06-28-f4-frontend-structure-design.md) (F4 spec).
 **Governing principle:** document + enforce **in place** — no file moves this phase. F4 makes the target model legible and adds lint enforcement over the tree as it sits today. F6 rebuilds Ring-0 screens into the final slice shape and physically relocates files.
 
+> **Status (2026-09-30):** F4 is done. F6 ran (plans `2026-06-29-f6a` … `2026-07-02-f6e`), but the V2 flip was reverted to a dual shell (Phase R #174), so the legacy dirs this doc marks "deleted/removed/re-homed at F6" still exist (`components/dashboard/MyStaticsPanel.tsx`, `components/group/{GoalsPage,MorePage,PluginPage}.tsx`); legacy deletion is now Phase H (`ROLLOUT_ROADMAP.md` §8). Dirs added since F4 and wired into `frontend/eslint.config.js` but not tabled below: `home/` (ring0), `finder/` and `recruit/` (ring1). Live suppression count: `frontend/eslint-suppressions.json` (29 edges / 17 files on 2026-09-30). Where the redesign stands: [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done).
+
 ---
 
 ## §1 The Layer/Ring Taxonomy
