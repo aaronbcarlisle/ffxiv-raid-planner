@@ -5,6 +5,7 @@ Endpoints for collecting frontend analytics events and error reports,
 plus admin-only dashboard queries for usage metrics and error monitoring.
 """
 
+import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -66,15 +67,32 @@ def _parse_range(range_str: str) -> datetime | None:
     return now - timedelta(days=30)
 
 
+_URL_RE = re.compile(r"https?://\S+")
+_API_KEY_RE = re.compile(r"xrp_\S+")
+_TOKEN_RUN_RE = re.compile(r"[A-Za-z0-9_\-+/=.]{24,}")
+
+
+def _redact_error_label(text: str) -> str:
+    """Strip URLs, API keys and token-like runs from an error message.
+
+    Error capture stores str(exc) verbatim, so a message can carry a webhook
+    URL or bearer token; the audit label (and the logs API) must not repeat it.
+    """
+    text = _URL_RE.sub("<url>", text)
+    text = _API_KEY_RE.sub("<api-key>", text)
+    return _TOKEN_RUN_RE.sub("<redacted>", text)
+
+
 async def _error_group_label(session: AsyncSession, fingerprint: str) -> str:
-    """Audit target_label for an error group: its first message, or the fingerprint."""
+    """Audit target_label for an error group: its redacted first message, or the fingerprint."""
     result = await session.execute(
         select(ErrorReport.message)
         .where(ErrorReport.fingerprint == fingerprint)
         .order_by(ErrorReport.created_at, ErrorReport.id)
         .limit(1)
     )
-    return result.scalar_one_or_none() or fingerprint
+    message = result.scalar_one_or_none()
+    return _redact_error_label(message) if message else fingerprint
 
 
 # --- Authenticated Endpoints (any logged-in user) ---

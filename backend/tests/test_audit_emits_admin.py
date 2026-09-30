@@ -26,6 +26,7 @@ from app.permissions import (
     create_admin_membership,
     is_admin_override,
 )
+from app.routers.analytics import _redact_error_label
 from tests.factories import (
     create_membership,
     create_snapshot_player,
@@ -188,6 +189,33 @@ class TestErrorReviewEmits:
         assert row.static_group_id is None
         assert row.old_values is None
         assert row.new_values == {"is_reviewed": True, "rows": 2}
+
+    async def test_review_label_redacts_urls_and_tokens(
+        self, client: AsyncClient, session, admin_headers
+    ):
+        await _seed_errors(
+            session,
+            FP_A,
+            [
+                "Webhook failed: https://discord.com/api/webhooks/123/abcDEF_secret-token "
+                "for key xrp_live_abcdef123456 and bearer eyJhbGciOiJIUzI1NiJ9.payloadpayload"
+            ],
+        )
+
+        response = await client.post(
+            f"/api/admin/analytics/errors/{FP_A}/review", headers=admin_headers
+        )
+        assert response.status_code == 200
+
+        rows = await _audit_rows(session)
+        assert len(rows) == 1
+        label = rows[0].target_label
+        assert label.startswith("Webhook failed:")
+        for secret in ("discord.com", "abcDEF_secret", "xrp_live", "eyJhbGci"):
+            assert secret not in label
+
+    def test_redact_error_label_leaves_ordinary_message_unchanged(self):
+        assert _redact_error_label("KeyError: 'job'") == "KeyError: 'job'"
 
     async def test_unreview_emits_one_row(
         self, client: AsyncClient, session, admin_headers
