@@ -85,6 +85,8 @@ export const RELEASES: Release[] = [
         title: 'Farm and claim controls are hidden from viewers',
         description:
           'Viewers no longer see Log Drop, their own farm status or Take Ownership, since they can\'t use them. When you log a drop, the recipient list offers only yourself unless you are a lead or owner, and never a viewer.',
+        pr: 330,
+        prTitle: 'fix(ui): P0a — hide farm and claim controls from viewers, delete a farm drop (SEC-1)',
       },
       {
         category: 'fix',
