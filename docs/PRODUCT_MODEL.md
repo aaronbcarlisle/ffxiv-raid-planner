@@ -241,7 +241,7 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 | Stage 5 — docs and admin fit-and-finish | ◐ docs and admin are V2-chromed since Stage 1; the docs light restyle ⬜ | `V2_COVERAGE_PLAN.md` Stage 5 |
 | Stage 6 — ⌘K actions | ⬜ | `CommandPalette.tsx` is navigate-only |
 | Phase F — chrome seams + carried items | ⬜ | carried list in `ROLLOUT_ROADMAP.md` §7, itemised in `HOME_STRETCH.md` §4 F1–F3 |
-| Parity rows still owed | ⬜ no slice yet: D-48, D-49, D-63, D-65, D-66, D-70, D-50 (ruled in #184 "suppress both Leave and Delete under View As"; Delete Static still shows, `MorePage.tsx:379-386`), D-58's "View Schedule" link (the countdown chip shipped). Ruled with a named home: D-44 → mobile pass, D-60 → Phase P, D-52 → Stage 2, D-67/D-68 → Stage 2, D-18 above | `specs/v1-v2-parity-matrix.md`; each checked absent in code 2026-09-30. All of them gate the 3.0.0 release (HS-4); sequenced in [`HOME_STRETCH.md`](../design/redesign/HOME_STRETCH.md) §4 P1/P2a/P2b/S2 |
+| Parity rows still owed | ⬜ no slice yet: D-48, D-49, D-63, D-65, D-66, D-70 (D-50 and D-58 ✅ shipped in P1 #323, 2026-09-30). Ruled with a named home: D-44 → mobile pass, D-60 → Phase P, D-52 → Stage 2, D-67/D-68 → Stage 2, D-18 above | `specs/v1-v2-parity-matrix.md`; each checked absent in code 2026-09-30. All of them gate the 3.0.0 release (HS-4); sequenced in [`HOME_STRETCH.md`](../design/redesign/HOME_STRETCH.md) §4 P1/P2a/P2b/S2 |
 | Mobile pass (before Phase P) | ⬜ | deferred out of every slice by ruling; `HOME_STRETCH.md` §4 MP |
 | Phase P — beta polish walkthrough with the owner | ⬜ | process in `HOME_STRETCH.md` §5 |
 | Admin V2 | AD1a #241, AD1b #317/#318 ✅; AD2+ parked | **Blocks nothing** (a separate gated area; HS-14) |

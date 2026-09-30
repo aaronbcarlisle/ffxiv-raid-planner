@@ -66,11 +66,11 @@ export const RELEASES: Release[] = [
     items: [
       {
         category: 'fix',
-        title: 'Site admins can no longer delete a static while viewing as another member',
+        title: 'Site admins can no longer delete a static while viewing as another user',
         description:
           'While a site admin is viewing a static as another user, they can no longer delete the static or remove the member they are viewing as. The Delete Static button is hidden in that mode, and the server refuses both actions. Everything else in View As works as before.',
-        // Swap for `pr` / `prTitle` once the PR is open.
-        commits: [{ hash: '5f9ecde9', message: 'feat(v2): P1 Task 2 — hide Delete Static under View As (D-50)' }],
+        pr: 323,
+        prTitle: 'fix(view-as): P1 — refuse static delete under View As, Home schedule link, roadmap cleanup',
       },
       {
         category: 'fix',
@@ -78,14 +78,16 @@ export const RELEASES: Release[] = [
         description:
           'The roadmap now shows the mobile phase as planned for the new interface instead of in progress, and the known issue about large component files, which no longer applies, is gone.',
         link: { href: '/docs/roadmap', label: 'View the roadmap' },
-        commits: [{ hash: '5f9ecde9', message: 'feat(v2): P1 Task 2 — hide Delete Static under View As (D-50)' }],
+        pr: 323,
+        prTitle: 'fix(view-as): P1 — refuse static delete under View As, Home schedule link, roadmap cleanup',
       },
       {
         category: 'improvement',
         title: 'Home links to the schedule and reports a failed RSVP',
         description:
           'The next-session card on the new Home now has a View schedule link, and an RSVP that fails to save shows an error instead of failing silently.',
-        commits: [{ hash: '5f9ecde9', message: 'feat(v2): P1 Task 2 — hide Delete Static under View As (D-50)' }],
+        pr: 323,
+        prTitle: 'fix(view-as): P1 — refuse static delete under View As, Home schedule link, roadmap cleanup',
         internal: true,
       },
     ],
