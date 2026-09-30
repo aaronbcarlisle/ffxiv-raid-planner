@@ -24,17 +24,18 @@ router = APIRouter(tags=["admin-audit"])
 def _parse_boundary(value: str, param_name: str) -> str:
     """Parse an ISO-8601 query boundary to the UTC isoformat string stored in
     ``AuditLog.created_at`` (R-AD-H). Accepts ``Z``, an offset, or a bare
-    date; a naive result is read as UTC (never local time). Unparseable →
-    422."""
+    date; a naive result is read as UTC (never local time). Unparseable or
+    out of range after the UTC conversion → 422 (``astimezone`` raises
+    ``OverflowError`` near datetime.min/max)."""
     try:
         parsed = datetime.fromisoformat(value)
-    except ValueError:
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc).isoformat()
+    except (ValueError, OverflowError):
         raise HTTPException(
             status_code=422, detail=f"Invalid {param_name}: not a valid ISO-8601 datetime"
         ) from None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).isoformat()
 
 
 @router.get("/api/admin/logs", response_model=AuditLogListResponse)
@@ -55,15 +56,16 @@ async def list_audit_logs(
     """List audit log rows, newest first, for the admin Logs surface."""
     query = select(AuditLog)
 
-    if actor is not None:
+    # An empty string is "unset" for the free-string filters (form submits).
+    if actor:
         query = query.where(AuditLog.actor_user_id == actor)
-    if action is not None:
+    if action:
         query = query.where(AuditLog.action.startswith(action.lower(), autoescape=True))
-    if target_type is not None:
+    if target_type:
         query = query.where(AuditLog.target_type == target_type)
-    if target_id is not None:
+    if target_id:
         query = query.where(AuditLog.target_id == target_id)
-    if static_id is not None:
+    if static_id:
         query = query.where(AuditLog.static_group_id == static_id)
     if credential is not None:
         query = query.where(AuditLog.credential == credential)

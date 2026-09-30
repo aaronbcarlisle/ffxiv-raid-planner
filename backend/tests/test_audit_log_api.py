@@ -159,6 +159,26 @@ class TestFilters:
         assert body["total"] == 1
         assert body["items"][0]["actorUserId"] == actor_a.id
 
+    async def test_empty_string_filters_are_unset(
+        self, client: AsyncClient, session: AsyncSession, admin_headers: dict, actor_a, actor_b
+    ):
+        await _insert_row(session, actor=actor_a, action="static.updated", created_at=_iso(T1))
+        await _insert_row(session, actor=actor_b, action="member.added", created_at=_iso(T2))
+
+        response = await client.get(
+            "/api/admin/logs",
+            params={
+                "actor": "",
+                "action": "",
+                "target_type": "",
+                "target_id": "",
+                "static_id": "",
+            },
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["total"] == 2
+
     async def test_target_type_and_id_filter(
         self, client: AsyncClient, session: AsyncSession, admin_headers: dict, actor_a
     ):
@@ -378,6 +398,31 @@ class TestDateRange:
     ):
         response = await client.get(
             "/api/admin/logs", params={"from": "garbage"}, headers=admin_headers
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "to=9999-12-31T23:59:59-05:00",
+            "from=0001-01-01T00:00:00%2B05:30",
+        ],
+    )
+    async def test_out_of_range_boundary_after_utc_conversion_is_422(
+        self, client: AsyncClient, admin_headers: dict, query: str
+    ):
+        # astimezone() raises OverflowError (not ValueError) here.
+        response = await client.get(f"/api/admin/logs?{query}", headers=admin_headers)
+        assert response.status_code == 422
+        assert isinstance(response.json()["detail"], str)
+
+    async def test_out_of_range_boundary_via_params_is_422(
+        self, client: AsyncClient, admin_headers: dict
+    ):
+        response = await client.get(
+            "/api/admin/logs",
+            params={"from": "0001-01-01T00:00:00+05:30"},
+            headers=admin_headers,
         )
         assert response.status_code == 422
 
