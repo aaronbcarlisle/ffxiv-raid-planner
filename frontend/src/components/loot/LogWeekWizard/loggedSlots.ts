@@ -14,7 +14,7 @@ import type { FloorNumber, UpgradeMaterialType } from '../../../gamedata/loot-ta
 
 const RING_SLOTS = new Set(['ring', 'ring1', 'ring2']);
 
-export interface FloorLoggedSlots {
+interface FloorLoggedSlots {
   /** Drop entries by wizard slot key (`ring` / `ring2` → `ring1`). */
   gear: Record<string, LootLogEntry>;
   /** Drop entries by material type. */

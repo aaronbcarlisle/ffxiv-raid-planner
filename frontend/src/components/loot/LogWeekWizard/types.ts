@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { GearSlot } from '../../../types';
+import type { GearSlot, LootMethod } from '../../../types';
 import type { FloorNumber } from '../../../gamedata/loot-tables';
 
 export type WizardStep = 'gear' | 'books' | 'confirm';
@@ -15,7 +15,7 @@ export const STEP_ORDER: WizardStep[] = ['gear', 'books', 'confirm'];
 /** A same-slot entry the week already holds; who got it and how it was logged. */
 interface LoggedRecipient {
   recipientName: string;
-  method: string;
+  method: LootMethod;
 }
 
 export interface SlotEntry {

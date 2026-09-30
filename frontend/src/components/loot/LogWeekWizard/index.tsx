@@ -109,40 +109,44 @@ export function LogWeekWizard({
 
   // Priority-ordered needers for a slot — the ONE ranking Queues and the
   // RecipientPicker use. The wizard keys rings as `ring1`; the ranking and the
-  // log key them as `ring`.
+  // log key them as `ring`. The week is an explicit argument, never the
+  // `selectedWeek` state: the open seed runs in the commit BEFORE
+  // `setSelectedWeek(currentWeek)` lands, so a closure over the state would
+  // rank at the mount-time (or last session's) week while locking for the
+  // opened one.
   const getPriorityPlayers = useCallback(
-    (slot: GearSlot) =>
+    (slot: GearSlot, week: number) =>
       buildRecipientEntries({
         players: mainRosterPlayers,
         slot: slot === 'ring1' ? 'ring' : slot,
         scope: 'priority',
         settings,
         lootLog,
-        currentWeek: selectedWeek,
+        currentWeek: week,
         enhancedActive,
       }),
-    [mainRosterPlayers, settings, lootLog, selectedWeek, enhancedActive]
+    [mainRosterPlayers, settings, lootLog, enhancedActive]
   );
 
   // Priority-ordered needers for a material — the ONE derivation FloorCard
   // and the weekly grid use (it applies the enhanced gate itself).
   const getMaterialPriorityPlayers = useCallback(
-    (material: UpgradeMaterialType) =>
+    (material: UpgradeMaterialType, week: number) =>
       materialPriorityEntries({
         material,
         players: mainRosterPlayers,
         settings,
         lootLog,
         materialLog,
-        currentWeek: selectedWeek,
+        currentWeek: week,
       }),
-    [mainRosterPlayers, settings, lootLog, materialLog, selectedWeek]
+    [mainRosterPlayers, settings, lootLog, materialLog]
   );
 
   // Build recipient options with job icons and priority labels (matching QuickLogDropModal)
   const getRecipientOptions = useCallback(
     (slot: GearSlot) => {
-      const priorityEntries = getPriorityPlayers(slot);
+      const priorityEntries = getPriorityPlayers(slot, selectedWeek);
       const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, i + 1]));
       const anyoneNeedsItem = priorityEntries.length > 0;
 
@@ -173,22 +177,22 @@ export function LogWeekWizard({
         })),
       ];
     },
-    [mainRosterPlayers, getPriorityPlayers]
+    [mainRosterPlayers, getPriorityPlayers, selectedWeek]
   );
 
-  // Get suggested player for a slot (highest priority who needs it)
+  // Get suggested player for a slot (highest priority who needs it) at a week
   const getSuggestedPlayer = useCallback(
-    (slot: GearSlot): string | null => {
-      const entries = getPriorityPlayers(slot);
+    (slot: GearSlot, week: number): string | null => {
+      const entries = getPriorityPlayers(slot, week);
       return entries[0]?.player.id || null;
     },
     [getPriorityPlayers]
   );
 
-  // Get suggested player for a material (highest priority who needs it)
+  // Get suggested player for a material (highest priority who needs it) at a week
   const getSuggestedMaterialPlayer = useCallback(
-    (material: UpgradeMaterialType): { playerId: string | null; selectedSlot: GearSlot | null; augmentTomeWeapon: boolean } => {
-      const priorityEntries = getMaterialPriorityPlayers(material);
+    (material: UpgradeMaterialType, week: number): { playerId: string | null; selectedSlot: GearSlot | null; augmentTomeWeapon: boolean } => {
+      const priorityEntries = getMaterialPriorityPlayers(material, week);
 
       if (priorityEntries.length === 0) {
         return { playerId: null, selectedSlot: null, augmentTomeWeapon: false };
@@ -247,7 +251,7 @@ export function LogWeekWizard({
         }
         gear[slot] = {
           slot,
-          playerId: getSuggestedPlayer(slot),
+          playerId: getSuggestedPlayer(slot, week),
           didNotDrop: false,
           updateGear: true,
           alsoLogged,
@@ -269,7 +273,7 @@ export function LogWeekWizard({
           };
           return;
         }
-        const suggestion = getSuggestedMaterialPlayer(material);
+        const suggestion = getSuggestedMaterialPlayer(material, week);
         materials[material] = {
           slot: material,
           playerId: suggestion.playerId,
@@ -354,8 +358,8 @@ export function LogWeekWizard({
           const restoredPlayerId = currentEntry.previousPlayerId !== undefined
             ? currentEntry.previousPlayerId
             : (type === 'gear'
-              ? getSuggestedPlayer(slot as GearSlot)
-              : getSuggestedMaterialPlayer(slot as UpgradeMaterialType).playerId);
+              ? getSuggestedPlayer(slot as GearSlot, selectedWeek)
+              : getSuggestedMaterialPlayer(slot as UpgradeMaterialType, selectedWeek).playerId);
           slots[slot] = {
             ...currentEntry,
             didNotDrop: false,
@@ -366,7 +370,7 @@ export function LogWeekWizard({
         return { ...prev, [floorNum]: { ...floor, [type]: slots } };
       });
     },
-    [getSuggestedPlayer, getSuggestedMaterialPlayer]
+    [getSuggestedPlayer, getSuggestedMaterialPlayer, selectedWeek]
   );
 
   // Handle book clear toggle
@@ -444,7 +448,7 @@ export function LogWeekWizard({
           if (allNoDrops) {
             const restoredPlayerId = gear[slot].previousPlayerId !== undefined
               ? gear[slot].previousPlayerId
-              : getSuggestedPlayer(slot as GearSlot);
+              : getSuggestedPlayer(slot as GearSlot, selectedWeek);
             gear[slot] = { ...gear[slot], didNotDrop: false, playerId: restoredPlayerId };
           } else {
             gear[slot] = { ...gear[slot], didNotDrop: true, previousPlayerId: gear[slot].playerId, playerId: null };
@@ -456,7 +460,7 @@ export function LogWeekWizard({
           if (allNoDrops) {
             const restoredPlayerId = materials[matType].previousPlayerId !== undefined
               ? materials[matType].previousPlayerId
-              : getSuggestedMaterialPlayer(matType as UpgradeMaterialType).playerId;
+              : getSuggestedMaterialPlayer(matType as UpgradeMaterialType, selectedWeek).playerId;
             materials[matType] = { ...materials[matType], didNotDrop: false, playerId: restoredPlayerId };
           } else {
             materials[matType] = { ...materials[matType], didNotDrop: true, previousPlayerId: materials[matType].playerId, playerId: null };
@@ -466,13 +470,13 @@ export function LogWeekWizard({
         return { ...prev, [floorNum]: { ...floor, gear, materials } };
       });
     },
-    [getSuggestedPlayer, getSuggestedMaterialPlayer]
+    [getSuggestedPlayer, getSuggestedMaterialPlayer, selectedWeek]
   );
 
   // Get priority-based options for materials (same ranking as the seeded pick)
   const getMaterialRecipientOptions = useCallback(
     (material: UpgradeMaterialType) => {
-      const priorityEntries = getMaterialPriorityPlayers(material);
+      const priorityEntries = getMaterialPriorityPlayers(material, selectedWeek);
 
       const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, i + 1]));
       const anyoneNeedsMaterial = priorityEntries.length > 0;
@@ -503,7 +507,7 @@ export function LogWeekWizard({
         })),
       ];
     },
-    [mainRosterPlayers, getMaterialPriorityPlayers]
+    [mainRosterPlayers, getMaterialPriorityPlayers, selectedWeek]
   );
 
   // Handle material player change - also update eligible slots

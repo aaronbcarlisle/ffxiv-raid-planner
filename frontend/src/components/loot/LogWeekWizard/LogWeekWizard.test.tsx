@@ -83,6 +83,8 @@ const enhancedActiveFor = (settings: StaticSettings, lootLog: LootLogEntry[]) =>
   settings.enableEnhancedScoring === true && !isPriorityDisabled(settings) && lootLog.length > 0;
 
 const LOCKED_EARRING = 'Ears → Healer Two · logged';
+/** What Loot.tsx:1499/1564 passes to FloorCard and to the wizard: the configured main roster (7), not the substitute. */
+const MAIN_PLAYERS = DEVTST_PLAYERS.filter((p) => p.configured && !p.isSubstitute);
 
 beforeEach(() => {
   mocks.logLootAndUpdateGear.mockReset().mockResolvedValue(undefined);
@@ -232,6 +234,36 @@ describe('LogWeekWizard — seeding and locking (R-P0-9)', () => {
     }
     expect(compared).toBeGreaterThan(0);
   });
+
+  it('seeds the ranking at the week it opens for, not the mount-time week (fix wave: stale selectedWeek)', () => {
+    // Both real mounts keep the wizard mounted while its week prop moves
+    // (Loot.tsx:1567 `writeWeek`; GroupViewContent.tsx:1073,1464 sets the week
+    // in the same batch as opening). The seed must rank at the week it locks
+    // for, or the pick is the mount week's #1 under the opened week's labels.
+    // On this fixture the M9S earring's enhanced #1 is Tank One up to week 15
+    // and Healer Two from week 16 (her week-11 drought reaches the 5-week
+    // cap), so mount at 16 and open at 12.
+    const settings: StaticSettings = { ...DEVTST_SETTINGS, enableEnhancedScoring: true };
+    const props = {
+      onClose: vi.fn(), groupId: 'g1', tierId: DEVTST_TIER_ID, players: DEVTST_PLAYERS, settings,
+      floors: DEVTST_FLOORS, maxWeek: 16, lootLog: DEVTST_LOOT_LOG, materialLog: DEVTST_MATERIAL_LOG,
+    };
+    const { rerender } = render(<LogWeekWizard {...props} isOpen={false} currentWeek={16} />);
+    rerender(<LogWeekWizard {...props} isOpen currentWeek={12} />);
+
+    let compared = 0;
+    for (const slot of FLOOR_LOOT_TABLES[1].gearDrops) {
+      const expected = buildRecipientEntries({
+        players: MAIN_PLAYERS, slot: slot === 'ring1' ? 'ring' : slot, scope: 'priority',
+        settings, lootLog: DEVTST_LOOT_LOG, currentWeek: 12, enhancedActive: true,
+      })[0]?.player;
+      const combo = gearCombo(slot);
+      if (!expected) continue;
+      expect(combo, slot).toHaveTextContent(`${expected.name} - Top Priority`);
+      compared += 1;
+    }
+    expect(compared).toBeGreaterThan(0);
+  });
 });
 
 describe.each([[false], [true]])('LogWeekWizard — consistency with Queues, enableEnhancedScoring=%s (R-P0-10)', (enhanced) => {
@@ -248,9 +280,9 @@ describe.each([[false], [true]])('LogWeekWizard — consistency with Queues, ena
       const table = FLOOR_LOOT_TABLES[floorNum];
 
       for (const slot of table.gearDrops) {
-        // Built exactly as FloorCard.tsx builds its gear rows.
+        // Built exactly as FloorCard.tsx builds its gear rows (on the main roster Loot.tsx hands it).
         const expected = buildRecipientEntries({
-          players: DEVTST_PLAYERS, slot: slot === 'ring1' ? 'ring' : slot, scope: 'priority',
+          players: MAIN_PLAYERS, slot: slot === 'ring1' ? 'ring' : slot, scope: 'priority',
           settings, lootLog: DEVTST_LOOT_LOG, currentWeek, enhancedActive,
         })[0]?.player;
         const combo = gearCombo(slot);
@@ -263,9 +295,9 @@ describe.each([[false], [true]])('LogWeekWizard — consistency with Queues, ena
       }
 
       for (const material of table.upgradeMaterials) {
-        // Built exactly as FloorCard.tsx builds its material rows.
+        // Built exactly as FloorCard.tsx builds its material rows (main roster: averageDrops divides by its size).
         const expected = materialPriorityEntries({
-          material, players: DEVTST_PLAYERS, settings, lootLog: DEVTST_LOOT_LOG,
+          material, players: MAIN_PLAYERS, settings, lootLog: DEVTST_LOOT_LOG,
           materialLog: DEVTST_MATERIAL_LOG, currentWeek,
         })[0]?.player;
         const combo = screen.getByRole('combobox', { name: `${UPGRADE_MATERIAL_DISPLAY_NAMES[material]} recipient` });
