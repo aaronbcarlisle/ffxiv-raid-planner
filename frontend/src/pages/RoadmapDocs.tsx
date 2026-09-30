@@ -625,8 +625,8 @@ export default function RoadmapDocs() {
               <p className="text-text-secondary mb-4">
                 FFXIV Raid Planner is fully functional for managing static raid groups. Core features
                 including gear tracking, loot priority, BiS import, scheduling, Lodestone sync, the mount
-                farm tracker, the Static Finder, notifications, the Dalamud plugin, and multi-user support
-                are complete and in active use.
+                farm tracker, the Static Finder, the notification inbox, the Dalamud plugin, and multi-user
+                support are complete and in active use.
               </p>
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="bg-surface-elevated rounded-lg p-4">

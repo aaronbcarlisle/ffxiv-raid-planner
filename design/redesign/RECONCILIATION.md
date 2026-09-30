@@ -84,7 +84,8 @@ Ordered user-facing / functional first. These are honestly-deferred or silently-
 
 ### B8. `[PARTIAL]` Person-layer context rail — built only as an in-static switcher → ✅ closed at chrome level by Stage 1 (#178–#181, 2026-07-25/26; `pages/chrome/AppChrome.tsx`)
 - **Intent:** `PRODUCT_MODEL.md §3.1` / `REDESIGN_SPEC.md §3.1` — a persistent Person-layer rail across the app.
-- **Code:** `AppRail` mounts **only** inside `/group/:shareCode`; its Person targets are hardcoded `isActive:false` ("NewShell only renders on /group routes", `NewShell.tsx:317`). Everywhere else the app is still the legacy `Layout`/`Header`. The rail is a static-avatar switcher, not the Person layer.
+- **Code (2026-07-23 audit, superseded):** `AppRail` mounts **only** inside `/group/:shareCode`; its Person targets are hardcoded `isActive:false` ("NewShell only renders on /group routes", `NewShell.tsx:317`). Everywhere else the app is still the legacy `Layout`/`Header`. The rail is a static-avatar switcher, not the Person layer.
+- **Code now (Stage 1):** under V2, `Layout.tsx` mounts `AppChrome` (the rail, a top bar and `#main-content`) on every route Layout owns except `/`; `NonGroupTopBar` serves the non-static routes. V1 keeps the legacy `Layout`/`Header`.
 
 ### B1. `[PARTIAL]` ⌘K "do anything" — navigate-only shipped
 - **Intent:** `REDESIGN_SPEC.md §3.4/§5.7` — ⌘K should do anything (log a drop, log the week, RSVP, who-needs-X).
