@@ -1,6 +1,6 @@
 # Home Stretch: now → V1 deletion
 
-> **What this is.** The complete, sequenced list of what is left between today and deleting legacy V1, written 2026-09-30 (home-stretch session 2) off `main` `6aec8590`. The current state and the definition of done are in [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done): that section states the state and the gates, and this doc states the order and the detail. Every open owner question is ruled (§2): HS-1…HS-25 in session 2, and HS-26…HS-31 on the questions director vets 1 and 2 raised. **On 2026-09-30 the owner adopted the V2 audit's revised plan, W0–W8 plus design-quality gate Q (HS-32…HS-34): §6 is now the order, and its 31 decisions (§6.5) are open until the owner answers them in batches.** If new work turns up, add it here with its ruling. Never add it to another doc's status line.
+> **What this is.** The complete, sequenced list of what is left between today and deleting legacy V1, written 2026-09-30 (home-stretch session 2) off `main` `6aec8590`. The current state and the definition of done are in [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done): that section states the state and the gates, and this doc states the order and the detail. Every open owner question is ruled (§2): HS-1…HS-25 in session 2, and HS-26…HS-31 on the questions director vets 1 and 2 raised. **On 2026-09-30 the owner adopted the V2 audit's revised plan, W0–W8 plus design-quality gate Q (HS-32…HS-34), and the same day accepted the recommended answer to all 31 of its decisions (HS-35, §6.5): §6 is now the order.** If new work turns up, add it here with its ruling. Never add it to another doc's status line.
 >
 > **How to use it.** Work in §6's order (§6.1 says what's next); §4 holds each pre-audit item's detail, and §6.4 maps it onto its wave. Run §4 items in parallel where §3 and §6 allow. When an item ships, tick it in §4 with its PR, update the §6.1 row it affects in PRODUCT_MODEL, and keep going; if a tick and §6.1 disagree, §6.1 wins (PRODUCT_MODEL §8). Run each build item with the `slice-loop` skill. An item marked **spec first** runs brainstorming → spec → owner-signed parity matrix → plan before any code, as Phase D did. An item marked **not a gate** runs in parallel and doesn't hold the release (HS-28).
 
@@ -8,10 +8,10 @@
 
 The two gates are defined in [PRODUCT_MODEL §6.2](../../docs/PRODUCT_MODEL.md#62-definition-of-done), and only there. This doc maps them onto §4:
 
-- **Gate 1, release 3.0.0, is R2.** R2 requires every §4 item above it except those marked **not a gate** (V1B items 2–3 and X1, HS-28; F1's two admin-only items, HS-14), and every §6 item whose Gate column says gate, design-quality gate Q included (HS-32). Admin V2 isn't a prerequisite (HS-14).
+- **Gate 1, release 3.0.0, is R2.** R2 requires every §4 item above it except those marked **not a gate** (V1B items 2–3 and X1, HS-28; F1's two admin-only items, HS-14; S6's actions beyond the palette navigator and F3's docs/tooling hygiene, HS-35 #31), and every §6 item whose Gate column says gate: design-quality gate Q (HS-32), the kill switch and the invite-only beta (HS-35 #29) included. Admin V2 isn't a prerequisite (HS-14).
 - **Gate 2, V1 deleted, is D1.** T1 measures its switch-back and error-rate criteria from R2's first day.
 
-**Standing rules that still apply to every item:** no surface is replaced without an owner-reviewed affordance-parity matrix. The legacy path stays byte-identical until D1, except for the sanctioned V1 edits this plan names (P1, V1B, and the F1–F3 items labelled sanctioned V1). Every V1-visible edit carries a sanctioned-edit justification and a release note. Every UI PR embeds screenshots. `xivrp-director` vets each slice (`V2_COVERAGE_PLAN.md` §5 hard gates).
+**Standing rules that still apply to every item:** no surface is replaced without an owner-reviewed affordance-parity matrix. The legacy path stays byte-identical until D1, except for the sanctioned V1 edits this plan names (P1, V1B, the F1–F3 items labelled sanctioned V1, and the §6 items whose plan labels them sanctioned V1; §6.3 lists the W0/W1 items known to touch shared code). Every V1-visible edit carries a sanctioned-edit justification and a release note. Every UI PR embeds screenshots. `xivrp-director` vets each slice (`V2_COVERAGE_PLAN.md` §5 hard gates).
 
 ## 2. Owner rulings (session 2, 2026-09-30)
 
@@ -20,10 +20,10 @@ These close every item in the session-1 decision list (groups A–E, 22 items). 
 | # | Question | Ruling |
 |---|---|---|
 | HS-1 | Plan shape | This one doc, now → V1 deletion, linked from PRODUCT_MODEL §6 |
-| HS-2 | Spine tab count; is Progress a tab? | **Five tabs:** Home · Roster · Loot · Schedule · **Progress**. F-03 (2026-07-26) is reaffirmed. Progress is the tracks surface (Goals, Farms, Collections, Split Clears). Text that still says "four tabs" was written before the amendment and is corrected in this PR (glossary wording: HS-29) |
-| HS-3 | Plugin's home | F-05 reaffirmed. Setup and the API key go in Player Hub, as a section inside "Characters & gear", not a new tab (the exact placement is a Stage 2 spec detail). The guide goes in Docs. The team Gear-Sync dashboard goes in the Roster area |
-| HS-4 | Which owed parity rows gate the release | **All of them:** D-48, D-49, D-50, D-58, D-63, D-65, D-66, D-70, plus D-18, D-52, D-67 and D-68 via Stage 2. H-10 and the typical-week layer gate it too (HS-25) |
-| HS-5 | The Phase P bar vs parity | The release needs **both**: parity (HS-4) and Phase P's first-impression bar. D-18 ships with Stage 2 |
+| HS-2 | Spine tab count; is Progress a tab? | **Five tabs:** Home · Roster · Loot · Schedule · **Progress**. F-03 (2026-07-26) is reaffirmed. Progress is the tracks surface (Goals, Farms, Collections, Split Clears). Text that still says "four tabs" was written before the amendment and is corrected in this PR (glossary wording: HS-29) *(amended by HS-35: #1 Progress is a Tracks matrix with Farms-B, overturning S2-1/S2-2; #3 Objectives go to Recruit ▸ Listing and Home; #27 farm status Need · Want · Have · Pass)* |
+| HS-3 | Plugin's home | F-05 reaffirmed. Setup and the API key go in Player Hub, as a section inside "Characters & gear", not a new tab (the exact placement is a Stage 2 spec detail). The guide goes in Docs. The team Gear-Sync dashboard goes in the Roster area *(refined by HS-35 #23: plugin setup, the guide link and API keys sit in the Hub's collapsed Connections section, inside the Sync card's state machine)* |
+| HS-4 | Which owed parity rows gate the release | **All of them:** D-48, D-49, D-50, D-58, D-63, D-65, D-66, D-70, plus D-18, D-52, D-67 and D-68 via Stage 2. H-10 and the typical-week layer gate it too (HS-25) *(amended by HS-35: #10 makes P2b a Home information-hierarchy spec, not four restored V1 modules; #19/#20 put D-48/D-49 inside the Schedule Planner and give H-10 two mounts)* |
+| HS-5 | The Phase P bar vs parity | The release needs **both**: parity (HS-4) and Phase P's first-impression bar. D-18 ships with Stage 2 *(amended by HS-32: parity + gate Q + Phase P)* |
 | HS-6 | Ratify the proposed gates 2–3 | Ratified, then amended by HS-25 into the two gates in PRODUCT_MODEL §6.2 |
 | HS-7 | V1 bugfixes | **Approved** as one V1 bugfix bundle: the not-found flow, PlayerGrid/PlayerCard rejections, and clear-on-edit for BiS targets, goals and objectives. The heading-only fixes wait for V1 deletion |
 | HS-8 | B9, the V1 roster re-render | Not fixed in V1; V1 deletion retires it. Phase F checks the V2 roster for the same pattern |
@@ -34,16 +34,16 @@ These close every item in the session-1 decision list (groups A–E, 22 items). 
 | HS-13 | Plan M (account delete + export) | Its own track; a release prerequisite |
 | HS-14 | Admin V2 | AD2+ stays parked and gates nothing |
 | HS-15 | Post-redesign rings | Ring work may start during the post-release soak, V2-only, and is not scoped here |
-| HS-16 | Superseded docs | Stay in place; archived in D1 |
-| HS-17 | #224's two log buttons | Judged live in Phase P (Loot page) |
+| HS-16 | Superseded docs | Stay in place; archived in D1 *(amended by HS-35 #30: ROLLOUT, V2_COVERAGE and RECONCILIATION are frozen as history now, and the five foundation docs are archived now, in W6 DOCS-INT, not at D1)* |
+| HS-17 | #224's two log buttons | Judged live in Phase P (Loot page) *(resolved by HS-35 #8: one split "Log M10S ▾" primary, and the V2 floor log sheet replaces the wizard)* |
 | HS-18 | Colliding OWNER-n labels | Old notes stay as they are; cited with SF-/AD- prefixes; new rulings are HS-n |
 | HS-19 | Card richness (#3) | Goes on Phase P's punch list |
-| HS-20 | Sequencing | The small slices (P1, V1B) run first, in their own worktrees, while the Stage 2 spec is co-designed. The Home-module parity rows wait for Stage 2 |
+| HS-20 | Sequencing | The small slices (P1, V1B) run first, in their own worktrees, while the Stage 2 spec is co-designed. The Home-module parity rows wait for Stage 2 *(amended by HS-35 #30: S2a's spec and build may start after batch A while batch B continues; T1, the M1 spec, AUTHZ, KS, CI-0 and the W1 clusters start now)* |
 | HS-21 | The plugin's off-hand mapping | A parallel plugin-repo track; it gates nothing |
 | HS-22 | Telemetry | A shell-switch event log ships before the release; the thresholds are in PRODUCT_MODEL §6.2 gate 2, the definitions in §4 T1 |
 | HS-23 | Default flip | Flip everyone. The shell choice made before the release isn't migrated (only admins are on V2 today), and a switch-back made after it persists *(wording clarified by director vet 1)*. The rollout is planned in detail when it's near (§4 R1) |
 | HS-24 | The entry point (was D2) | The admin-gated "Try the new UI" opt-in is retired: `TryNewUiBanner` is deleted, and the user-menu item stays for everyone, renamed (HS-26). After the release the V2→legacy entry is "Switch back to legacy UI" in the user menu or Settings. D2's `isGroupRoute` question goes to R1 *(amended by HS-26; this row first said the entry was retired and D2 was moot)* |
-| HS-25 | Gate structure | Un-gate and 3.0.0 merge into one release (PRODUCT_MODEL §6.2). The opt-in window and its "healthy telemetry" criterion are dropped |
+| HS-25 | Gate structure | Un-gate and 3.0.0 merge into one release (PRODUCT_MODEL §6.2). The opt-in window and its "healthy telemetry" criterion are dropped *(amended by HS-35 #29: an invite-only beta cohort, volunteer statics via Discord for 1–2 weeks with T1 live, precedes the flip; still two gates)* |
 | HS-26 | Is there a legacy→V2 path after 3.0.0? (vet F4) | **Yes, for everyone.** R2 keeps the legacy user-menu item (`UserMenu.tsx:341-356`), drops its `user.isAdmin` gate and renames it (for example "Use the new UI"); `TryNewUiBanner` is still deleted. R1 settles the final label, whether the item shows off group routes (it's `isGroupRoute`-gated today) and how mobile reaches it. Switching back is never a one-way door. T1 also logs legacy→V2 returns |
 | HS-27 | Does the past-sessions/attendance view gate 3.0.0? (vet F8) | **No.** It's a new feature, not parity: neither shell has one (`specs/systems-flow-map.md:127`, `:203`). More's "Session History" card only links to Schedule, so it dies in S2b with Schedule as its home. The view is listed under "After 3.0.0" (§4) |
 | HS-28 | Are V1B and X1 release gates? (vet F12) | **Only V1B item 1, the not-found flow**, because it's broken in V2 too (`ShellContentStates.tsx`). V1B items 2–3 and all of X1 are **not a gate: run in parallel** |
@@ -51,16 +51,18 @@ These close every item in the session-1 decision list (groups A–E, 22 items). 
 | HS-30 | D-50's backend scope (vet 2 Q1) | **Only View-As deletes are refused.** P1 makes the client send the `X-View-As` header that `services/audit.py:140-145` already reads, and the backend refuses a static delete, and Leave (per the D-50 wording), only when that header is present. Admins keep moderation delete under `?adminMode` (`StaticTab.tsx:305`) |
 | HS-31 | A11: "Mark floor cleared" in admin mode (vet 2 Q2) | **Keep V2's behaviour.** In admin mode, an admin whose real role in the static is member can mark a floor cleared in V2 but not in legacy. A declared delta, consistent with P-15 (`specs/v1-v2-parity-matrix.md:276`); no work item |
 | HS-32 | The V2 audit's revised plan (2026-09-30) | **Adopted in full:** waves W0–W8, the release waves and design-quality gate Q (§6). **Amends HS-5:** 3.0.0 needs parity (HS-4), gate Q (§6.3 W5) and Phase P, which becomes the owner's taste pass after each surface's Q-1 pre-score. This answers §6.5 #28 |
-| HS-33 | Which earlier rulings the audit may reopen | **None is off-limits.** Any HS-n, S2-n, F-n, H-n, R-n or DESIGN_SYSTEM contract may be overturned by a §6.5 answer (S2-1/S2-2, R-3/R-4/R-14, DS §3.9/§3.13/§3.14/§3.20 and H-3/H-6/H-10 are named). Until the owner answers the decision that reopens it, the earlier ruling stands |
+| HS-33 | Which earlier rulings the audit may reopen | **None is off-limits.** Any HS-n, S2-n, F-n, H-n, R-n or DESIGN_SYSTEM contract may be overturned by a §6.5 answer (S2-1/S2-2, R-3/R-4/R-14, DS §3.9/§3.13/§3.14/§3.20 and H-3/H-6/H-10 are named). Until the owner answers the decision that reopens it, the earlier ruling stands. *(All 31 were answered the same day, HS-35; the rule still governs any later reopening.)* |
 | HS-34 | Order after P1 | V1B ✅ #322 → P1 ✅ #323 → the docs PR adopting §6 → **the P0 safety slice** (SEC-1, LOG-1, RSVP-0, AUTHZ) → **Stage 2 co-design restarting from canvas DA 10**. The rest of W0 and W1 run in parallel (§6.1) |
+| HS-35 | The 31 audit decisions (DEC-1, §6.5) | **Every recommended answer accepted** (2026-09-30), batches A, B and C in full. Cite one as "HS-35 #n". The rulings each answer overturns or amends are named on its §6.5 line; the HS rows above carry a dated note where one changed. Parity: an answer that removes or moves a shipped affordance (for example #10's removal of Team Summary from Home) is the owner's parity ruling for that row, and the executing PR records it in the matrix |
 
 ## 3. Sequence at a glance
 
 **The order is now §6's waves (HS-32, HS-34):**
 
 ```
-W0 safety + correctness (P0 slice first) ─┬─► W2 DEC-1 decision batches A/B/C ─► CC-5 reconciliation
-W1 quick wins (parallel) ─────────────────┘        │
+W0 safety + correctness (P0 slice first) ──► in parallel with everything below until R2
+W1 quick wins (parallel, rolling)
+W2 DEC-1 ✅ answered (HS-35) ─► CC-5 reconciliation PR
                                                    ├─► W3 S2a Progress ─► S2b More/Settings/Hub ─► S2c mobile nav · PAL-1
                                                    └─► W4 FRAME · HOME · ROSTER · LOOT · SCHED · RECRUIT · FINDER · HUB · ENTRY · M1
 W5 gate Q (rolling from S2c) ─► W6 docs/help/onboarding ─► W7 mobile pass ─► W8 Phase P
@@ -121,7 +123,7 @@ Each item lists its scope, dependencies, acceptance criteria, size and rulings. 
 ### S2 · Stage 2, the in-static IA collapse — L · **spec first** (session 3) · HS-2, HS-3, HS-20, HS-27, HS-29
 **Spec-ready boundary.** Session 3 ends when three things exist: the Stage 2 spec, an owner-signed parity matrix for every surface it replaces (More page, `PluginPage`, `GoalsPage`/Tracking, `MobileBottomNav`), and the slice plan. No code before all three.
 
-*Settled inputs (don't reopen):* F-01…F-12 (`specs/systems-flow-map.md:213-224`); HS-2; HS-3; HS-27; HS-29; D-18 → Progress ▸ Split Clears (R-41); D-52 (no More tab; Plugin isn't a tab); D-67 → one evolved Home TrackCard pointing into Progress (F-10); D-68 → a data-gated attention row on Home (F-11); D-71 drop; the Danger Zone moves to Settings ▸ Static as an approved V1-visible delta (F-12); a mobile-reachable shell switch must exist before the More card dies (F-12); the More dissolution table (`systems-flow-map.md:192-205`).
+*Settled inputs (don't reopen), except where HS-35 amends them (HS-33): #1 and #3 replace S2-1/S2-2 and move Objectives; #21 makes Settings a page (Leave in Members, Delete in its Danger zone); #23 refines HS-3; #11–#13 reshape the frame, tabs and palette, and S2c follows DA 4 Mobile-A. The S2 spec reads §6.3 W3 first:* F-01…F-12 (`specs/systems-flow-map.md:213-224`); HS-2; HS-3; HS-27; HS-29; D-18 → Progress ▸ Split Clears (R-41); D-52 (no More tab; Plugin isn't a tab); D-67 → one evolved Home TrackCard pointing into Progress (F-10); D-68 → a data-gated attention row on Home (F-11); D-71 drop; the Danger Zone moves to Settings ▸ Static as an approved V1-visible delta (F-12); a mobile-reachable shell switch must exist before the More card dies (F-12); the More dissolution table (`systems-flow-map.md:192-205`).
 
 *The spec decides:* Progress's internal layout and sub-views; whether the orphaned `components/mount-farms/**` tree is revived or deleted (matrix §12-A9); the shared catalog browser mounted by both Player Hub and Progress; where exactly the Plugin setup section sits in Hub ▸ Characters & gear; the V2 mobile nav's shape (five tabs, plus how Settings and the shell switch are reached); the order of content-host extraction as `GroupViewContent` conditionals shrink; and the slice cut.
 
@@ -168,7 +170,7 @@ Each item lists its scope, dependencies, acceptance criteria, size and rulings. 
 - **Scope:** the `/docs/**` pages restyled inside V2 chrome (tokens, type scale, a consistent `PageHeader`); the `/docs/design-system` page rebuilt so `contrast.spec.ts:178` stops skipping it. Admin is out of scope (HS-14).
 - **Acceptance:** design-system strict clean; the contrast spec covers the page; screenshots light and dark.
 
-### S6 · Stage 6, ⌘K actions — M/L · **spec first** (a short spec)
+### S6 · Stage 6, ⌘K actions — M/L · **spec first** (a short spec) · the navigator is a gate (§6.3 PAL-1); the action tranche is PAL-2, **not a gate** (HS-35 #31)
 - **Scope:** `CommandPalette` gains actions beyond navigation, per REDESIGN_SPEC §3.4: log a drop, log the week, RSVP, who-needs-X. The spec rules each action's permission scope and confirmation.
 - **Depends on:** S2 (the palette's navigation targets change there).
 - **Acceptance:** each action works from the keyboard alone, is role-gated, and has tests; shortcut labels come from `lib/platform.ts`.
@@ -218,15 +220,15 @@ Each F1, F2 and F3 item says whether its fix is **V2-only** or **sanctioned V1**
   - user-menu items retargeted where V2 equivalents exist (`auth/UserMenu.tsx` renders in both shells: sanctioned V1 unless gated on `inV2Chrome`);
   - a knip dead-code sweep, including matrix §12 A9's survivors (`history/WeekSelector.tsx` with zero importers, `GearSourceBadge` used only by the design-system page, `GearTable`'s `compact` branch at `:538`) and A8's unreachable `edge-*` drop-zone code (`dnd/useDragAndDrop.ts:288-303`) — sanctioned V1 for `GearTable.tsx` and `useDragAndDrop.ts` (shared), behaviour-neutral;
   - matrix §12 A2: 7 of the 9 `eventBus` listeners in `services/analytics.ts:50-58` have no emitter (only `player_gear_changed` and `member_role_changed` fire); rewire or delete them (T1 may rewire what it needs) — sanctioned V1 (shared service), behaviour-neutral;
-  - jscpd back to main's count (RH1 added a clone pair: 340 against 339);
+  - jscpd back to main's count (RH1 added a clone pair: 340 against 339) — **not a gate** (HS-35 #31);
   - the contrast harness in CI, with the `Badge.tsx` exclusion resolved — the exclusion covers the shared legacy `PositionSelector`/`TankRoleSelector` role badges (`frontend/e2e/contrast.spec.ts:206-215`, about 3.4–4.0:1): sanctioned V1 and V1-visible if resolved by a style change (release note, light and dark shots); keeping a documented exclusion changes no render;
   - `--max-warnings` in `ci.yml`;
   - `no-tiny-text` reaching const class strings — the rule is tooling, but fixing the shared consts it flags is sanctioned V1 and V1-visible (release note, light and dark shots);
   - the `index.css` `aria-hidden` rule narrowed (`:239-243`; both shells: sanctioned V1);
   - a DESIGN_SYSTEM contract for the Finder card;
-  - `home/`, `finder/` and `recruit/` rows in FRONTEND_STRUCTURE;
-  - the suppressions count corrected (29 in 17 files);
-  - CLAUDE.md § Map and UI_COMPONENTS updated;
+  - `home/`, `finder/` and `recruit/` rows in FRONTEND_STRUCTURE — **not a gate** (HS-35 #31);
+  - the suppressions count corrected (29 in 17 files) — **not a gate** (HS-35 #31);
+  - CLAUDE.md § Map and UI_COMPONENTS updated — **not a gate** (HS-35 #31);
   - REDESIGN_SPEC §7's drop corrections (re-homings the parity rulings reversed) and the "broken REDESIGN_SPEC link" (ROLLOUT §7 :302-304). A link check on 2026-09-30 found every link in and to REDESIGN_SPEC resolving, so F3 finds the one meant or closes it as already fixed;
   - E1 #11's Export half: S2b deletes the Exports stub, and a static-data export is new build → "After 3.0.0" (F-12: "Stub — delete card, note in backlog", `systems-flow-map.md:201`). The Split planner half is D-18 (S2a).
 - **Parity matrix §12 A2–A17, triaged against code 2026-09-30** (`specs/v1-v2-parity-matrix.md:552-577`):
@@ -297,7 +299,7 @@ New builds, not parity: neither shell has them today, and PRODUCT_MODEL §6.2's 
 
 ## 5. Phase P, the process
 
-The bar is **a first-time user's first impression**, on top of parity, which is already guaranteed by §4 (HS-5). Source: ROLLOUT §7b.
+The bar is **a first-time user's first impression**, on top of parity, which is already guaranteed by §4 (HS-5), and on top of gate Q: each surface is walked after its Q-1 pre-score (HS-32; §6.3 W5, W8). Source: ROLLOUT §7b.
 
 ### 5.1 Pages to walk, in order
 1. Landing and entry: `/` (L-1…L-3), create a static, join by share code (guest view included), the invite link (`/invite/:inviteCode`) and the plugin sign-in (`/plugin-auth`).
@@ -330,26 +332,28 @@ Walk these on their page:
 
 ## 6. The W-plan (V2 audit, adopted 2026-09-30)
 
-> **What this is.** The revised plan from the V2 holistic audit of 2026-09-30 (§9 and §10 of its synthesis report), which the owner adopted in full: waves W0–W8, the release waves, and design-quality gate Q (HS-32). It is the **order** from now to V1 deletion. §4's items keep their scope, file references and acceptance criteria; §6.4 maps each one onto its wave. Where a W item and a §4 item cover the same work, both acceptance lists apply. Where they conflict, the §4 text stands until the owner answers the §6.5 decision that changes it (HS-33).
+> **What this is.** The revised plan from the V2 holistic audit of 2026-09-30 (§9 and §10 of its synthesis report), which the owner adopted in full: waves W0–W8, the release waves, and design-quality gate Q (HS-32). It is the **order** from now to V1 deletion. §4's items keep their scope, file references and acceptance criteria; §6.4 maps each one onto its wave. Where a W item and a §4 item cover the same work, both acceptance lists apply. Where they conflict, the HS-35 answer (§6.5) wins, and the §4 text is corrected when that item is planned.
 >
 > **Sources.** The audit's report is [the published synthesis](https://claude.ai/artifact/2qL46K63cBihrRsnuyFpEM), and its 18 decision areas are on [the design canvas](https://claude.ai/artifact/FSew85ViFxg3ERcBAbkAQP). The agent reports behind them are in the owner's git-ignored `.superpowers/v2-audit/`. Finding IDs cite them: A1–A6 are the per-surface design reviews (for example `A2 R-1` is finding R-1 of A2, the Home/Roster review), B is the screenshot capture and detector, C1 performance, C2 conformance and accessibility (`C2-08`), D vision drift, E1 internal docs, E2 user docs, and F the audit of this plan (`F §5`, `F G-9`). "DA n" is decision area n on the canvas; "P0-n" is one of the audit's three verified P0s (§6.3 W0).
+>
+> **ID namespaces in §6.3.** Inside the W1 "Chrome & wayfinding" and "Accessibility tier 1" rows, D-16, D-17, D-18, D-20, D-23 and D-38 are the synthesis's §5 deduplicated-defect IDs (D-18 there is the not-found chrome); everywhere else in this doc D-nn is a parity-matrix row (D-18 is the Split Planner entry). H-5…H-8 and R-1…R-25 in W1 are A2 findings, not Player Hub H-n or Phase D R-n rulings; L-nn are A3 (Loot) findings and F-Sn A4 (Schedule) findings. S2-n rulings live in the Stage 2 working notes; F-nn (F-01…F-12) are the flow-map rulings.
 >
 > **Reconciled against the synthesis (2026-09-30).** Two internal inconsistencies are corrected here. (1) Its plan table numbered the decision batches B = #11–#20 and C = #21–#31, but its decision list (§6.5) has B = #11–#27 and C = #28–#31; this doc follows the list, and BETA's "§10 #23" is #29. (2) Accessibility tier 1 claimed ≈185 axe nodes and the fix-order section ≈160: both are right. ≈160 is C2-02 + C2-08 alone, and `Field`/`Checkbox` add ≈25 page nodes (C2 §7 #1–2).
 
 ### 6.1 Order now (HS-34)
 
 1. ✅ V1B item 1, #322. ✅ P1, #323.
-2. This docs PR: the plan's adoption.
-3. **The P0 safety slice**, from W0: SEC-1 (`log_drop` rules, P0-1), LOG-1 (the Log Week double-log, P0-2), RSVP-0 (series vs occurrence, the P0-3 mitigation), and AUTHZ (a role audit of every mutation route). #324, the V2 RSVP double toast, may ride along.
-4. **Stage 2 co-design, restarting from canvas DA 10** (Progress), not from the old Farms A/B/C question. The DA 10 answer is batch A #1–#3 of DEC-1.
+2. This docs PR: the plan's adoption and the 31 answers (HS-32…HS-35).
+3. **The P0 safety slice**, from W0: SEC-1 (`log_drop` rules, P0-1, to HS-35 #2: 9A plus viewer routes (a)), LOG-1 (the Log Week double-log, P0-2), RSVP-0 (series vs occurrence, the P0-3 mitigation), and AUTHZ (a role audit of every mutation route). #324, the V2 RSVP double toast, may ride along. Its evidence is under W0 below.
+4. **Stage 2 co-design, restarting from canvas DA 10** (Progress), not from the old Farms A/B/C question. DA 10 is answered (HS-35 #1 and #3: the Tracks matrix with Farms-B; Objectives to Recruit ▸ Listing and Home), so the session writes the S2a spec against those answers and the synthesis's §8 DA 10 conditions.
 
-The rest of W0 and the W1 clusters need no design decision and may run in parallel, each in its own worktree, once the P0 slice is under way.
+In parallel, each in its own worktree, once the P0 slice is under way: the rest of W0, the W1 clusters (their decisions are answered, HS-35), and W2's CC-5 reconciliation PR.
 
 ### 6.2 Principles and sizes
 
 This merges the plan audit's revised sequence (F §8) with the audit's findings. Principles: (1) **integrity before parity** — wave 0 needs no design decision and no owner walk; (2) **decisions in batches with defaults**, never one per exchange (F §6); (3) **quality is measured, not felt** — every wave ends with a demonstrable acceptance, and the design-quality gate (Q) sits before Phase P, which becomes the taste pass it was always meant to be; (4) **density rule 11 applies inside the remaining slices** (D §5.4), not after them; (5) **nothing is a release gate unless a user would notice its absence** (S6 actions, F3 hygiene and Admin V2 are not gates).
 
-Sizes: S < 700 lines incl. tests, M < 1,500, L = a slice (F §6's recalibration). "Gate" = required for R2 3.0.0 unless the owner defers it in writing. Acceptance criteria are things a reviewer can *run or see*.
+Sizes: S < 700 lines incl. tests, M < 1,500, L = a slice (F §6's recalibration, adopted for the whole plan by HS-35 #30). "Gate" = required for R2 3.0.0 unless the owner defers it in writing. Acceptance criteria are things a reviewer can *run or see*.
 
 ### 6.3 The waves
 
@@ -368,16 +372,24 @@ Sizes: S < 700 lines incl. tests, M < 1,500, L = a slice (F §6's recalibration)
 | **KS** kill switch + reversible flip | Server-side default-shell setting (env or admin) honoured by `resolveShell`; R2 migration saves prior `ui_shell` and `alembic downgrade` restores it; one-page runbook | Staging: flip, verify users land on V2, flip back, verify legacy on next load | S | — | **Gate** (F G-9) |
 | **T1 + T1b** telemetry | Ship T1 now; add 4–6 shell-tagged task-success events (loot logged, RSVP, BiS import, session created, availability painted, invite sent); gate-2 error rate per active user-day | A readout query of task completions per active static per week by shell | S | — | Gate (≥14 days before R2) |
 | **CI-0** quality infra | axe (`wcag2a/2aa/21aa/22aa`) on every V2 route in both themes, `size-limit` per-route budgets, visual baselines per core screen × theme × 1440/390 + key legacy screens, FF/WebKit smoke, `--max-warnings` frozen at today's count, contrast run includes chrome + overlays | CI fails on a new serious/critical axe node, a budget breach or an unapproved pixel diff | M | — | Gate (F G-5/6/10, C2-01) |
-| **V1B-1** merge with write-back | Store root cause (`staticGroupStore.ts:101-115`) fixed; HOME_STRETCH :93 corrected in the same PR | Bad code shows the not-found body with no stale group | S | — | Gate (HS-28) — ✅ #322 |
+| **V1B-1** merge with write-back | Store root cause (`staticGroupStore.ts:101-115`) fixed; §4 V1B item 1 corrected in the same PR | Bad code shows the not-found body with no stale group | S | — | Gate (HS-28) — ✅ #322 |
 
-#### W1 · Quick wins (no design decision; each a small PR; rolling alongside W2)
+**P0 evidence** (the synthesis's §2, read on `main` `19026450`; the director re-checked `log_drop` on `301a1b9e` and none of these files changed in between). A fresh worktree can't reach `.superpowers/v2-audit/`; the main checkout has it (`SYNTHESIS.md` §2 and §8, `F-plan.md` G-1, `f/authz_scan.py`).
+- **P0-1, farm drops (SEC-1):** `backend/app/routers/collection_goals.py:626-634` — `log_drop` calls `require_membership` with no `min_role`, so a viewer passes (`models/membership.py:23`). `:637-648` writes the `RewardDropLog` for `body.recipient_user_id` without checking the recipient is a member. `:651-661` flips the recipient's participant state from need/want to have. There is no PATCH or DELETE for drops (POST `:621`, GET `:688` only). Same PR: the participant self-upsert at `:458-510` copies `priority_rank`/`token_count` from the body for any member (`:502-505`).
+- **P0-2, Log Week double-log (LOG-1):** `frontend/src/components/loot/LogWeekWizard/index.tsx:9-16` documents the duplicate risk; `:79` receives `lootLog` as `_lootLog` and never reads it; `:194-236` (`initFloorData`) fills every slot from `getSuggestedPlayer`/`getSuggestedMaterialPlayer`. No uniqueness constraint on loot-log rows.
+- **P0-3, RSVP per series (RSVP-0):** `backend/app/models/schedule.py:77-96` — `ScheduleRsvp` has no occurrence date; `schemas/schedule.py:115-117` `RsvpCreate` carries only status and note; `frontend/src/components/schedule/SessionList.tsx:211-248` renders one `SessionRsvpCard` per occurrence, each calling `onRsvp(session.id, …)`; `scheduleWeek.ts:37-66` expands a series. Related: `ui/SessionRsvpCard.tsx:191` returns "today" for any past start (`diffDays <= 0`).
+- **AUTHZ inputs:** `f/authz_scan.py` scans `backend/app/routers/*.py` (not `routers/admin/`): 142 mutation routes, 11 gated only by a plain `require_membership`. Four of those refuse viewers inline or pass the role positionally (`schedule.py` RSVP and availability, `lodestone.py:1825`, `mount_farms.py:433`); `log_drop` is the confirmed gap; four accept viewers: content-suggestion create and vote (D-70 says "every role"), and the participant self-state (`collection_goals.py:458`). HS-35 #2 rules them: viewers may suggest and vote only.
+
+**Shared code in W0/W1** (the standing rule in §1): each item's plan labels its edits V2-only or sanctioned V1 by checking importers, as §4 F1–F3 do. Known now: LOG-1 edits `LogWeekWizard`, which both shells mount (`pages/GroupViewContent.tsx:1453`): sanctioned V1, V1-visible, with a release note. SEC-1, AUTHZ and GUEST-1's payload change are backend changes both shells and the Dalamud plugin see: each adds a plugin-contract check (the routes in CLAUDE.md § Pitfalls stay backward-compatible for API-key callers). SEC-1's hidden buttons are in both shells' clients. W1's accessibility tier 1 (the shared `Checkbox`/`Select`/`Input`, the badge token, the global `:focus-visible` token) and the DS primitive fixes change shared primitives: sanctioned V1 with light and dark screenshots.
+
+#### W1 · Quick wins (decisions answered, HS-35; each a small PR; rolling)
 
 | Cluster | Items (finding ids) | Acceptance | Size | Gate |
 |---|---|---|---|---|
 | Chrome & wayfinding | Page titles + polite route announcer + focus h1 (D-16); positional keys 1–5 in V2 only + keys in spine tooltips (D-17, §6.5 #12); not-found chrome (clear crumb/spine, h1, "Open Static Finder", V1B copy) (D-18); first landing → Home incl. invite accept (D-20); one unread count, drop the avatar badge (D-23); not-found/404 CTAs for guests vs signed-in (A6-33/34); rail initials `aria-hidden` (A6-39); toasts bottom-right, opaque, `status` for info (A1 §11.9) | axe `region`/`page-has-heading-one` zero; e2e: `document.title` per route; KEY 1 → Home | S each | Gate |
 | Accessibility tier 1 (C2 §7 #1–3) | Badge colour token ≥ 4.5:1 + `Tag tone` for chips (C2-02); Docs copy button name + focus reveal + focusable `<pre>` (C2-08); `Field` primitive + label-aware `Checkbox/Select/Input/NumberInput/DateTimeInput` (C2-03/04, D-38); one global `:focus-visible` token ≥ 3:1 per theme (C2-06) + restore the mobile user-menu ring (§6.5 #21); modal focus restore on unmount (C2-09); dock interim: focus-in, Esc closes, ×, `Tabs` with names (C2-05, A1 M4); `inert` on collapsed catalog cards (A5-09); `Tag variant="filter"` for catalog chips (A5-08); Finder label contrast (A6-23); Board 10 px → 12 px headers (A2 R-4); sub-12 px sweep in `v2-only` files + `no-tiny-text` ratchet | axe dark/light 1440 app pages: 0 critical, 0 serious on Home/Roster/Loot/Schedule/Hub/Finder; ≈185 of the 439 dark-1440 page nodes removed by the first three items alone (≈160 from C2-02 badge colour + C2-08 copy button, ≈25 from `Field`/`Checkbox`, C2 §7 #1–2; plus ≈10 overlay nodes) | S–M | **Gate** (A11Y floor) |
 | Keyboard | Rename in the kebab (A2 R-1); "This is me" on unclaimed cards + Home "Claim your card" row (D-25); picker roving radio + Enter (A3 L-26); wizard `Checkbox` (L-08); availability grid ARIA grid + Space + ≥24 px rows (A6-12); heatmap `role="grid"` roving focus + names in the description (A4 F-S11); Board cell names with player/slot + `<th scope="row">` (C2-22) | Recorded keyboard-only run: rename, claim, assign, paint availability | S–M | Gate |
-| Truth & copy | Availability privacy copy V2-gated (A6-13); plugin install steps corrected (A5-26); `ShareStep.tsx:115` shell-aware; Finder/Discover empty-state pointers (E2 F-17); "group" → "static" sweep in FE strings + a string-literal lint (E2 F-19); `toastError(action, err)` on `errorHandler.ts` + lint for bare "Failed to" (E2 F-18); error modal: details behind a disclosure (A1 §11.10); one login verb + one product name (§6.5 #26); `X-Api-Key` line in CLAUDE.md fixed (✅ with this plan's adoption) | grep: 0 "group" in user-facing FE strings; 0 bare "Failed to" toasts | S | Gate |
+| Truth & copy | Availability privacy copy V2-gated (A6-13); plugin install steps corrected (A5-26); `ShareStep.tsx:115` shell-aware; Finder/Discover empty-state pointers (E2 F-17); "group" → "static" sweep in FE strings + a string-literal lint (E2 F-19); `toastError(action, err)` on `errorHandler.ts` + lint for bare "Failed to" (E2 F-18); error modal: details behind a disclosure (A1 §11.10); one login verb + one product name (§6.5 #26); `X-Api-Key` line in CLAUDE.md fixed (✅ 2026-09-30, the plan-adoption PR) | grep: 0 "group" in user-facing FE strings; 0 bare "Failed to" toasts | S | Gate |
 | Home/Roster quick wins (A2 §14 #1) | H-5 `lview:'log'`; H-6/H-7/H-8; R-9 neutral progress fill; R-13; R-21 4 columns from ~1180; R-25 "Assign" primary; X-2 honour or retire (§6.5 #17); Team Summary + duplicate recruiting strip removed from Home (DA 5 C's two deletions); "You're all caught up" icon; Finder card two-row footer (A6-20), `auth_redirect` on "Log in to join" (A6-22), own-static state (A6-21) | Screenshots; Home ≤ 1,200 px at 1440 after the removals | S | Gate |
 | Loot quick wins | L-07 "Skips #1" warning; L-12 one floor order (§6.5 #14); L-18 seed from scope; L-31 Undo toast; L-29 persist the roll + `canEdit`; L-25 helper generated from the configured order; L-24/L-34 plain labels | Vitest on the picker warning | S | — |
 | Perf tier 1 (audit §7, C1) | B1, B2, B3, B4, B5, B9, B10 (drop `mode="wait"` + reduced motion), B13, B16, B17, B18, B20, B21 | Re-run `C1work/throttle.cjs`: slow-4G LCP ≤ 4.5 s on Home/Roster/Loot (from 6.1–6.4); cold Home ≤ 24 requests; JSON gzipped | S each | PERF gate via CI-0 |
@@ -389,7 +401,7 @@ Sizes: S < 700 lines incl. tests, M < 1,500, L = a slice (F §6's recalibration)
 
 | Item | Scope | Acceptance | Size | Depends on | Gate |
 |---|---|---|---|---|---|
-| **DEC-1** batched rulings | The owner reviews the 18 DA pages on the canvas with the audit's §8 recommendations and answers §6.5 in **three batches** (A: product rulings #1–#10; B: frame, IA and surfaces #11–#27; C: process, plan and release #28–#31), "accept all / amend #n" per batch | Rulings recorded as `HS-35…` in §2 the same day; the CC-5 reconciliation PR opens | — (owner: ≈3 sessions) | canvas mockups | Gate (everything below waits on batch A/B) |
+| **DEC-1** batched rulings — ✅ answered 2026-09-30 (HS-35: every recommendation accepted) | The owner reviews the 18 DA pages on the canvas with the audit's §8 recommendations and answers §6.5 in **three batches** (A: product rulings #1–#10; B: frame, IA and surfaces #11–#27; C: process, plan and release #28–#31), "accept all / amend #n" per batch | Rulings recorded as `HS-35…` in §2 the same day; the CC-5 reconciliation PR opens | — (owner: ≈3 sessions) | canvas mockups | Gate (everything below waits on batch A/B) |
 | **CC-5** reconciliation PR | Eight ruling/canon pairs resolved (glossary "Who Needs It"/"Log"/"Goals", DS §3.20, SPEC §7 re-homing rows, F-12/X1, root PRODUCT/DESIGN five tabs, PM:142/DEF-20); S2 rulings committed to `specs/2026-09-30-stage2-rulings.md`; `RULINGS.md` index; new IDs are HS-n only | grep finds no retired term in DS-canonical docs that the UI ships; `check-docs` prototype green | S (docs) | DEC-1 | Gate (E1 M-10) |
 
 #### W3 · Stage 2 as amended (Progress · More dissolution · mobile nav) + palette
@@ -471,24 +483,24 @@ Sizes: S < 700 lines incl. tests, M < 1,500, L = a slice (F §6's recalibration)
 | P1 safety + quick parity | W0 | ✅ #323; it shipped HOME-1's "View schedule" link. HOME-1's shared `nextOccurrence` helper and the `canManage` gate on "Add session" remain |
 | V1B item 1 | W0 V1B-1 | ✅ #322 |
 | V1B items 2–3, X1 | — | Still **not a gate** (HS-28), in parallel |
-| S2 Stage 2 | W3 S2a · S2b · S2c, PAL-1, DENS | The spec-first boundary stands; S2a's scope becomes DA 10's answer, S2b adds the Settings page (DA 15) and Hub Connections (DA 17), S2c is DA 4. The settled inputs listed in §4 S2 are open again where a §6.5 answer overturns them (HS-33) |
+| S2 Stage 2 | W3 S2a · S2b · S2c, PAL-1, DENS | The spec-first boundary stands; S2a's scope becomes DA 10's answer, S2b adds the Settings page (DA 15) and Hub Connections (DA 17), S2c is DA 4. §4 S2's settled inputs are amended where an HS-35 answer overturns them (noted there) |
 | P2a Schedule rows | W4 SCHED | D-48/D-49 land inside DA 12's Planner |
-| P2b Home rows | W4 HOME | If §6.5 #10 is answered A, P2b becomes a Home information-hierarchy spec rather than four restored V1 modules |
+| P2b Home rows | W4 HOME | HS-35 #10: P2b becomes a Home information-hierarchy spec rather than four restored V1 modules |
 | M1 Plan M | W4 M1 | Spec now; build after S2b; privacy acceptance added |
 | H1 typical-week + H-10 | W4 SCHED (depends on H1(1)), DA 13 | Unchanged dependency: P2a/SCHED waits on H1(1) |
 | T1 telemetry | W0 T1 + T1b | Adds 4–6 task-success events |
 | S5 docs restyle | W1 docs mechanics (S5a) + W6 S5b | S5b (content) is a gate |
 | S6 ⌘K actions | W3 PAL-1 (gate) + PAL-2 (not a gate) | The palette becomes a global navigator first; the four-verb action tranche is scheduled after S2a but doesn't gate the release |
-| F1–F3 Phase F | W1 clusters, W5 Q-2 | Items a W1 cluster or Q-2 fixes close there; the rest stay in §4 F1–F3 |
+| F1–F3 Phase F | W1 clusters, W5 Q-2 | Items a W1 cluster or Q-2 fixes close there; the rest stay in §4 F1–F3. F3's docs/tooling hygiene isn't a gate (HS-35 #31) |
 | MP mobile pass | W7 | Acceptance made measurable |
 | PP Phase P | W8 | Walks follow each surface's Q-1 pre-score |
-| R1, R2, Soak, D1 | Release | KS (W0) adds a kill switch and a reversible flip; BETA waits on §6.5 #29 |
+| R1, R2, Soak, D1 | Release | KS (W0) adds a kill switch and a reversible flip; BETA, an invite-only cohort before the flip, is a gate (HS-35 #29) |
 
 New work with no §4 item: SEC-1, AUTHZ, LOG-1, RSVP-0, GUEST-1, ROLE-1, DEL-1, KS and CI-0 (W0); the W1 clusters; DEC-1 and CC-5 (W2); FRAME, ROSTER, LOOT, RECRUIT, FINDER, HUB and ENTRY (W4); gate Q (W5); HELP, ON1, FB and DOCS-INT (W6); BETA.
 
 ### 6.5 Owner decisions (DEC-1)
 
-Batches match §6.3 W2 DEC-1; record each answer as an HS-n ruling in §2. Each line: the question · options · **recommended answer** · what it amends.
+Batches match §6.3 W2 DEC-1. **All 31 answered 2026-09-30: the owner accepted every recommended answer (HS-35).** Each line's "→" answer is the ruling; cite it as "HS-35 #n". Each line: the question · options · **recommended answer** · what it amends.
 
 #### Batch A — product rulings (unblock W3/W4)
 
@@ -527,7 +539,7 @@ Batches match §6.3 W2 DEC-1; record each answer as an HS-n ruling in §2. Each 
 
 28. **Quality bar.** Adopt Q (rubric incl. the heuristic floor ≥ 28/40 per core surface, WCAG 2.2 AA axe-zero-critical/serious, perf budgets, consistency slice, 5-user test) as a 3.0.0 criterion. **→ adopt.** Amends HS-5. (F #1, #16) **Answered 2026-09-30: adopted with the plan (HS-32).**
 29. **Beta and rollback.** Reinstate a 1–2-week opt-in cohort before the flip (a) opt-in banner for all · (b) invite-only via Discord · (c) skip and rely on KS; and build KS + a reversible migration as a gate-1 prerequisite. **→ (b) + KS.** Overturns part of HS-25. (F #2, #11)
-30. **Sequencing and mechanics.** S2a spec/build may start after batch A while B continues (amends HS S2 :106); T1, M1 spec, AUTHZ, KS, CI-0 and the W1 clusters start now; decision batches with defaults; controller-owned engineering rulings (#6/#7 extraction and slice cut); ceremony by risk tier (A/B/C); HS §4 tracker table; ROLLOUT/V2_COVERAGE/RECONCILIATION frozen as history now and the five foundation docs archived (amends HS-16's timing); new rulings are HS-n only; sizes recalibrated (S < 700, M < 1,500). **→ all.** (F #5, #6, #9, #14, #15; E1 §7)
+30. **Sequencing and mechanics.** S2a spec/build may start after batch A while B continues (amends §4 S2's spec-ready boundary); T1, M1 spec, AUTHZ, KS, CI-0 and the W1 clusters start now; decision batches with defaults; controller-owned engineering rulings (#6/#7 extraction and slice cut); ceremony by risk tier (A/B/C); HS §4 tracker table; ROLLOUT/V2_COVERAGE/RECONCILIATION frozen as history now and the five foundation docs archived (amends HS-16's timing); new rulings are HS-n only; sizes recalibrated (S < 700, M < 1,500). **→ all.** (F #5, #6, #9, #14, #15; E1 §7)
 31. **What is not a gate.** S6 action tranches beyond the four verbs; F3 docs/tooling hygiene; Admin V2; plugin off-hand; content search. **→ confirm not gates**; the four-verb tranche is scheduled after S2a. Amends PM §6.2 gate 1 wording. (F #3, #4; D CC-4)
 
 ## 7. Change log
@@ -535,4 +547,4 @@ Batches match §6.3 W2 DEC-1; record each answer as an HS-n ruling in §2. Each 
 - 2026-09-30: director vet 1 fixes; HS-26…HS-29.
 - 2026-09-30: director vet 2 fixes; HS-30, HS-31.
 - 2026-09-30: director vet 3 fixes (View-As Leave guard target, `X-View-As` scope, F3 V1 labels).
-- 2026-09-30: the V2 audit's plan adopted as §6 (W0–W8 + gate Q; decisions §6.5); HS-32…HS-34; H0 ticked (#321).
+- 2026-09-30: the V2 audit's plan adopted as §6 (W0–W8 + gate Q; decisions §6.5); HS-32…HS-34; H0 ticked (#321). The owner then accepted all 31 recommended answers (HS-35), with dated notes on HS-2/3/4/5/16/17/20/25. Director vet fixes: gate lists aligned with HS-35 #29/#31, P0 evidence and shared-code labels under W0, ID-namespace key, §4 S2/S6/F3 and §5 notes, stale line references.

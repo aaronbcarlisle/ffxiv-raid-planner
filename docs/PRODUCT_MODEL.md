@@ -248,9 +248,9 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 | Account delete / export (old Plan M) | ⬜ never built | no endpoint in `backend/app/routers`; a 3.0.0 prerequisite (HS-13), `HOME_STRETCH.md` §4 M1 |
 | V2 holistic audit (2026-09-30) | ✅ delivered; its revised plan **adopted in full** (HS-32) | 13 agent reports, 3 verified P0s, 31 owner decisions; the plan is [`HOME_STRETCH.md` §6](../design/redesign/HOME_STRETCH.md#6-the-w-plan-v2-audit-adopted-2026-09-30) |
 | W0 — safety and correctness | ◐ V1B-1 ✅ #322; the "View schedule" part of HOME-1 ✅ #323; the three P0s (SEC-1 farm-drop authorization, LOG-1 Log Week double-log, RSVP-0 series vs occurrence), AUTHZ and the rest ⬜ | `HOME_STRETCH.md` §6.3 W0; the P0 safety slice is next (HS-34) |
-| W2 — the 31 owner decisions (DEC-1) | ◐ #28 (adopt gate Q) answered; batches A/B/C open | `HOME_STRETCH.md` §6.5; Stage 2 restarts from canvas DA 10 (batch A #1–#3) |
+| W2 — the 31 owner decisions (DEC-1) | ✅ answered 2026-09-30: every recommended answer accepted (HS-35); the CC-5 reconciliation PR that carries them into the canonical docs ⬜ | `HOME_STRETCH.md` §6.5; Stage 2 restarts from canvas DA 10 (HS-35 #1, #3) |
 
-**What remains, in order, with sizes, dependencies and acceptance criteria:** [`design/redesign/HOME_STRETCH.md`](../design/redesign/HOME_STRETCH.md). **The order is its §6, [the W-plan](../design/redesign/HOME_STRETCH.md#6-the-w-plan-v2-audit-adopted-2026-09-30)** (waves W0–W8 plus design-quality gate Q, adopted in full 2026-09-30, HS-32): the P0 safety slice first, then Stage 2 co-design from canvas DA 10 (HS-34). No earlier ruling is off-limits; each stands until the owner answers the §6.5 decision that reopens it (HS-33). Session 2 (2026-09-30) settled every open owner question as rulings HS-1…HS-25, and the same day the owner ruled HS-26…HS-31 on questions the plan's two director vets raised; all are recorded there. In short: the spine is five tabs, with Progress as the tracks surface (F-03, reaffirmed; "prog" stays the status word, HS-29); Plugin setup lives in Player Hub, its guide in Docs and the team Gear-Sync dashboard in Roster (F-05, reaffirmed); every owed parity row gates the release; the un-gate and 3.0.0 merge into one release; and a legacy→V2 entry stays for everyone after it (HS-26).
+**What remains, in order, with sizes, dependencies and acceptance criteria:** [`design/redesign/HOME_STRETCH.md`](../design/redesign/HOME_STRETCH.md). **The order is its §6, [the W-plan](../design/redesign/HOME_STRETCH.md#6-the-w-plan-v2-audit-adopted-2026-09-30)** (waves W0–W8 plus design-quality gate Q, adopted in full 2026-09-30, HS-32): the P0 safety slice first, then Stage 2 co-design from canvas DA 10 (HS-34). The same day the owner accepted the recommended answer to all 31 of the plan's decisions (HS-35, `HOME_STRETCH.md` §6.5); no earlier ruling was off-limits (HS-33), and each answer names the rulings it overturns. Session 2 (2026-09-30) settled every open owner question as rulings HS-1…HS-25, and the same day the owner ruled HS-26…HS-31 on questions the plan's two director vets raised; all are recorded there. In short: the spine is five tabs, with Progress as the tracks surface (F-03, reaffirmed; "prog" stays the status word, HS-29); Plugin setup lives in Player Hub, its guide in Docs and the team Gear-Sync dashboard in Roster (F-05, reaffirmed); every owed parity row gates the release; the un-gate and 3.0.0 merge into one release; and a legacy→V2 entry stays for everyone after it (HS-26).
 
 ### 6.2 Definition of done
 
@@ -259,13 +259,14 @@ Two gates, in order. *(Ratified 2026-09-30, HS-6; merged into two gates by HS-25
 1. **Release 3.0.0: V2 is the default for everyone.** Every user is flipped to V2: the shell choice made before the release isn't migrated, and a switch-back made after it persists (HS-23). The way back is "Switch back to legacy UI" in the user menu or Settings, reachable on mobile (HS-24). `TryNewUiBanner` is deleted; the legacy user-menu item that enters V2 stays for everyone, without its `isAdmin` gate and renamed, so switching back is never a one-way door (HS-26). Requires every build item in `HOME_STRETCH.md` §4 that isn't marked *not a gate* (HS-28; HS-14 for admin-only items), and every item §6 (the W-plan) marks as a gate unless the owner defers it in writing (HS-32):
    - W0 safety and correctness: the three P0s, the mutation-route authorization table, guest and role gating, the kill switch with a reversible flip, and CI quality infrastructure (axe, bundle budgets, visual baselines);
    - the W1 quick-win clusters marked as gates, including the accessibility floor;
-   - the owner's decision batches (DEC-1) and the reconciliation PR that records them;
+   - the reconciliation PR that carries the owner's 31 answers (HS-35) into the canonical docs;
    - the W4 surface reworks, each as its §6.5 decision rules;
    - **design-quality gate Q** (W5): the per-surface rubric with a heuristic floor, WCAG 2.2 AA with zero critical or serious axe findings, performance budgets, the cross-page consistency slice, the states matrix, an accessibility statement, and a 5-raider usability test;
    - docs content, help, first-run onboarding and a feedback channel (W6);
    - every parity-matrix row executed;
    - the not-found fix (V1B item 1; broken in V2 too, HS-28) — ✅ #322;
-   - Stage 2, Stages 5–6 and Phase F;
+   - Stage 2, Stage 5, the ⌘K palette as a global navigator (S6's action tranche is scheduled but isn't a gate) and Phase F (not its F3 docs/tooling hygiene) (HS-35 #31);
+   - an invite-only beta cohort before the flip, and a kill switch with a reversible flip migration (HS-35 #29);
    - H-10 and the typical-week layer;
    - account delete and export (Plan M);
    - shell-switch telemetry;
@@ -273,7 +274,7 @@ Two gates, in order. *(Ratified 2026-09-30, HS-6; merged into two gates by HS-25
    - Phase P;
    - the owner-signed release plan.
 
-   An opt-in beta cohort before the flip is proposed (§6.5 #29) and is not a gate unless the owner rules it one; it would overturn part of HS-25. Phase P follows each surface's Q-1 pre-score (HS-32). Phase P is done when every V2 surface (in-static screens, non-static routes, mobile variants, guest views) has been walked with the owner, and every punch-list item is either fixed and re-demonstrated before the next page, or explicitly deferred by the owner. A page is accepted when the owner says "next". Admin V2 is not a prerequisite (HS-14).
+   The beta cohort is volunteer statics invited via Discord for 1–2 weeks with telemetry live; it overturns HS-25's "no opt-in window" and keeps the two gates. Phase P follows each surface's Q-1 pre-score (HS-32). Phase P is done when every V2 surface (in-static screens, non-static routes, mobile variants, guest views) has been walked with the owner, and every punch-list item is either fixed and re-demonstrated before the next page, or explicitly deferred by the owner. A page is accepted when the owner says "next". Admin V2 is not a prerequisite (HS-14).
 2. **V1 deleted.** Requires all of:
    - V2 the default for at least 4 weeks;
    - a trailing-2-week switch-back rate under 10% (tune with real data; defined in `HOME_STRETCH.md` §4 T1);
