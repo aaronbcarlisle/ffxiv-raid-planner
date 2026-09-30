@@ -68,7 +68,7 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'The roadmap page shows what has already shipped',
         description:
-          'The roadmap page had fallen behind. The static dashboard is now marked complete, and the notification inbox and read state are shown as done. Discord server linking with event sync and multiple BiS targets per job are marked as shipped, with the rest of those phases still planned. The summary now counts 4 static roles and 3 BiS import sources.',
+          'The roadmap page had fallen behind. The static dashboard is now marked complete. The notification inbox (applications, suggestion votes and webhook failures) and its read state are shown as done; roster, session and announcement notifications stay planned. Discord server linking with event sync and multiple BiS targets per job are marked as shipped, with the rest of those phases still planned. The summary now counts 4 static roles and 3 BiS import sources.',
         link: { href: '/docs/roadmap', label: 'View the roadmap' },
         pr: 320,
         prTitle: 'docs: canonical redesign state + definition of done; stale status and roadmap page fixed',

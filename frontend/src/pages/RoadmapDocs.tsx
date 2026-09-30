@@ -224,7 +224,7 @@ const PHASES: Phase[] = [
     items: [
       {
         title: 'Notification inbox with unread badge',
-        description: 'Complete - one inbox for all your statics: join requests, roster changes, session updates, and announcements.',
+        description: 'Complete - one inbox for all your statics, covering applications (new, accepted, declined), suggestion votes, and Discord webhook failures. Roster changes, session updates, and announcements are still planned.',
       },
       {
         title: 'Activity feed panel',
