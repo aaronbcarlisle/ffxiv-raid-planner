@@ -1,6 +1,6 @@
 # Home Stretch: now → V1 deletion
 
-> **What this is.** The complete, sequenced list of what is left between today and deleting legacy V1, written 2026-09-30 (home-stretch session 2) off `main` `6aec8590`. The current state and the definition of done are in [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done): that section states the state and the gates, and this doc states the order and the detail. Every open owner question is ruled (§2): HS-1…HS-25 in session 2, HS-26…HS-29 after director vet 1. If new work turns up, add it here with its ruling. Never add it to another doc's status line.
+> **What this is.** The complete, sequenced list of what is left between today and deleting legacy V1, written 2026-09-30 (home-stretch session 2) off `main` `6aec8590`. The current state and the definition of done are in [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done): that section states the state and the gates, and this doc states the order and the detail. Every open owner question is ruled (§2): HS-1…HS-25 in session 2, and HS-26…HS-31 on the questions director vets 1 and 2 raised. If new work turns up, add it here with its ruling. Never add it to another doc's status line.
 >
 > **How to use it.** Work the §4 items in order, or run them in parallel where §3 allows. When an item ships, tick it in §4 with its PR, update the §6.1 row it affects in PRODUCT_MODEL, and keep going; if a tick and §6.1 disagree, §6.1 wins (PRODUCT_MODEL §8). Run each build item with the `slice-loop` skill. An item marked **spec first** runs brainstorming → spec → owner-signed parity matrix → plan before any code, as Phase D did. An item marked **not a gate** runs in parallel and doesn't hold the release (HS-28).
 
@@ -8,14 +8,14 @@
 
 The two gates are defined in [PRODUCT_MODEL §6.2](../../docs/PRODUCT_MODEL.md#62-definition-of-done), and only there. This doc maps them onto §4:
 
-- **Gate 1, release 3.0.0, is R2.** R2 requires every §4 item above it except those marked **not a gate** (V1B items 2–3 and X1, HS-28). Admin V2 isn't a prerequisite (HS-14).
+- **Gate 1, release 3.0.0, is R2.** R2 requires every §4 item above it except those marked **not a gate** (V1B items 2–3 and X1, HS-28; F1's two admin-only items, HS-14). Admin V2 isn't a prerequisite (HS-14).
 - **Gate 2, V1 deleted, is D1.** T1 measures its switch-back and error-rate criteria from R2's first day.
 
 **Standing rules that still apply to every item:** no surface is replaced without an owner-reviewed affordance-parity matrix. The legacy path stays byte-identical until D1. Every V1-visible edit carries a sanctioned-edit justification and a release note. Every UI PR embeds screenshots. `xivrp-director` vets each slice (`V2_COVERAGE_PLAN.md` §5 hard gates).
 
 ## 2. Owner rulings (session 2, 2026-09-30)
 
-These close every item in the session-1 decision list (groups A–E, 22 items). HS-26…HS-29 answer the four owner questions director vet 1 raised (its F4, F8, F12 and F1). Older labels are cited as SF-OWNER-n (Stage 4) and AD-OWNER-n (Admin); new rulings are HS-n (HS-18).
+These close every item in the session-1 decision list (groups A–E, 22 items). HS-26…HS-29 answer the four owner questions director vet 1 raised (its F4, F8, F12 and F1); HS-30 and HS-31 answer vet 2's Q1 and Q2. Older labels are cited as SF-OWNER-n (Stage 4) and AD-OWNER-n (Admin); new rulings are HS-n (HS-18).
 
 | # | Question | Ruling |
 |---|---|---|
@@ -48,6 +48,8 @@ These close every item in the session-1 decision list (groups A–E, 22 items). 
 | HS-27 | Does the past-sessions/attendance view gate 3.0.0? (vet F8) | **No.** It's a new feature, not parity: neither shell has one (`specs/systems-flow-map.md:127`, `:203`). More's "Session History" card only links to Schedule, so it dies in S2b with Schedule as its home. The view is listed under "After 3.0.0" (§4) |
 | HS-28 | Are V1B and X1 release gates? (vet F12) | **Only V1B item 1, the not-found flow**, because it's broken in V2 too (`ShellContentStates.tsx`). V1B items 2–3 and all of X1 are **not a gate: run in parallel** |
 | HS-29 | Glossary: Progress vs prog (vet F1) | **"Progress"** is the fifth spine tab, the tracks surface (Goals, Farms, Collections, Split Clears). **"Prog"** stays the status word ("Floor 3 prog"). DESIGN_SYSTEM §2.3 and REDESIGN_SPEC §10 carry a dated amendment |
+| HS-30 | D-50's backend scope (vet 2 Q1) | **Only View-As deletes are refused.** P1 makes the client send the `X-View-As` header that `services/audit.py:140-145` already reads, and the backend refuses a static delete, and Leave (per the D-50 wording), only when that header is present. Admins keep moderation delete under `?adminMode` (`StaticTab.tsx:305`) |
+| HS-31 | A11: "Mark floor cleared" in admin mode (vet 2 Q2) | **Keep V2's behaviour.** In admin mode, an admin whose real role in the static is member can mark a floor cleared in V2 but not in legacy. A declared delta, consistent with P-15 (`specs/v1-v2-parity-matrix.md:276`); no work item |
 
 ## 3. Sequence at a glance
 
@@ -62,7 +64,7 @@ now ─ H0 this plan
                                                        └─► P2a Schedule rows (also after P1)
    ─► F1–F3 Phase F ─► MP mobile pass ─► PP Phase P ─► R1 release plan ─► R2 RELEASE 3.0.0
    ─► soak ≥4 weeks (fix-only; ring work may start, HS-15) ─► D1 V1 deletion
-not gates, in parallel (HS-28): V1B items 2–3 · X1 hygiene
+not gates, in parallel: V1B items 2–3 · X1 hygiene (HS-28) · F1's admin-only items (HS-14)
 off the path: Admin V2 (parked) · plugin off-hand (plugin repo) · rings and "After 3.0.0" (post-release)
 ```
 
@@ -76,14 +78,14 @@ Each item lists its scope, dependencies, acceptance criteria, size and rulings. 
 - **Scope:** this doc; PRODUCT_MODEL §6 rewritten to the two gates and linked here; the "four tabs" text written before the amendment corrected in REDESIGN_SPEC §11 #7 / review checklist, V2_COVERAGE Stage 2, RECONCILIATION B7 and the DESIGN_SYSTEM Spine contract; amendment notes where ROLLOUT §7b and V2_COVERAGE D7 describe the un-gate. Director vet 1 added dated amendments where DESIGN_SYSTEM §2.1/§2.3 and REDESIGN_SPEC §9.1/§10 still read "four tabs" or "Progress is never a tab" (HS-29), and where `docs/README.md`, ROLLOUT (the header note, §1, §8, §9) and V2_COVERAGE (the status line, Stage 5, D2, D7) still describe three gates; `xivrp-director.md` cites F-03 for Progress.
 - **Acceptance:** the director says READY; merged; §6 links here; no owner question is left open.
 
-### P1 · Safety + quick parity — S · HS-9, HS-12, HS-20
+### P1 · Safety + quick parity — S · HS-9, HS-12, HS-20, HS-30
 - **Scope:**
-  - **D-50, a V1-visible admin-only sanctioned edit:** hide Delete Static in `components/settings/StaticTab.tsx:305` and `components/group/MorePage.tsx:379-386` (both shells mount both) under View As **and** whenever `group.isAdminAccess` is true, matching Leave (`GroupViewContent.tsx:1191`). Backend: `DELETE` on a static refuses a request that `admin_override_for(…, MemberRole.OWNER)` flags (`static_groups.py:704-706`; the §13.3 residual in the parity matrix). That flag covers **every** admin acting without a real owner membership, not only View As, and those admins get `userRole: 'owner'` (`permissions.py:251-252`), which is why the frontend also checks `isAdminAccess`. Consequence, stated in the release note: admins lose moderation delete, and no other UI deletes a static (`AdminStatics` has none; Admin V2 is parked, HS-14).
+  - **D-50, a V1-visible sanctioned edit scoped to View As (HS-30):** under View As, hide Delete Static in `components/settings/StaticTab.tsx:305` and `components/group/MorePage.tsx:379-386` (both shells mount both), matching Leave (`GroupViewContent.tsx:1191`). The client sends the `X-View-As` header while View As is active; `services/audit.py:140-145` already reads it, but no client sends it today. The backend refuses a static delete (`static_groups.py:682`) and a self-Leave (`DELETE …/members/{user_id}`, `:1216`) only when that header is present (the §13.3 residual in the parity matrix). Admin-mode moderation delete (`?adminMode`, `StaticTab.tsx:305`) is unchanged: no admin UI deletes a static (`AdminStatics` has none; Admin V2 is parked, HS-14), so it stays the admins' moderation path. (Owners can also delete from `dashboard/MyStaticsPanel.tsx:284` and `profile/hub/YourStaticsCard.tsx:60`; neither is an admin path.)
   - **D-58:** a "View Schedule" link on Home's next-session card (`Home.tsx:331-335`).
   - **Home RSVP:** catch the rejection from `submitRsvp` (`Home.tsx:334`) and surface it.
   - **Public roadmap (`RoadmapDocs.tsx`):** Phase 9 Mobile → "planned (part of the new interface)"; drop the "Large component files" known issue.
 - **Depends on:** nothing.
-- **Acceptance:** a failing test first for each. D-50's tests cover both cases, View As and an admin without real ownership (`isAdminAccess`), on both surfaces; the API returns 403 for an override delete and a real owner's delete still succeeds; a browser check of both cases. D-50 and D-58 get ship markers; public release note.
+- **Acceptance:** a failing test first for each. D-50: under View As, Delete is hidden on both surfaces, and the API returns 403 for a static delete (and a self-Leave) that carries `X-View-As`; admin-mode moderation delete still works (the button shows under `?adminMode` and the API deletes without the header); a browser check of both. D-50 and D-58 get ship markers; public release note.
 
 ### V1B · V1 bugfix bundle — M · HS-7, HS-28
 - **Gate:** item 1 only (HS-28). Items 2–3 are **not a gate: run in parallel**, in this PR or a later one.
@@ -138,12 +140,13 @@ Each item lists its scope, dependencies, acceptance criteria, size and rulings. 
 ### T1 · Shell-switch telemetry — S · HS-22, HS-26
 - **Scope:** the `ui_shell_toggle` event already fires on every switch, both directions, with its surface (`hooks/useShellToggle.ts:17-20`), and events carry the user (`routers/analytics.py:115`). T1 adds: the shell as a property of `page_view` (`App.tsx:146`) and of every error report (`services/errorReporter.ts` → `/api/analytics/errors`, which records no shell today); the surfaces R2 creates (the renamed legacy→V2 item, the switch-back) in the surface union; and an admin readout (a documented query, or a panel on the existing Usage Analytics page).
 - **Definitions** (trailing 14 days, signed-in users; guests are reported separately, since they can't be de-duplicated):
-  - *switch-back rate* = users whose last `ui_shell_toggle` in the window is `to-legacy` ÷ users with at least one V2 `page_view` in the window;
+  - *switch-back rate* (the gate-2 figure, measured from R2) = signed-in users active in the window whose last `page_view` in it is legacy ÷ all signed-in users active in the window. A user who switched back before the window and stayed on legacy still counts;
+  - *new switch-backs* (secondary) = users with a `to-legacy` `ui_shell_toggle` in the window;
   - *return rate* (HS-26, reported, not a gate) = users with a `to-v2` toggle in the window ÷ users with at least one legacy `page_view` in the window;
   - *error rate by shell* = error reports tagged with the shell ÷ `page_view`s tagged with the same shell, per 1,000;
   - *V1 baseline:* V1's error rate over the 14 days before R2, while V1 is everyone's default, recorded in this doc. Gate 2 compares V2's rate with it.
 - **Depends on:** nothing. It ships at least 14 days before R2, so the baseline exists and the soak is measured from day one.
-- **Acceptance:** a dev switch in each direction shows up in the readout; the three rates are reproducible with the documented query; the V1 baseline is recorded here before R2.
+- **Acceptance:** a dev switch in each direction shows up in the readout; every figure above is reproducible with the documented query; the V1 baseline is recorded here before R2.
 
 ### S5 · Stage 5, the docs light restyle — M
 - **Scope:** the `/docs/**` pages restyled inside V2 chrome (tokens, type scale, a consistent `PageHeader`); the `/docs/design-system` page rebuilt so `contrast.spec.ts:178` stops skipping it. Admin is out of scope (HS-14).
@@ -155,7 +158,7 @@ Each item lists its scope, dependencies, acceptance criteria, size and rulings. 
 - **Acceptance:** each action works from the keyboard alone, is role-gated, and has tests; shortcut labels come from `lib/platform.ts`.
 
 ### F1–F3 · Phase F, chrome seams + carried items — L
-Each F1/F2 item says whether its fix is **V2-only** or **sanctioned V1** (a shared file V1 renders: it needs the sanctioned-edit justification and a release note).
+Each F1, F2 and F3 item says whether its fix is **V2-only** or **sanctioned V1** (a shared file V1 renders: it needs the sanctioned-edit justification and a release note). F3's shared-file edits are sanctioned V1 and behaviour-neutral, with legacy snapshots unchanged; F3 items without a label are tooling or docs and change no V1 render.
 - **F1, V2 defects (frontend):**
   - HS-11's defects:
     - V2 Roster's applicant-review link (`onOpenRequests` is never used; RH1 plan :269) — V2-only;
@@ -164,12 +167,12 @@ Each F1/F2 item says whether its fix is **V2-only** or **sanctioned V1** (a shar
     - the save-error overlay policy: `tierStore.updatePlayer` sets the global `error` on any failed update, and both shells render the overlay — sanctioned V1 (shared store), unless the plan picks a V2-only caller-side policy and says so;
     - Modal initial focus lands on `Checkbox`'s `sr-only` input (`Modal.tsx:106-125`) — sanctioned V1 (shared primitive).
   - E1 carried:
-    - #8 the two "no BiS" signals and the D4 aggregate mismatch (`RosterCards.tsx:288`; `utils/playerBisProgress.ts` and `utils/rosterReadiness.ts` have only V2 importers) — V2-only;
+    - #8 the two "no BiS" signals and the D4 aggregate mismatch (`RosterCards.tsx:288`) — V2-only if the fix stays in `bisSlotTotals` and `playerBisProgress` (only V2 imports them); sanctioned V1 if it touches `bisCompleteCount` or `rosterAvgIlv` in `utils/rosterReadiness.ts`, which legacy `StaticHomeTab.tsx:46` imports (legacy Overview mounts it, `GroupViewContent.tsx:905-909`);
     - #9 the `currentSource` recalc (`player/BiSImportModal.tsx:415-425`) — sanctioned V1;
     - #24 whole-store destructures (`LogWeekWizard/index.tsx:96`, `QuickLogMaterialModal.tsx:333`; legacy `LootPriorityPanel` mounts both) — sanctioned V1, behaviour-neutral;
     - #27 `clearAllPageLedger`'s player set (`stores/lootTrackingStore.ts:516`) — sanctioned V1;
     - #32 the schedule membership-intersection family (`schedule/scheduleWeek.ts`, `AvailabilityHeatmap.tsx`; only V2's `Schedule.tsx` imports them) — V2-only;
-    - #38 the boundary-evening week — the holistic list names it without a location; the F1 plan locates and labels it;
+    - #38 the boundary-evening week — the holistic list names it without a location (E1 plan :281); the F1 plan locates and labels it, and if it can't, the owner closes it as a residual;
     - the `fetchCurrentWeek` stale-response race (`stores/lootTrackingStore.ts:303`) — sanctioned V1.
   - **R-D12-F cause 5**, the missing ledger anchor for a folded or hidden section — V2-only.
   - The PH1 test and polish residuals (ROLLOUT §7 "Carried out of PH1") — V2-only.
@@ -182,11 +185,11 @@ Each F1/F2 item says whether its fix is **V2-only** or **sanctioned V1** (a shar
     - `NotificationCenter` builds the V2 href by string append, and `DiscoveryTab` re-renders on URL writes through `useResolvedShell` — sanctioned V1 (both shared).
   - SF1 residuals (`plans/2026-09-27-sf1-static-finder.md:648-650`):
     - (a) `DiscoveryTab.tsx:819` fills `timezone` only when it's empty, so a form already set to another zone mislabels the auto-filled times — sanctioned V1 (V1 `RecruitmentTab` and V2 `recruit/ListingTab` both mount it);
-    - (b) "Post a listing": `openSettings({section})`'s `initialSection` handoff loses to same-commit URL writes (`hooks/useGroupViewState.ts`, `settings/RecruitmentTab.tsx`; SF1c works around it by seeding `?rcsub=listing`). V2 now sends recruitment settings to `/recruit` (RH1 plan :260), so F1 checks whether V2 still reaches it; if only V1 does, it retires at D1;
+    - (b) "Post a listing": `openSettings({section})`'s `initialSection` handoff loses to same-commit URL writes (`hooks/useGroupViewState.ts`, `settings/RecruitmentTab.tsx`; SF1c works around it by seeding `?rcsub=listing`). RH1 closed it for V2, which sends recruitment settings to `/recruit` (`specs/2026-09-27-recruit-home-design.md:127`; RH1 plan :260), so only V1 reaches it and it retires at D1;
     - (c) logged-out Finder polish → Phase P (the Finder walk); Finder mobile → MP; reverse matching is new build → "After 3.0.0"; the lead-side home shipped as RH1.
-  - From `V2_COVERAGE_PLAN.md:5`: the M6 desktop pre-hydration skeleton sits in the top bar while the authed menu resolves to the rail footer — V2-only; the `/admin` spurious ~17px scrollbar — V2-only and admin-only, so a residual candidate under HS-14.
-  - The AdminOverview initials chip (queued 2026-08-22): **UNVERIFIED.** A code check on 2026-09-30 finds no `aria-hidden` anywhere in `pages/admin/AdminOverview.tsx`, and the chip at `:431-433` is a flex-centred `div` (the file is unchanged since #80), so the recorded cause (the `index.css` `aria-hidden` rule) can't apply. A browser look at `/admin/overview` confirms or closes it; admin-only (HS-14).
-  - Parity matrix §12 rows homed here (triage below): A5's V2 check, A6, A11.
+  - From `V2_COVERAGE_PLAN.md:5`: the M6 desktop pre-hydration skeleton sits in the top bar while the authed menu resolves to the rail footer — V2-only; the `/admin` spurious ~17px scrollbar — V2-only and admin-only, **not a gate (HS-14)**.
+  - The AdminOverview initials chip (queued 2026-08-22), admin-only and **not a gate (HS-14)**: **UNVERIFIED.** A code check on 2026-09-30 finds no `aria-hidden` anywhere in `pages/admin/AdminOverview.tsx`, and the chip at `:431-433` is a flex-centred `div` (the file is unchanged since #80), so the recorded cause (the `index.css` `aria-hidden` rule) can't apply. A browser look at `/admin/overview` confirms or closes it.
+  - Parity matrix §12 rows homed here (triage below): A5's V2 check, A6.
 - **F2, backend carried from PH2:**
   - `loot_priority` under enhanced scoring and for the weapon (`player_overview.py:71-74,532-533`) — V2-only (`/api/player/overview` feeds only the V2 Hub);
   - a Queues `floor=` deep link (`:581`) — V2-only;
@@ -194,8 +197,8 @@ Each F1/F2 item says whether its fix is **V2-only** or **sanctioned V1** (a shar
   - `objective_goals.py:560-571`'s next session ignoring recurrence — no live consumer today: `objectiveCommandStore`, its only reader, is used only by `ObjectiveCommandCenter.tsx`, which has zero importers. Fix it if P2b's D-66 consumes the endpoint; otherwise F3's knip sweep deletes the dead reader and this item closes.
 - **F3, enforcement, dead code and docs:**
   - user-menu items retargeted where V2 equivalents exist (`auth/UserMenu.tsx` renders in both shells: sanctioned V1 unless gated on `inV2Chrome`);
-  - a knip dead-code sweep, including matrix §12 A9's survivors (`history/WeekSelector.tsx` with zero importers, `GearSourceBadge` used only by the design-system page, `GearTable`'s `compact` branch at `:538`) and A8's unreachable `edge-*` drop-zone code (`dnd/useDragAndDrop.ts:288-303`);
-  - matrix §12 A2: 7 of the 9 `eventBus` listeners in `services/analytics.ts:50-58` have no emitter (only `player_gear_changed` and `member_role_changed` fire); rewire or delete them (T1 may rewire what it needs);
+  - a knip dead-code sweep, including matrix §12 A9's survivors (`history/WeekSelector.tsx` with zero importers, `GearSourceBadge` used only by the design-system page, `GearTable`'s `compact` branch at `:538`) and A8's unreachable `edge-*` drop-zone code (`dnd/useDragAndDrop.ts:288-303`) — sanctioned V1 for `GearTable.tsx` and `useDragAndDrop.ts` (shared), behaviour-neutral;
+  - matrix §12 A2: 7 of the 9 `eventBus` listeners in `services/analytics.ts:50-58` have no emitter (only `player_gear_changed` and `member_role_changed` fire); rewire or delete them (T1 may rewire what it needs) — sanctioned V1 (shared service), behaviour-neutral;
   - jscpd back to main's count (RH1 added a clone pair: 340 against 339);
   - the contrast harness in CI, with the `Badge.tsx` exclusion resolved;
   - `--max-warnings` in `ci.yml`;
@@ -205,14 +208,14 @@ Each F1/F2 item says whether its fix is **V2-only** or **sanctioned V1** (a shar
   - `home/`, `finder/` and `recruit/` rows in FRONTEND_STRUCTURE;
   - the suppressions count corrected (29 in 17 files);
   - CLAUDE.md § Map and UI_COMPONENTS updated;
-  - REDESIGN_SPEC §7's drop corrections (re-homings the parity rulings reversed) and the "broken REDESIGN_SPEC link" (ROLLOUT §7 :297-298). A link check on 2026-09-30 found every link in and to REDESIGN_SPEC resolving, so F3 finds the one meant or closes it as already fixed;
+  - REDESIGN_SPEC §7's drop corrections (re-homings the parity rulings reversed) and the "broken REDESIGN_SPEC link" (ROLLOUT §7 :302-304). A link check on 2026-09-30 found every link in and to REDESIGN_SPEC resolving, so F3 finds the one meant or closes it as already fixed;
   - E1 #11's Export half: S2b deletes the Exports stub, and a static-data export is new build → "After 3.0.0" (F-12: "Stub — delete card, note in backlog", `systems-flow-map.md:201`). The Split planner half is D-18 (S2a).
 - **Parity matrix §12 A2–A17, triaged against code 2026-09-30** (`specs/v1-v2-parity-matrix.md:552-577`):
-  - A2 → F3. A3, the legacy Loot Priority `Alt+1/2/3` tooltips (`LootPriorityPanel.tsx:523,546`) → legacy-only, retires at D1. A4, the legacy loot sub-tab reset (`useGroupViewState.ts:332`, feeding only legacy `LootPriorityPanel`) → retires at D1.
+  - A2 → F3. A3, the legacy Loot Priority `Alt+1/2/3` tooltips (`LootPriorityPanel.tsx:523,546,569`) → legacy-only, retires at D1. A4, the legacy loot sub-tab reset (`useGroupViewState.ts:332`, feeding only legacy `LootPriorityPanel`) → retires at D1.
   - A5, blank states (L-05, R-183, O-02) → the legacy instances retire at D1; F1 checks V2 Roster and Loot with zero players.
   - A6, viewers can Roll/Reroll a weapon tie (`WeaponPriorityList.tsx:294-299`, not gated by `showLogButtons`; V2 mounts it through `WeaponPriorityBridge`) → F1; sanctioned V1, or a V2-only prop.
   - A7 → S2a. A8 and A9 → F3 (A9's `mount-farms/**` tree → the S2 spec). A10 → S2b.
-  - A11, V2's "Mark floor cleared" gates on `canEdit` only (`BookLedgerCard.tsx:299`), where legacy adds `userRole !== 'member'` (`SectionedLogView.tsx:1472`) → F1 re-asserts legacy's double gate (the parity default) — V2-only.
+  - A11 → kept as V2 has it (HS-31), no work item. V2's "Mark floor cleared" gates on `canEdit` (`BookLedgerCard.tsx:299`), which includes admin-mode access (`useStaticPermissions.ts:54-57`); legacy adds `userRole !== 'member'` (`SectionedLogView.tsx:1472`). The two diverge only for an admin in admin mode whose real role in the static is member: a declared delta, like P-15 (`specs/v1-v2-parity-matrix.md:276`).
   - A12, legacy Overview omits `isAdminAccess` (`GroupViewContent.tsx:915`) → retires at D1; V2 Home takes `canEdit` from `useStaticPermissions`, which includes it (`NewShell.tsx:66,79`).
   - A13 → retires at D1; S2a's attention row opens the Split Planner itself.
   - A14 → P2b (D-65). A15 → X1. A16 ✅ closed by D14a #272 (recorded in the row). A17 → S2b; V1's stubs go at D1.
@@ -262,10 +265,16 @@ V1 is fix-only; V2 gets fixes. Ring work may start, V2-only (HS-15). Read T1's n
 - **Rings (HS-15):** Ring 2 FFLogs, new Ring 3 tracks and strat references; after the release, each with its own spec.
 
 ### After 3.0.0 (not gates)
-New builds, not parity: neither shell has them today, so they don't gate the release.
+New builds, not parity: neither shell has them today, and PRODUCT_MODEL §6.2's gate-1 list is exhaustive, so they don't gate the release. This list isn't exhaustive either: it holds the items the plan's sources carry forward, and more will join it.
 - The past-sessions/attendance view, homed in Schedule (HS-27; `specs/systems-flow-map.md:127`, `:203`).
 - A static-data export in Settings ▸ Static (F-12's Exports row, `systems-flow-map.md:201`; E1 #11's Export half). Plan M's personal export is separate and does gate the release (HS-13).
-- Finder reverse matching (SF1 carried (c); SF1 spec §9).
+- From the Finder and Recruit-home carried lists (`specs/2026-09-27-static-finder-design.md:194-195`, `specs/2026-09-27-recruit-home-design.md:120-125`):
+  - reverse matching, leads browsing players who fit (SF1 spec :194, "carried");
+  - the static typical-week template as a Finder matching input (SF1 spec :195);
+  - email or user-targeted invites;
+  - a Discord webhook for applications;
+  - player-side language and voice preferences;
+  - a V2-native listing editor (RH-5).
 
 ## 5. Phase P, the process
 
@@ -302,3 +311,4 @@ Walk these on their page:
 ## 6. Change log
 - 2026-09-30: written (session 2). Rulings HS-1…HS-25.
 - 2026-09-30: director vet 1 fixes; HS-26…HS-29.
+- 2026-09-30: director vet 2 fixes; HS-30, HS-31.
