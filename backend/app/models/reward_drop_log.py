@@ -35,6 +35,9 @@ class RewardDropLog(Base):
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     dropped_at: Mapped[str] = mapped_column(Text, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The recipient's participant state that log_drop replaced (need/want → have);
+    # NULL when the drop caused no flip. Deleting the drop restores it (R-P0-2).
+    recipient_prior_state: Mapped[str | None] = mapped_column(String(10), nullable=True)
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )

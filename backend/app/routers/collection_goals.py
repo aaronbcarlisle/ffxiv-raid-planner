@@ -3,8 +3,8 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
@@ -15,9 +15,15 @@ from ..models.collection_goal import CollectionGoal
 from ..models.membership import Membership
 from ..models.reward_drop_log import RewardDropLog
 from ..models.reward_participant_state import RewardParticipantState
-from ..permissions import NotFound, get_static_group, require_can_manage_members, require_membership
+from ..permissions import (
+    NotFound,
+    PermissionDenied,
+    get_static_group,
+    require_can_manage_members,
+    require_membership,
+)
 from ..models.collection_catalog_item import CollectionCatalogItem
-from ..models.membership import MemberRole
+from ..models.membership import ROLE_HIERARCHY, MemberRole
 from ..models.player_collection_intent import PlayerCollectionIntent
 from ..models.player_collection_snapshot import PlayerCollectionSnapshot
 from ..models.player_profile import PlayerProfile
@@ -41,6 +47,75 @@ logger = get_logger(__name__)
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+_LEAD_LEVEL = ROLE_HIERARCHY[MemberRole.LEAD]
+
+
+def _parse_ts(value: str | None) -> datetime | None:
+    """ISO-8601 text → aware datetime (UTC when naive); None when missing or unparseable."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _is_after(candidate: str | None, reference: str) -> bool:
+    later, base = _parse_ts(candidate), _parse_ts(reference)
+    return later is not None and base is not None and later > base
+
+
+async def _member_role(session: AsyncSession, group_id: str, user_id: str) -> str | None:
+    """The user's stored role in this static; None when they are no longer a member (R-P0-4)."""
+    result = await session.execute(
+        select(Membership.role).where(
+            Membership.static_group_id == group_id,
+            Membership.user_id == user_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+def _participant_to_response(
+    p: RewardParticipantState, *, display_name: str | None, member_role: str | None
+) -> ParticipantStateResponse:
+    return ParticipantStateResponse(
+        id=p.id,
+        goal_id=p.goal_id,
+        user_id=p.user_id,
+        static_group_id=p.static_group_id,
+        state=p.state,
+        token_count=p.token_count,
+        priority_rank=p.priority_rank,
+        source=p.source,
+        last_synced_at=p.last_synced_at,
+        last_manual_override_at=p.last_manual_override_at,
+        notes=p.notes,
+        updated_at=p.updated_at,
+        display_name=display_name,
+        member_role=member_role,
+    )
+
+
+def _drop_to_response(
+    drop: RewardDropLog, recipient_display_name: str | None
+) -> RewardDropResponse:
+    return RewardDropResponse(
+        id=drop.id,
+        goal_id=drop.goal_id,
+        static_group_id=drop.static_group_id,
+        recipient_user_id=drop.recipient_user_id,
+        created_by_id=drop.created_by_id,
+        quantity=drop.quantity,
+        dropped_at=drop.dropped_at,
+        notes=drop.notes,
+        created_at=drop.created_at,
+        recipient_display_name=recipient_display_name,
+        recipient_prior_state=drop.recipient_prior_state,
+    )
 
 
 async def _get_goal(session: AsyncSession, group_id: str, goal_id: str) -> CollectionGoal:
@@ -430,28 +505,22 @@ async def list_participants(
     await _get_goal(session, group_id, goal_id)
 
     result = await session.execute(
-        select(RewardParticipantState, User.display_name)
+        select(RewardParticipantState, User.display_name, Membership.role)
         .join(User, RewardParticipantState.user_id == User.id)
+        .outerjoin(
+            Membership,
+            and_(
+                Membership.user_id == RewardParticipantState.user_id,
+                Membership.static_group_id == RewardParticipantState.static_group_id,
+            ),
+        )
         .where(RewardParticipantState.goal_id == goal_id)
         .order_by(RewardParticipantState.priority_rank.nulls_last(), RewardParticipantState.updated_at)
     )
     rows = result.all()
     return [
-        ParticipantStateResponse(
-            id=p.id,
-            goal_id=p.goal_id,
-            user_id=p.user_id,
-            static_group_id=p.static_group_id,
-            state=p.state,
-            token_count=p.token_count,
-            priority_rank=p.priority_rank,
-            source=p.source,
-            last_synced_at=p.last_synced_at,
-            notes=p.notes,
-            updated_at=p.updated_at,
-            display_name=display_name,
-        )
-        for p, display_name in rows
+        _participant_to_response(p, display_name=display_name, member_role=member_role)
+        for p, display_name, member_role in rows
     ]
 
 
@@ -466,10 +535,20 @@ async def upsert_participant_state(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> ParticipantStateResponse:
-    """Any member can update their own state. Leads/owners can pass ?user_id= for others."""
+    """Members and above update their own state; viewers are refused (R-P0-3).
+
+    Only leads and owners set token_count / priority_rank by hand: a member's
+    values are ignored, not refused (the plugin sync is their token path).
+    """
     await get_static_group(session, group_id)
-    await require_membership(session, current_user.id, group_id)
+    membership = await require_membership(session, current_user.id, group_id)
     await _get_goal(session, group_id, goal_id)
+
+    if membership.role == MemberRole.VIEWER:
+        raise PermissionDenied("Viewers cannot track farms")
+    can_rank = membership.role_level >= _LEAD_LEVEL
+    token_count = body.token_count if can_rank else None
+    priority_rank = body.priority_rank if can_rank else None
 
     now = _now()
     result = await session.execute(
@@ -487,8 +566,8 @@ async def upsert_participant_state(
             user_id=current_user.id,
             static_group_id=group_id,
             state=body.state,
-            token_count=body.token_count,
-            priority_rank=body.priority_rank,
+            token_count=token_count,
+            priority_rank=priority_rank,
             source="manual",
             notes=body.notes,
             last_manual_override_at=now,
@@ -497,10 +576,10 @@ async def upsert_participant_state(
         session.add(participant)
     else:
         participant.state = body.state
-        if body.token_count is not None:
-            participant.token_count = body.token_count
-        if body.priority_rank is not None:
-            participant.priority_rank = body.priority_rank
+        if token_count is not None:
+            participant.token_count = token_count
+        if priority_rank is not None:
+            participant.priority_rank = priority_rank
         if body.notes is not None:
             participant.notes = body.notes
         participant.source = "manual"
@@ -512,21 +591,10 @@ async def upsert_participant_state(
 
     user_result = await session.execute(select(User).where(User.id == current_user.id))
     user = user_result.scalar_one_or_none()
+    member_role = await _member_role(session, group_id, current_user.id)
 
-    return ParticipantStateResponse(
-        id=participant.id,
-        goal_id=participant.goal_id,
-        user_id=participant.user_id,
-        static_group_id=participant.static_group_id,
-        state=participant.state,
-        token_count=participant.token_count,
-        priority_rank=participant.priority_rank,
-        source=participant.source,
-        last_synced_at=participant.last_synced_at,
-        last_manual_override_at=participant.last_manual_override_at,
-        notes=participant.notes,
-        updated_at=participant.updated_at,
-        display_name=user.display_name if user else None,
+    return _participant_to_response(
+        participant, display_name=user.display_name if user else None, member_role=member_role
     )
 
 
@@ -547,15 +615,19 @@ async def upsert_participant_state_for_user(
     await require_can_manage_members(session, current_user.id, group_id)
     await _get_goal(session, group_id, goal_id)
 
-    # Confirm target user is a member
+    # Confirm target user is a member, and not a viewer (R-P0-3: a viewer can't be
+    # made a drop recipient through the back door).
     membership_result = await session.execute(
         select(Membership).where(
             Membership.static_group_id == group_id,
             Membership.user_id == target_user_id,
         )
     )
-    if not membership_result.scalar_one_or_none():
+    target_membership = membership_result.scalar_one_or_none()
+    if target_membership is None:
         raise NotFound("User is not a member of this static")
+    if target_membership.role == MemberRole.VIEWER:
+        raise HTTPException(status_code=400, detail="Viewers can't be tracked")
 
     now = _now()
     result = await session.execute(
@@ -599,20 +671,10 @@ async def upsert_participant_state_for_user(
     user_result = await session.execute(select(User).where(User.id == target_user_id))
     user = user_result.scalar_one_or_none()
 
-    return ParticipantStateResponse(
-        id=participant.id,
-        goal_id=participant.goal_id,
-        user_id=participant.user_id,
-        static_group_id=participant.static_group_id,
-        state=participant.state,
-        token_count=participant.token_count,
-        priority_rank=participant.priority_rank,
-        source=participant.source,
-        last_synced_at=participant.last_synced_at,
-        last_manual_override_at=participant.last_manual_override_at,
-        notes=participant.notes,
-        updated_at=participant.updated_at,
+    return _participant_to_response(
+        participant,
         display_name=user.display_name if user else None,
+        member_role=target_membership.role,
     )
 
 
@@ -631,58 +693,70 @@ async def log_drop(
     current_user: User = Depends(get_current_user),
 ) -> RewardDropResponse:
     await get_static_group(session, group_id)
-    await require_membership(session, current_user.id, group_id)
+    membership = await require_membership(session, current_user.id, group_id)
     await _get_goal(session, group_id, goal_id)
 
-    now = _now()
-    drop = RewardDropLog(
-        id=str(uuid.uuid4()),
-        goal_id=goal_id,
-        static_group_id=group_id,
-        recipient_user_id=body.recipient_user_id,
-        created_by_id=current_user.id,
-        quantity=body.quantity,
-        dropped_at=body.dropped_at or now,
-        notes=body.notes,
-        created_at=now,
-    )
-    session.add(drop)
+    # R-P0-1: checked in this order, before any write. The recipient's membership is
+    # checked last so a member can't probe who belongs to the static.
+    recipient_id = body.recipient_user_id
+    if membership.role == MemberRole.VIEWER:
+        raise PermissionDenied("Viewers cannot log drops")
+    if recipient_id and recipient_id != current_user.id and membership.role_level < _LEAD_LEVEL:
+        raise PermissionDenied("Only leads and owners can log a drop for another member")
+    if recipient_id:
+        recipient_result = await session.execute(
+            select(Membership.id).where(
+                Membership.static_group_id == group_id,
+                Membership.user_id == recipient_id,
+                Membership.role != MemberRole.VIEWER.value,
+            )
+        )
+        if recipient_result.first() is None:
+            raise HTTPException(status_code=400, detail="Recipient must be a member of this static")
 
-    # If recipient is identified, auto-advance their state to "have" if currently need/want
-    if body.recipient_user_id:
+    now = _now()
+
+    # If the recipient is identified, auto-advance their state to "have" if currently
+    # need/want, and remember the state it replaced so a delete can restore it (R-P0-2).
+    recipient_prior_state: str | None = None
+    if recipient_id:
         p_result = await session.execute(
             select(RewardParticipantState).where(
                 RewardParticipantState.goal_id == goal_id,
-                RewardParticipantState.user_id == body.recipient_user_id,
+                RewardParticipantState.user_id == recipient_id,
             )
         )
         participant = p_result.scalar_one_or_none()
         if participant and participant.state in ("need", "want"):
+            recipient_prior_state = participant.state
             participant.state = "have"
             participant.updated_at = now
+
+    drop = RewardDropLog(
+        id=str(uuid.uuid4()),
+        goal_id=goal_id,
+        static_group_id=group_id,
+        recipient_user_id=recipient_id,
+        created_by_id=current_user.id,
+        quantity=body.quantity,
+        dropped_at=body.dropped_at or now,
+        notes=body.notes,
+        recipient_prior_state=recipient_prior_state,
+        created_at=now,
+    )
+    session.add(drop)
 
     await session.commit()
     await session.refresh(drop)
 
     recipient_name: str | None = None
-    if body.recipient_user_id:
-        u_result = await session.execute(select(User).where(User.id == body.recipient_user_id))
+    if recipient_id:
+        u_result = await session.execute(select(User).where(User.id == recipient_id))
         u = u_result.scalar_one_or_none()
         recipient_name = u.display_name if u else None
 
-    logger.info("reward_drop_logged", group_id=group_id, goal_id=goal_id, recipient=body.recipient_user_id)
-    return RewardDropResponse(
-        id=drop.id,
-        goal_id=drop.goal_id,
-        static_group_id=drop.static_group_id,
-        recipient_user_id=drop.recipient_user_id,
-        created_by_id=drop.created_by_id,
-        quantity=drop.quantity,
-        dropped_at=drop.dropped_at,
-        notes=drop.notes,
-        created_at=drop.created_at,
-        recipient_display_name=recipient_name,
-    )
+    logger.info("reward_drop_logged", group_id=group_id, goal_id=goal_id, recipient=recipient_id)
+    return _drop_to_response(drop, recipient_name)
 
 
 @router.get(
@@ -708,18 +782,93 @@ async def list_drops(
         .limit(limit)
     )
     rows = result.all()
-    return [
-        RewardDropResponse(
-            id=drop.id,
-            goal_id=drop.goal_id,
-            static_group_id=drop.static_group_id,
-            recipient_user_id=drop.recipient_user_id,
-            created_by_id=drop.created_by_id,
-            quantity=drop.quantity,
-            dropped_at=drop.dropped_at,
-            notes=drop.notes,
-            created_at=drop.created_at,
-            recipient_display_name=display_name,
+    return [_drop_to_response(drop, display_name) for drop, display_name in rows]
+
+
+@router.delete(
+    "/static-groups/{group_id}/collection-goals/{goal_id}/drops/{drop_id}",
+    status_code=204,
+)
+async def delete_drop(
+    group_id: str,
+    goal_id: str,
+    drop_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Leads, owners, or the member who logged it delete a drop (R-P0-2).
+
+    Restoring the recipient's state doesn't depend on delete order: the prior
+    state hands off to the earliest remaining drop, and only the last drop to go
+    restores it, unless the plugin or a manual edit set the state since.
+    """
+    await get_static_group(session, group_id)
+    membership = await require_membership(session, current_user.id, group_id)
+    if membership.role == MemberRole.VIEWER:
+        raise PermissionDenied("Viewers cannot delete drops")
+
+    result = await session.execute(
+        select(RewardDropLog).where(
+            RewardDropLog.id == drop_id,
+            RewardDropLog.goal_id == goal_id,
+            RewardDropLog.static_group_id == group_id,
         )
-        for drop, display_name in rows
-    ]
+    )
+    drop = result.scalar_one_or_none()
+    if drop is None:
+        raise NotFound("Drop not found")
+    if membership.role_level < _LEAD_LEVEL and drop.created_by_id != current_user.id:
+        raise PermissionDenied("Only leads, owners or the member who logged it can delete a drop")
+
+    recipient_id = drop.recipient_user_id
+    prior_state = drop.recipient_prior_state
+    drop_created_at = drop.created_at
+    await session.delete(drop)
+    await session.flush()
+
+    if recipient_id is not None:
+        remaining_result = await session.execute(
+            select(RewardDropLog)
+            .where(
+                RewardDropLog.goal_id == goal_id,
+                RewardDropLog.recipient_user_id == recipient_id,
+            )
+            .order_by(RewardDropLog.created_at, RewardDropLog.id)
+        )
+        remaining = list(remaining_result.scalars().all())
+        if remaining:
+            # 1. Other drops remain: the recipient still received one, so they stay
+            #    "have" and the prior moves to the earliest remaining drop without one.
+            if prior_state is not None:
+                for other in remaining:
+                    if other.recipient_prior_state is None:
+                        other.recipient_prior_state = prior_state
+                        break
+        elif prior_state is not None:
+            # 2. This was their last drop: restore the state the flip replaced, unless
+            #    the plugin or a manual edit set the state since the drop.
+            p_result = await session.execute(
+                select(RewardParticipantState).where(
+                    RewardParticipantState.goal_id == goal_id,
+                    RewardParticipantState.user_id == recipient_id,
+                )
+            )
+            participant = p_result.scalar_one_or_none()
+            if (
+                participant
+                and participant.state == "have"
+                and not _is_after(participant.last_synced_at, drop_created_at)
+                and not _is_after(participant.last_manual_override_at, drop_created_at)
+            ):
+                participant.state = prior_state
+                participant.updated_at = _now()
+
+    await session.commit()
+    logger.info(
+        "reward_drop_deleted",
+        group_id=group_id,
+        goal_id=goal_id,
+        drop_id=drop_id,
+        recipient=recipient_id,
+        restored_state=prior_state,
+    )

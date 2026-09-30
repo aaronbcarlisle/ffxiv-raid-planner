@@ -19,6 +19,11 @@ async def owner(session: AsyncSession) -> User:
 
 
 @pytest_asyncio.fixture
+async def lead(session: AsyncSession) -> User:
+    return await create_user(session, discord_id="lead_cg_1", discord_username="lead")
+
+
+@pytest_asyncio.fixture
 async def member(session: AsyncSession) -> User:
     return await create_user(session, discord_id="member_cg_1", discord_username="member")
 
@@ -34,6 +39,11 @@ def owner_headers(owner: User) -> dict[str, str]:
 
 
 @pytest.fixture
+def lead_headers(lead: User) -> dict[str, str]:
+    return {"Authorization": f"Bearer {create_access_token(lead.id)}"}
+
+
+@pytest.fixture
 def member_headers(member: User) -> dict[str, str]:
     return {"Authorization": f"Bearer {create_access_token(member.id)}"}
 
@@ -44,8 +54,9 @@ def outsider_headers(outsider: User) -> dict[str, str]:
 
 
 @pytest_asyncio.fixture
-async def group(session: AsyncSession, owner: User, member: User):
+async def group(session: AsyncSession, owner: User, lead: User, member: User):
     g = await create_static_group(session, owner)
+    await create_membership(session, lead, g, role="lead")
     await create_membership(session, member, g, role="member")
     return g
 
@@ -159,11 +170,28 @@ async def goal(async_client: AsyncClient, group, owner_headers):
     return resp.json()
 
 
-async def test_member_sets_own_state(async_client: AsyncClient, group, goal, member_headers):
+async def test_member_sets_own_state_but_token_count_is_not_stored(
+    async_client: AsyncClient, group, goal, member_headers
+):
+    """R-P0-3: a member's self-upsert writes state, and ignores token_count/priority_rank."""
     resp = await async_client.patch(
         f"/api/static-groups/{group.id}/collection-goals/{goal['id']}/participants",
         json={"state": "need", "token_count": 45},
         headers=member_headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["state"] == "need"
+    assert data["token_count"] is None
+
+
+async def test_lead_sets_own_state_and_token_count_is_stored(
+    async_client: AsyncClient, group, goal, lead_headers
+):
+    resp = await async_client.patch(
+        f"/api/static-groups/{group.id}/collection-goals/{goal['id']}/participants",
+        json={"state": "need", "token_count": 45},
+        headers=lead_headers,
     )
     assert resp.status_code == 200
     data = resp.json()
