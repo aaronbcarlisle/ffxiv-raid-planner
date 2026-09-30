@@ -3,7 +3,7 @@
 **XIV Raid Planner — Information Architecture, Design Language & UX Flow**
 **Tier-1 canonical · pairs with `PRODUCT_MODEL.md`**
 
-> **Status:** Draft for review · 2026-06-27
+> **Status:** Draft for review · 2026-06-27 — never re-stamped, but amended in place since (e.g. §3.2, 2026-07-26) and used as the V2 build target through Phases C–E and Stages 1–4. Where the redesign stands today: [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done).
 > **Authority:** This document is the canonical source of truth for *how the app is structured, how it looks, and how a user moves through it*. `PRODUCT_MODEL.md` owns *what the app is and why*; this owns *the shape of the experience*. Where the two ever conflict, `PRODUCT_MODEL.md` wins on vision, this wins on structure.
 > **Scope:** Information architecture, navigation model, design language/tokens, component conventions, the per-screen blueprint, and the end-to-end UX flow graph. The phased build sequence lives in the roadmap (separate doc); the atomic component API stays in the design system.
 
@@ -91,6 +91,8 @@ There is **no fourth surface.** The "More" page is deleted; its contents are re-
 ```
    Home  ·  Roster  ·  Loot  ·  Schedule  ·  Progress
 ```
+
+> **Build status (2026-09-30):** the shipped V2 spine is still four tabs — `frontend/src/components/layout/Spine.tsx:17-21` (Home · Roster · Loot · Schedule). The Progress tab is Stage 2 work, not built.
 
 **"Gear" is not a tab.** It was a view of data that already lives in Roster, Loot, and Home — the textbook "label with no scent / no unique home." Its content is re-homed into three purposeful places (§3.3). **"Log" was originally not a tab either** — the 2026-07-26 History-vs-Logging ruling (parity matrix D-30/D-31) made it a **view inside Loot**: recording the week is a job of its own, distinct from deciding priority and from finding past entries. **"Progress"** joined as the fifth tab (flow-map F-03): the tracks surface for goals, farms, and future content tracks — matching `PRODUCT_MODEL.md` §3.2's spine, which ends in Progress. Each tab owns one job, with a verb you can say aloud:
 
@@ -397,11 +399,13 @@ These were the three open structural decisions gating F3. All are now canon:
 5. **Schedule as a tab vs. woven into Home:** scheduling is foundational *because* it's the clock. Does it warrant a full tab, or is "Next session + RSVP on Home + an availability view" enough, with the deep calendar one level down? *(Spec keeps it a tab; it's a distinct job.)*
 6. **Player Hub vs. personal Home:** is the Person-layer landing the Player Hub itself, or a lighter "your statics + what needs you" home that *contains* the Hub? *(Spec treats Player Hub as the front door.)* **Closed 2026-09-25 (Player Hub H-1):** the Hub is the player's glance-first dashboard; it is the landing page only for static-less users (L-2). See `specs/2026-09-25-player-hub-design.md`.
 7. **Tracks surfacing:** do non-flagship tracks (mounts, ultimates) each get a nav entry inside a static, or live only as cards on Home + a track detail view? *(Spec: cards on Home + detail, no nav entry — preserves the 4-tab spine.)*
-8. **PR #154 / Plan F:** keep merging the standardization stack (it's pure conformance work the redesign *wants*), or freeze it to avoid churn on screens about to be restructured? *(Recommend: keep the token/lint/shared-component work, pause the per-screen restyling of screens being replaced.)*
+8. **PR #154 / Plan F:** keep merging the standardization stack (it's pure conformance work the redesign *wants*), or freeze it to avoid churn on screens about to be restructured? *(Recommend: keep the token/lint/shared-component work, pause the per-screen restyling of screens being replaced.)* **→ Moot: #154 closed unmerged.**
 
 ---
 
 ## 12. What this unlocks (next deliverables, in order)
+
+> **Status 2026-09-30:** a 2026-06-27 plan, since overtaken by the phased rollout. 1 ✅ `mockups/01…06` · 2 ✅ `specs/f5-screen-components-map.md` · 3 ✅ `ROLLOUT_ROADMAP.md` / `RECONCILIATION.md` · 4 unverified. Current state: [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done).
 
 1. **Mockup pass** — Roster (Cards⇄Board), Loot (Priority + recipient picker), Schedule, ⌘K, Player Hub — at normal + widescreen, on this spec.
 2. **Screen→components map** — every element tagged existing / refine / new, formalizing the new components into the design system.

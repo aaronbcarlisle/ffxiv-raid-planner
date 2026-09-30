@@ -2,7 +2,7 @@
 
 **Status: RATIFIED 2026-07-25 — user agreed to all recommendations (rulings recorded in §6). Per D1, Stage 0–1 implementation begins after Phase G (PR #161) merges; the Stage-1 parity matrix (D5) may be prepared beforehand (docs-only). No status cell in any other doc moves until stages are demonstrated in the running app.**
 
-**Execution status (2026-07-25): Stage 0 ✅ COMPLETE (PRs #176/#177 — D3 notif href, A3 void-fix, mobile TopBar overlap, doc-cite fixes). Stage 1 ✅ COMPLETE (four stacked PRs, all user-merged: #178 S1+S2 nav entry w/ D7 gate · #179 chrome-context/G2/M2 seams + NotificationCenter single-mount · #180 AppChrome host + portal slots + group hoist · #181 the coverage flip: NonGroupTopBar + route scope + Profile/AdminLayout seams + e2e pins). Acceptance: director row-by-row sweep of the signed parity matrix (all rows satisfied), plan-§5 live-validation checklist executed in the running app (three personas × both shells × both viewports, 0 console errors). The user's 100% chrome-coverage metric is met: nothing clickable in V2 lands in V1 chrome. The v2 opt-in remains DARK behind the D7 admin gate — un-gating is a separate user decision (§6 D7). Known cosmetic carry-forwards: /admin v2 spurious ~17px scrollbar (legacy ~9px, same class; Stage-5 admin fit) · M6 desktop pre-hydration skeleton sits in the top bar while the authed menu resolves to the rail footer.**
+**Execution status (2026-07-25; per-stage status lines under each Stage heading in §3, verified against git/code 2026-09-30): Stage 0 ✅ COMPLETE (PRs #176/#177 — D3 notif href, A3 void-fix, mobile TopBar overlap, doc-cite fixes). Stage 1 ✅ COMPLETE (four stacked PRs, all user-merged: #178 S1+S2 nav entry w/ D7 gate · #179 chrome-context/G2/M2 seams + NotificationCenter single-mount · #180 AppChrome host + portal slots + group hoist · #181 the coverage flip: NonGroupTopBar + route scope + Profile/AdminLayout seams + e2e pins). Acceptance: director row-by-row sweep of the signed parity matrix (all rows satisfied), plan-§5 live-validation checklist executed in the running app (three personas × both shells × both viewports, 0 console errors). The user's 100% chrome-coverage metric is met: nothing clickable in V2 lands in V1 chrome. The v2 opt-in remains DARK behind the D7 admin gate (`TryNewUiBanner.tsx`); where the redesign stands and what the un-gate needs: [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done). Known cosmetic carry-forwards: /admin v2 spurious ~17px scrollbar (legacy ~9px, same class; Stage-5 admin fit) · M6 desktop pre-hydration skeleton sits in the top bar while the authed menu resolves to the rail footer.**
 
 Produced 2026-07-25 from a three-track audit (route/shell inventory · V2 exit-affordance sweep · sanctioned-plan docs review) plus an `xivrp-director` plan vet (verdict: **PARITY-GAP — approve with required changes**; every required change is folded in below and marked `[DIR]`).
 
@@ -80,13 +80,17 @@ The "missing nothing" guarantee comes from inventories (this doc §1 + per-surfa
 
 ### Stage 0 — decisions + hygiene (small, parallel)
 
-- **D1 ruling (default: after Phase G).** ROLLOUT_ROADMAP §1 says B–F land as PRs to main after G; PR #161 is open with 2 unchecked user-owned gates. Stacking more on foundation grows an already-huge diff — requires explicit user override. `[DIR]`
+> **Status — ✅ COMPLETE** (#176 `316d73cb`, #177 `931de82c`; Phase G #161 merged first per D1). Verified 2026-09-30: no `/dashboard` href left in `join_requests.py` (D3); `Loot.tsx:249` strips `shell` (D4); no `docs/REDESIGN_SPEC.md` cites left in CLAUDE.md / docs/README.md / agents.
+
+- **D1 ruling (default: after Phase G).** ROLLOUT_ROADMAP §1 says B–F land as PRs to main after G; PR #161 is open with 2 unchecked user-owned gates *(→ ✅ merged #161, 2026-07-25)*. Stacking more on foundation grows an already-huge diff — requires explicit user override. `[DIR]`
 - **D3 ruling:** backend accepted-notification href `/dashboard` → `/group/{share_code}` (`join_requests.py:749`). **V1-visible** — needs ruling + release-note entry; not a silent "data fix". `[DIR]`
 - **D4 ruling (recommended: strip):** shared copy-links strip `shell` — align `Loot.tsx:246` **down** to Roster's behavior. With S2 landed, a pinned `shell=v2` link session-sticks the recipient's entire tab. `[DIR]`
 - Ring-0 owed items run as parallel micro-slices per RECONCILIATION "Next moves": A3 void-fix, mobile TopBar overlap.
 - Fix stale `REDESIGN_SPEC.md` path cites (CLAUDE.md, docs/README.md, director charter).
 
 ### Stage 1 — V2 App Chrome on every route (B8 completion; the coverage move)
+
+> **Status — ✅ COMPLETE** (#178 `87436a60`, #179 `b8dc8f1c`, #180 `1625c850`, #181 `02a55691`, merged 2026-07-25/26).
 
 When `resolvedShell === 'v2'`: all Layout-hosted routes render V2 chrome — AppRail (real `isActive` for Player Hub/Static Finder; logo becomes a home link) + a slim non-group TopBar — hosting the **existing page bodies unchanged**. Legacy/no-param users stay byte-identical.
 
@@ -113,6 +117,8 @@ Scope & structure requirements (all `[DIR]`):
 
 B5 Goals→Progress-Engine tracks · B6 Plugin→Settings/Player Hub · B4 More dissolution (**first** re-homing the mobile classic-UI escape and Exports/Activity-Log) · B7 remove off-spine reachability + replace `MobileBottomNav` with a v2 4-tab mobile nav (fixes the leak). Standing item: begin V2 content-host extraction as `GroupViewContent` conditionals shrink (§2).
 
+> **Status 2026-09-30 — ⬜ NOT STARTED.** Verified in code: `Spine.tsx:17-21` still has 4 tabs (Home/Roster/Loot/Schedule); `goals`/`plugin`/`more` are reachable only via ⌘K (`CommandPalette.tsx:139-153`) and the legacy nav; `MobileBottomNav` still renders ungated for V2 (`GroupViewContent.tsx:1244`). Next in the home-stretch order — see [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done).
+
 ### Stage 3 — Player Hub as a real V2 surface (B2)
 
 Close REDESIGN_SPEC §11 open decision #6 with the user (front-door vs light personal home) · analytics pass on profile-tab usage (roadmap §5.0 pattern) · full affordance-parity matrix for Profile's 7 sub-views + Dashboard/`MyStaticsPanel` · build per REDESIGN_SPEC §5.5 with mockup-05 re-validation · absorbs My Statics + `/dashboard` (route → redirect) · resolves the Stage-1 double-rail. **The availability flip-blocker + one-editor mandate land here** (re-hosted week editor or the Person→Static aggregation pipe).
@@ -129,11 +135,15 @@ Same discipline per §5.6 + mockup-06 re-validation; unifies Discover + recruitm
 
 Docs: light restyle inside v2 chrome (pulls Phase F's docs scope in). Admin: **stays a separate gated area** (PRODUCT_MODEL §5 — no port mandate) but v2-chromed from Stage 1; deeper restyle optional; admin boundary-lint constraints noted (ring→admin edges are fail-on-new).
 
-2026-09-29: Admin runs as its own workstream — spec `specs/2026-08-08-admin-v2-spec.md`, plan `plans/2026-08-08-admin-v2-plan.md` (AD1a #241 merged; AD1b = wave-1 audit emits + Logs API, plan `plans/2026-09-29-ad1b-audit-emits.md`).
+2026-09-29: Admin runs as its own workstream — spec `specs/2026-08-08-admin-v2-spec.md`, plan `plans/2026-08-08-admin-v2-plan.md` (AD1a #241 merged; AD1b = wave-1 audit emits + Logs API, plan `plans/2026-09-29-ad1b-audit-emits.md` → ✅ merged #317 `053700d6` / #318 `40b182a1`, 2026-09-30; OWNER-2 #319). AD2+ is parked and does not block the un-gate.
+
+> **Status 2026-09-30 — ◐ PARTIAL.** Admin: v2-chromed since Stage 1; AD1a #241 + AD1b #317/#318 merged; AD2+ parked. Docs: v2-chromed since Stage 1, but the light restyle (Phase F's docs scope) is ⬜ not started.
 
 ### Stage 6 — ⌘K actions (B1)
 
 Unchanged, last.
+
+> **Status 2026-09-30 — ⬜ NOT STARTED.** `CommandPalette.tsx` offers only go-to-tab, Open Settings and static switching; REDESIGN_SPEC §3.4's "do anything" actions (log a drop, log the week, RSVP, who-needs-X) are not built.
 
 ---
 
@@ -163,6 +173,6 @@ Stage 1 deliberately pulls **B8 (chrome everywhere) ahead of B4–B7 (IA collaps
 | D4 | Shared copy-links and `shell` param | **Strip `shell`** (align `Loot.tsx:246` down to Roster) — post-G |
 | D5 | Stage-1 chrome parity matrix | **SATISFIED 2026-07-25** — `specs/stage1-chrome-parity-matrix.md` director-verified and user-signed ("approve all": M1–M4, G1, G2, G4 approved as recommended) |
 | D6 | (Stage 3) REDESIGN_SPEC §11 open decision #6: Player Hub as front door vs light personal home | ✅ **Closed 2026-09-25** (Player Hub H-1): glance-first dashboard; landing only for static-less users (L-2) |
-| D7 | Launch gate (added 2026-07-25, user-approved) | **The Phase-G merge ships the v2 opt-in DARK**: `TryNewUiBanner` is admin-gated so regular users/guests can't enter v2 pre-coverage; admins dogfood in prod; `?shell=v2` stays as a power-user escape hatch. **Un-gate criterion = Stage 1 landed** ("anything reachable from v2 stays in v2") **+ the Ring-0 blemishes** (A3 void-fix, mobile TopBar overlap). Phase H's opt-in-availability clock starts at un-gate. When `redesign/v2-nav-entry` merges, S1's user-menu "Try the new UI" item gets the same gate. **→ SUPERSEDED 2026-07-25 (post-Stage-1 user ruling): the un-gate moves to the VERY END — after Stages 2–6, Phases B–F, and the new Phase P beta-polish walkthrough (ROLLOUT_ROADMAP §7b) — so first-time users meet a finished V2. Escape hatch and admin dogfooding unchanged.** |
+| D7 | Launch gate (added 2026-07-25, user-approved) | **The Phase-G merge ships the v2 opt-in DARK**: `TryNewUiBanner` is admin-gated so regular users/guests can't enter v2 pre-coverage; admins dogfood in prod; `?shell=v2` stays as a power-user escape hatch. **Un-gate criterion = Stage 1 landed** ("anything reachable from v2 stays in v2") **+ the Ring-0 blemishes** (A3 void-fix, mobile TopBar overlap). Phase H's opt-in-availability clock starts at un-gate. When `redesign/v2-nav-entry` merges, S1's user-menu "Try the new UI" item gets the same gate. **→ SUPERSEDED 2026-07-25 (post-Stage-1 user ruling): the un-gate moves to the VERY END — after Stages 2–6, Phases B–F, and the new Phase P beta-polish walkthrough (ROLLOUT_ROADMAP §7b) — so first-time users meet a finished V2. Escape hatch and admin dogfooding unchanged.** Current un-gate definition of done: [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done). |
 
 The §2 ownership boundary (no wholesale V1 fork; shared behavior layer / frozen legacy-owned / growing V2-owned) is ratified alongside.

@@ -3,7 +3,7 @@
 **XIV Raid Planner — Design System Contract**
 **Tier-1 canonical · the atom + structure source of truth**
 
-> **Status:** v3 draft · 2026-06-27 · supersedes the rendered `docs/design-system` reference page
+> **Status:** v3 draft · 2026-06-27 · supersedes the rendered `docs/design-system` reference page — never re-stamped, but contracts have been appended in place through F6 and Phases C–E (latest E2b; one PH1 note in §2.1); no Stage 3–4 (Player Hub, Finder, Recruit) component contracts yet. Where the redesign stands: [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done).
 > **Relationship to other docs:** `PRODUCT_MODEL.md` owns *what the app is*. `REDESIGN_SPEC.md` owns *the IA and per-screen scaffolding*. **This** owns *the atoms* (tokens, components) **and the structural rules** (layout, width, vocabulary, governance) that every screen is built from. Where this and `REDESIGN_SPEC.md` overlap on structure, they are kept in sync; this doc is the lower-level authority on tokens/components, the spec on screen composition.
 > **Source of truth for values:** `tokens.json` (W3C format). This document *describes* tokens; `tokens.json` *defines* them and generates the CSS/Tailwind. If a hex appears here and disagrees with `tokens.json`, the JSON wins.
 
@@ -218,7 +218,7 @@ Kept from v2: text input (default/error/disabled, sizes, with-icon, input-group)
 
 *(These nine — §3.28–3.36 — were backfilled after the fact; F6c/F6d shipped ahead of their contracts. No behavior changed to write them; see §7 items 2/3 for the two ledger items this resolves.)*
 
-**Still proposals (not yet contracted):** **match-score listing** (Finder). Each gets a contract entry as it's built.
+**Still proposals (not yet contracted):** **match-score listing** (Finder). Each gets a contract entry as it's built. *(2026-09-30: built as `components/finder/FinderCard.tsx` + `ReasonRows` in SF1 #309–#311, match % deviated to a tier tag per the SF spec; its contract entry is still owed.)*
 
 ### 3.9 Context rail (Person-layer nav) — LOCKED
 

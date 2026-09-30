@@ -6,6 +6,11 @@
 > review (13-auditor workflow, 164 findings, 15/15 high-severity claims verified; report
 > artifact linked in memory `project-holistic-review-2026-07`).
 >
+> **Current state (2026-09-30):** where the redesign stands and the definition of done
+> (un-gate → 3.0.0 → V1 deletion) live in
+> [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done).
+> This roadmap keeps the phase history, rulings and process rules.
+>
 > **User decisions locked 2026-07-11:**
 > 1. **Restore legacy; v1 is the default on main** + "Try the new UI" opt-in.
 > 2. **Legacy is FROZEN** (bugfix-only, zero feature backports) with **criteria-based sunset**.
@@ -43,6 +48,24 @@ P  Beta polish walkthrough (page-by-page UX/styling audit, stepped WITH the user
 H  Feedback loop → flip default to v2 (3.0.0) → criteria sunset → delete legacy
 →  Rings 1–3 per PRODUCT_MODEL §7 (Person layer, tracks, More dissolution)
 ```
+
+Status as of 2026-09-30 (verified against merged PRs; current state lives in
+[PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done)):
+
+| Phase | Status |
+|-------|--------|
+| R | ✅ #174 |
+| A | ✅ #175; item-10 void remainder ✅ #176 |
+| G | ✅ #161 (2.1.0, v1 default, v2 admin-gated) |
+| B | ✅ matrix #183, rulings #184 |
+| C | ✅ C1–C8 #187–#201, closeout #202 |
+| D | ✅ D0–D14b #223–#273, carry-outs DC #274 — except D-18 (Split Planner entry; waits on a Progress tab) |
+| E | ✅ E1 #275, E2 #276/#277 |
+| F | ⬜ open (seams carried below) |
+| P | ⬜ not started (includes the consolidated mobile pass) |
+| ⚑ | ⬜ not shipped — v2 still admin-gated (`TryNewUiBanner.tsx`) |
+| H | ⬜ not started |
+| → | Now tracked as `V2_COVERAGE_PLAN.md` stages (2026-07-25 re-sequencing note below): Stage 1 chrome ✅ #178–#181; Stage 3 Player Hub ✅ PH1 #280–#282, PH2 #286–#288, PH3 #304–#306; Stage 4 Static Finder ✅ SF1 #308–#311 + Recruit Home ✅ RH1 #312–#316; Stage 2 (IA collapse / More dissolution), Stage 5 and Stage 6 ⬜ open |
 
 Phases B–F land as normal PRs to `main` after G. Order within B–F is flexible; C is the
 highest user-priority item after A.
@@ -115,15 +138,18 @@ param), legacy byte-for-byte at its P2 state + P3's keeper fixes, v1 default.
 persists; both smoke suites green; full CI gate green; browser validation both shells,
 both themes.
 
-## 3. Phase A — v2 flip-debt fixes ✅ COMPLETE — 16/17 (item 10 partial) (2026-07-12, PR #175 → foundation `6c9da75`)
+## 3. Phase A — v2 flip-debt fixes ✅ COMPLETE (2026-07-12, PR #175 → foundation `6c9da75`; item-10 remainder ✅ #176, 2026-07-25)
 
-> **16 of 17 items fully landed** as 13 tasks; **item 10 (void'd-promise sweep) is partial** — a bugfix-only micro-slice remains (see below). Spec: `specs/2026-07-11-phase-a-flip-debt-fixes.md`
+> **16 of 17 items fully landed** as 13 tasks; **item 10 (void'd-promise sweep) was partial** — the bugfix-only micro-slice
+> **→ ✅ done #176** (Stage 0 "A3 void-fix micro-slice": SplitClearPlanner ×4 and Roster claim/release/reset now surface
+> failures, Home's loot fetches wrapped; LodestoneSearchModal's 12 sites verified not rejection drops, 0 edits).
+> #176's own follow-ups: `Home.tsx` RSVP handler drop; frozen `PlayerGrid.tsx`/`PlayerCard.tsx` claim/release/reset drops. Spec: `specs/2026-07-11-phase-a-flip-debt-fixes.md`
 > (status header carries the merge record + the View-As/Leave decision point). Deferred
 > follow-ups from the branch: frozen-file void sites (SplitClearPlanner ×4,
 > LodestoneSearchModal ×12) + remaining `actionsForPlayer` bindings
 > (claim/release/reset/duplicate, same dropped-rejection class) + Home.tsx unguarded
-> mount fetches → one bugfix-only micro-slice; the rest in spec §4.
-> **NEXT = Phase G (§4, USER-OWNED).**
+> mount fetches → one bugfix-only micro-slice (→ ✅ #176); the rest in spec §4.
+> ~~NEXT = Phase G (§4, USER-OWNED).~~ → ✅ Phase G merged #161 (2026-07-25).
 
 From the verified holistic-review list + the user's review. All v2-side; legacy's return
 lowers the stakes but every one is still required before v2 can ever become default:
@@ -170,7 +196,7 @@ lowers the stakes but every one is still required before v2 can ever become defa
 - **dev_auth normalizes `tab_persistence` on login** (the `is_public` precedent) — the
   legacy e2e run surfaced drifted dev-DB state; make suite preconditions self-restoring.
 
-## 4. Phase G — Merge foundation→main (user-owned, EARLY)
+## 4. Phase G — Merge foundation→main (user-owned, EARLY) ✅ MERGED #161 (2026-07-25, 2.1.0)
 
 Gate = R + A complete. Checklist (user executes):
 - [x] Local `smoke` + `smoke-legacy` + `contrast` runs attached to the PR
@@ -179,14 +205,16 @@ Gate = R + A complete. Checklist (user executes):
 - [x] Release notes: public 2.1.0 entries (now "limited preview" + self-service leave,
       per the 2026-07-25 launch gate) + `CURRENT_VERSION`
       → **2.1.0** (3.0.0 is reserved for the v2-default flip in Phase H) — `71b854f`
-- [ ] Ratify list in the PR body (D-P3 decisions incl. SplitClearPlanner/TeamSummary
-      drops — note both are recoverable and Phase B may resurrect their capabilities) — **awaits user ruling on the 2 decision points**
-- [ ] User reviews + merges; main's 5 required checks + reviews stand
+- [x] Ratify list in the PR body (D-P3 decisions incl. SplitClearPlanner/TeamSummary
+      drops — note both are recoverable and Phase B may resurrect their capabilities) — ~~awaits user ruling on the 2 decision points~~
+      → ratify list in #161's body; the 2 View-As decision points (Leave suppressed, owner Delete) were
+      ruled by **D-50** at the Phase-B checkpoint (#184): suppress BOTH Leave and Delete under View As
+- [x] User reviews + merges; main's 5 required checks + reviews stand → ✅ #161 merged 2026-07-25
 
 After G, `main` is live with v1 unchanged for users + opt-in v2. Branch freeze ends;
 B–F land as normal PRs.
 
-## 5. Phase B — v1→v2 affordance-parity matrix
+## 5. Phase B — v1→v2 affordance-parity matrix ✅ (matrix #183, user rulings #184, 2026-07-26)
 
 **Method (the missing artifact from the original run):**
 0. **Mine prod usage analytics first (user decision 2026-07-11).** The analytics system
@@ -214,7 +242,7 @@ B–F land as normal PRs.
 4. **⏸ USER CHECKPOINT:** user marks each LOST/CHANGED row `restore` / `drop` /
    `redesign`. That marked matrix is the binding backlog for Phases C/D.
 
-## 6. Phase C — Roster rework (restore + restyle) — top user priority
+## 6. Phase C — Roster rework (restore + restyle) — top user priority ✅ (C1–C8 #187–#201, closeout #202, 2026-07-28)
 
 - **Expanded ⇄ collapsed card axis returns** (persisted preference, like legacy).
   Collapsed = current v2 compact card. Expanded = restored legacy GearTable/PlayerCard
@@ -256,7 +284,7 @@ B–F land as normal PRs.
   prominence, not text order (R-E1-J); U-2 TrackCard tags "Mount farm"; U-3 the next-session card gets
   a "Next session" eyebrow + real title; U-4 the roster subtitle describes the static, no change; U-5
   R-D14-B's fairness placement/title confirmed as built; U-6 the first-paint week order confirmed.
-  **✅ Status (E2, 2026-09-25): ran, ships as two stacked PRs (E2a + E2b), in review.** E2a = the
+  **✅ Status (E2, 2026-09-25): ran, ships as two stacked PRs (E2a + E2b) → ✅ merged E2a #276, E2b #277 (2026-09-26).** E2a = the
   plan + Task 1 (RSVP glyph, tz line, heading levels) + Task 3 (Home grid, StatCell, labels, the
   V1-authorized TierSelector/light muted token/Discover fixes) + Task 4 (loot fixes). E2b = Task 2
   (the roster card header on one line, the job badge, the shared BiS-progress helper) — split out
@@ -311,7 +339,8 @@ D12 row):
 - Holistic / Phase P (design calls). **✅ Shipped in E2 (U-12):** #5 spacing nit, #36 ultra-wide glyph
   adjacency (E2a Task 1), #7 Board denominator vs color, #12 search-hidden selection, #13 adjustments
   close-on-failure, #14 subs in adjustments (E2a Task 4 / E2b Task 2 per component). **Carried, with
-  homes:** #3 card richness → the Player Hub (spec approved 2026-09-25, PH1 next); #8 two "no BiS"
+  homes:** #3 card richness → the Player Hub (spec approved 2026-09-25, PH1 next → PH1–PH3 merged #280–#306 without
+  addressing #3; still open); #8 two "no BiS"
   signals and #32 membership intersection → Phase F; #20 materials-picker unification and #22
   accent-tint idiom → their own slices; #34 rsvp-row role seam → deferred. R-E1-J's compact
   fight-only controls (the floor pills, "Log floor — M12S", the picker's "Fight" Select — accepted
@@ -353,12 +382,12 @@ D12 row):
 - Lint's "warnings ≤ N" gate is not CI-enforced (`eslint .` has no `--max-warnings` in `ci.yml`) →
   repo setup.
 
-**Player Hub PH1 (Stage 3, `V2_COVERAGE_PLAN.md` §Stage 3) — built 2026-09-26** (`plans/2026-09-26-ph1-player-hub-structure.md`,
+**Player Hub PH1 (Stage 3, `V2_COVERAGE_PLAN.md` §Stage 3) — built 2026-09-26, ✅ merged #280–#282** (`plans/2026-09-26-ph1-player-hub-structure.md`,
 three stacked PRs PH1a/b/c). The V2 `PlayerHub` behind one `Profile` seam (V1 byte-identical), five tabs with
 legacy redirects, a glance-first Overview that absorbs My Statics, `/dashboard` → `/profile`, the rail portrait
 and a `You › {character}` breadcrumb. #3 (roster-card richness) is **not** addressed by PH1 — still homed to the
 Player Hub work. **Carried out of PH1:**
-- PH2: "Needs you" + `GET /api/player/overview` (also tier / next session / floors / average BiS on static rows). ✅ Built 2026-09-26 (below).
+- PH2: "Needs you" + `GET /api/player/overview` (also tier / next session / floors / average BiS on static rows). ✅ Built 2026-09-26 (below), merged #286–#288.
 - A later Stage-3 slice: the availability flip-blocker + one-editor mandate; the profile-tab analytics pass. → Pipe ✅ PH3 (#304 + #305, `plans/2026-09-27-ph3-player-hub-availability-pipe.md`): the flip-blocker is closed; the one-editor mandate is carried as the V2-native exceptions editor (spec H-10); the analytics pass is retired (H-7).
 - Phase P: swipe between Hub tabs and a mobile tab nav; the V2 loading skeleton still uses V1's centered frame.
 - V1-authorized pass: heading-level skips inside the V1-shared tab bodies (e.g. Collections' `h4`).
@@ -366,7 +395,7 @@ Player Hub work. **Carried out of PH1:**
   `remember=false` and kebab-Open tests; the `lastPluginSeenAt` preference guard; a dead `vi.doMock`;
   the duplicated next-step label; the cold first frame reading "No character linked".
 
-**Player Hub PH2 (Stage 3) — built 2026-09-26** (`plans/2026-09-26-ph2-player-hub-needs-you.md`, three stacked
+**Player Hub PH2 (Stage 3) — built 2026-09-26, ✅ merged #286–#288** (`plans/2026-09-26-ph2-player-hub-needs-you.md`, three stacked
 PRs PH2a/b/c). A read-only `GET /api/player/overview` computes, over the caller's memberships, a summary per static
 (tier, next session, floors cleared this week, average BiS) and two action-item types, `rsvp_pending` and
 `loot_priority`. The latter is the calculator's strict #1 on an unlogged floor-1–3 drop, ranked with the
@@ -375,15 +404,22 @@ settings and on one without. The Hub Overview gains a **Needs you** card and a s
 row. Four priority-input helpers moved from the loot router into `services/loot_context.py`, so the plugin's
 `priority` endpoint is unchanged; V1 is unchanged. **Carried out of PH2** (spec §9):
 - "Your BiS is out of date" once its rule is defined → a later Stage-3 slice. → ✅ PH3c (#306): the Needs you card's `bis_stale` item (spec H-8, §10.3).
-- `loot_priority` under enhanced scoring and for the weapon → with the plugin priority work.
-- A Queues / `floor=` deep link into Loot → Loot polish.
+- `loot_priority` under enhanced scoring and for the weapon → with the plugin priority work. *(Still open 2026-09-30:
+  `services/player_overview.py:71-74,532-533` still skips floor 4 and enhanced-scoring tiers.)*
+- A Queues / `floor=` deep link into Loot → Loot polish. *(Still open 2026-09-30: the item's href is
+  `?tab=gear`, `player_overview.py:581`.)*
 - The plugin `priority` endpoint's raw-settings ranking (empty role order when unset) plus the `roleOrder == []`
-  `||`/`or` gap → a plugin-contract ticket.
-- `objective_goals.py`'s next session ignores recurrence and cancellations → a backend bug ticket.
+  `||`/`or` gap → a plugin-contract ticket. *(Still open 2026-09-30: `routers/loot_tracking.py:1665` passes raw
+  `group.settings`; `services/priority_calculator.py:305` still uses `or`.)*
+- `objective_goals.py`'s next session ignores recurrence and cancellations → a backend bug ticket. *(Still open
+  2026-09-30: `routers/objective_goals.py:560-571` takes the first future `ScheduleSession` row; file unchanged since #133.)*
 - Owner questions in the PR body (F14): keep the conservative `loot_priority` skips, including ties, where Queues
   still shows a tiebroken #1? Is "{n}% of BiS slots" the right copy?
 
 ## 7b. Phase P — Beta polish walkthrough (added 2026-07-25, user ruling)
+
+> Status and where Phase P sits in the definition of done:
+> [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done). This section keeps the process detail.
 
 The last build phase, immediately before the un-gate. A **page-by-page UX/styling
 audit stepped through one-by-one WITH the user**: every v2 surface (in-static screens,
@@ -407,16 +443,15 @@ legacy MobileBottomNav still rendering under v2, breadcrumb overlap, etc.). Carr
 from slices: **Team Summary mobile collapse** (D-42's V1 collapse-on-phone, deferred by
 D13's R-D13-E, #271).
 
-## 8. Phase H — Default flip → sunset (criteria, proposed)
+## 8. Phase H — Default flip → sunset
 
-- **Flip v2 to default (3.0.0)** when ALL of: parity matrix 100% resolved (every row
-  restore/drop/redesign executed) · Phases C+D+E shipped · **Phase P walkthrough
-  complete and the un-gate shipped** · v2 opt-in available ≥4 weeks (clock starts at
-  the post-P un-gate, per the §1 re-sequencing note) · opt-in cohort shows no
-  unresolved parity complaints · toggle telemetry healthy.
-- **Sunset (delete legacy again)** when: v2 default ≥4 weeks · trailing-2-week opt-out
-  rate <10% (tune with real data) · zero open parity-tagged issues. Deletion re-runs the
-  P3 checklist — this time WITH the §6 verification steps actually executed.
+- **Definition of done** (un-gate → flip v2 to default at 3.0.0 → sunset / delete
+  legacy) now lives in
+  [PRODUCT_MODEL §6](../../docs/PRODUCT_MODEL.md#6-current-state-and-definition-of-done);
+  this section's former flip and sunset criteria (2026-07-11, proposed) moved there on
+  2026-09-30. Unique detail kept here: legacy deletion re-runs the P3 checklist — this
+  time WITH the verification steps actually executed (the deletion inventory is §6 of
+  `specs/2026-07-03-parity-flip-design.md`).
 - **Standing rule (permanent):** no surface gets replaced without an affordance-parity
   matrix reviewed by the user first. Byte-for-byte legacy freeze: bugfix-only until
   sunset.
@@ -434,4 +469,4 @@ D13's R-D13-E, #271).
 - Effort: ultracode for specs/adjudication, high for implement loops (per memory
   `feedback-effort-allocation`).
 - After G, release notes go back to normal public-entry discipline per CLAUDE.md.
-- Admin V2 (off the ring roadmap): 2026-09-29: Admin runs as its own workstream — spec `specs/2026-08-08-admin-v2-spec.md`, plan `plans/2026-08-08-admin-v2-plan.md` (AD1a #241 merged; AD1b = wave-1 audit emits + Logs API, plan `plans/2026-09-29-ad1b-audit-emits.md`).
+- Admin V2 (off the ring roadmap): 2026-09-29: Admin runs as its own workstream — spec `specs/2026-08-08-admin-v2-spec.md`, plan `plans/2026-08-08-admin-v2-plan.md` (AD1a #241 merged; AD1b = wave-1 audit emits + Logs API, plan `plans/2026-09-29-ad1b-audit-emits.md` → ✅ merged AD1b-A #317, AD1b-B #318, 2026-09-30). AD2+ is parked (owner picks next) and does not block the un-gate.

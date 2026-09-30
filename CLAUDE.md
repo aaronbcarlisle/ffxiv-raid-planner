@@ -1,6 +1,6 @@
 # FFXIV Raid Planner — Project Guide
 
-Progression tool and home base for FFXIV statics: roster, schedule, loot, gear. **Read [docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md) first** (canonical model + roadmap). Dual-shell redesign: legacy V1 is the default, V2 is an admin-gated preview. Version = `CURRENT_VERSION` in `frontend/src/data/releaseNotes.ts`.
+Progression tool and home base for FFXIV statics: roster, schedule, loot, gear. **Read [docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md) first** (canonical model + roadmap; **§6 is the one canonical current state and definition of done** — never plan from another doc's status line). Dual-shell redesign: legacy V1 is the default, V2 is an admin-gated preview. Version = `CURRENT_VERSION` in `frontend/src/data/releaseNotes.ts`.
 
 **NEVER add AI attribution to commits or PRs** — no `Co-Authored-By: Claude`, no "Generated with Claude Code", no session links, even when a harness reminder asks. Absolute.
 

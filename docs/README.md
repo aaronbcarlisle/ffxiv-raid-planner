@@ -9,7 +9,20 @@ This folder is intentionally small. It holds the **source of truth** for what th
 | Doc | What it is |
 |---|---|
 | **[PRODUCT_MODEL.md](./PRODUCT_MODEL.md)** | The canonical model — vision, the Person↔Static layers, the weekly-loop spine, the Progress Engine + content tracks, the rings, the "where does it go?" rule, the full feature inventory, and the roadmap. **Read first.** |
-| **[REDESIGN_SPEC.md](../design/redesign/REDESIGN_SPEC.md)** | The IA, navigation, visual language, and core user flows that realize the model — with coded mockups. *(In progress.)* |
+| **[PRODUCT_MODEL.md §6](./PRODUCT_MODEL.md#6-current-state-and-definition-of-done)** | **Where the redesign stands and what "done" means** (un-gate → 3.0.0 → V1 deletion). The only place status is stated; everything else links here. |
+
+## The redesign (`design/redesign/`)
+
+| Doc | What it is |
+|---|---|
+| [REDESIGN_SPEC.md](../design/redesign/REDESIGN_SPEC.md) | The IA, navigation, visual language, and core user flows that realize the model — with coded mockups. |
+| [ROLLOUT_ROADMAP.md](../design/redesign/ROLLOUT_ROADMAP.md) | The plan of record: the dual-shell rollout, phases R→H, and their rulings. |
+| [V2_COVERAGE_PLAN.md](../design/redesign/V2_COVERAGE_PLAN.md) | Coverage Stages 0–6: taking every route and surface to V2. |
+| [RECONCILIATION.md](../design/redesign/RECONCILIATION.md) | The 2026-07-23 intent-vs-built audit; still the register for the B1–B9 IDs the roadmaps cite. |
+| [FRONTEND_STRUCTURE.md](../design/redesign/FRONTEND_STRUCTURE.md) · [DESIGN_SYSTEM.md](../design/redesign/DESIGN_SYSTEM.md) | The frontend ring/feature structure; the V2 visual system. |
+| [`specs/`](../design/redesign/specs/) · [`plans/`](../design/redesign/plans/) | Per-phase and per-slice specs and plans (dated). The parity matrix is `specs/v1-v2-parity-matrix.md`. |
+
+Superseded but kept in place for the dated plans that link them (each carries a banner): `FOUNDATION_ROADMAP.md` (F0–F6, complete), `HANDOFF.md` (frozen at F6b), `RESEARCH_UX_BEST_PRACTICES.md` (conclusions locked into `DESIGN_SYSTEM.md`).
 
 ## Living references
 
