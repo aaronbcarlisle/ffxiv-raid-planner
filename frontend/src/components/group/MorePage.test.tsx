@@ -12,8 +12,9 @@
  *    on the Integrations tab (both shells — the caller supplies the handler).
  */
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { MemberRole } from '../../types';
+import { useViewAsStore } from '../../stores/viewAsStore';
 
 vi.mock('../../stores/joinRequestStore', () => ({
   useJoinRequestStore: (selector: (s: { pendingCount: number; groupRequests: unknown[] }) => unknown) =>
@@ -185,5 +186,34 @@ describe('MorePage', () => {
     renderMorePage({ userRole: 'member' as MemberRole, canManage: false });
     expect(screen.queryByText('Leave Static')).toBeNull();
     expect(screen.queryByText('Danger Zone')).toBeNull();
+  });
+
+  // ── D-50 (HS-30): Delete hidden under View As ──
+
+  describe('under View As', () => {
+    afterEach(() => {
+      useViewAsStore.setState({ viewAsUser: null, isLoading: false, error: null });
+    });
+
+    it('owner: no Delete Static button and no Danger Zone (Leave is already withheld there)', () => {
+      useViewAsStore.setState({
+        viewAsUser: {
+          userId: 'u2',
+          discordUsername: 'viewed',
+          displayName: 'Viewed',
+          avatarUrl: null,
+          groupId: 'g1',
+          groupName: 'Test Static',
+          isMember: true,
+          role: 'owner',
+          isLinkedPlayer: false,
+          linkedPlayerId: null,
+          linkedPlayerName: null,
+        },
+      });
+      renderMorePage({ userRole: 'owner' as MemberRole });
+      expect(screen.queryByRole('button', { name: 'Delete Static' })).toBeNull();
+      expect(screen.queryByText('Danger Zone')).toBeNull();
+    });
   });
 });

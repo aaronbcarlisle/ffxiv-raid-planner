@@ -11,6 +11,7 @@ import { Trash2 } from 'lucide-react';
 import { Label, Input, ErrorBox, Select, Toggle } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { useIsViewingAs } from '../../stores/viewAsStore';
 import { toast } from '../../stores/toastStore';
 import type { StaticGroup } from '../../types';
 
@@ -37,7 +38,11 @@ export function StaticTab({ group, onClose }: StaticTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const isViewingAs = useIsViewingAs();
   const isOwner = group.userRole === 'owner';
+  // D-50 (HS-30): the raw role can be the backend's virtual owner for a
+  // non-member admin, so View As of any role must not offer the delete.
+  const canDelete = isOwner && !isViewingAs;
   const canEdit = group.userRole === 'owner' || group.userRole === 'lead';
 
   // Check if settings have changed
@@ -148,7 +153,7 @@ export function StaticTab({ group, onClose }: StaticTabProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (showDeleteConfirm) {
+  if (showDeleteConfirm && canDelete) {
     return (
       <div className="space-y-4">
         <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg">
@@ -302,7 +307,7 @@ export function StaticTab({ group, onClose }: StaticTabProps) {
       {/* Sticky Action Buttons footer */}
       <div className="flex-shrink-0 flex justify-between pt-4 pb-4 pr-4 border-t border-border-default">
         <div>
-          {isOwner && (
+          {canDelete && (
             <Button
               type="button"
               variant="danger"
