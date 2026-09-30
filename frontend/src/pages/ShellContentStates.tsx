@@ -186,6 +186,7 @@ export function ShellContentStates({
           icon={<SearchX className="w-6 h-6" />}
           heading="Static Not Found"
           description="The static you're looking for doesn't exist."
+          action={{ label: 'Go to My Statics', onClick: () => navigate('/profile?tab=statics') }}
         />
       </div>
     );
