@@ -32,6 +32,20 @@ vi.mock('./CreateSessionModal', () => ({
   },
 }));
 
+// R-P0-12: the heatmap must keep receiving EVERY occurrence while the list
+// collapses a series. A pass-through wrapper records the props and still
+// renders the real heatmap, so the tests that query its cells are unaffected.
+let mockHeatmapProps: { sessions: Array<{ session: { id: string }; occursAt: string }> } | null = null;
+vi.mock('./AvailabilityHeatmap', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./AvailabilityHeatmap')>();
+  return {
+    AvailabilityHeatmap: (props: Parameters<typeof actual.AvailabilityHeatmap>[0]) => {
+      mockHeatmapProps = props;
+      return <actual.AvailabilityHeatmap {...props} />;
+    },
+  };
+});
+
 import { Schedule } from './Schedule';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
@@ -94,6 +108,7 @@ beforeEach(() => {
   // captured props if its own render never re-mounts that stub.
   mockAvailabilityGridProps = null;
   mockCreateSessionModalProps = null;
+  mockHeatmapProps = null;
 
   vi.stubGlobal(
     'matchMedia',
@@ -269,7 +284,29 @@ describe('Schedule', () => {
     expect(screen.getByTestId('session-daytime').textContent).not.toMatch(/Jul 1/);
   });
 
+  it('R-P0-12: the list shows one card for a Tue/Fri series while the heatmap still receives both occurrences', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-07-01T12:00:00Z')); // Wed of week 2 (Tue Jun 30 … Mon Jul 6)
+    const sTueFri = makeSession({
+      id: 'sTF', title: 'Tue Fri Series', isRecurring: true, recurrenceRule: 'FREQ=WEEKLY;BYDAY=TU,FR',
+      startTime: '2026-06-23T20:00:00Z', endTime: '2026-06-23T22:00:00Z',
+    });
+    useScheduleStore.setState({ sessions: [sTueFri] } as never);
+    renderSchedule();
+    await waitFor(() => expect(useScheduleStore.getState().fetchExceptions).toHaveBeenCalledWith('g1', 'sTF'));
+
+    expect(screen.getAllByTestId('session-daytime')).toHaveLength(1);
+    expect(screen.getByTestId('session-daytime').textContent).toMatch(/Jul 3/);
+    expect(mockHeatmapProps?.sessions.map((o) => o.occursAt)).toEqual([
+      '2026-06-30T20:00:00.000Z',
+      '2026-07-03T20:00:00.000Z',
+    ]);
+  });
+
   it('hides RSVP controls from viewers and submits an RSVP for members', () => {
+    // s2 (Jul 1) must still be upcoming: an ended session hides RSVP (R-P0-12).
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-06-25T00:00:00Z'));
     // Viewer: session renders, but no RSVP buttons.
     const viewerGroup = { ...group, userRole: 'viewer' } as unknown as StaticGroup;
     const { unmount } = render(

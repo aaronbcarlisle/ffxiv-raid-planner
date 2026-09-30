@@ -437,6 +437,7 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
             onDelete={handleDelete}
             onManageOccurrences={setOccurrenceSession}
             onAddSession={openCreate}
+            cancelledBySession={cancelledBySession}
           />
         }
         side={

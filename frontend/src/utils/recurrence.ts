@@ -21,7 +21,7 @@ interface ParsedRRule {
   byday: number[];
 }
 
-function parseRRule(rruleStr: string): ParsedRRule | null {
+export function parseRRule(rruleStr: string): ParsedRRule | null {
   let text = rruleStr.trim();
   if (text.toUpperCase().startsWith('RRULE:')) text = text.slice(6);
 

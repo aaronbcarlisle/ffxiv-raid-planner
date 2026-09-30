@@ -4,6 +4,7 @@ import { InitialsAvatar } from './InitialsAvatar';
 import { PlayerIdentity } from './PlayerIdentity';
 import { SafeAvatar } from './SafeAvatar';
 import { Tag } from './Tag';
+import { formatShortDate } from './formatShortDate';
 import { Button } from '../primitives/Button';
 import type { ScheduleSession, ScheduleRsvp, RsvpStatus } from '../../types';
 
@@ -23,6 +24,12 @@ import type { ScheduleSession, ScheduleRsvp, RsvpStatus } from '../../types';
  *     · RSVP avatar stack (one per rsvp, ring colored by RSVP status)
  *     · "N in · M tentative" counts
  *     · 3-button RSVP strip (I'm in / Tentative / Can't make it)
+ *
+ * Time states (R-P0-12): once `endTime` has passed the chip reads
+ * "Played · Mon Sep 28" and the RSVP block (grid or stack, counts, note,
+ * strip) is not rendered — it shows the series' CURRENT answers, which would
+ * read as that week's attendance. From start until end the chip reads
+ * "In progress" and RSVP stays open.
  *
  * Avatar-ring coloring decision: `ScheduleRsvp` carries no member ROLE field
  * (`{ id, sessionId, userId, username, status, note, updatedAt }`). Per the
@@ -77,6 +84,11 @@ export interface SessionRsvpCardProps {
   headerActions?: ReactNode;
   /** Show the day-of-month + weekday pill before the day/time block. Default false. */
   showDayPill?: boolean;
+  /**
+   * One muted line under the title stating what an RSVP covers, e.g.
+   * "Every Tue/Fri · next Fri Oct 2 · RSVP applies to every week" (R-P0-12).
+   */
+  scopeNote?: string;
 }
 
 /** RSVP status → status-color CSS token (no hex literals — shared-layer rule). */
@@ -179,16 +191,39 @@ function dayEpochInTz(date: Date, tz?: string): number {
   }
 }
 
+type SessionPhase = 'upcoming' | 'in-progress' | 'ended';
+
 /**
- * Calendar-day countdown label relative to now ("today" / "tomorrow" /
- * "in N days"), measured against the viewer's timezone so "today" matches what
- * the viewer sees on their clock.
+ * Where the session sits against now (R-P0-12): `ended` once `endTime` has
+ * passed, `in-progress` from the start until then. An unparseable start yields
+ * null; an unparseable end counts as ending at the start.
  */
-function countdownLabel(iso: string, viewerTz?: string): string | null {
-  const start = new Date(iso);
-  if (Number.isNaN(start.getTime())) return null;
-  const diffDays = Math.round((dayEpochInTz(start, viewerTz) - dayEpochInTz(new Date(), viewerTz)) / MS_PER_DAY);
-  if (diffDays <= 0) return 'today';
+function sessionPhase(startIso: string, endIso: string): SessionPhase | null {
+  const startMs = new Date(startIso).getTime();
+  if (Number.isNaN(startMs)) return null;
+  const parsedEndMs = new Date(endIso).getTime();
+  const endMs = Number.isNaN(parsedEndMs) ? startMs : parsedEndMs;
+  const nowMs = Date.now();
+  if (endMs <= nowMs) return 'ended';
+  if (startMs <= nowMs) return 'in-progress';
+  return 'upcoming';
+}
+
+/**
+ * Countdown chip text. Ended → "Played · Mon Sep 28"; running → "In progress";
+ * upcoming → a calendar-day countdown ("today" / "tomorrow" / "in N days")
+ * measured in the viewer's timezone so "today" matches their clock. Only an
+ * upcoming start reaches the countdown, so a past start never reads "today".
+ */
+function countdownLabel(iso: string, phase: SessionPhase | null, viewerTz?: string): string | null {
+  if (phase === null) return null;
+  if (phase === 'ended') {
+    const day = formatShortDate(iso, viewerTz);
+    return day ? `Played · ${day}` : 'Played';
+  }
+  if (phase === 'in-progress') return 'In progress';
+  const diffDays = Math.round((dayEpochInTz(new Date(iso), viewerTz) - dayEpochInTz(new Date(), viewerTz)) / MS_PER_DAY);
+  if (diffDays === 0) return 'today';
   if (diffDays === 1) return 'tomorrow';
   return `in ${diffDays} days`;
 }
@@ -262,6 +297,7 @@ export function SessionRsvpCard({
   memberDetail = 'stack',
   headerActions,
   showDayPill = false,
+  scopeNote,
 }: SessionRsvpCardProps) {
   const sessionTz = session.timezone;
   const viewerTz = viewerTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -280,7 +316,9 @@ export function SessionRsvpCard({
   const showViewerTime = Boolean(viewerTime) && viewerTz !== sessionTz;
   const dayPill = showDayPill ? formatDayPill(session.startTime, sessionTz) : null;
 
-  const countdown = countdownLabel(session.startTime, viewerTz);
+  const phase = sessionPhase(session.startTime, session.endTime);
+  const ended = phase === 'ended';
+  const countdown = countdownLabel(session.startTime, phase, viewerTz);
 
   const availableCount = session.rsvps.filter((r) => r.status === 'available').length;
   const tentativeCount = session.rsvps.filter((r) => r.status === 'tentative').length;
@@ -310,7 +348,7 @@ export function SessionRsvpCard({
   const omitStrip = Boolean(members) && !onRsvp;
 
   const countdownTag = countdown ? (
-    <Tag variant="label" tone="accent">
+    <Tag variant="label" tone={ended ? 'muted' : 'accent'}>
       <span data-testid="countdown-chip">{countdown}</span>
     </Tag>
   ) : undefined;
@@ -359,10 +397,19 @@ export function SessionRsvpCard({
       }
     >
       <div className="flex flex-col gap-3">
-        {showTitleLine && (
-          <h3 className="text-xl font-display font-bold text-text-primary leading-tight">
-            {session.title}
-          </h3>
+        {(showTitleLine || scopeNote) && (
+          <div>
+            {showTitleLine && (
+              <h3 className="text-xl font-display font-bold text-text-primary leading-tight">
+                {session.title}
+              </h3>
+            )}
+            {scopeNote && (
+              <p data-testid="session-scope-note" className="text-xs text-text-muted">
+                {scopeNote}
+              </p>
+            )}
+          </div>
         )}
         {/* Day / time — display font, optionally preceded by the day pill */}
         {showDayPill && dayPill ? (
@@ -377,7 +424,8 @@ export function SessionRsvpCard({
           dayTimeBlock
         )}
 
-        {trackingOff ? (
+        {/* Ended (R-P0-12): no RSVP block at all — see the header comment. */}
+        {ended ? null : trackingOff ? (
           <div data-testid="availability-not-required" className="text-xs text-text-tertiary">
             Availability not required
           </div>
