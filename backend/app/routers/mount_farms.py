@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,8 +14,10 @@ from ..models import Membership, MemberRole, StaticActivityLog, User
 from ..models.mount_farm_progress import MountFarmProgress
 from ..models.player_goal import PlayerGoal
 from ..permissions import (
-    require_membership,
+    PermissionDenied,
     get_static_group,
+    get_user_membership,
+    require_membership,
 )
 from ..services.player_profile_service import get_or_create_profile
 from ..services.player_reward_bridge_service import (
@@ -335,12 +337,17 @@ async def update_mount_farm_progress(
     await get_static_group(db, group_id)
     membership = await require_membership(db, user.id, group_id)
 
+    if membership.role == MemberRole.VIEWER.value:
+        raise PermissionDenied("Viewers cannot track farms")
+
     target_user_id = data.user_id or user.id
     if target_user_id != user.id:
         from ..models import ROLE_HIERARCHY
         if membership.role_level < ROLE_HIERARCHY[MemberRole.LEAD]:
-            from ..permissions import PermissionDenied
             raise PermissionDenied("Only leads and owners can update other members' progress")
+        target_membership = await get_user_membership(db, target_user_id, group_id)
+        if target_membership and target_membership.role == MemberRole.VIEWER.value:
+            raise HTTPException(status_code=400, detail="Viewers can't be tracked")
 
     result = await db.execute(
         select(MountFarmProgress).where(

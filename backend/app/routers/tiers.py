@@ -1234,6 +1234,8 @@ async def claim_player(
                 "Only group members can claim player cards. "
                 "Share code access is read-only. Ask the owner for an invitation."
             )
+        if membership.role == MemberRole.VIEWER.value:
+            raise PermissionDenied("Viewers can't claim player cards")
 
     # Get player with user relationship
     result = await session.execute(
