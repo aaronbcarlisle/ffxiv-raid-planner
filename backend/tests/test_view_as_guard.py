@@ -176,6 +176,32 @@ class TestMemberRemoveGuard:
         assert not await _membership_exists(session, other_id, group_id)
         assert await _membership_exists(session, viewed_id, group_id)
 
+    async def test_admin_removal_under_view_as_records_header_in_audit(
+        self,
+        client: AsyncClient,
+        session,
+        test_user_2,
+        test_user_3,
+        test_group,
+        admin_user,
+        admin_headers,
+    ):
+        await create_membership(session, test_user_2, test_group, role=MemberRole.MEMBER)
+        await create_membership(session, test_user_3, test_group, role=MemberRole.MEMBER)
+        viewed_id, other_id, group_id = test_user_2.id, test_user_3.id, test_group.id
+
+        response = await client.delete(
+            f"/api/static-groups/{group_id}/members/{other_id}",
+            headers=_with_view_as(admin_headers, viewed_id),
+        )
+        assert response.status_code == 204
+
+        rows = await _audit_rows(session)
+        assert len(rows) == 1
+        assert rows[0].action == "member.removed"
+        assert rows[0].actor_user_id == admin_user.id
+        assert rows[0].impersonating_user_id == viewed_id
+
     async def test_member_self_leave_without_header(
         self, client: AsyncClient, session, test_user_2, test_group, auth_headers_user2
     ):

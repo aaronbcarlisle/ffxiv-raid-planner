@@ -161,6 +161,27 @@ describe('authRequest X-View-As header', () => {
     expect(sentHeaders(fetchMock, 1)).toHaveProperty(VIEW_AS_HEADER, 'u-view');
   });
 
+  it('keeps the request-time X-View-As on the retry even if View As stops during the refresh', async () => {
+    useViewAsStore.setState({ viewAsUser: viewedUser('u-view') });
+    useAuthStore.setState({
+      refreshAccessToken: vi.fn().mockImplementation(async () => {
+        useViewAsStore.getState().stopViewAs();
+        return true;
+      }),
+    });
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: 'Unauthorized' }), { status: 401 })
+      )
+      .mockResolvedValueOnce(noContent());
+
+    await api.delete('/api/static-groups/g1');
+
+    expect(useViewAsStore.getState().viewAsUser).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sentHeaders(fetchMock, 1)).toHaveProperty(VIEW_AS_HEADER, 'u-view');
+  });
+
   it('sends no X-View-As key when viewAsUser.userId is empty', async () => {
     useViewAsStore.setState({ viewAsUser: viewedUser('') });
 

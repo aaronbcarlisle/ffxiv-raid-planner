@@ -86,11 +86,11 @@ No owner questions are open.
   - Phase 9 gets `status: 'planned'` and exactly one item: `{ title: 'Mobile layout for the new interface', description: 'Planned - part of the new interface' }`. The four "Complete - …" items are deleted.
   - The "Large component files" issue is deleted. While `KNOWN_ISSUES` is empty, the Known Issues section and its nav entry stay and show "No known issues right now.", without the "tracked internally" footnote.
 - **R-P1-F (release note, Task 3).**
-  - Version `2.1.55` with a `CURRENT_VERSION` bump. Items:
+  - Version `2.1.56` with a `CURRENT_VERSION` bump (V1B #322 took 2.1.55 and merged first). Items:
     - (a) public, `fix`: under View As, site admins can no longer delete the static or remove the member they are viewing as;
     - (b) public, `fix`: the roadmap now lists the mobile phase as planned for the new interface, and the stale known issue is gone;
     - (c) `improvement`, `internal: true` (V2 is admin-gated): Home's next-session card links to the schedule and reports a failed RSVP.
-  - Strings are single-quoted, with `'` escaped as `\'`. `pr`/`prTitle` are set after the PR opens. V1B (`fix/v1b-not-found`) also claims 2.1.55. Keep it: whichever PR merges second bumps.
+  - Strings are single-quoted, with `'` escaped as `\'`. `pr`/`prTitle` are set after the PR opens. V1B (`fix/v1b-not-found`) also claims 2.1.55. Keep it: whichever PR merges second bumps. Resolved: V1B merged first, so P1 is 2.1.56.
 - **R-P1-G (V1 labels).** Every V1-visible edit is sanctioned by HOME_STRETCH §1 (P1). The PR body copies this table.
 
   | File | Label | Importer evidence |

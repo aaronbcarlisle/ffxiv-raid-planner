@@ -160,6 +160,10 @@ export async function authRequest<T>(
 
   // Only while admin View As is active. Lives in `headers`, which is spread
   // after options.headers (callers can't override it) and reused by the retry.
+  // Snapshot on purpose: the header describes the View As state the request
+  // was made in. A Delete clicked under View As stays refused even if View As
+  // stops during the CSRF-refresh await or before the 401 retry; re-reading it
+  // late would let that delete through as a plain admin delete (HS-30).
   if (viewAsUserId) {
     headers[VIEW_AS_HEADER_NAME] = viewAsUserId;
   }

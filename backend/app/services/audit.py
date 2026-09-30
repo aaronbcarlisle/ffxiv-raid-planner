@@ -45,6 +45,7 @@ from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import AuditLog, User
+from ..permissions import VIEW_AS_HEADER
 
 # Exact key names that are never persisted in old_values/new_values.
 _SECRET_KEYS = {
@@ -142,7 +143,7 @@ async def audit(
         # any authenticated user could forge impersonation attribution into
         # the forensic log once AD7 starts sending the header.
         if actor.is_admin:
-            impersonating_user_id = request.headers.get("X-View-As")
+            impersonating_user_id = request.headers.get(VIEW_AS_HEADER)
 
     session.add(
         AuditLog(
