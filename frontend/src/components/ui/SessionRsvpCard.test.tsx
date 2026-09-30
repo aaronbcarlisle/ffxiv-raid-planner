@@ -1,8 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, fireEvent, within } from '@testing-library/react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { SessionRsvpCard } from './SessionRsvpCard';
 import type { ScheduleSession, ScheduleRsvp, RsvpStatus } from '../../types';
 
@@ -42,6 +42,15 @@ function makeSession(overrides: Partial<ScheduleSession> = {}): ScheduleSession 
     ...overrides,
   } as ScheduleSession;
 }
+
+// The default fixture (Jul 3 2026, 00:00–03:00 UTC) must read as UPCOMING:
+// an ended session hides the RSVP strip and grid (R-P0-12), so every test
+// runs at a pinned "now" before it unless it sets its own. Only Date is
+// faked, so Testing Library's real timers keep working.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-06-30T12:00:00Z'));
+});
 
 afterEach(() => {
   vi.useRealTimers();
@@ -363,5 +372,246 @@ describe('SessionRsvpCard — R-E1-I next-session title heading', () => {
     // suppressed once the <h3> title line is already showing it.
     render(<SessionRsvpCard session={makeSession({ title: 'Savage prog', startTime: 'not-a-date' })} />);
     expect(screen.getAllByText('Savage prog')).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R-P0-12 (RSVP-0): ended → Played, start ≤ now < end → In progress, and a
+// past start never reads "today". Viewer zone pinned to UTC.
+// ---------------------------------------------------------------------------
+
+describe('SessionRsvpCard — R-P0-12 Played / In progress', () => {
+  const gridMembers = [
+    { userId: 'u-Tank One', username: 'Tank One' },
+    { userId: 'u-Healer Two', username: 'Healer Two' },
+    { userId: 'u-Melee', username: 'Melee' },
+  ];
+
+  it('an ended recurring series reads "Played · Tue Sep 29" in the SESSION zone with no buttons, grid, counts or "today"', () => {
+    vi.setSystemTime(new Date('2026-09-28T23:00:00Z'));
+    // Session zone Tokyo (Tue Sep 29 05:00) vs viewer UTC (Mon Sep 28 20:00):
+    // the Played date is the SESSION's calendar day, like the day line above it.
+    // (Sanctioned change: this used to expect the viewer's "Mon Sep 28".)
+    const session = makeSession({
+      startTime: '2026-09-28T20:00:00Z',
+      endTime: '2026-09-28T22:00:00Z',
+      timezone: 'Asia/Tokyo',
+      isRecurring: true,
+      recurrenceRule: 'FREQ=WEEKLY;BYDAY=TU',
+    });
+    const onRsvp = vi.fn();
+    const { rerender } = render(
+      <SessionRsvpCard
+        session={session}
+        variant="later"
+        members={gridMembers}
+        memberDetail="grid"
+        onRsvp={onRsvp}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('session-daytime').textContent).toMatch(/Tuesday, Sep 29/);
+    const chip = screen.getByTestId('countdown-chip');
+    expect(chip.textContent).toBe('Played · Tue Sep 29');
+    expect(chip.textContent).not.toMatch(/today/i);
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /tentative/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /can't make it/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rsvp-member-grid')).not.toBeInTheDocument();
+    // The counts and the "sub may be needed" note are the series' CURRENT
+    // RSVPs too, so they would read as that week's attendance (V12).
+    expect(screen.queryByTestId('rsvp-counts')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rsvp-warning-note')).not.toBeInTheDocument();
+
+    // Home's mount (no members, a live callback) hides the strip the same way,
+    // and the avatar stack with it.
+    rerender(<SessionRsvpCard session={session} onRsvp={onRsvp} viewerTimezone="UTC" />);
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Tue Sep 29');
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rsvp-avatar')).not.toBeInTheDocument();
+    expect(onRsvp).not.toHaveBeenCalled();
+  });
+
+  it('an ended recurring series with availability off hides "Availability not required" too', () => {
+    vi.setSystemTime(new Date('2026-09-28T23:00:00Z'));
+    render(
+      <SessionRsvpCard
+        session={makeSession({
+          startTime: '2026-09-28T20:00:00Z', endTime: '2026-09-28T22:00:00Z',
+          isRecurring: true, recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO', trackAvailability: false,
+        })}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('countdown-chip').textContent).toMatch(/^Played/);
+    expect(screen.queryByTestId('availability-not-required')).not.toBeInTheDocument();
+  });
+
+  it('an ended ONE-OFF session keeps its counts, avatars and warning note, but no RSVP buttons', () => {
+    vi.setSystemTime(new Date('2026-09-28T23:00:00Z'));
+    const session = makeSession({
+      startTime: '2026-09-28T20:00:00Z',
+      endTime: '2026-09-28T22:00:00Z',
+      timezone: 'UTC',
+    });
+    const onRsvp = vi.fn();
+    const { rerender } = render(
+      <SessionRsvpCard
+        session={session}
+        variant="later"
+        members={gridMembers}
+        memberDetail="grid"
+        onRsvp={onRsvp}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Mon Sep 28');
+    expect(screen.getByTestId('rsvp-member-grid')).toBeInTheDocument();
+    expect(screen.getByTestId('rsvp-counts').textContent).toMatch(/1 in/);
+    expect(screen.getByTestId('rsvp-warning-note').textContent).toMatch(/Healer Two tentative/);
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /tentative/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /can't make it/i })).not.toBeInTheDocument();
+
+    // Home's mount (no members): the avatar stack and counts stay, the strip doesn't.
+    rerender(<SessionRsvpCard session={session} onRsvp={onRsvp} viewerTimezone="UTC" />);
+    expect(screen.getAllByTestId('rsvp-avatar')).toHaveLength(2);
+    expect(screen.getByTestId('rsvp-counts')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+
+    // Availability off: a one-off keeps its "not required" line.
+    rerender(
+      <SessionRsvpCard session={{ ...session, trackAvailability: false }} onRsvp={onRsvp} viewerTimezone="UTC" />,
+    );
+    expect(screen.getByTestId('availability-not-required')).toBeInTheDocument();
+    expect(onRsvp).not.toHaveBeenCalled();
+  });
+
+  it('a session that started 1 h ago and ends in 2 h reads "In progress" and keeps its RSVP buttons', () => {
+    vi.setSystemTime(new Date('2026-07-03T01:00:00Z'));
+    const onRsvp = vi.fn();
+    render(
+      <SessionRsvpCard
+        session={makeSession({ startTime: '2026-07-03T00:00:00Z', endTime: '2026-07-03T03:00:00Z' })}
+        variant="later"
+        members={gridMembers}
+        memberDetail="grid"
+        onRsvp={onRsvp}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('In progress');
+    expect(screen.getByTestId('rsvp-member-grid')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /i'm in/i }));
+    expect(onRsvp).toHaveBeenCalledWith('available');
+  });
+
+  it('a start on an earlier calendar day (diffDays < 0) never reads "today", ended or still running', () => {
+    // Ended yesterday → Played, not "today".
+    vi.setSystemTime(new Date('2026-07-04T12:00:00Z'));
+    const { unmount } = render(
+      <SessionRsvpCard
+        session={makeSession({ startTime: '2026-07-03T00:00:00Z', endTime: '2026-07-03T03:00:00Z' })}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('countdown-chip').textContent).not.toMatch(/today/i);
+    // Dated in the session zone (fixture: New York → Thu Jul 2 20:00), not the viewer's UTC Fri Jul 3.
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Thu Jul 2');
+    unmount();
+
+    // Started before midnight, still running after it → In progress, not "today".
+    vi.setSystemTime(new Date('2026-07-03T01:00:00Z'));
+    render(
+      <SessionRsvpCard
+        session={makeSession({ startTime: '2026-07-02T23:00:00Z', endTime: '2026-07-03T02:00:00Z' })}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('In progress');
+  });
+
+  it('closes its RSVP at the end instant with no store update: buttons gone, chip reads Played', () => {
+    // setTimeout must be fake too so the card's own phase timer can be advanced.
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(new Date('2026-07-03T02:59:00Z'));
+    const onRsvp = vi.fn();
+    render(
+      <SessionRsvpCard
+        session={makeSession({ startTime: '2026-07-03T00:00:00Z', endTime: '2026-07-03T03:00:00Z' })}
+        variant="later"
+        members={gridMembers}
+        memberDetail="grid"
+        onRsvp={onRsvp}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('In progress');
+    expect(screen.getByRole('button', { name: /i'm in/i })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(61_000);
+    });
+    // Played is dated in the SESSION zone (fixture: New York → Thu Jul 2 20:00).
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Thu Jul 2');
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /tentative/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /can't make it/i })).not.toBeInTheDocument();
+    expect(onRsvp).not.toHaveBeenCalled();
+  });
+
+  it('turns "tomorrow"-style countdown into "In progress" at the start instant and keeps the buttons', () => {
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(new Date('2026-07-02T23:59:00Z'));
+    render(
+      <SessionRsvpCard
+        session={makeSession({ startTime: '2026-07-03T00:00:00Z', endTime: '2026-07-03T03:00:00Z' })}
+        variant="later"
+        members={gridMembers}
+        memberDetail="grid"
+        onRsvp={vi.fn()}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('tomorrow');
+
+    act(() => {
+      vi.advanceTimersByTime(61_000);
+    });
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('In progress');
+    expect(screen.getByRole('button', { name: /i'm in/i })).toBeInTheDocument();
+  });
+
+  it('an ended recurring series also drops its answers at the end instant', () => {
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(new Date('2026-07-03T02:59:00Z'));
+    render(
+      <SessionRsvpCard
+        session={makeSession({ isRecurring: true, recurrenceRule: 'FREQ=WEEKLY;BYDAY=FR' })}
+        variant="later"
+        members={gridMembers}
+        memberDetail="grid"
+        onRsvp={vi.fn()}
+        viewerTimezone="UTC"
+      />,
+    );
+    expect(screen.getByTestId('rsvp-member-grid')).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(61_000);
+    });
+    expect(screen.queryByTestId('rsvp-member-grid')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rsvp-counts')).not.toBeInTheDocument();
+  });
+
+  it('scopeNote renders one muted text-xs line, and nothing without it', () => {
+    const note = 'Every Tue/Fri · next Fri Jul 3 · RSVP applies to every week';
+    const { rerender } = render(<SessionRsvpCard session={makeSession()} variant="later" scopeNote={note} />);
+    const line = screen.getByText(note);
+    expect(line).toHaveClass('text-xs', 'text-text-muted');
+    rerender(<SessionRsvpCard session={makeSession()} variant="later" />);
+    expect(screen.queryByText(note)).not.toBeInTheDocument();
   });
 });

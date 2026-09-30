@@ -3,11 +3,11 @@
 // `components/loot/WeekScopeControl.test.tsx`), so we follow that
 // established convention here. Radix menu items render via a portal, so
 // assertions query `screen` directly rather than scoping to a row container.
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SessionList, type SessionListProps } from './SessionList';
 import { useToastStore } from '../../stores/toastStore';
-import type { SessionOccurrence } from './scheduleWeek';
+import { sessionOccurrencesInRange, type SessionOccurrence } from './scheduleWeek';
 import type { ScheduleSession } from '../../types';
 
 function makeSession(overrides: Partial<ScheduleSession> = {}): ScheduleSession {
@@ -43,6 +43,7 @@ function renderList(overrides: Partial<SessionListProps> = {}) {
     onDelete: vi.fn(),
     onManageOccurrences: vi.fn(),
     onAddSession: vi.fn(),
+    cancelledBySession: new Map(),
     ...overrides,
   };
   return render(<SessionList {...props} />);
@@ -114,31 +115,6 @@ describe('SessionList', () => {
     const session = makeSession({ id: 'hl1' });
     renderList({ occurrences: [occ(session)], highlightedSessionId: 'other' });
     expect(document.getElementById('schedule-session-hl1')).not.toHaveClass('highlight-pulse');
-  });
-
-  it('assigns the schedule-session-{id} anchor to only the EARLIEST occurrence of a recurring session with multiple BYDAY days in the same week', () => {
-    // A single session rendering twice in one scoped week (e.g. BYDAY=MO,WE)
-    // must not produce two elements sharing the same DOM id.
-    const session = makeSession({ id: 'rec', title: 'Recurring Raid', isRecurring: true });
-    const earlier = occ(session, '2026-07-06T20:00:00.000Z');
-    const later = occ(session, '2026-07-08T20:00:00.000Z');
-    renderList({ occurrences: [earlier, later], isCurrentWeek: false });
-
-    const matches = document.querySelectorAll('[id="schedule-session-rec"]');
-    expect(matches.length).toBe(1);
-    // The anchored element wraps the earliest occurrence's card, not the later one.
-    expect(matches[0].textContent).toMatch(/Jul 6/);
-  });
-
-  it('restricts highlight-pulse to the anchored (first) occurrence when a session renders more than once', () => {
-    const session = makeSession({ id: 'rec', isRecurring: true });
-    const earlier = occ(session, '2026-07-06T20:00:00.000Z');
-    const later = occ(session, '2026-07-08T20:00:00.000Z');
-    renderList({ occurrences: [earlier, later], isCurrentWeek: false, highlightedSessionId: 'rec' });
-
-    const highlighted = document.querySelectorAll('.highlight-pulse');
-    expect(highlighted.length).toBe(1);
-    expect(highlighted[0].id).toBe('schedule-session-rec');
   });
 
   it('kebab: Edit fires onEdit(session), and Manage occurrences shows only for recurring + canManage', async () => {
@@ -261,5 +237,165 @@ describe('SessionList', () => {
     expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /tentative/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /can't make it/i })).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R-P0-12 (RSVP-0): a recurring series renders ONE card per week. The RSVP is
+// stored per series, so only the card showing the series' next (or
+// in-progress) occurrence takes it. Weeks run Mon→Mon here; "now" is Wed Jul 8.
+// ---------------------------------------------------------------------------
+
+describe('SessionList — R-P0-12 one card per recurring series', () => {
+  const DAY_MS = 86_400_000;
+  const series = makeSession({
+    id: 'rec', title: 'Prog Series', isRecurring: true, recurrenceRule: 'FREQ=WEEKLY;BYDAY=TU,FR',
+    startTime: '2026-06-02T20:00:00.000Z', endTime: '2026-06-02T22:00:00.000Z', timezone: 'UTC',
+  });
+  const members = [{ userId: 'u1', username: 'Alice' }];
+  const PREV_WEEK = '2026-06-29T00:00:00.000Z';
+  const THIS_WEEK = '2026-07-06T00:00:00.000Z';
+  const NEXT_WEEK = '2026-07-13T00:00:00.000Z';
+  const NOTE_NEXT_FRI = 'Every Tue/Fri · next Fri Jul 10 · RSVP applies to every week';
+
+  function weekOf(mondayIso: string, cancelled = new Map<string, ReadonlySet<string>>()): SessionOccurrence[] {
+    const start = new Date(mondayIso);
+    return sessionOccurrencesInRange([series], { start, end: new Date(start.getTime() + 6 * DAY_MS) }, cancelled);
+  }
+
+  function renderSeries(overrides: Partial<SessionListProps>) {
+    return renderList({
+      members, currentUserId: 'u1', canRsvp: true, canManage: true, viewerTimezone: 'UTC', ...overrides,
+    });
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-07-08T12:00:00.000Z'));
+  });
+
+  it('the current week (Tue + Fri, now Wed) shows ONE card: Fri, the scope note, the RSVP buttons and Manage occurrences', async () => {
+    const onRsvp = vi.fn();
+    const onManageOccurrences = vi.fn();
+    const occurrences = weekOf(THIS_WEEK);
+    expect(occurrences).toHaveLength(2); // the expansion still yields both days
+    renderSeries({ occurrences, isCurrentWeek: true, onRsvp, onManageOccurrences });
+
+    expect(screen.getAllByTestId('session-daytime')).toHaveLength(1);
+    expect(screen.getByTestId('session-daytime').textContent).toMatch(/Friday, Jul 10/);
+    expect(screen.getByText(NOTE_NEXT_FRI)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /i'm in/i }));
+    expect(onRsvp).toHaveBeenCalledWith('rec', 'available');
+
+    openKebab();
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Manage occurrences' }));
+    expect(onManageOccurrences).toHaveBeenCalledWith(series);
+  });
+
+  it('the next week shows one card with the scope note (no "next" date from an earlier week) but NO RSVP buttons', () => {
+    renderSeries({ occurrences: weekOf(NEXT_WEEK), isCurrentWeek: false });
+    expect(screen.getAllByTestId('session-daytime')).toHaveLength(1);
+    expect(screen.getByTestId('session-daytime').textContent).toMatch(/Tuesday, Jul 14/);
+    expect(screen.getByTestId('session-scope-note').textContent).toBe('Every Tue/Fri · RSVP applies to every week');
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /tentative/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /can't make it/i })).not.toBeInTheDocument();
+  });
+
+  it('the current week with every occurrence ended shows one Played card whose note still names the next start', () => {
+    vi.setSystemTime(new Date('2026-07-11T12:00:00.000Z')); // Sat, after Fri's raid
+    renderSeries({ occurrences: weekOf(THIS_WEEK), isCurrentWeek: true });
+    expect(screen.getAllByTestId('session-daytime')).toHaveLength(1);
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Fri Jul 10');
+    expect(screen.getByTestId('session-scope-note').textContent).toBe(
+      'Every Tue/Fri · next Tue Jul 14 · RSVP applies to every week',
+    );
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+  });
+
+  it('the previous week shows one card reading Played, with no RSVP buttons', () => {
+    renderSeries({ occurrences: weekOf(PREV_WEEK), isCurrentWeek: false });
+    expect(screen.getAllByTestId('session-daytime')).toHaveLength(1);
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Fri Jul 3');
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+  });
+
+  it('an in-progress occurrence is the series card, reads In progress, is promoted to Next session and keeps its buttons', () => {
+    vi.setSystemTime(new Date('2026-07-07T21:00:00.000Z')); // Tue 20:00–22:00 is running
+    const onRsvp = vi.fn();
+    renderSeries({ occurrences: weekOf(THIS_WEEK), isCurrentWeek: true, onRsvp });
+    expect(screen.getAllByTestId('session-daytime')).toHaveLength(1);
+    expect(screen.getByTestId('session-daytime').textContent).toMatch(/Tuesday, Jul 7/);
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('In progress');
+    expect(screen.getByText('Next session')).toBeInTheDocument();
+    expect(screen.getByText(NOTE_NEXT_FRI)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /tentative/i }));
+    expect(onRsvp).toHaveBeenCalledWith('rec', 'tentative');
+  });
+
+  it('a cancelled next occurrence moves the RSVP buttons to the week that holds the real next one', () => {
+    const cancelled = new Map<string, ReadonlySet<string>>([['rec', new Set(['2026-07-10'])]]);
+    // This week: Fri is cancelled, Tue has ended → one Played card, no buttons.
+    const { unmount } = renderSeries({
+      occurrences: weekOf(THIS_WEEK, cancelled), isCurrentWeek: true, cancelledBySession: cancelled,
+    });
+    expect(screen.getByTestId('countdown-chip').textContent).toBe('Played · Tue Jul 7');
+    expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
+    unmount();
+
+    // Next week's Tue is the series' real next occurrence → it takes the RSVP.
+    renderSeries({ occurrences: weekOf(NEXT_WEEK, cancelled), isCurrentWeek: false, cancelledBySession: cancelled });
+    expect(screen.getByText('Every Tue/Fri · next Tue Jul 14 · RSVP applies to every week')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /i'm in/i })).toBeInTheDocument();
+  });
+
+  it('a one-off session later this week keeps its own card, unchanged (buttons, no scope note)', () => {
+    const oneOff = makeSession({
+      id: 'one', title: 'One-off Sync',
+      startTime: '2026-07-09T20:00:00.000Z', endTime: '2026-07-09T21:00:00.000Z',
+    });
+    const occurrences = [...weekOf(THIS_WEEK), occ(oneOff)].sort((a, b) => a.occursAt.localeCompare(b.occursAt));
+    renderSeries({ occurrences, isCurrentWeek: true });
+
+    const daytimes = screen.getAllByTestId('session-daytime');
+    expect(daytimes).toHaveLength(2);
+    expect(daytimes[0].textContent).toMatch(/Thursday, Jul 9/);
+    expect(daytimes[1].textContent).toMatch(/Friday, Jul 10/);
+
+    const oneOffCard = document.getElementById('schedule-session-one') as HTMLElement;
+    expect(within(oneOffCard).getByRole('button', { name: /i'm in/i })).toBeInTheDocument();
+    expect(within(oneOffCard).queryByText(/RSVP applies to every week/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/RSVP applies to every week/)).toHaveLength(1);
+  });
+
+  it('the scope note names the next day in the session zone, not the viewer zone (LA Tue/Fri 20:00 seen from UTC)', () => {
+    // 20:00 PDT Tue/Fri is Wed/Sat 03:00 UTC. The days (BYDAY) are session-zone,
+    // so "next" must be too: Fri Oct 2, not the viewer's Sat Oct 3.
+    vi.setSystemTime(new Date('2026-09-30T12:00:00.000Z'));
+    const la = makeSession({
+      id: 'la', title: 'LA Series', isRecurring: true, recurrenceRule: 'FREQ=WEEKLY;BYDAY=TU,FR',
+      startTime: '2026-09-30T03:00:00.000Z', endTime: '2026-09-30T05:00:00.000Z',
+      timezone: 'America/Los_Angeles',
+    });
+    const start = new Date('2026-09-28T00:00:00.000Z');
+    const occurrences = sessionOccurrencesInRange(
+      [la], { start, end: new Date(start.getTime() + 6 * DAY_MS) }, new Map(),
+    );
+    renderSeries({ occurrences, isCurrentWeek: true, viewerTimezone: 'UTC' });
+    const note = screen.getByTestId('session-scope-note').textContent ?? '';
+    expect(note).toBe('Every Tue/Fri · next Fri Oct 2 · RSVP applies to every week');
+    expect(note).not.toMatch(/Sat/);
+  });
+
+  it('the schedule-session-{id} anchor and the highlight sit on the series card', () => {
+    renderSeries({ occurrences: weekOf(THIS_WEEK), isCurrentWeek: true, highlightedSessionId: 'rec' });
+    const anchors = document.querySelectorAll('[id="schedule-session-rec"]');
+    expect(anchors).toHaveLength(1);
+    const card = anchors[0] as HTMLElement;
+    expect(card).toHaveClass('highlight-pulse');
+    expect(within(card).getByTestId('session-daytime').textContent).toMatch(/Jul 10/);
+    expect(within(card).getByText(NOTE_NEXT_FRI)).toBeInTheDocument();
+    expect(document.querySelectorAll('.highlight-pulse')).toHaveLength(1);
   });
 });

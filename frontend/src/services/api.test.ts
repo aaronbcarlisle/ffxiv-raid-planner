@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
-import { api, isAuthRelated403 } from './api';
+import { api, ApiError, isAuthRelated403, wasToastedByApi } from './api';
 import { useAuthStore } from '../stores/authStore';
+import { toast } from '../stores/toastStore';
 import { useViewAsStore, type ViewAsUserInfo } from '../stores/viewAsStore';
 
 describe('isAuthRelated403', () => {
@@ -188,5 +189,94 @@ describe('authRequest X-View-As header', () => {
     await api.delete('/api/static-groups/g1');
 
     expect(sentHeaders(fetchMock, 0)).not.toHaveProperty(VIEW_AS_HEADER);
+  });
+});
+
+// ── wasToastedByApi (#324, R-P0-14) ────────────────────────────────────────
+
+function jsonError(status: number, detail: string): Response {
+  return new Response(JSON.stringify({ detail }), { status });
+}
+
+async function caught(promise: Promise<unknown>): Promise<unknown> {
+  try {
+    await promise;
+  } catch (err) {
+    return err;
+  }
+  throw new Error('expected the request to reject');
+}
+
+describe('wasToastedByApi', () => {
+  const originalRefresh = useAuthStore.getState().refreshAccessToken;
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let toastError: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    document.cookie = 'csrf_token=t';
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    toastError = vi.spyOn(toast, 'error').mockReturnValue('toast-id');
+  });
+
+  afterEach(() => {
+    useAuthStore.setState({ refreshAccessToken: originalRefresh });
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('is true for a true 403: toasted once, and the thrown error says so', async () => {
+    fetchMock.mockResolvedValueOnce(jsonError(403, 'Only leads can do that'));
+
+    const err = await caught(api.post('/api/x', { a: 1 }));
+
+    expect(toastError).toHaveBeenCalledTimes(1);
+    expect(toastError).toHaveBeenCalledWith('Only leads can do that');
+    expect(err).toBeInstanceOf(ApiError);
+    expect(wasToastedByApi(err)).toBe(true);
+  });
+
+  it('is true for a true 403 on the retry after a 401 refresh', async () => {
+    useAuthStore.setState({ refreshAccessToken: vi.fn().mockResolvedValue(true) });
+    fetchMock
+      .mockResolvedValueOnce(jsonError(401, 'Unauthorized'))
+      .mockResolvedValueOnce(jsonError(403, 'Only leads can do that'));
+
+    const err = await caught(api.post('/api/x', { a: 1 }));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(toastError).toHaveBeenCalledTimes(1);
+    expect(wasToastedByApi(err)).toBe(true);
+  });
+
+  it('is false for the synthetic session-expired 403 (no toast was shown)', async () => {
+    document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    // Every recovery fetch fails, so authRequest throws the synthetic 403.
+    fetchMock.mockRejectedValue(new Error('network'));
+    useAuthStore.setState({ refreshAccessToken: vi.fn().mockResolvedValue(false) });
+
+    const err = await caught(api.post('/api/x', { a: 1 }));
+
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).status).toBe(403);
+    expect((err as ApiError).message).toMatch(/session expired/i);
+    expect(toastError).not.toHaveBeenCalled();
+    expect(wasToastedByApi(err)).toBe(false);
+  });
+
+  it('is false for a 500', async () => {
+    fetchMock.mockResolvedValueOnce(jsonError(500, 'Server exploded'));
+
+    const err = await caught(api.post('/api/x', { a: 1 }));
+
+    expect(err).toBeInstanceOf(ApiError);
+    expect(toastError).not.toHaveBeenCalled();
+    expect(wasToastedByApi(err)).toBe(false);
+  });
+
+  it('is false for a plain Error and for non-errors', () => {
+    expect(wasToastedByApi(new Error('boom'))).toBe(false);
+    expect(wasToastedByApi(undefined)).toBe(false);
+    expect(wasToastedByApi('403')).toBe(false);
   });
 });

@@ -58,6 +58,7 @@ import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from '../../stores/toastStore';
+import { wasToastedByApi } from '../../services/api';
 import { useWeeklyLootSummary } from '../../hooks/useWeeklyLootSummary';
 import { relativeTime } from '../../utils/staticActivity';
 import { getAllTrialIds } from '../../gamedata';
@@ -333,8 +334,9 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   const handleRsvp = async (sessionId: string, status: RsvpStatus) => {
     try {
       await submitRsvp(group.id, sessionId, status);
-    } catch {
-      toast.error('Failed to save RSVP');
+    } catch (err) {
+      // A true 403 was already toasted by the API client (#324).
+      if (!wasToastedByApi(err)) toast.error('Failed to save RSVP');
     }
   };
 

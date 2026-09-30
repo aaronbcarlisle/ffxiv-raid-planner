@@ -70,12 +70,23 @@ const CSRF_REQUIRED_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
  */
 export class ApiError extends Error {
   status: number;
+  /** True when `authRequest` already showed a toast for this error (true 403s). */
+  toasted: boolean;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, toasted = false) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.toasted = toasted;
   }
+}
+
+/**
+ * Whether `authRequest` already toasted this error, so a caller's own generic
+ * failure toast would be a duplicate (#324).
+ */
+export function wasToastedByApi(err: unknown): boolean {
+  return err instanceof ApiError && err.toasted;
 }
 
 /**
@@ -260,11 +271,12 @@ export async function authRequest<T>(
           );
 
           // Show toast for permission errors (true 403s after refresh)
-          if (retryResponse.status === 403) {
+          const retryToasted = retryResponse.status === 403;
+          if (retryToasted) {
             toast.error(retryMessage);
           }
 
-          throw new ApiError(retryResponse.status, retryMessage);
+          throw new ApiError(retryResponse.status, retryMessage, retryToasted);
         }
 
         if (retryResponse.status === 204) {
@@ -276,11 +288,12 @@ export async function authRequest<T>(
     }
 
     // Show toast for permission errors (true 403s, not auth-related)
-    if (response.status === 403 && !isAuthRelated403(message)) {
+    const toasted = response.status === 403 && !isAuthRelated403(message);
+    if (toasted) {
       toast.error(message);
     }
 
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, message, toasted);
   }
 
   if (response.status === 204) {
