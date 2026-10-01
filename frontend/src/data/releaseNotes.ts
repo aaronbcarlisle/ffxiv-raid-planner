@@ -70,12 +70,16 @@ export const RELEASES: Release[] = [
         description:
           'The API endpoints that look up a static by share code or by ID (GET /api/static-groups/by-code/{shareCode} and GET /api/static-groups/{id}) now return owner and each member\'s user as null when the caller isn\'t a member of the static. Members, viewers and admins, and their API keys, get the same response as before. The API docs describe the change.',
         link: { href: '/docs/api', label: 'API docs' },
+        pr: 343,
+        prTitle: 'fix(api,v2): W0 — guest top bar and Schedule card, the /api/auth/session bootstrap, member identity off by-code (GUEST-1)',
       },
       {
         category: 'fix',
         title: 'Signed-out visitors no longer log failed sign-in checks',
         description:
           'Signed-out visitors no longer trigger failed sign-in checks on every page load: the app asks a new `/api/auth/session` probe, which always answers, before it tries a refresh.',
+        pr: 343,
+        prTitle: 'fix(api,v2): W0 — guest top bar and Schedule card, the /api/auth/session bootstrap, member identity off by-code (GUEST-1)',
         internal: true,
       },
       {
@@ -83,6 +87,8 @@ export const RELEASES: Release[] = [
         title: 'V2 preview: guests get Log in and a members-only Schedule',
         description:
           'V2 preview: at a static, guests see Log in instead of the bell and settings gear, Open Settings leaves their command palette, and Schedule shows one members-only card instead of empty sessions and availability.',
+        pr: 343,
+        prTitle: 'fix(api,v2): W0 — guest top bar and Schedule card, the /api/auth/session bootstrap, member identity off by-code (GUEST-1)',
         internal: true,
       },
     ],
