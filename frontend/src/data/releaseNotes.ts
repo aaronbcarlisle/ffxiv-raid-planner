@@ -78,6 +78,8 @@ export const RELEASES: Release[] = [
         title: 'Farm drops record how they were logged',
         description:
           'New farm-drop entries now record whether they came from the website or an API key such as the plugin\'s, and which key. Nothing changes on screen yet, and older entries stay unmarked.',
+        pr: 346,
+        prTitle: 'feat(api): W0 PROV-1 — farm drops record how and which key; the provenance completeness guard',
         internal: true,
       },
     ],

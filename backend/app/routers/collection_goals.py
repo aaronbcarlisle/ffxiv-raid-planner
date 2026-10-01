@@ -40,7 +40,7 @@ from ..schemas.collection_goals import (
 )
 from ..services.provenance import logged_via, request_api_key_id
 
-router =APIRouter(prefix="/api", tags=["collection-goals"])
+router = APIRouter(prefix="/api", tags=["collection-goals"])
 logger = get_logger(__name__)
 
 
