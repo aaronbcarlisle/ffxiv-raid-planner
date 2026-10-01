@@ -127,7 +127,7 @@ Backend commands use the main checkout's venv (`D:/FFXIV/Dev/xrp-dev/ffxiv-raid-
   - **The cap.** About 1,230 changed lines of code and tests plus this plan (~330) is about 1,560, near `CLAUDE.md`'s ~1,500.
   - At Finish, run `git diff --stat origin/main...HEAD`. If the total is over ~1,600, PV-3 ships as a PR stacked on PV-2's branch (slice-loop § Stacked PRs). Don't trim tests to fit.
 - **R-PV-13 (release note).**
-  - **Where it goes.** One `improvement` item with `internal: true`, inside a release with `internal: true`. `CURRENT_VERSION` doesn't move (it is still `'2.1.59'`), per the 2.1.60 precedent.
+  - **Where it goes.** One `improvement` item with `internal: true`, inside a release with `internal: true`. `CURRENT_VERSION` doesn't move: it tracks the latest public release, whatever that is on `origin/main` at merge (it was `'2.1.59'` at plan time), per the 2.1.60 precedent.
   - **Version rule.** Use the highest `RELEASES[].version` on `origin/main` + 1 patch: 2.1.61 at plan time, because #332 took 2.1.60. Don't use `CURRENT_VERSION` + 1. Re-read `RELEASES[0].version` on `origin/main` at Finish, because the sibling W0 PRs (AUTHZ-2, GUEST-1) may take 2.1.61 first.
   - **Strings.** Single-quoted, with `'` escaped as `\'`, written with the Edit tool. `pr`/`prTitle` are filled in after `gh pr create`.
   - **Title:** "Loot, books and farm drops record how they were logged".
