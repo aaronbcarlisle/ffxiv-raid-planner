@@ -337,3 +337,7 @@ These are the branch's last commits. They go after the rebase onto any merged si
 
 - HS-36 (members log or edit their own books, totems and drops) moves rows' `min_role`. It is its own slice, and the probes added here cover it automatically.
 - Moving inline gates into `Depends(require_role(...))` (carried from the P0 plan).
+- **Outcome (2026-10-01, #344):** the AUTHZ file now runs 676 tests, all passing with 0 xfailed, in about 112 s (baseline 35.5 s). Every test still builds its own world (V6c), so a **shared-world refactor** is carried here for whichever slice next grows the table.
+  - Whole-branch review: C/I/M 0/0/3, no fix wave.
+  - Residual Minors: `test_authz_matrix.py` redefines `PLAYER` instead of importing it; `World.my_hub` raises a bare `KeyError` if a future `owned` row's actor isn't `member` (the hub is built for `member` only).
+  - The #331 ruling is HS-37.
