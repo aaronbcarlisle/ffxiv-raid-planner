@@ -361,6 +361,7 @@ async def upsert_snapshot(
     is set as given, so it can lower a plugin Have until the plugin's next
     sync, and a count is stored (the newest write wins).
     """
+    via = logged_via(request)
     if body.ownership_state not in ("have", "missing", "unknown"):
         raise HTTPException(400, "ownership_state must be have, missing, or unknown")
 
@@ -381,7 +382,7 @@ async def upsert_snapshot(
         target,
         catalog_item_id,
         actor_user_id=user.id,
-        via=logged_via(request),
+        via=via,
         mode=RECORD_WRITE_PERSON,
         now=_now(),
         ownership=body.ownership_state,

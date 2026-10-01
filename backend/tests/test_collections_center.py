@@ -10,7 +10,8 @@ Covers:
   - private intent does NOT appear in Static Collection Suggestions
   - dossier_public intent appears in Dossier public endpoint
   - Token count flows from snapshot into catalog entry
-  - Plugin-confirmed 'have' is NOT overwritten by a manual 'missing' snapshot PUT
+  - A manual 'missing' snapshot PUT DOES lower a plugin-confirmed 'have' (Q1,
+    owner-accepted S2a-1): the row becomes manual until the plugin's next sync
 """
 
 import importlib.util
