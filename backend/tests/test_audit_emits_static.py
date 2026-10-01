@@ -372,6 +372,38 @@ class TestDuplicateEmits:
         assert row.new_values == {"source_group_id": test_group.id, "name": "Copy Static"}
         assert row.admin_override is False
 
+    async def test_admin_with_viewer_seat_duplicate_is_override(
+        self, client: AsyncClient, session, test_group, admin_user, admin_headers
+    ):
+        await create_membership(session, admin_user, test_group, role=MemberRole.VIEWER)
+
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/duplicate",
+            json={"newName": "Admin Viewer Copy", "copyTiers": False, "copyPlayers": False},
+            headers=admin_headers,
+        )
+        assert response.status_code == 201
+
+        rows = await _audit_rows(session)
+        assert len(rows) == 1
+        assert rows[0].action == "static.duplicated"
+        assert rows[0].admin_override is True
+
+    async def test_admin_without_seat_duplicate_is_override(
+        self, client: AsyncClient, session, test_group, admin_headers
+    ):
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/duplicate",
+            json={"newName": "Admin Seatless Copy", "copyTiers": False, "copyPlayers": False},
+            headers=admin_headers,
+        )
+        assert response.status_code == 201
+
+        rows = await _audit_rows(session)
+        assert len(rows) == 1
+        assert rows[0].action == "static.duplicated"
+        assert rows[0].admin_override is True
+
 
 # ── Member verbs ─────────────────────────────────────────────────────────────
 
