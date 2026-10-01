@@ -12,6 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.services.audit import audit
+from app.services.provenance import (
+    CHARACTER_SOURCE_EXPLICIT,
+    resolve_batch_provenance,
+    resolve_entry_provenance,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -22,9 +27,7 @@ from app.models import (
     MaterialLogEntry,
     MemberRole,
     PageLedgerEntry,
-    PlayerCharacter,
     SnapshotPlayer,
-    StaticCharacterRegistration,
     TierSnapshot,
     User,
 )
@@ -199,6 +202,7 @@ async def create_loot_log_entry(
     group_id: str,
     tier_id: str,
     data: LootLogEntryCreate,
+    request: Request,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -250,37 +254,18 @@ async def create_loot_log_entry(
             if recipient_player.user_id != current_user.id:
                 raise PermissionDenied("Members can only log purchases for their own character")
 
-    # Optional: validate character registration belongs to this static and this player
-    char_name_snapshot = data.recipient_character_name
-    if data.recipient_character_registration_id:
-        char_result = await db.execute(
-            select(StaticCharacterRegistration).where(
-                StaticCharacterRegistration.id == data.recipient_character_registration_id,
-                StaticCharacterRegistration.static_group_id == group_id,
-                StaticCharacterRegistration.snapshot_player_id == data.recipient_player_id,
-            )
-        )
-        char_reg = char_result.scalar_one_or_none()
-        if not char_reg:
-            raise HTTPException(
-                status_code=400,
-                detail="Character registration not found or does not belong to this player/static",
-            )
-        # Snapshot the name at log time if caller didn't provide one.
-        # Prefer manual_character_name for manual registrations; for Player Hub
-        # linked registrations, fetch the character name from PlayerCharacter.
-        if not char_name_snapshot:
-            if char_reg.manual_character_name:
-                char_name_snapshot = char_reg.manual_character_name
-            elif char_reg.player_character_id:
-                pc_result = await db.execute(
-                    select(PlayerCharacter).where(
-                        PlayerCharacter.id == char_reg.player_character_id
-                    )
-                )
-                pc = pc_result.scalar_one_or_none()
-                if pc:
-                    char_name_snapshot = pc.name
+    # Character and provenance (R-PV-4): an explicit registration is validated as
+    # this card's in this static (400 otherwise) and named from the sent name,
+    # else its own; an explicit name alone is stored as sent; otherwise the
+    # card's main for this static fills in.
+    prov = await resolve_entry_provenance(
+        db,
+        request,
+        static_group_id=tier.static_group_id,
+        player=recipient_player,
+        registration_id=data.recipient_character_registration_id,
+        character_name=data.recipient_character_name,
+    )
 
     # Create entry
     entry = LootLogEntry(
@@ -295,8 +280,12 @@ async def create_loot_log_entry(
         is_extra=data.is_extra,
         created_at=datetime.now(timezone.utc).isoformat(),
         created_by_user_id=current_user.id,
-        recipient_character_registration_id=data.recipient_character_registration_id,
-        recipient_character_name=char_name_snapshot,
+        logged_via=prov.logged_via,
+        api_key_id=prov.api_key_id,
+        recipient_user_id=prov.recipient_user_id,
+        recipient_character_registration_id=prov.recipient_character_registration_id,
+        recipient_character_name=prov.recipient_character_name,
+        recipient_character_source=prov.recipient_character_source,
     )
     db.add(entry)
 
@@ -399,6 +388,7 @@ async def update_loot_log_entry(
     tier_id: str,
     entry_id: int,
     data: LootLogEntryUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -421,16 +411,26 @@ async def update_loot_log_entry(
     if not entry:
         raise HTTPException(status_code=404, detail="Loot log entry not found")
 
-    # If changing recipient, verify new recipient exists in this tier
-    if data.recipient_player_id is not None and data.recipient_player_id != entry.recipient_player_id:
+    # A recipient change is a sent card that differs from the stored one, read
+    # before the assignment below (R-PV-7). V1 and V2 loot edits send only
+    # changed fields (AddLootEntryModal.tsx:375-395, recipientPickerEditUpdates.ts);
+    # the full payload in the test is a superset of what any shell sends, so a
+    # legacy row must keep its NULLs under it.
+    stored_recipient_id = entry.recipient_player_id
+    recipient_changed = (
+        data.recipient_player_id is not None and data.recipient_player_id != stored_recipient_id
+    )
+    new_recipient: SnapshotPlayer | None = None
+    if recipient_changed:
+        # Verify the new recipient exists in this tier
         result = await db.execute(
             select(SnapshotPlayer).where(
                 SnapshotPlayer.id == data.recipient_player_id,
                 SnapshotPlayer.tier_snapshot_id == tier.id,
             )
         )
-        player = result.scalar_one_or_none()
-        if not player:
+        new_recipient = result.scalar_one_or_none()
+        if not new_recipient:
             raise HTTPException(status_code=400, detail="Recipient player not found in this tier")
 
     # Update fields
@@ -452,24 +452,67 @@ async def update_loot_log_entry(
         entry.weapon_job = data.weapon_job
     if data.is_extra is not None:
         entry.is_extra = data.is_extra
-    if data.recipient_character_registration_id is not None:
-        # Validate the character registration belongs to the (possibly updated) recipient player
-        effective_player_id = data.recipient_player_id or entry.recipient_player_id
-        char_result = await db.execute(
-            select(StaticCharacterRegistration).where(
-                StaticCharacterRegistration.id == data.recipient_character_registration_id,
-                StaticCharacterRegistration.static_group_id == group_id,
-                StaticCharacterRegistration.snapshot_player_id == effective_player_id,
-            )
+
+    # Character and recipient user (R-PV-7). logged_via, api_key_id and
+    # created_by_user_id are facts about the creation and never change here.
+    if recipient_changed:
+        # The character follows the new card: the explicit registration or
+        # name if sent, else the new card's main, else NULL. Nothing stale
+        # survives a reassignment.
+        prov = await resolve_entry_provenance(
+            db,
+            request,
+            static_group_id=tier.static_group_id,
+            player=new_recipient,
+            registration_id=data.recipient_character_registration_id,
+            character_name=data.recipient_character_name,
         )
-        if not char_result.scalar_one_or_none():
-            raise HTTPException(
-                status_code=400,
-                detail="Character registration not found or does not belong to this player/static",
+        entry.recipient_user_id = prov.recipient_user_id
+        entry.recipient_character_registration_id = prov.recipient_character_registration_id
+        entry.recipient_character_name = prov.recipient_character_name
+        entry.recipient_character_source = prov.recipient_character_source
+    else:
+        # Same card: recipient_user_id is untouched (a legacy row keeps its
+        # NULL). A sent registration or name that differs from the stored pair
+        # is validated and stored; a pair equal to the stored one changes
+        # nothing, the source included.
+        registration_differs = (
+            data.recipient_character_registration_id is not None
+            and data.recipient_character_registration_id
+            != entry.recipient_character_registration_id
+        )
+        name_differs = (
+            data.recipient_character_name is not None
+            and data.recipient_character_name != entry.recipient_character_name
+        )
+        if registration_differs:
+            result = await db.execute(
+                select(SnapshotPlayer).where(
+                    SnapshotPlayer.id == stored_recipient_id,
+                    SnapshotPlayer.tier_snapshot_id == tier.id,
+                )
             )
-        entry.recipient_character_registration_id = data.recipient_character_registration_id
-    if data.recipient_character_name is not None:
-        entry.recipient_character_name = data.recipient_character_name
+            current_recipient = result.scalar_one_or_none()
+            if not current_recipient:
+                raise HTTPException(
+                    status_code=400, detail="Recipient player not found in this tier"
+                )
+            # Validates the registration as this card's (400 otherwise); the
+            # name is the sent one, else the registration's own.
+            prov = await resolve_entry_provenance(
+                db,
+                request,
+                static_group_id=tier.static_group_id,
+                player=current_recipient,
+                registration_id=data.recipient_character_registration_id,
+                character_name=data.recipient_character_name,
+            )
+            entry.recipient_character_registration_id = prov.recipient_character_registration_id
+            entry.recipient_character_name = prov.recipient_character_name
+            entry.recipient_character_source = prov.recipient_character_source
+        elif name_differs:
+            entry.recipient_character_name = data.recipient_character_name
+            entry.recipient_character_source = CHARACTER_SOURCE_EXPLICIT
 
     await db.commit()
     await db.refresh(entry, ["recipient_player", "created_by"])
@@ -661,6 +704,7 @@ async def create_page_ledger_entry(
     group_id: str,
     tier_id: str,
     data: PageLedgerEntryCreate,
+    request: Request,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -686,6 +730,11 @@ async def create_page_ledger_entry(
     if not player:
         raise HTTPException(status_code=404, detail="Player not found in this tier")
 
+    # Provenance (R-PV-4): books send no character, so the card's main fills in.
+    prov = await resolve_entry_provenance(
+        db, request, static_group_id=tier.static_group_id, player=player
+    )
+
     # Create entry
     entry = PageLedgerEntry(
         tier_snapshot_id=tier.id,
@@ -698,6 +747,12 @@ async def create_page_ledger_entry(
         notes=data.notes,
         created_at=datetime.now(timezone.utc).isoformat(),
         created_by_user_id=current_user.id,
+        logged_via=prov.logged_via,
+        api_key_id=prov.api_key_id,
+        recipient_user_id=prov.recipient_user_id,
+        recipient_character_registration_id=prov.recipient_character_registration_id,
+        recipient_character_name=prov.recipient_character_name,
+        recipient_character_source=prov.recipient_character_source,
     )
     db.add(entry)
     await db.commit()
@@ -728,6 +783,7 @@ async def mark_floor_cleared(
     group_id: str,
     tier_id: str,
     data: MarkFloorClearedRequest,
+    request: Request,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -782,9 +838,16 @@ async def mark_floor_cleared(
     if len(players) != len(data.player_ids):
         raise HTTPException(status_code=404, detail="One or more players not found in this tier")
 
+    # Provenance for every card in a fixed number of SELECTs (R-PV-5, vet I-2):
+    # each card's main for this static fills in, since nothing explicit is sent.
+    provenance = await resolve_batch_provenance(
+        db, request, static_group_id=tier.static_group_id, players=players
+    )
+
     # Create earned entries for each player
     entries = []
     for player_id in data.player_ids:
+        prov = provenance[player_id]
         entry = PageLedgerEntry(
             tier_snapshot_id=tier.id,
             player_id=player_id,
@@ -796,6 +859,12 @@ async def mark_floor_cleared(
             notes=data.notes,
             created_at=datetime.now(timezone.utc).isoformat(),
             created_by_user_id=current_user.id,
+            logged_via=prov.logged_via,
+            api_key_id=prov.api_key_id,
+            recipient_user_id=prov.recipient_user_id,
+            recipient_character_registration_id=prov.recipient_character_registration_id,
+            recipient_character_name=prov.recipient_character_name,
+            recipient_character_source=prov.recipient_character_source,
         )
         db.add(entry)
         entries.append(entry)
@@ -1304,6 +1373,7 @@ async def create_material_log_entry(
     group_id: str,
     tier_id: str,
     data: MaterialLogEntryCreate,
+    request: Request,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -1367,6 +1437,11 @@ async def create_material_log_entry(
             )
         validated_slot = data.slot_augmented
 
+    # Provenance (R-PV-4): materials send no character, so the card's main fills in.
+    prov = await resolve_entry_provenance(
+        db, request, static_group_id=tier.static_group_id, player=recipient_player
+    )
+
     # Create entry
     entry = MaterialLogEntry(
         tier_snapshot_id=tier.id,
@@ -1379,6 +1454,12 @@ async def create_material_log_entry(
         notes=data.notes,
         created_at=datetime.now(timezone.utc).isoformat(),
         created_by_user_id=current_user.id,
+        logged_via=prov.logged_via,
+        api_key_id=prov.api_key_id,
+        recipient_user_id=prov.recipient_user_id,
+        recipient_character_registration_id=prov.recipient_character_registration_id,
+        recipient_character_name=prov.recipient_character_name,
+        recipient_character_source=prov.recipient_character_source,
     )
     db.add(entry)
 
@@ -1480,6 +1561,7 @@ async def update_material_log_entry(
     tier_id: str,
     entry_id: int,
     data: MaterialLogEntryUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -1502,16 +1584,24 @@ async def update_material_log_entry(
     if not entry:
         raise HTTPException(status_code=404, detail="Material log entry not found")
 
-    # If changing recipient, verify new recipient exists in this tier
-    if data.recipient_player_id is not None and data.recipient_player_id != entry.recipient_player_id:
+    # A recipient change is a sent card that differs from the stored one, read
+    # before the assignment below (R-PV-7). V1 re-sends the unchanged card on
+    # every save, and that must leave a legacy row's NULLs alone.
+    stored_recipient_id = entry.recipient_player_id
+    recipient_changed = (
+        data.recipient_player_id is not None and data.recipient_player_id != stored_recipient_id
+    )
+    new_recipient: SnapshotPlayer | None = None
+    if recipient_changed:
+        # Verify the new recipient exists in this tier
         result = await db.execute(
             select(SnapshotPlayer).where(
                 SnapshotPlayer.id == data.recipient_player_id,
                 SnapshotPlayer.tier_snapshot_id == tier.id,
             )
         )
-        player = result.scalar_one_or_none()
-        if not player:
+        new_recipient = result.scalar_one_or_none()
+        if not new_recipient:
             raise HTTPException(status_code=400, detail="Recipient player not found in this tier")
 
     # Update fields
@@ -1536,6 +1626,19 @@ async def update_material_log_entry(
     # Notes: explicit null or '' clears (normalized to NULL); absent leaves.
     if "notes" in data.model_fields_set:
         entry.notes = data.notes or None
+
+    # Recipient user and character follow a recipient change (R-PV-7): the new
+    # card's main, else NULL, so nothing stale survives. Material PUT sends no
+    # character, so without a change the character columns are untouched, and
+    # logged_via, api_key_id and created_by_user_id never change here.
+    if recipient_changed:
+        prov = await resolve_entry_provenance(
+            db, request, static_group_id=tier.static_group_id, player=new_recipient
+        )
+        entry.recipient_user_id = prov.recipient_user_id
+        entry.recipient_character_registration_id = prov.recipient_character_registration_id
+        entry.recipient_character_name = prov.recipient_character_name
+        entry.recipient_character_source = prov.recipient_character_source
 
     await db.commit()
     await db.refresh(entry, ["recipient_player", "created_by"])

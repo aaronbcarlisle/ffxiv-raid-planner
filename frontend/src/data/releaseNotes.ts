@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.63',
+    date: '2026-10-01T14:40:00Z',
+    title: 'Loot, materials and books record how they were logged',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Loot, materials and books record how they were logged',
+        description:
+          'New loot, material and book entries now record whether they came from the website or an API key such as the plugin\'s, and which key, whose card they were logged for, which character, and whether it was picked or filled in as the main. Nothing changes on screen yet, and older entries stay unmarked.',
+        pr: 345,
+        prTitle: 'feat(api): W0 PROV-1 — loot, material and book writes record how, which key, whose card and which character (HS-36)',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.62',
     date: '2026-10-01T14:00:00Z',
     title: 'Static lookup API change for non-members',
