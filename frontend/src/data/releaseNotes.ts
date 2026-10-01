@@ -84,6 +84,15 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'improvement',
+        title: 'Mount-farm edits, plugin syncs and suggestions use your character\'s record',
+        description:
+          'Your own mount-farm edits and the plugin\'s collection sync now write your character\'s collection record and note who changed it and how. A static\'s suggested farms and newly tracked farms read each member\'s record for the character on their card in that static. A lead\'s mount-farm edit for someone else no longer changes that member\'s collection.',
+        pr: 352,
+        prTitle: 'feat(api): S2a-1a·2b — the bridge, the plugin sync and the suggestion and seed reads go through the record',
+        internal: true,
+      },
+      {
+        category: 'improvement',
         title: 'Your collection follows your character',
         description:
           'Your collection is now kept per character; Profile ▸ Collections shows your main.',
