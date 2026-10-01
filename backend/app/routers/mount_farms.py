@@ -336,6 +336,7 @@ async def update_mount_farm_progress(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> MemberProgressResponse:
+    via = logged_via(request)
     await get_static_group(db, group_id)
     membership = await require_membership(db, user.id, group_id)
 
@@ -436,7 +437,7 @@ async def update_mount_farm_progress(
         has_mount=data.has_mount,
         totem_count=data.totem_count,
         actor_user_id=user.id,
-        via=logged_via(request),
+        via=via,
     )
     await db.commit()
 
@@ -454,6 +455,7 @@ async def bulk_update_mount_farm_progress(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> list[MemberProgressResponse]:
+    via = logged_via(request)
     await get_static_group(db, group_id)
     await require_membership(db, user.id, group_id, MemberRole.LEAD)
 
@@ -524,7 +526,7 @@ async def bulk_update_mount_farm_progress(
         ],
         group_id=group_id,
         actor_user_id=user.id,
-        via=logged_via(request),
+        via=via,
     )
     await db.commit()
 
