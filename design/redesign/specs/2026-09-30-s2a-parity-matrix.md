@@ -151,7 +151,7 @@ The whole tab stays in V2, unchanged, until S2a-5a (S2-14 :136). The verdicts gi
 
 | ID | V1 affordance | V1 source | Verdict | V2 home (ruling · slice) | Notes |
 |---|---|---|---|---|---|
-| P-83 | Tab "Goals & Farms", every role (ST-25) | `:61` | KEPT | Labelled "Suggestions" in V2 by the host, as it sets `hiddenTabs` (`:333-338`) (S2-14 :136) · S2a-5a | Hidden when W4 HOME restores D-70 (B7) |
+| P-83 | Tab "Goals & Farms", every role (ST-25) | `:61` | KEPT | Labelled "Suggestions" in V2. Nothing relabels a tab today: the label is fixed in `TABS` (`:61`), and the host only filters tabs through `hiddenTabs` (`:333-338`; `pages/V2SettingsHost.tsx:41`). S2a-5a adds a host-supplied label-override prop to `SettingsPanel`, modelled on `hiddenTabs`, and `V2SettingsHost` passes `goals → "Suggestions"`. V1 passes nothing and keeps "Goals & Farms" (S2-14 :136) · S2a-5a | Hidden when W4 HOME restores D-70 (B7) |
 | P-84 | Sub-nav Overview · Objectives · Farms · Suggestions (`?gsub=`) | `:37,70-75,281-285` | RETIRED-SPEC | V2 keeps only Suggestions (S2-14 :136) · S2a-5a | |
 | P-85 | Overview cards Objectives · Active Farms · Open Suggestions + Manage/View links (ST-26) | `:79-138` | RETIRED-SPEC | (S2-14 :136) · S2a-5a | Its Active Farms count omits Wanted (`:89`), unlike S2-5 |
 | P-86 | Objectives section (ST-27, ST-28) | `:292-296` | RE-HOMED | §8 (S2-13) · S2a-5a | |
