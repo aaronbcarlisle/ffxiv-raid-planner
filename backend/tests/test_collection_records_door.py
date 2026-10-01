@@ -553,4 +553,3 @@ class TestLoadRecords:
 
         assert counts.n == 0
         assert list(empty.values()) == [{}]
-
