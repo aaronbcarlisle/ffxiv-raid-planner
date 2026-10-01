@@ -133,9 +133,10 @@ export function useShellParamPersistence(): void {
   }, [param, setSessionOverride]);
 }
 
-/** Backend-wins hydration (Phase R §4): when /me delivers a uiShell, adopt
- *  it into the store + localStorage so subsequent paints agree. setState
- *  (not setPreference) on purpose — hydration must never PATCH back. */
+/** Backend-wins hydration (Phase R §4): when the auth bootstrap delivers a
+ *  uiShell (/api/auth/session, or /me as its fallback), adopt it into the
+ *  store + localStorage so subsequent paints agree. setState (not
+ *  setPreference) on purpose — hydration must never PATCH back. */
 export function useShellPreferenceSync(): void {
   const uiShell = useAuthStore((s) => s.user?.uiShell);
   const authInitialized = useAuthStore((s) => s.authInitialized);
@@ -144,7 +145,8 @@ export function useShellPreferenceSync(): void {
     // snapshot, which can be STALER than localStorage's ui-shell (sharpest
     // case: a local toggle whose PATCH mirror failed offline would be reverted
     // by the user's own stale snapshot). Only adopt a uiShell delivered by a
-    // real /me response — never the rehydrated snapshot.
+    // real backend answer (/api/auth/session, or /me as its fallback) — never
+    // the rehydrated snapshot.
     if (!authInitialized) return;
     if (uiShell !== 'legacy' && uiShell !== 'v2') return;
     if (useShellPreferenceStore.getState().preference !== uiShell) {

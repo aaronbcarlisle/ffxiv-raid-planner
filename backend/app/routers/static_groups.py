@@ -161,9 +161,16 @@ def group_to_response_with_members(
     user_role: MemberRole | None = None,
     is_admin_access: bool = False,
 ) -> StaticGroupWithMembers:
-    """Convert StaticGroup model to StaticGroupWithMembers schema"""
+    """Convert StaticGroup model to StaticGroupWithMembers schema.
+
+    Identity gate (GUEST-1 R-G1-2): `user_role is not None` — every membership
+    role (viewers included) and admins (who resolve to OWNER). A caller with no
+    role (anonymous or a signed-in outsider) gets `owner: null` and
+    `members[].user: null`; the members list itself stays.
+    """
+    identity = user_role is not None
     owner_info = None
-    if group.owner:
+    if identity and group.owner:
         owner_info = OwnerInfo(
             id=group.owner.id,
             discord_username=group.owner.discord_username,
@@ -173,7 +180,7 @@ def group_to_response_with_members(
         )
 
     members = [
-        membership_to_response(m, include_user=True)
+        membership_to_response(m, include_user=identity)
         for m in (group.memberships or [])
     ]
 

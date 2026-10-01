@@ -540,7 +540,7 @@ export function PrivacyDocs() {
                 <div className="bg-surface-card border border-border-subtle rounded-xl p-6">
                   <h4 className="font-semibold text-text-primary mb-2">Check API Response</h4>
                   <p className="text-text-secondary text-sm">
-                    Open browser DevTools → Network tab. Find the <code className="bg-surface-sunken px-1.5 py-0.5 rounded">/api/auth/me</code> request.
+                    Open browser DevTools → Network tab. Find the <code className="bg-surface-sunken px-1.5 py-0.5 rounded">/api/auth/session</code> request.
                     The response should NOT contain an "email" field.
                   </p>
                 </div>

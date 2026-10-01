@@ -290,7 +290,7 @@ There's no way to cryptographically prove data deletion (no web app really can).
 **Check API Response:**
 ```bash
 # After logging in, open browser DevTools → Network
-# Find the /api/auth/me request
+# Find the /api/auth/session request
 # Response should NOT contain an "email" field
 ```
 
