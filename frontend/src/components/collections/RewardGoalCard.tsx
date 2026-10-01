@@ -52,9 +52,11 @@ interface RewardGoalCardProps {
   onLogDrop: (goal: CollectionGoal) => void;
   onCopyPlan: (goal: CollectionGoal) => void;
   canManage: boolean;
+  /** Viewers are read-only: the server refuses their drops, so the button is hidden. */
+  isViewer: boolean;
 }
 
-export function RewardGoalCard({ goal, participants, onView, onLogDrop, onCopyPlan, canManage: _canManage }: RewardGoalCardProps) {
+export function RewardGoalCard({ goal, participants, onView, onLogDrop, onCopyPlan, canManage: _canManage, isViewer }: RewardGoalCardProps) {
   const summary = goal.participantSummary;
   const needCount = summary?.need ?? 0;
   const wantCount = summary?.want ?? 0;
@@ -187,7 +189,7 @@ export function RewardGoalCard({ goal, participants, onView, onLogDrop, onCopyPl
         <Button variant="ghost" size="sm" onClick={() => onView(goal)} className="flex items-center gap-1">
           View <ChevronRight size={14} />
         </Button>
-        {!isComplete && (
+        {!isComplete && !isViewer && (
           <Button variant="ghost" size="sm" onClick={() => onLogDrop(goal)} className="flex items-center gap-1">
             <Plus size={14} /> Log Drop
           </Button>

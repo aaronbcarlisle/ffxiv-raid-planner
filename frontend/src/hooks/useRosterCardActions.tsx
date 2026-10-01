@@ -436,8 +436,9 @@ export function useRosterCardActions(params: RosterCardActionParams): RosterCard
   // is `userRole === 'owner'`, the equivalent of legacy's separate prop.
   const isGroupOwner = userRole === 'owner';
   const isLinkedToMe = !!player.userId && player.userId === currentUserId;
+  // Viewers are read-only and the server refuses their claim; self-release stays open.
   const showTake =
-    !player.userId && !!currentUserId && !!actions.onClaimPlayer && !userHasClaimedPlayer;
+    !player.userId && !!currentUserId && !!actions.onClaimPlayer && !userHasClaimedPlayer && userRole !== 'viewer';
   const showRelease =
     (isLinkedToMe || isGroupOwner) && !!player.userId && !!actions.onReleasePlayer;
   // Owner-assign shows for an actual owner (not via admin access); admin-assign

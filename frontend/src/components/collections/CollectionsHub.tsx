@@ -59,9 +59,10 @@ interface CollectionsHubProps {
   groupId: string;
   currentUserId: string;
   canManage: boolean;
+  isViewer: boolean;
 }
 
-export function CollectionsHub({ groupId, currentUserId, canManage }: CollectionsHubProps) {
+export function CollectionsHub({ groupId, currentUserId, canManage, isViewer }: CollectionsHubProps) {
   const { goals, isLoading, participants, fetchGoals, fetchParticipants } = useCollectionGoalStore();
 
   // Farms sub-tab in the URL (?farm=suggested|active|catalog) — deep-linkable,
@@ -229,6 +230,7 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
                     onLogDrop={setLogDropGoal}
                     onCopyPlan={handleCopyPlan}
                     canManage={canManage}
+                    isViewer={isViewer}
                   />
                 ))}
               </div>
@@ -249,6 +251,7 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
                       onLogDrop={setLogDropGoal}
                       onCopyPlan={handleCopyPlan}
                       canManage={canManage}
+                      isViewer={isViewer}
                     />
                   ))}
                 </div>
@@ -283,6 +286,7 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
           groupId={groupId}
           currentUserId={currentUserId}
           canManage={canManage}
+          isViewer={isViewer}
           onEdit={(g) => {
             setViewGoal(null);
             setEditGoal(g);
@@ -297,6 +301,8 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
           goal={logDropGoal}
           groupId={groupId}
           participants={participants[logDropGoal.id] ?? []}
+          currentUserId={currentUserId}
+          canManage={canManage}
         />
       )}
     </div>

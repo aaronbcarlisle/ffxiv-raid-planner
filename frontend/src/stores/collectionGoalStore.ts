@@ -119,6 +119,8 @@ export interface ParticipantStateEntry {
   notes: string | null;
   updatedAt: string;
   displayName: string | null;
+  /** The participant's role in the static (R-P0-4); null once they are no longer a member. */
+  memberRole: string | null;
 }
 
 export interface RewardDrop {
@@ -132,6 +134,8 @@ export interface RewardDrop {
   notes: string | null;
   createdAt: string;
   recipientDisplayName: string | null;
+  /** The state this drop flipped the recipient out of (need/want); null when it caused no flip. */
+  recipientPriorState: string | null;
 }
 
 export interface CollectionGoal {
@@ -250,6 +254,7 @@ interface ApiParticipant {
   notes: string | null;
   updated_at: string;
   display_name: string | null;
+  member_role?: string | null;
 }
 
 interface ApiDrop {
@@ -263,6 +268,7 @@ interface ApiDrop {
   notes: string | null;
   created_at: string;
   recipient_display_name: string | null;
+  recipient_prior_state?: string | null;
 }
 
 function fromApi(g: ApiGoal): CollectionGoal {
@@ -306,6 +312,7 @@ function fromApiParticipant(p: ApiParticipant): ParticipantStateEntry {
     notes: p.notes,
     updatedAt: p.updated_at,
     displayName: p.display_name,
+    memberRole: p.member_role ?? null,
   };
 }
 
@@ -321,6 +328,7 @@ function fromApiDrop(d: ApiDrop): RewardDrop {
     notes: d.notes,
     createdAt: d.created_at,
     recipientDisplayName: d.recipient_display_name,
+    recipientPriorState: d.recipient_prior_state ?? null,
   };
 }
 
@@ -395,6 +403,7 @@ interface CollectionGoalStore {
 
   fetchDrops: (groupId: string, goalId: string) => Promise<void>;
   logDrop: (groupId: string, goalId: string, data: RewardDropCreate) => Promise<RewardDrop>;
+  deleteDrop: (groupId: string, goalId: string, dropId: string) => Promise<void>;
 }
 
 export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => ({
@@ -563,5 +572,19 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
     await get().fetchParticipants(groupId, goalId);
     await get().fetchGoals(groupId);
     return drop;
+  },
+
+  deleteDrop: async (groupId, goalId, dropId) => {
+    await api.delete<void>(
+      `/api/static-groups/${groupId}/collection-goals/${goalId}/drops/${dropId}`,
+    );
+    set((s) => ({
+      drops: { ...s.drops, [goalId]: (s.drops[goalId] ?? []).filter((d) => d.id !== dropId) },
+    }));
+    // The server restores the recipient's prior state, so participants and goal counts changed.
+    // It also hands the prior state to the earliest remaining drop, so the cached rows are stale.
+    await get().fetchDrops(groupId, goalId);
+    await get().fetchParticipants(groupId, goalId);
+    await get().fetchGoals(groupId);
   },
 }));

@@ -14,20 +14,28 @@ interface LogDropModalProps {
   goal: CollectionGoal;
   groupId: string;
   participants: ParticipantStateEntry[];
+  currentUserId: string;
+  /** Leads and owners may log a drop for anyone; everyone else only for themselves. */
+  canManage: boolean;
 }
 
-export function LogDropModal({ isOpen, onClose, goal, groupId, participants }: LogDropModalProps) {
+export function LogDropModal({ isOpen, onClose, goal, groupId, participants, currentUserId, canManage }: LogDropModalProps) {
   const { logDrop } = useCollectionGoalStore();
 
   const [recipientId, setRecipientId] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const needWantOptions = participants
+  // Viewers can't receive drops; a non-manager can only log for themselves.
+  const eligible = participants
+    .filter((p) => p.memberRole != null && p.memberRole !== 'viewer')
+    .filter((p) => canManage || p.userId === currentUserId);
+
+  const needWantOptions = eligible
     .filter((p) => p.state === 'need' || p.state === 'want')
     .sort((a, b) => (a.priorityRank ?? 999) - (b.priorityRank ?? 999));
 
-  const allOptions = participants;
+  const allOptions = eligible;
 
   const options = [
     { value: '', label: 'No specific recipient' },
