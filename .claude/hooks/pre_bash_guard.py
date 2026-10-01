@@ -25,7 +25,10 @@ never trips a gate. Each simple command runs in the directory it would really
 run in: the hook input's `cwd`, moved by `cd` / `Set-Location` into a directory
 that exists and by `pushd` / `popd`, restored when a bash subshell ends, then
 `git -C`. That keeps the gates right for agents in `.claude/worktrees/`.
-The global ~/.claude/hooks/bash_guard.py uses the same parser; keep them in step.
+The user-level ~/.claude/hooks/bash_guard.py (abc-claude) runs the same push, force
+and merge gates on the owner's machines. This copy stays as the backstop for
+cloud sessions and contributors without that setup; only the commit gate is
+specific to this repo.
 
 Exit 0 = allow. Exit 2 = block the tool call; stderr is fed back to Claude.
 Fails OPEN on unexpected errors (a broken guard must not brick the run).
