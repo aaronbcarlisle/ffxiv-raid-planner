@@ -9,8 +9,9 @@ provenance table can be written without recording how it was logged:
   (b) every construction passes `logged_via=` and `api_key_id=` as explicit
       keywords (and, on the three tier models, the recipient fields), never
       through `**`, and `logged_via` is never the constant None;
-  (c) nothing writes these tables through `insert()`, `bulk_*`, `merge`,
-      `make_transient` or an `INSERT INTO` string;
+  (c) nothing writes these tables through `insert()` (under any import name),
+      a `bulk_*` method, `merge`, `make_transient` or an `INSERT INTO` string
+      (bare, quoted or schema-qualified);
   (d) every site (and the two update handlers that can move a row) has at
       least one route test decorated `@covers(...)` in
       tests/test_write_provenance.py, so a label can't stand in for a test.
@@ -22,6 +23,8 @@ import ast
 import re
 from collections.abc import Iterator
 from pathlib import Path
+
+import pytest
 
 from tests.test_write_provenance import COVERED
 
@@ -58,10 +61,15 @@ EXPECTED_SITES = {
 # registers them in COVERED, so (d) accepts them next to the constructor sites.
 MOVE_HANDLERS = {"update_loot_log_entry", "update_material_log_entry"}
 
-BULK_WRITE_CALLS = {"bulk_insert_mappings", "bulk_save_objects", "merge", "make_transient"}
+# Session writes that bypass the constructor, besides every `bulk_*` method.
+OTHER_WRITE_CALLS = {"merge", "make_transient"}
 
+# A schema or table name, bare or quoted ("x", `x`, [x]).
+_SQL_IDENT = r"""(?:"\w+"|`\w+`|\[\w+\]|\w+)"""
 RAW_INSERT = re.compile(
-    r"\binsert\s+(or\s+\w+\s+)?into\s+\W?(" + "|".join(PROVENANCE_MODELS.values()) + r")\b",
+    r"\binsert\s+(?:or\s+\w+\s+)?into\s+"
+    r"(?:" + _SQL_IDENT + r"\s*\.\s*)?"  # optional schema, e.g. public.
+    r"""["`\[]?(?:""" + "|".join(PROVENANCE_MODELS.values()) + r")\b",
     re.IGNORECASE,
 )
 
@@ -107,6 +115,15 @@ def _table_model(node: ast.AST, aliases: dict[str, str]) -> str | None:
     if isinstance(node, ast.Attribute) and node.attr == "__table__":
         return _model_of(node.value, aliases)
     return None
+
+
+def _insert_names(tree: ast.Module) -> set[str]:
+    """`insert` plus every name it's imported as (`from ... import insert as pg_insert`)."""
+    names = {"insert"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            names.update(a.asname for a in node.names if a.name == "insert" and a.asname)
+    return names
 
 
 def _callee_name(call: ast.Call) -> str | None:
@@ -182,39 +199,85 @@ def test_b_every_constructor_passes_provenance_keywords_explicitly():
     assert not problems, "\n".join(problems)
 
 
-def test_c_no_bulk_or_raw_write_touches_a_provenance_table():
+def _write_problems(module: str, tree: ast.Module) -> list[str]:
+    """Every write in `tree` that bypasses the provenance-model constructor."""
     problems = []
-    for module, tree in _modules():
-        aliases = _alias_map(tree)
-        touches_model = any(
-            _model_of(node, aliases) is not None
-            for node in ast.walk(tree)
-            if isinstance(node, (ast.Name, ast.Attribute))
-        ) or any(
-            alias.name in PROVENANCE_MODELS
-            for node in ast.walk(tree)
-            if isinstance(node, ast.ImportFrom)
-            for alias in node.names
-        )
-        for node in ast.walk(tree):
-            where = f"{module}:{getattr(node, 'lineno', '?')}"
-            if isinstance(node, ast.Call):
-                name = _callee_name(node)
-                if name == "insert":
-                    # `insert(<model>)`, `insert(<model>.__table__)` or `<model>.__table__.insert()`
-                    args = list(node.args)
-                    if isinstance(node.func, ast.Attribute):
-                        args.append(node.func.value)
-                    for arg in args:
-                        if _model_of(arg, aliases) or _table_model(arg, aliases):
-                            problems.append(f"{where}: insert() on a provenance model")
-                if name in BULK_WRITE_CALLS and touches_model:
-                    problems.append(f"{where}: {name}() in a module that uses a provenance model")
-            elif isinstance(node, ast.Constant) and isinstance(node.value, str):
-                # f-string literal parts are Constant nodes inside JoinedStr, so they land here too.
-                if RAW_INSERT.search(node.value):
-                    problems.append(f"{where}: raw INSERT INTO a provenance table")
+    aliases = _alias_map(tree)
+    insert_names = _insert_names(tree)
+    touches_model = any(
+        _model_of(node, aliases) is not None
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Name, ast.Attribute))
+    ) or any(
+        alias.name in PROVENANCE_MODELS
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom)
+        for alias in node.names
+    )
+    for node in ast.walk(tree):
+        where = f"{module}:{getattr(node, 'lineno', '?')}"
+        if isinstance(node, ast.Call):
+            name = _callee_name(node) or ""
+            if name in insert_names:
+                # `insert(<model>)`, `insert(<model>.__table__)` or `<model>.__table__.insert()`
+                args = list(node.args)
+                if isinstance(node.func, ast.Attribute):
+                    args.append(node.func.value)
+                for arg in args:
+                    if _model_of(arg, aliases) or _table_model(arg, aliases):
+                        problems.append(f"{where}: {name}() on a provenance model")
+            if (name.startswith("bulk_") or name in OTHER_WRITE_CALLS) and touches_model:
+                problems.append(f"{where}: {name}() in a module that uses a provenance model")
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            # f-string literal parts are Constant nodes inside JoinedStr, so they land here too.
+            if RAW_INSERT.search(node.value):
+                problems.append(f"{where}: raw INSERT INTO a provenance table")
+    return problems
+
+
+def test_c_no_bulk_or_raw_write_touches_a_provenance_table():
+    problems = [p for module, tree in _modules() for p in _write_problems(module, tree)]
     assert not problems, "\n".join(problems)
+
+
+# One snippet per write form (c) must refuse, so a weakened check fails here.
+WRITE_FORMS = {
+    "insert(model)": "insert(LootLogEntry).values(id=1)",
+    "insert(model.__table__)": "insert(MaterialLogEntry.__table__)",
+    "model.__table__.insert()": "PageLedgerEntry.__table__.insert()",
+    "aliased insert": (
+        "from sqlalchemy.dialects.postgresql import insert as pg_insert\npg_insert(RewardDropLog)"
+    ),
+    "bulk_insert_mappings": "db.bulk_insert_mappings(LootLogEntry, rows)",
+    "bulk_update_mappings": "db.bulk_update_mappings(LootLogEntry, rows)",
+    "merge": "from app.models import LootLogEntry\ndb.merge(entry)",
+    "raw INSERT": 'text("INSERT INTO loot_log_entries (id) VALUES (1)")',
+    "quoted raw INSERT": "text('INSERT INTO \"page_ledger_entries\" (id) VALUES (1)')",
+    "schema-qualified raw INSERT": 'text("insert into public.material_log_entries values (1)")',
+    "quoted schema-qualified raw INSERT": (
+        'text(\'INSERT INTO "public"."reward_drop_log" (id) VALUES (1)\')'
+    ),
+}
+
+# Writes to other tables, which (c) must let through.
+OTHER_TABLE_WRITES = {
+    "insert(other model)": "insert(OtherModel)",
+    "bulk_* with no provenance model": "db.bulk_update_mappings(OtherModel, rows)",
+    "a table name that only starts like one": (
+        'text("INSERT INTO loot_log_entries_archive (id) VALUES (1)")'
+    ),
+    "schema-qualified other table": 'text("INSERT INTO public.other_table (id) VALUES (1)")',
+}
+
+
+@pytest.mark.parametrize("source", list(WRITE_FORMS.values()), ids=list(WRITE_FORMS))
+def test_c_refuses_every_write_form(source):
+    assert _write_problems("snippet.py", ast.parse(source))
+
+
+@pytest.mark.parametrize("source", list(OTHER_TABLE_WRITES.values()), ids=list(OTHER_TABLE_WRITES))
+def test_c_lets_other_tables_through(source):
+    assert not _write_problems("snippet.py", ast.parse(source))
 
 
 def test_d_every_site_has_a_covering_route_test():
