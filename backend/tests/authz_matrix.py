@@ -109,8 +109,6 @@ ERRS = "/api/admin/analytics/errors"
 CAT = "/api/admin/collection-catalog"
 ME = "/api/me"
 
-REG_GAP = "is_own skips the membership role"
-
 # fmt: off
 ROUTES: tuple[AuthzRoute, ...] = (
     # ── auth / api keys / analytics / discord / notifications ───────────────
@@ -512,30 +510,26 @@ ROUTES: tuple[AuthzRoute, ...] = (
     R("POST", REG, "member", "inline", "register a character on your own card",
       variant="own", actor="member",
       build=lambda w: _r(_g(w), None, {"snapshotPlayerId": w.my_card.id,
-                                       "manualCharacterName": "Alt One"}),
-      gaps=_viewer_gap(f"a viewer can register characters on their own card (201): {REG_GAP}")),
+                                       "manualCharacterName": "Alt One"})),
     R("POST", REG, "lead", "inline", "register a character on someone else's card",
       variant="other",
       build=lambda w: _r(_g(w), None, {"snapshotPlayerId": w.card["open"].id,
                                        "manualCharacterName": "Alt One"})),
     R("PATCH", REG + "/{reg_id}", "member", "inline", "edit a registration on your own card",
       variant="own", actor="member",
-      build=lambda w: _r(_g(w, reg_id=w.my_reg.id), None, {"job": "DRG"}),
-      gaps=_viewer_gap(f"a viewer can edit registrations on their own card (200): {REG_GAP}")),
+      build=lambda w: _r(_g(w, reg_id=w.my_reg.id), None, {"job": "DRG"})),
     R("PATCH", REG + "/{reg_id}", "lead", "inline",
       "edit a registration on someone else's card", variant="other",
       build=lambda w: _r(_g(w, reg_id=w.reg["open"].id), None, {"job": "DRG"})),
     R("DELETE", REG + "/{reg_id}", "member", "inline",
       "delete a registration on your own card", variant="own", actor="member",
-      build=lambda w: _r(_g(w, reg_id=w.my_reg.id)),
-      gaps=_viewer_gap(f"a viewer can delete registrations on their own card (204): {REG_GAP}")),
+      build=lambda w: _r(_g(w, reg_id=w.my_reg.id))),
     R("DELETE", REG + "/{reg_id}", "lead", "inline",
       "delete a registration on someone else's card", variant="other",
       build=lambda w: _r(_g(w, reg_id=w.reg["open"].id))),
     R("POST", REG + "/{reg_id}/set-primary", "member", "inline",
       "make a registration primary on your own card", variant="own", actor="member",
-      build=lambda w: _r(_g(w, reg_id=w.my_reg.id)),
-      gaps=_viewer_gap(f"a viewer can set their own card's primary registration (200): {REG_GAP}")),
+      build=lambda w: _r(_g(w, reg_id=w.my_reg.id))),
     R("POST", REG + "/{reg_id}/set-primary", "lead", "inline",
       "make a registration primary on someone else's card", variant="other",
       build=lambda w: _r(_g(w, reg_id=w.reg["open"].id))),

@@ -20,7 +20,7 @@ from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..dependencies import get_current_user
-from ..models import SnapshotPlayer, User
+from ..models import MemberRole, SnapshotPlayer, User
 from ..models.player_character import PlayerCharacter
 from ..models.player_profile import PlayerProfile
 from ..models.snapshot_player import SnapshotPlayer as _SnapshotPlayer
@@ -32,6 +32,7 @@ from ..permissions import (
     check_view_permission,
     get_static_group,
     require_can_edit_roster,
+    require_membership,
 )
 from ..schemas.static_characters import (
     CharacterRegistrationCreate,
@@ -223,6 +224,7 @@ async def create_character_registration(
 ) -> CharacterRegistrationResponse:
     group, player = await _get_group_and_player(session, group_id, body.snapshot_player_id)
 
+    await require_membership(session, user.id, group_id, MemberRole.MEMBER)
     # Permission: lead/owner OR the player themselves
     is_own = _can_edit_own_registration(user, player)
     if not is_own:
@@ -320,6 +322,7 @@ async def update_character_registration(
     reg = await _get_registration(session, group_id, reg_id)
     player = await _get_snapshot_player(session, reg.snapshot_player_id)
 
+    await require_membership(session, user.id, group_id, MemberRole.MEMBER)
     is_own = _can_edit_own_registration(user, player)
     if not is_own:
         await require_can_edit_roster(session, user.id, group_id)
@@ -368,6 +371,7 @@ async def delete_character_registration(
     reg = await _get_registration(session, group_id, reg_id)
     player = await _get_snapshot_player(session, reg.snapshot_player_id)
 
+    await require_membership(session, user.id, group_id, MemberRole.MEMBER)
     is_own = _can_edit_own_registration(user, player)
     if not is_own:
         await require_can_edit_roster(session, user.id, group_id)
@@ -391,6 +395,7 @@ async def set_primary_registration(
     reg = await _get_registration(session, group_id, reg_id)
     player = await _get_snapshot_player(session, reg.snapshot_player_id)
 
+    await require_membership(session, user.id, group_id, MemberRole.MEMBER)
     is_own = _can_edit_own_registration(user, player)
     if not is_own:
         await require_can_edit_roster(session, user.id, group_id)
