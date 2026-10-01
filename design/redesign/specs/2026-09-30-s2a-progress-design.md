@@ -144,7 +144,7 @@ Rows are tracks, columns are the roster's players, and each cell is that player'
 - ⌘K "Go to Tracking" becomes "Go to Progress".
 
 ### S2-15 · **Phones: desktop only in S2a** (owner, 2026-09-30; amends W3 S2a's acceptance)
-Progress's phone cards move to the mobile pass (W7). V2 has no phone navigation until S2c, so no one reaches Progress on a phone before then. Until W7, the matrix scrolls sideways inside its own container, never the page.
+Progress's phone cards move to the mobile pass (W7). V2 still renders `MobileBottomNav` until S2c removes it, and its "Goals" entry opens `PageMode` `'goals'` (`MobileBottomNav.tsx:23-41`), so phones do reach Progress from S2a-2 on. They get the desktop matrix, which scrolls sideways inside its own container, never the page, until W7. S2a adds no phone gate: mobile is one end-phase pass.
 
 ## 3. The canvas, and where this spec departs from it
 
@@ -177,12 +177,12 @@ The canvas's context bar (static ▾ / tier ▾ / dated week chip) and "Recruiti
 |---|---|---|
 | Farm status per user | `RewardParticipantState` (goal, user), Need/Want/Have/Pass; lead and self writes both store `source="manual"` (`collection_goals.py:574,588` vs `:653,667`) | Unchanged keying; adds `updated_by_user_id`, `updated_via` and `state_changed_at` (S2-9, S2-10; vet I6, I7); `list_participants` merges the record per field (fold-2 #2) |
 | Member's own totems | Ignored for non-leads (`collection_goals.py:541-554`, #329) | Written to the member's character record, else the profile-level row, else this static's row (S2-7, S2-10); AUTHZ "self" row and probe updated |
-| Character's totems and ownership | `PlayerCollectionSnapshot` per profile; `MountFarmProgress` per static; the two plugin syncs write different stores under different rules | `PlayerCollectionSnapshot` keeps `profile_id`, gains nullable `character_id` (fold-2 NEW-C); farm rows merge it with a per-static override; one collision rule; migration attributes both stores (S2-10) |
+| Character's totems and ownership | `PlayerCollectionSnapshot` per profile; `MountFarmProgress` per static; the two plugin syncs write different stores under different rules | `PlayerCollectionSnapshot` keeps `profile_id`, gains nullable `character_id` (fold-2 NEW-C) plus `state_changed_at` (the Undo check in S2-9), `updated_by_user_id` and `updated_via`. Uniqueness moves from `uq_player_collection_snapshot_profile_item` (`profile_id`, `catalog_item_id`; `player_collection_snapshot.py:72-76`) to two partial unique indexes, one row per (`character_id`, item) where `character_id` is set and one per (`profile_id`, item) where it is NULL, declared for both dialects (`postgresql_where` / `sqlite_where`) so `check_migration_dialect.py` passes. Farm rows merge it with a per-static override; one collision rule; migration attributes both stores (S2-10) |
 | Count visibility | Every count to every member, viewers included (`list_participants` needs only membership; `ParticipantsPanel.tsx:124-126`; `mount_farms.py:228,260`); suggestions hide counts unless the want is shared (`collection_suggestion_service.py:207`) | Members see all; viewers see states only; a member's Hub flag hides their own counts; every count-carrying read gated or recorded as an exception (B1, fold-2 #4) |
 | Track seed | No-signal members seeded Want (`collection_goals.py:406-409`) | No row: they start blank (B5) |
 | Roster columns | Client has `useTierPlayers()` and each player's `userId` | Client join, no API change |
 | Queue order | `priority_rank`, then `updated_at` | Computed client-side (S2-8; B3's `priority_mode` mapping, null included); `priority_rank` still overrides |
-| Drops | `RewardDropLog`: recipient user, timestamp; PROV-1 adds `logged_via` | Adds the recipient's character (B11); a member's own drop also writes the record (S2-9) |
+| Drops | `RewardDropLog`: recipient user, timestamp | PROV-1 (W0, merged before S2a-1) adds `logged_via` and `api_key_id`; S2a-1a adds the recipient's character (B11); a member's own drop also writes the record (S2-9) |
 | Drop week label | Timestamp only | Derived client-side from the tier's week numbering |
 | Wanted by your static | `GET …/collection-suggestions` joins Hub wants (visibility-filtered) | Reused |
 | Tier BiS | `bisSlotTotals`, `playerBisProgress`, `calculatePlayerCompletion` disagree | One selector per HS-35 #6 (S2-6) |

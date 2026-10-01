@@ -121,7 +121,7 @@ Each item lists its scope, dependencies, acceptance criteria, size and rulings. 
 - Parity matrix §12 A15: delete the stale comment in `components/group/PluginPage.test.tsx:4-5`, which says `GearSyncDashboard` has zero importers (`GroupViewContent.tsx:51` imports it).
 - **Acceptance:** alert closed, scripts tests green; the guard fails on a clobbered file in a test branch; the comment is gone.
 
-### S2 · Stage 2, the in-static IA collapse — L · **spec first** (session 3) · HS-2, HS-3, HS-20, HS-27, HS-29
+### S2 · Stage 2, the in-static IA collapse — L · **spec first** (session 3; the S2a spec ✅ accepted 2026-10-01, #334) · HS-2, HS-3, HS-20, HS-27, HS-29
 **Spec-ready boundary.** Session 3 ends when three things exist: the Stage 2 spec, an owner-signed parity matrix for every surface it replaces (More page, `PluginPage`, `GoalsPage`/Tracking, `MobileBottomNav`), and the slice plan. No code before all three. *(HS-35 #30: batch A is answered, so S2a's spec and build may start while batch B's surfaces are specced; S2a still needs its own owner-signed matrix.)*
 
 *Settled inputs (don't reopen), except where HS-35 amends them (HS-33): #1 and #3 replace S2-1/S2-2 and move Objectives; #21 makes Settings a page (Leave in Members, Delete in its Danger zone); #23 refines HS-3; #11–#13 reshape the frame, tabs and palette, and S2c follows DA 4 Mobile-A. The S2 spec reads §6.3 W3 first:* F-01…F-12 (`specs/systems-flow-map.md:213-224`); HS-2; HS-3; HS-27; HS-29; D-18 → Progress ▸ Split Clears (R-41); D-52 (no More tab; Plugin isn't a tab); D-67 → one evolved Home TrackCard pointing into Progress (F-10); D-68 → a data-gated attention row on Home (F-11); D-71 drop; the Danger Zone moves to Settings ▸ Static as an approved V1-visible delta (F-12); a mobile-reachable shell switch must exist before the More card dies (F-12); the More dissolution table (`systems-flow-map.md:192-205`).
@@ -346,7 +346,7 @@ Walk these on their page:
 1. ✅ V1B item 1, #322. ✅ P1, #323.
 2. This docs PR, #325: the plan's adoption and the 31 answers (HS-32…HS-35).
 3. ✅ **The P0 safety slice** (SEC-1 #329 + #330, LOG-1 #327, RSVP-0 #328 with #324, AUTHZ #332), from W0: SEC-1 (`log_drop` rules, P0-1, to HS-35 #2: 9A plus viewer routes (a)), LOG-1 (the Log Week double-log, P0-2), RSVP-0 (series vs occurrence, the P0-3 mitigation), and AUTHZ (a role audit of every mutation route). #324, the V2 RSVP double toast, may ride along. Its evidence is under W0 below.
-4. **Stage 2 co-design, restarting from canvas DA 10** (Progress), not from the old Farms A/B/C question. DA 10 is answered (HS-35 #1 and #3: the Tracks matrix with Farms-B; Objectives to Recruit ▸ Listing and Home), so the session writes the S2a spec against those answers and the synthesis's §8 DA 10 conditions.
+4. **Stage 2 co-design, restarting from canvas DA 10** (Progress), not from the old Farms A/B/C question. DA 10 is answered (HS-35 #1 and #3: the Tracks matrix with Farms-B; Objectives to Recruit ▸ Listing and Home), so the session writes the S2a spec against those answers and the synthesis's §8 DA 10 conditions. *(✅ the S2a spec was accepted 2026-10-01, #334; its parity matrix and slice plans are next.)*
 
 In parallel, each in its own worktree, once the P0 slice is under way: the rest of W0, the W1 clusters (their decisions are answered, HS-35), and W2's CC-5 reconciliation PR.
 
