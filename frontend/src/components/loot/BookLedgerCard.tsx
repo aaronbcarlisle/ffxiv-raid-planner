@@ -56,8 +56,6 @@ type BookLedgerCardBaseProps = {
    */
   clockWeek: number;
   canEdit: boolean;
-  /** Unused until W4 LOOT restores member own-row books (R-R1-7); callers still pass it. */
-  effectiveUserId?: string;
   className?: string;
 };
 

@@ -231,6 +231,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
     // The member can edit one row, so the entry still names the action.
     openCharacters('Manage characters');
 
+    expect(screen.getByRole('heading', { name: 'Lodestone sync' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Lodestone Sync for Warrior Main/i })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /Lodestone for Sage Main/i })).not.toBeInTheDocument();
     const [ownRow, otherRow] = syncRows();
@@ -274,6 +275,8 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
     openCharacters('Characters');
 
     expect(screen.queryByText(/Viewers cannot edit players/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Linked characters' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Lodestone sync' })).not.toBeInTheDocument();
     const [unlinked, linked] = syncRows();
     expect(within(unlinked).getByText('Not linked')).toBeInTheDocument();
     expect(within(linked).getByText('Mock Raider · Gilgamesh')).toBeInTheDocument();

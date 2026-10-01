@@ -221,7 +221,6 @@ test.describe('Member (DevMember), V2', () => {
       await expect(page.getByRole('button', { name: 'Add player' })).toHaveCount(0);
       await expect(page.getByRole('button', { name: 'Reorder' })).toHaveCount(0);
       // A member keeps it (R-R1-8): the registry is readable, and V1 shows it to every role.
-      await expect(page.getByRole('button', { name: /^(Manage characters|Characters)$/ })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Manage characters' })).toBeVisible();
     });
 

@@ -111,7 +111,7 @@ import { BiSSourceFixBanner } from '../player/BiSSourceFixBanner';
  * does, minus the hover and the half-opacity "disabled" look.
  */
 function seatChipTone(
-  role: string,
+  role: ReturnType<typeof getValidRole>,
   tankRole: SnapshotPlayer['tankRole'],
   position: SnapshotPlayer['position']
 ): string {

@@ -110,7 +110,7 @@ export const CharacterManageBridge: React.FC<CharacterManageBridgeProps> = ({
           <section className="mb-5">
             <div className="flex items-baseline justify-between mb-1">
               <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-                Lodestone sync
+                {canEditAny ? 'Lodestone sync' : 'Linked characters'}
               </h3>
               <p className="text-xs text-text-muted">
                 {linkedCount}/{syncRoster.length} linked

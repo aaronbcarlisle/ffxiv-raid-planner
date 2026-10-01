@@ -582,7 +582,7 @@ export function RosterGearTable({
                 </th>
                 <td className="py-1.5 text-center">
                   <span
-                    className={`inline-flex w-7 items-center justify-center rounded py-0.5 text-xs font-bold text-gear-tome ${tomeInteractive ? '' : 'opacity-50'}`}
+                    className={`inline-flex w-7 items-center justify-center rounded py-0.5 text-xs font-bold text-gear-tome`}
                   >
                     T
                   </span>

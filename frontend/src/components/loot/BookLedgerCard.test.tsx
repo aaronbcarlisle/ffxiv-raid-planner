@@ -185,7 +185,7 @@ describe('BookLedgerCard', () => {
   // ROLE-1 R-R1-7: the page-ledger write is lead-only on the server, so a member's
   // own row is read-only too (W4 LOOT restores the own-row cells with the server).
   it('member (canEdit false) sees no edit button on their OWN row either; the values still render', () => {
-    render(<BookLedgerCard {...baseProps} canEdit={false} effectiveUserId="u-alice" />, { wrapper: MemoryRouter });
+    render(<BookLedgerCard {...baseProps} canEdit={false} />, { wrapper: MemoryRouter });
 
     const aliceRow = document.getElementById('book-row-p1')!;
     const bobRow = document.getElementById('book-row-p2')!;
@@ -205,7 +205,7 @@ describe('BookLedgerCard', () => {
   });
 
   it('canEdit true: every row\'s four balance cells are edit buttons (pin)', () => {
-    render(<BookLedgerCard {...baseProps} canEdit effectiveUserId="u-alice" />, { wrapper: MemoryRouter });
+    render(<BookLedgerCard {...baseProps} canEdit />, { wrapper: MemoryRouter });
 
     for (const [id, name] of [['book-row-p1', 'Alice'], ['book-row-p2', 'Bob']]) {
       const row = document.getElementById(id)!;
@@ -582,8 +582,8 @@ describe('BookLedgerCard — column + row kebabs (D7b, R-16 4/4)', () => {
     expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
   });
 
-  it("member-own-row (D7-g): canEdit=false + effectiveUserId matching Alice's row still shows NO row kebab", () => {
-    render(<BookLedgerCard {...baseProps} canEdit={false} effectiveUserId="u-alice" />, { wrapper: MemoryRouter });
+  it("member-own-row (D7-g): canEdit=false shows NO row kebab, Alice's row included", () => {
+    render(<BookLedgerCard {...baseProps} canEdit={false} />, { wrapper: MemoryRouter });
 
     // The bulk-reset kebab gates on `canEdit` alone — no row grants a member
     // a bulk-reset door onto their own ledger (R-R1-7 also removed the
