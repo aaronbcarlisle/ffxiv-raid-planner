@@ -9,9 +9,9 @@ provenance table can be written without recording how it was logged:
   (b) every construction passes `logged_via=` and `api_key_id=` as explicit
       keywords (and, on the three tier models, the recipient fields), never
       through `**`, and `logged_via` is never the constant None;
-  (c) nothing writes these tables through `insert()` (under any import name),
-      a `bulk_*` method, `merge`, `make_transient` or an `INSERT INTO` string
-      (bare, quoted or schema-qualified);
+  (c) nothing writes these tables through `insert()` or `update()` (under any
+      import name), `delete()` of the record's model, a `bulk_*` method, `merge`,
+      `make_transient` or an `INSERT INTO` string (bare, quoted or schema-qualified);
   (d) every site (and the two update handlers that can move a row) has at
       least one route test decorated `@covers(...)` in
       tests/test_write_provenance.py, so a label can't stand in for a test.
@@ -296,7 +296,7 @@ def _write_problems(module: str, tree: ast.Module) -> list[str]:
     problems = []
     aliases = _alias_map(tree)
     verb_names = {
-        name: verb for verb in ("insert", "update") for name in _verb_names(tree, verb)
+        name: verb for verb in ("insert", "update", "delete") for name in _verb_names(tree, verb)
     }
     touches_model = any(
         _model_of(node, aliases) is not None
@@ -314,12 +314,15 @@ def _write_problems(module: str, tree: ast.Module) -> list[str]:
             name = _callee_name(node) or ""
             if name in verb_names:
                 # `insert(<model>)`, `insert(<model>.__table__)`, `<model>.__table__.insert()`,
-                # and the same three with `update`
+                # and the same three with `update`, and with `delete` for the record's model
+                # (the tier logs have delete routes of their own; the record's rows go through
+                # the door's `db.delete(row)`, which names a row and not a model)
                 args = list(node.args)
                 if isinstance(node.func, ast.Attribute):
                     args.append(node.func.value)
                 for arg in args:
-                    if _model_of(arg, aliases) or _table_model(arg, aliases):
+                    model = _model_of(arg, aliases) or _table_model(arg, aliases)
+                    if model and (verb_names[name] != "delete" or model in RECORD_MODELS):
                         problems.append(f"{where}: {name}() on a provenance model")
             if (name.startswith("bulk_") or name in OTHER_WRITE_CALLS) and touches_model:
                 problems.append(f"{where}: {name}() in a module that uses a provenance model")
@@ -368,6 +371,13 @@ WRITE_FORMS = {
         'text(\'UPDATE "public"."player_collection_snapshots" SET token_count = 1\')'
     ),
     "update of a log table": "update(LootLogEntry)",
+    "delete(record model)": "delete(PlayerCollectionSnapshot).where(x)",
+    "aliased delete": (
+        "from sqlalchemy import delete as sa_delete\nsa_delete(PlayerCollectionSnapshot)"
+    ),
+    "attribute delete": "sa.delete(PlayerCollectionSnapshot)",
+    "delete(record model.__table__)": "delete(PlayerCollectionSnapshot.__table__)",
+    "model.__table__.delete()": "PlayerCollectionSnapshot.__table__.delete()",
 }
 
 # Writes to other tables, which (c) must let through.
@@ -379,6 +389,10 @@ OTHER_TABLE_WRITES = {
     ),
     "schema-qualified other table": 'text("INSERT INTO public.other_table (id) VALUES (1)")',
     "update(other model)": "update(OtherModel)",
+    "delete(other model)": "delete(OtherModel)",
+    "delete of a log table": "delete(LootLogEntry).where(x)",
+    "delete of a log table's __table__": "PageLedgerEntry.__table__.delete()",
+    "session delete of a row": "await db.delete(row)",
     "dict.update": "cache.update({'a': 1})",
     "raw UPDATE of another table": 'text("UPDATE other_table SET x = 1")',
     "an UPDATE of a table that only starts like one": (
@@ -456,19 +470,25 @@ def _target_attributes(target: ast.AST) -> Iterator[tuple[str, str]]:
 
 
 def _attribute_writes(tree: ast.AST) -> list[tuple[str, int, str, str]]:
-    """(function, line, base, attribute) of every attribute assignment and constant `setattr`."""
+    """(function, line, base, attribute) of every attribute assignment and constant `setattr`.
+
+    Assignment targets are an `=`, an augmented or annotated assignment, a `for` (or
+    `async for`, or comprehension) target and a `with ... as` target.
+    """
     writes = []
     for fn, node in _nodes_with_function(tree):
         targets: list[ast.AST] = []
         if isinstance(node, ast.Assign):
             targets = list(node.targets)
-        elif isinstance(node, ast.AugAssign):
+        elif isinstance(node, (ast.AugAssign, ast.For, ast.AsyncFor, ast.comprehension)):
             targets = [node.target]
         elif isinstance(node, ast.AnnAssign) and node.value is not None:
             targets = [node.target]
+        elif isinstance(node, (ast.With, ast.AsyncWith)):
+            targets = [item.optional_vars for item in node.items if item.optional_vars]
         for target in targets:
             for base, attr in _target_attributes(target):
-                writes.append((fn, node.lineno, base, attr))
+                writes.append((fn, getattr(node, "lineno", target.lineno), base, attr))
         if (
             isinstance(node, ast.Call)
             and _callee_name(node) == "setattr"
@@ -548,8 +568,6 @@ def _caller_problems(module: str, tree: ast.Module) -> list[str]:
         for missing in sorted({"actor_user_id", "via"} - passed):
             problems.append(f"{where}: missing {missing}=")
         for kw in call.keywords:
-            if kw.arg == "via" and isinstance(kw.value, ast.Constant):
-                problems.append(f"{where}: via is the constant {kw.value.value!r}")
             if (
                 kw.arg == "actor_user_id"
                 and isinstance(kw.value, ast.Constant)
@@ -557,6 +575,15 @@ def _caller_problems(module: str, tree: ast.Module) -> list[str]:
                 and (module, fn) not in DERIVED_CALLERS
             ):
                 problems.append(f"{where}: actor_user_id is None outside the derived callers")
+    # A constant `via=` is refused on any call, not only at the door: a helper between a
+    # route and the door can pin the channel just as well (the door never sees it).
+    for fn, node in _nodes_with_function(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        for kw in node.keywords:
+            if kw.arg == "via" and isinstance(kw.value, ast.Constant):
+                where = f"{module}:{node.lineno} {fn} ({_callee_name(node)})"
+                problems.append(f"{where}: via is the constant {kw.value.value!r}")
     return problems
 
 
@@ -584,6 +611,13 @@ IN_PLACE_FORMS = {
     "AnnAssign": _fn("row.state_changed_at: str = now"),
     "AugAssign": _fn('row.updated_via += "x"'),
     "chained assign": _fn('a.token_count_updated_at = row.token_count_updated_at = now'),
+    "for target": _fn("for row.ownership_state in v:\n        pass"),
+    "for tuple target": _fn("for a.character_id, b in v:\n        pass"),
+    "async for target": _fn("async for row.updated_via in v:\n        pass"),
+    "comprehension target": _fn("return [1 for row.character_id in v]"),
+    "with target": _fn("with v as row.updated_by_user_id:\n        pass"),
+    "with tuple target": _fn("with v as (row.state_changed_at, b):\n        pass"),
+    "async with target": _fn("async with v as row.token_count_updated_at:\n        pass"),
     "module level": 'row.ownership_state = "have"\n',
     "constant setattr": _fn('setattr(row, "ownership_state", v)'),
     "dynamic setattr in an unlisted function": _fn("setattr(row, name, v)"),
@@ -597,6 +631,8 @@ IN_PLACE_OK = {
     "an untracked constant setattr": _fn('setattr(row, "title", v)'),
     "a local named like an attribute": _fn("ownership_state = 1"),
     "a read": _fn("return row.ownership_state"),
+    "a for target of an untracked attribute": _fn("for row.title in v:\n        pass"),
+    "a with target that is a plain name": _fn("with v as ownership_state:\n        pass"),
     "a constructor keyword": _fn("return Row(ownership_state=v)"),
 }
 
@@ -714,6 +750,26 @@ def test_g_refuses_every_bad_caller(args):
 @pytest.mark.parametrize("args", list(CALLER_OK.values()), ids=list(CALLER_OK))
 def test_g_lets_a_wired_caller_through(args):
     assert not _caller_problems("app/routers/elsewhere.py", _call(args))
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        'write_through(db, user_id=u, via="web")',
+        "helper(db, via=None)",
+        "self.record(via=1)",
+        "outer(inner(via='api_key'))",
+    ],
+    ids=["str", "None", "method", "nested"],
+)
+def test_g_refuses_a_constant_via_on_any_call(call):
+    tree = ast.parse(f"def some_helper(db, u, self):\n    {call}\n")
+    assert any("via is the constant" in p for p in _caller_problems("app/services/x.py", tree))
+
+
+def test_g_lets_a_via_passed_down_through_any_call():
+    tree = ast.parse("def some_helper(db, u, via):\n    helper(db, via=via, other='web')\n")
+    assert not _caller_problems("app/services/x.py", tree)
 
 
 def test_g_refuses_a_method_style_call():
