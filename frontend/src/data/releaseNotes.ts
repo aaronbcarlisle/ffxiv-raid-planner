@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.64';
+export const CURRENT_VERSION = '2.1.65';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -62,7 +62,7 @@ export const RELEASES: Release[] = [
   {
     version: '2.1.65',
     date: '2026-10-01T18:30:00Z',
-    title: 'Collection records can be kept per character',
+    title: 'Your collection is kept per character',
     items: [
       {
         category: 'improvement',
@@ -82,8 +82,31 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(api): S2a-1a·1b — the record chain and the record door (collection_records service)',
         internal: true,
       },
+      {
+        category: 'improvement',
+        title: 'Your collection follows your character',
+        description:
+          'Your collection is now kept per character; Profile ▸ Collections shows your main.',
+        pr: 350,
+        prTitle: 'feat(api): S2a-1a·2 — the record per character; the paths and the completeness guard',
+      },
+      {
+        category: 'improvement',
+        title: 'Marking a plugin mount as missing now sticks',
+        description:
+          'Marking a plugin-synced mount as missing in Profile ▸ Collections now sticks until your next plugin sync, in your statics too. The count input on plugin-synced rows stays disabled.',
+        pr: 350,
+        prTitle: 'feat(api): S2a-1a·2 — the record per character; the paths and the completeness guard',
+      },
+      {
+        category: 'improvement',
+        title: 'Removing a character removes its collection',
+        description:
+          'Removing a character from your profile permanently removes its collection; removing your last character keeps it on your profile. Changing your main changes which collection Profile ▸ Collections shows.',
+        pr: 350,
+        prTitle: 'feat(api): S2a-1a·2 — the record per character; the paths and the completeness guard',
+      },
     ],
-    internal: true,
   },
   {
     version: '2.1.64',
