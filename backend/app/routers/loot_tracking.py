@@ -142,10 +142,14 @@ async def get_loot_log(
     db: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ):
-    """Get loot log entries for a tier (optionally filtered by week)"""
+    """Get loot log entries for a tier (optionally filtered by week)
+
+    A caller with no role in the static gets `createdByUsername: null` (GUEST-2 R-G2-2).
+    """
     # Check permissions (supports anonymous access for public groups)
     group = await get_static_group(db, group_id)
-    await check_view_permission(db, group, current_user)
+    membership = await check_view_permission(db, group, current_user)
+    identity = membership is not None
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -187,7 +191,7 @@ async def get_loot_log(
             is_extra=entry.is_extra,
             created_at=entry.created_at,
             created_by_user_id=entry.created_by_user_id,
-            created_by_username=entry.created_by.discord_username,
+            created_by_username=entry.created_by.discord_username if identity else None,
         )
         for entry in entries
     ]
@@ -647,10 +651,14 @@ async def get_page_ledger(
     db: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ):
-    """Get page ledger entries for a tier (optionally filtered by week)"""
+    """Get page ledger entries for a tier (optionally filtered by week)
+
+    A caller with no role in the static gets `createdByUsername: null` (GUEST-2 R-G2-2).
+    """
     # Check permissions (supports anonymous access for public groups)
     group = await get_static_group(db, group_id)
-    await check_view_permission(db, group, current_user)
+    membership = await check_view_permission(db, group, current_user)
+    identity = membership is not None
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -689,7 +697,7 @@ async def get_page_ledger(
             notes=entry.notes,
             created_at=entry.created_at,
             created_by_user_id=entry.created_by_user_id,
-            created_by_username=entry.created_by.discord_username,
+            created_by_username=entry.created_by.discord_username if identity else None,
         )
         for entry in entries
     ]
@@ -935,10 +943,14 @@ async def get_player_page_ledger(
     db: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ):
-    """Get all page ledger entries for a specific player"""
+    """Get all page ledger entries for a specific player
+
+    A caller with no role in the static gets `createdByUsername: null` (GUEST-2 R-G2-2).
+    """
     # Check permissions (supports anonymous access for public groups)
     group = await get_static_group(db, group_id)
-    await check_view_permission(db, group, current_user)
+    membership = await check_view_permission(db, group, current_user)
+    identity = membership is not None
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -986,7 +998,7 @@ async def get_player_page_ledger(
             notes=entry.notes,
             created_at=entry.created_at,
             created_by_user_id=entry.created_by_user_id,
-            created_by_username=entry.created_by.discord_username,
+            created_by_username=entry.created_by.discord_username if identity else None,
         )
         for entry in entries
     ]
@@ -1316,10 +1328,14 @@ async def get_material_log(
     db: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ):
-    """Get material log entries for a tier (optionally filtered by week)"""
+    """Get material log entries for a tier (optionally filtered by week)
+
+    A caller with no role in the static gets `createdByUsername: null` (GUEST-2 R-G2-2).
+    """
     # Check permissions (supports anonymous access for public groups)
     group = await get_static_group(db, group_id)
-    await check_view_permission(db, group, current_user)
+    membership = await check_view_permission(db, group, current_user)
+    identity = membership is not None
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -1358,7 +1374,7 @@ async def get_material_log(
             notes=entry.notes,
             created_at=entry.created_at,
             created_by_user_id=entry.created_by_user_id,
-            created_by_username=entry.created_by.discord_username,
+            created_by_username=entry.created_by.discord_username if identity else None,
         )
         for entry in entries
     ]

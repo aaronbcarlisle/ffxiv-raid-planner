@@ -66,6 +66,7 @@ from ..schemas import (
 from ..services import generate_share_code
 from ..services.audit import audit
 from ..services.availability_layering import load_zone
+from ..services.discovery_settings import get_discovery, is_discoverable
 
 router = APIRouter(prefix="/api/static-groups", tags=["static-groups"])
 logger = structlog.get_logger(__name__)
@@ -110,6 +111,23 @@ def settings_to_schema(settings: dict | None) -> StaticSettingsSchema | None:
     if not settings:
         return None
     return StaticSettingsSchema(**settings)
+
+
+LISTING_CONTACT_KEYS = ("contactMethod", "contactValue")
+
+
+def settings_without_listing_contact(settings: dict | None) -> dict | None:
+    """`settings` with the recruiting contact removed from `discovery` (GUEST-2 R-G2-12).
+
+    Returns new dicts; the input (an ORM-tracked JSON column) is never mutated.
+    """
+    discovery = get_discovery(settings)
+    if discovery is None or not any(k in discovery for k in LISTING_CONTACT_KEYS):
+        return settings
+    return {
+        **settings,
+        "discovery": {k: v for k, v in discovery.items() if k not in LISTING_CONTACT_KEYS},
+    }
 
 
 def membership_to_response(membership: Membership, include_user: bool = True) -> MembershipResponse:
@@ -167,8 +185,15 @@ def group_to_response_with_members(
     role (viewers included) and admins (who resolve to OWNER). A caller with no
     role (anonymous or a signed-in outsider) gets `owner: null` and
     `members[].user: null`; the members list itself stays.
+
+    GUEST-2 R-G2-12: that caller also gets `settings.discovery` without the
+    recruiting contact unless the static is listed in the Finder, which
+    publishes the contact anyway.
     """
     identity = user_role is not None
+    settings = group.settings
+    if not identity and not is_discoverable(group):
+        settings = settings_without_listing_contact(settings)
     owner_info = None
     if identity and group.owner:
         owner_info = OwnerInfo(
@@ -192,7 +217,7 @@ def group_to_response_with_members(
         owner_id=group.owner_id,
         owner=owner_info,
         members=members,
-        settings=settings_to_schema(group.settings),
+        settings=settings_to_schema(settings),
         created_at=group.created_at,
         updated_at=group.updated_at,
         user_role=MemberRoleEnum(user_role.value) if user_role else None,
@@ -949,10 +974,11 @@ async def list_members(
     if not group:
         raise NotFound("Static group not found")
 
-    # Check view permission
-    await check_view_permission(session, group, current_user)
+    # Check view permission; a caller with no role gets `user: null` (GUEST-2 R-G2-2)
+    membership = await check_view_permission(session, group, current_user)
+    identity = membership is not None
 
-    return [membership_to_response(m) for m in group.memberships]
+    return [membership_to_response(m, include_user=identity) for m in group.memberships]
 
 
 @router.get("/{group_id}/linked-players", response_model=list[LinkedPlayerInfo])
@@ -967,7 +993,12 @@ async def list_linked_players(
 
     # Check group exists and user has view permission (also loads memberships for role lookup)
     group = await get_static_group(session, group_id, load_memberships=True)
-    await check_view_permission(session, group, current_user)
+    membership = await check_view_permission(session, group, current_user)
+    identity = membership is not None
+
+    # Every entry is a user, so a caller with no role gets none (GUEST-2 R-G2-2)
+    if not identity:
+        return []
 
     # Build membership role lookup (user_id -> role)
     membership_roles: dict[str, str] = {
