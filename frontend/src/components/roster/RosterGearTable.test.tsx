@@ -205,14 +205,24 @@ describe('RosterGearTable — C2 editing', () => {
       expect(onSourceChange).toHaveBeenCalledWith('head', 'crafted');
     });
 
-    it('read-only: the selector renders disabled and opens nothing', () => {
+    // ROLE-1 (R-R1-15): `editable` is the role gate, so a non-editor gets the
+    // source as a static value — no selector button at all. (A handler-less
+    // EDITOR still gets the inert control: that is a host state, see above.)
+    it('read-only: the BiS cell is a static value, not a selector', () => {
       const onSourceChange = vi.fn();
-      renderTable([slot({ slot: 'head', bisSource: 'raid', hasItem: false })], { onSourceChange });
+      renderTable(
+        [
+          slot({ slot: 'head', bisSource: 'raid', hasItem: false }),
+          slot({ slot: 'legs', bisSource: 'base_tome', hasItem: false }),
+        ],
+        { onSourceChange }
+      );
 
-      const trigger = bisTrigger(/^Head/);
-      expect(trigger).toBeDisabled();
-      fireEvent.click(trigger);
-      expect(screen.queryByRole('button', { name: /^Tome:/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /BiS source/ })).not.toBeInTheDocument();
+      const head = screen.getByRole('rowheader', { name: /^Head/ }).closest('tr')!;
+      const legs = screen.getByRole('rowheader', { name: /^Legs/ }).closest('tr')!;
+      expect(within(head).getByText('R')).toBeInTheDocument();
+      expect(within(legs).getByText('BT')).toBeInTheDocument();
       expect(onSourceChange).not.toHaveBeenCalled();
     });
 
@@ -305,13 +315,15 @@ describe('RosterGearTable — C4 tome-weapon sub-row', () => {
     expect(onTomeWeaponChange).toHaveBeenCalledWith({ pursuing: false });
   });
 
-  it('read-only: the + toggle renders disabled and reports nothing', () => {
+  // ROLE-1 (R-R1-15): a non-editor gets the weapon's source as a static value
+  // and no "+" toggle; the sub-row (while pursuing) still tells the tome story.
+  it('read-only: the weapon cell is a static R with no + toggle', () => {
     const onTomeWeaponChange = vi.fn();
-    renderTable(weaponGear, { onTomeWeaponChange });
+    renderTable(weaponGear, { onTomeWeaponChange, tomeWeapon: pursuingTome });
 
-    const plus = within(weaponRow()).getByRole('button', { name: '+' });
-    expect(plus).toBeDisabled();
-    fireEvent.click(plus);
+    expect(within(weaponRow()).queryByRole('button', { name: '+' })).not.toBeInTheDocument();
+    expect(within(weaponRow()).getByText('R')).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: /Tome Weapon/ })).toBeInTheDocument();
     expect(onTomeWeaponChange).not.toHaveBeenCalled();
   });
 

@@ -69,8 +69,9 @@ describe('RosterToolbar', () => {
     render(<RosterToolbar {...baseProps} />);
     expect(screen.getByRole('button', { name: /light party/i })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: /show subs/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /reorder/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /add player/i })).toBeInTheDocument();
+    // ROLE-1 pin (R-R1-4): a manager keeps both, enabled.
+    expect(screen.getByRole('button', { name: /reorder/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /add player/i })).toBeEnabled();
   });
 
   it('fires reorder + add-player callbacks', () => {
@@ -115,12 +116,17 @@ describe('RosterToolbar', () => {
     expect(onSubsHiddenChange).toHaveBeenCalledWith(true);
   });
 
-  it('disables "Add player" and "Reorder" when the user cannot manage the roster', () => {
+  // ROLE-1 (R-R1-4): hide, never disable, on role. Reorder is gated too — a
+  // non-manager must not enter a mode whose drag affordances are inert
+  // underneath (DnD is disabled when !canManage).
+  it('hides "Add player" and "Reorder" for a non-manager and keeps the view controls', () => {
     render(<RosterToolbar {...baseProps} canManage={false} />);
-    expect(screen.getByRole('button', { name: /add player/i })).toBeDisabled();
-    // Reorder is gated too — a non-manager must not enter a mode whose drag
-    // affordances are inert underneath (DnD is disabled when !canManage).
-    expect(screen.getByRole('button', { name: /reorder/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /add player/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /reorder/i })).not.toBeInTheDocument();
+    // The view-preference controls are everyone's.
+    expect(screen.getByRole('group', { name: /roster view/i })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /card density/i })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /sort/i })).toBeInTheDocument();
   });
 
   // ── C6: the sort-vs-grouping split (C1-checkpoint correction (a)) ──
@@ -273,18 +279,15 @@ describe('RosterToolbar', () => {
     expect(button).toHaveAttribute('aria-describedby');
   });
 
-  it('still teaches Reorder via the tooltip when disabled (no manage permission)', async () => {
+  it('leaves a non-manager no disabled control at all (R-R1-0: nothing to teach)', () => {
+    // Before ROLE-1 the disabled Reorder button sat in an always-enabled span
+    // so its tooltip could still teach the flow. With the control gone, so is
+    // the wrapper: every remaining button and switch is live.
     render(<RosterToolbar {...baseProps} canManage={false} />);
-    const button = screen.getByRole('button', { name: /reorder/i });
-    expect(button).toBeDisabled();
-    // A disabled button can't receive focus/hover itself — the wrapping span
-    // (RosterToolbar.tsx:189-199 precedent) is the actual Radix trigger.
-    const wrapper = button.closest('span.inline-flex') as HTMLElement;
-    expect(wrapper).toBeInTheDocument();
-    fireEvent.focus(wrapper);
-    expect(
-      await screen.findByText('Drag cards to reorder or swap players. Click again to finish.')
-    ).toBeInTheDocument();
+    const controls = [...screen.getAllByRole('button'), ...screen.getAllByRole('switch')];
+    expect(controls.length).toBeGreaterThan(0);
+    expect(controls.filter((el) => (el as HTMLButtonElement).disabled)).toEqual([]);
+    expect(controls.filter((el) => el.getAttribute('aria-disabled') === 'true')).toEqual([]);
   });
 
   it('gives the Reorder button a visibly "on" treatment while reorder mode is active', () => {

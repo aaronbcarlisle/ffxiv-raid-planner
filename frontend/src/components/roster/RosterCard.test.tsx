@@ -451,6 +451,8 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
     });
 
+    // ROLE-1 pin (R-R1-15): the circles are read-only DATA, so a non-editor's
+    // keep their aria-disabled (the e2e sweep allowlists exactly these).
     it("member on someone ELSE's card: circles stay read-only", () => {
       const onUpdate = vi.fn();
       renderCard(makeGearedPlayer({ userId: 'u9' }), {
@@ -465,6 +467,37 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       expect(circle).toHaveAttribute('aria-disabled', 'true');
       fireEvent.click(circle);
       expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    // ROLE-1 (R-R1-15): the BiS-source trigger is a role CONTROL, so a
+    // non-editor sees the source as a static value instead of a disabled
+    // selector. Own card (pin): the live selectors.
+    it("member on someone ELSE's card: the BiS-source cells are static values, not selectors", () => {
+      renderCard(makeGearedPlayer({ userId: 'u9' }), {
+        density: 'expanded',
+        userRole: 'member',
+        currentUserId: 'u1',
+        canManage: false,
+      });
+
+      expect(screen.queryByRole('button', { name: /BiS source/ })).not.toBeInTheDocument();
+      const head = screen.getByRole('rowheader', { name: /^Head/ }).closest('tr')!;
+      const legs = screen.getByRole('rowheader', { name: /^Legs/ }).closest('tr')!;
+      expect(within(head).getByText('R')).toBeInTheDocument();
+      expect(within(legs).getByText('T')).toBeInTheDocument();
+    });
+
+    it('pin: member on their OWN card keeps the live BiS-source selectors', () => {
+      renderCard(makeGearedPlayer({ userId: 'u1' }), {
+        density: 'expanded',
+        userRole: 'member',
+        currentUserId: 'u1',
+        canManage: false,
+      });
+
+      const triggers = screen.getAllByRole('button', { name: /^BiS source/ });
+      expect(triggers.length).toBeGreaterThan(0);
+      for (const trigger of triggers) expect(trigger).toBeEnabled();
     });
 
     it('emits player_gear_changed with the v2 shell field after the save resolves', async () => {
@@ -712,7 +745,10 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
         }
       });
 
-      it("member on someone ELSE's card: the + toggle and sub-row circle stay read-only", () => {
+      // ROLE-1 (R-R1-15): the "+" is a role CONTROL, so a non-editor gets the
+      // weapon's source as a static value; the sub-row circle is read-only
+      // DATA and keeps its aria-disabled (pin).
+      it("member on someone ELSE's card: no + toggle, a static R, and the sub-row circle stays read-only", () => {
         const onUpdate = vi.fn();
         renderCard(makeTomePlayer({ pursuing: true }, { userId: 'u9' }), {
           density: 'expanded',
@@ -722,13 +758,22 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
           actions: { ...actions, onUpdate },
         });
 
-        const plus = within(weaponRow()).getByRole('button', { name: '+' });
-        expect(plus).toBeDisabled();
-        fireEvent.click(plus);
+        expect(within(weaponRow()).queryByRole('button', { name: '+' })).not.toBeInTheDocument();
+        expect(within(weaponRow()).getByText('R')).toBeInTheDocument();
         const circle = within(tomeRow()).getByRole('checkbox');
         expect(circle).toHaveAttribute('aria-disabled', 'true');
         fireEvent.click(circle);
         expect(onUpdate).not.toHaveBeenCalled();
+      });
+
+      it('pin: member on their OWN card keeps the live + toggle', () => {
+        renderCard(makeTomePlayer({ pursuing: false }, { userId: 'u1' }), {
+          density: 'expanded',
+          userRole: 'member',
+          currentUserId: 'u1',
+          canManage: false,
+        });
+        expect(within(weaponRow()).getByRole('button', { name: '+' })).toBeEnabled();
       });
 
       it('Alt+Click on the sub-row icon jumps via same-route URL params', () => {
@@ -2388,6 +2433,41 @@ describe('RosterCard — one-line header (E2, R-E2-D)', () => {
     const header = screen.getByTestId('roster-card-header');
     expect(within(header).getByRole('button', { name: 'H1' })).toBeInTheDocument();
     expect(within(header).queryByRole('button', { name: /^Tank role/ })).not.toBeInTheDocument();
+  });
+
+  // ROLE-1 (R-R1-14): on a card the viewer can't edit, the seat is a static
+  // chip (data) in the selector's tone — not a disabled selector button.
+  describe('seat chip on a card the viewer cannot edit (R-R1-14)', () => {
+    const asMember = { userRole: 'member' as const, currentUserId: 'u1', canManage: false };
+    const header = () => screen.getByTestId('roster-card-header');
+
+    it("tank: a member on another's card sees the seat as text, with no seat button", () => {
+      renderCard(makePlayer({ userId: 'u9' }), asMember);
+      expect(within(header()).queryByRole('button', { name: /^Tank role/ })).not.toBeInTheDocument();
+      expect(within(header()).getByText('MT · T1')).toBeInTheDocument();
+    });
+
+    it("non-tank: a member on another's card sees the position as text, with no seat button", () => {
+      renderCard(makePlayer({ userId: 'u9', job: 'WHM', role: 'healer', position: 'H1', tankRole: null }), asMember);
+      expect(within(header()).queryByRole('button', { name: 'H1' })).not.toBeInTheDocument();
+      expect(within(header()).getByText('H1')).toBeInTheDocument();
+    });
+
+    it("an unset seat reads '--' as text, with no seat button", () => {
+      renderCard(makePlayer({ userId: 'u9', job: 'WHM', role: 'healer', position: null, tankRole: null }), asMember);
+      expect(within(header()).queryByRole('button', { name: '--' })).not.toBeInTheDocument();
+      expect(within(header()).getByText('--')).toBeInTheDocument();
+    });
+
+    it('pin: a member on their OWN card keeps the enabled selector', () => {
+      renderCard(makePlayer({ userId: 'u1' }), asMember);
+      expect(within(header()).getByRole('button', { name: /^Tank role/ })).toBeEnabled();
+    });
+
+    it("pin: the owner keeps the enabled selector on another's card", () => {
+      renderCard(makePlayer({ userId: 'u9' }));
+      expect(within(header()).getByRole('button', { name: /^Tank role/ })).toBeEnabled();
+    });
   });
 
   it('the seat chip calls the handlers the two selectors did', async () => {

@@ -148,11 +148,23 @@ describe('useRosterCardActions', () => {
       expect(result.current.menuItems.map(labelOrHeader)).not.toContain('Edit Books');
     });
 
-    it('appears for a member on their OWN claimed card (legacy self-service parity)', () => {
+    // ROLE-1 (R-R1-7): the page-ledger write is lead-only on the server today,
+    // so the jump follows it. HS-36's member books return with W4 LOOT.
+    it('stays hidden for a member on their OWN claimed card (the books write is lead-only)', () => {
       const { result } = renderHook(() =>
         useRosterCardActions({
           ...withJump({ userRole: 'member', currentUserId: 'u1' }),
           player: makePlayer({ userId: 'u1' }),
+        }),
+      );
+      expect(result.current.menuItems.map(labelOrHeader)).not.toContain('Edit Books');
+    });
+
+    it('appears for a lead on any card', () => {
+      const { result } = renderHook(() =>
+        useRosterCardActions({
+          ...withJump({ userRole: 'lead', currentUserId: 'u1' }),
+          player: makePlayer({ userId: 'u9' }),
         }),
       );
       expect(result.current.menuItems.map(labelOrHeader)).toContain('Edit Books');
@@ -187,20 +199,22 @@ describe('useRosterCardActions', () => {
     expect(withLink.result.current.menuItems.map(labelOrHeader)).toContain('Unlink BiS');
   });
 
-  it('gates management items for a member (Remove Player disabled)', () => {
+  // ROLE-1 (R-R1-5): role-gated items are omitted, never disabled.
+  it('omits the management items for a member (Remove Player, Duplicate, Mark as Sub)', () => {
     const { result } = renderHook(() =>
       useRosterCardActions({ ...base, userRole: 'member', player: makePlayer() }),
     );
-    const remove = result.current.menuItems.find((i) => 'label' in i && i.label === 'Remove Player');
-    expect(remove && 'disabled' in remove ? remove.disabled : undefined).toBe(true);
+    const labels = result.current.menuItems.map(labelOrHeader);
+    expect(labels).not.toContain('Remove Player');
+    expect(labels).not.toContain('Duplicate');
+    expect(labels).not.toContain('Mark as Sub');
   });
 
-  it('gates edit items for a viewer (Import BiS disabled)', () => {
+  it('omits the edit items for a viewer (Import BiS)', () => {
     const { result } = renderHook(() =>
       useRosterCardActions({ ...base, userRole: 'viewer', player: makePlayer() }),
     );
-    const importItem = result.current.menuItems.find((i) => 'label' in i && i.label === 'Import BiS');
-    expect(importItem && 'disabled' in importItem ? importItem.disabled : undefined).toBe(true);
+    expect(result.current.menuItems.map(labelOrHeader)).not.toContain('Import BiS');
   });
 
   it('shows Take Ownership present + ENABLED for a logged-in member on an unclaimed card', () => {
@@ -314,15 +328,13 @@ describe('useRosterCardActions', () => {
     expect(labels).not.toContain('Track Tome Weapon');
   });
 
-  it('disables the tome-weapon toggle for a viewer', () => {
+  it('omits the tome-weapon toggle for a viewer (R-R1-5)', () => {
     const { result } = renderHook(() =>
       useRosterCardActions({ ...base, userRole: 'viewer', player: makePlayer() }),
     );
-    const item = result.current.menuItems.find(
-      (i) => 'label' in i && i.label === 'Track Tome Weapon',
-    );
-    expect(item).toBeDefined();
-    expect(item && 'disabled' in item ? item.disabled : undefined).toBe(true);
+    const labels = result.current.menuItems.map(labelOrHeader);
+    expect(labels).not.toContain('Track Tome Weapon');
+    expect(labels).not.toContain('Stop Tracking Tome Weapon');
   });
 
   it('onClick toggles pursuing via actions.onUpdate (spread of the existing status)', () => {
@@ -489,5 +501,272 @@ describe('useRosterCardActions — whole-branch review: kebab direct-action guar
         (t) => t.type === 'error' && t.message === 'sub status failed',
       )).toBe(true);
     });
+  });
+});
+
+// ROLE-1 (W0): hide, never disable, on role (R-R1-0). A role-gated item is
+// omitted (R-R1-5), the section it would have filled goes with it, and a
+// separator never leads, trails, doubles up or hugs a header (vet F6). Take
+// Ownership needs raid membership (R-R1-6); "Edit Books" follows the server's
+// lead-only ledger write (R-R1-7). State-gated disables stay.
+describe('useRosterCardActions — ROLE-1 role gating', () => {
+  type Shape =
+    | { kind: 'header'; label: string }
+    | { kind: 'separator' }
+    | { kind: 'item'; label: string; disabled: boolean };
+
+  /** Kinds + labels + the disabled flag: what the menu will actually render. */
+  function shape(items: ContextMenuItem[]): Shape[] {
+    return items.map((i) => {
+      if ('separator' in i && i.separator) return { kind: 'separator' };
+      if ('sectionHeader' in i && i.sectionHeader) return { kind: 'header', label: i.sectionHeader };
+      return { kind: 'item', label: i.label ?? '', disabled: !!i.disabled };
+    });
+  }
+
+  /** No empty section; no leading, trailing, doubled or header-adjacent separator. */
+  function expectWellFormed(items: ContextMenuItem[]) {
+    const s = shape(items);
+    s.forEach((cur, idx) => {
+      const next = s[idx + 1];
+      const prev = s[idx - 1];
+      if (cur.kind === 'header') {
+        expect(next, `empty section "${cur.label}" at ${idx}`).toBeDefined();
+        expect(next?.kind, `section "${cur.label}" is followed by a ${next?.kind}`).toBe('item');
+      }
+      if (cur.kind === 'separator') {
+        expect(prev?.kind, `separator at ${idx} after a ${prev?.kind ?? 'start'}`).toBe('item');
+        expect(next?.kind, `separator at ${idx} before a ${next?.kind ?? 'end'}`).toBe('item');
+      }
+    });
+  }
+
+  /** Every handler the hook can advertise an item for. */
+  const everyAction = () => ({
+    onUpdate: vi.fn(),
+    onCopy: vi.fn(),
+    onCopyUrl: vi.fn(),
+    onDuplicate: vi.fn(),
+    onPaste: vi.fn(),
+    onRemove: vi.fn(),
+    onResetGear: vi.fn(),
+    onClaimPlayer: vi.fn(),
+    onReleasePlayer: vi.fn(),
+    onOwnerAssignPlayer: vi.fn(),
+    onAdminAssignPlayer: vi.fn(),
+    onEditBooks: vi.fn(),
+  });
+
+  const labelsOf = (items: ContextMenuItem[]) => items.map(labelOrHeader);
+  const itemsOf = (items: ContextMenuItem[]) =>
+    items.filter((i): i is Extract<ContextMenuItem, { label: string }> => 'label' in i && !!i.label);
+
+  it("member on another's claimed card: exactly BiS Targets, Copy and Copy URL under their headers, none disabled", () => {
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        userRole: 'member',
+        currentUserId: 'u1',
+        userHasClaimedPlayer: true,
+        player: makePlayer({ userId: 'u9', bisLink: 'https://xivgear.app/#/x' }),
+        actions: everyAction(),
+      }),
+    );
+    const items = result.current.menuItems;
+    expect(shape(items)).toEqual([
+      { kind: 'header', label: 'BiS & Gear' },
+      { kind: 'item', label: 'BiS Targets', disabled: false },
+      { kind: 'header', label: 'Clipboard' },
+      { kind: 'item', label: 'Copy', disabled: false },
+      { kind: 'item', label: 'Copy URL', disabled: false },
+    ]);
+    expect(itemsOf(items).filter((i) => i.disabled)).toEqual([]);
+    expectWellFormed(items);
+  });
+
+  it('member on their OWN card: keeps every own-card item; Mark as Sub, Duplicate, Remove Player and Edit Books are absent', () => {
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        userRole: 'member',
+        currentUserId: 'u1',
+        clipboardPlayer: makePlayer({ id: 'p2', name: 'Copied' }),
+        player: makePlayer({ userId: 'u1' }),
+        actions: everyAction(),
+      }),
+    );
+    const items = result.current.menuItems;
+    const labels = labelsOf(items);
+    for (const kept of [
+      'Import BiS',
+      'BiS Targets',
+      'Weapon Priorities',
+      'Track Tome Weapon',
+      'Reset Gear',
+      'Release Ownership',
+      'Flex Roles',
+      'Copy',
+      'Copy URL',
+      'Paste',
+    ]) {
+      expect(labels, kept).toContain(kept);
+    }
+    for (const gone of ['Mark as Sub', 'Duplicate', 'Remove Player', 'Edit Books', 'Take Ownership']) {
+      expect(labels, gone).not.toContain(gone);
+    }
+    expect(itemsOf(items).filter((i) => i.disabled)).toEqual([]);
+    expectWellFormed(items);
+  });
+
+  it('signed-in non-member (userRole null) on an unclaimed card: no Take Ownership and no edit items (R-R1-6)', () => {
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        userRole: null,
+        currentUserId: 'u1',
+        userHasClaimedPlayer: false,
+        player: makePlayer({ userId: undefined }),
+        actions: everyAction(),
+      }),
+    );
+    const items = result.current.menuItems;
+    expect(itemsOf(items).map((i) => i.label)).toEqual(['BiS Targets', 'Copy', 'Copy URL']);
+    expectWellFormed(items);
+  });
+
+  it('viewer on an unclaimed card: no Take Ownership, no edit items; self-Release stays (R-R1-6)', () => {
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        userRole: 'viewer',
+        currentUserId: 'u1',
+        userHasClaimedPlayer: false,
+        player: makePlayer({ userId: undefined }),
+        actions: everyAction(),
+      }),
+    );
+    expect(itemsOf(result.current.menuItems).map((i) => i.label)).toEqual(['BiS Targets', 'Copy', 'Copy URL']);
+
+    const { result: own } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        userRole: 'viewer',
+        currentUserId: 'u1',
+        player: makePlayer({ userId: 'u1' }),
+        actions: everyAction(),
+      }),
+    );
+    expect(itemsOf(own.current.menuItems).map((i) => i.label)).toEqual([
+      'BiS Targets',
+      'Release Ownership',
+      'Copy',
+      'Copy URL',
+    ]);
+    expectWellFormed(own.current.menuItems);
+  });
+
+  it('pin: a member on an unclaimed card who holds no card gets Take Ownership', () => {
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        userRole: 'member',
+        currentUserId: 'u1',
+        userHasClaimedPlayer: false,
+        player: makePlayer({ userId: undefined }),
+        actions: everyAction(),
+      }),
+    );
+    const take = itemsOf(result.current.menuItems).find((i) => i.label === 'Take Ownership');
+    expect(take).toBeDefined();
+    expect(take?.disabled).toBeFalsy();
+  });
+
+  // Today's full owner list, in order. Take shows because the card is
+  // unclaimed and the owner holds no card; Paste is enabled because the
+  // clipboard holds a player.
+  const OWNER_FULL = [
+    'BiS & Gear',
+    'Import BiS',
+    'BiS Targets',
+    'Weapon Priorities',
+    'Edit Books',
+    'Track Tome Weapon',
+    'Reset Gear',
+    'Player Management',
+    'Take Ownership',
+    'Flex Roles',
+    'Mark as Sub',
+    'Assign User',
+    'Clipboard',
+    'Copy',
+    'Copy URL',
+    'Paste',
+    'Duplicate',
+    '__sep__',
+    'Remove Player',
+  ];
+
+  const fullParams = (role: RosterCardActionParams['userRole'], isAdminAccess = false) => ({
+    ...base,
+    userRole: role,
+    isAdminAccess,
+    currentUserId: 'u1',
+    userHasClaimedPlayer: false,
+    clipboardPlayer: makePlayer({ id: 'p2', name: 'Copied' }),
+    player: makePlayer({ userId: undefined }),
+    actions: everyAction(),
+  });
+
+  it("pin: the owner keeps today's full list, every item enabled", () => {
+    const { result } = renderHook(() => useRosterCardActions(fullParams('owner')));
+    expect(labelsOf(result.current.menuItems)).toEqual(OWNER_FULL);
+    expect(itemsOf(result.current.menuItems).filter((i) => i.disabled)).toEqual([]);
+    expectWellFormed(result.current.menuItems);
+  });
+
+  it("pin: a lead keeps today's full list (minus the owner-only Assign User), every item enabled", () => {
+    const { result } = renderHook(() => useRosterCardActions(fullParams('lead')));
+    expect(labelsOf(result.current.menuItems)).toEqual(OWNER_FULL.filter((l) => l !== 'Assign User'));
+    expect(itemsOf(result.current.menuItems).filter((i) => i.disabled)).toEqual([]);
+    expectWellFormed(result.current.menuItems);
+  });
+
+  it("pin: admin access (userRole 'owner') keeps the owner list with the admin Assign variant", () => {
+    const { result } = renderHook(() => useRosterCardActions(fullParams('owner', true)));
+    expect(labelsOf(result.current.menuItems)).toEqual(
+      OWNER_FULL.map((l) => (l === 'Assign User' ? 'Assign User (Admin)' : l)),
+    );
+    expect(itemsOf(result.current.menuItems).filter((i) => i.disabled)).toEqual([]);
+  });
+
+  it('pin: Paste with an empty clipboard stays, disabled, with "No player copied" (a state, R-R1-0)', () => {
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        userRole: 'member',
+        currentUserId: 'u1',
+        clipboardPlayer: null,
+        player: makePlayer({ userId: 'u1' }),
+        actions: everyAction(),
+      }),
+    );
+    const paste = itemsOf(result.current.menuItems).find((i) => i.label === 'Paste');
+    expect(paste).toBeDefined();
+    expect(paste?.disabled).toBe(true);
+    expect(paste?.tooltip).toBe('No player copied');
+  });
+
+  it('pin: Reset Gear without a host handler stays, disabled, with "Feature not available" (a state)', () => {
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        userRole: 'owner',
+        player: makePlayer(),
+        actions: { ...everyAction(), onResetGear: undefined },
+      }),
+    );
+    const reset = itemsOf(result.current.menuItems).find((i) => i.label === 'Reset Gear');
+    expect(reset?.disabled).toBe(true);
+    expect(reset?.tooltip).toBe('Feature not available');
   });
 });

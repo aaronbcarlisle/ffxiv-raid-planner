@@ -15,6 +15,7 @@ import {
   canManageGroup,
   canClaimPlayer,
   canManageInvitations,
+  isRaidMember,
   getRoleDescription,
   getRoleDisplayName,
   getRoleColorClasses,
@@ -353,6 +354,22 @@ describe('canManageInvitations', () => {
   it('denies members from managing invitations', () => {
     const result = canManageInvitations('member');
     expect(result.allowed).toBe(false);
+  });
+});
+
+// ROLE-1 (R-R1-6): the membership test behind a claim. Admin access arrives
+// as 'owner', so it needs no admin arg.
+describe('isRaidMember', () => {
+  it('is true for owner, lead and member', () => {
+    expect(isRaidMember('owner')).toBe(true);
+    expect(isRaidMember('lead')).toBe(true);
+    expect(isRaidMember('member')).toBe(true);
+  });
+
+  it('is false for a viewer and for no role at all', () => {
+    expect(isRaidMember('viewer')).toBe(false);
+    expect(isRaidMember(null)).toBe(false);
+    expect(isRaidMember(undefined)).toBe(false);
   });
 });
 

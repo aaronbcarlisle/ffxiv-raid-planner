@@ -103,6 +103,25 @@ import type {
 } from '../../types';
 import { BiSSourceFixBanner } from '../player/BiSSourceFixBanner';
 
+/**
+ * ROLE-1 (R-R1-14): the static seat chip's tone — the selector trigger's own
+ * base classes (`TankSeatSelector` for a tank: tank tone once either half is
+ * set; `PositionSelector` otherwise: the position letter picks the role tone),
+ * so a card the viewer can't edit paints its seat exactly as an editable one
+ * does, minus the hover and the half-opacity "disabled" look.
+ */
+function seatChipTone(
+  role: string,
+  tankRole: SnapshotPlayer['tankRole'],
+  position: SnapshotPlayer['position']
+): string {
+  const unset = 'bg-surface-interactive text-text-muted';
+  if (role === 'tank') return tankRole || position ? 'bg-role-tank/20 text-role-tank' : unset;
+  if (!position) return unset;
+  if (position.startsWith('T')) return 'bg-role-tank/20 text-role-tank';
+  if (position.startsWith('H')) return 'bg-role-healer/20 text-role-healer';
+  return 'bg-role-melee/20 text-role-melee';
+}
 
 export interface RosterCardProps {
   player: SnapshotPlayer;
@@ -790,8 +809,19 @@ export function RosterCard({
   // ── R-E2-D (2b): the header's ONE seat chip ──
   // Tanks get the merged role+position chip; everyone else keeps today's
   // PositionSelector. Both call the handlers the two separate chips did.
-  const seatChip =
-    role === 'tank' ? (
+  // ROLE-1 (R-R1-14): on a card the viewer can't edit, the seat is DATA, so
+  // it renders as a static chip in the selector's tone — not the selector's
+  // `<button disabled>` at half opacity. The two selectors are shared with V1
+  // (`PlayerCardHeader`) and are not edited.
+  const seatChip = !canEdit ? (
+    <span
+      className={`inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold ${seatChipTone(role, player.tankRole, player.position)}`}
+    >
+      {role === 'tank'
+        ? `${player.tankRole || '--'} · ${player.position || '--'}`
+        : player.position || '--'}
+    </span>
+  ) : role === 'tank' ? (
       <TankSeatSelector
         tankRole={player.tankRole}
         position={player.position}
@@ -1229,7 +1259,6 @@ export function RosterCard({
                 onSlotJump={handleSlotJump}
                 playerId={player.id}
                 highlightedSlot={highlightedSlot}
-                disabledReason={gearPermission.reason}
               />
             </div>
             <div className="flex-1" />
