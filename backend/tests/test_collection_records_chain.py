@@ -7,6 +7,8 @@ else the profile's main (2), else the profile-level row (3), else nothing.
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from app.models import PlayerCharacter
 from app.services.collection_records import (
     RecordTarget,
@@ -415,3 +417,38 @@ class TestBudget:
         assert {t.step for t in result.values()} == {"card"}
         assert 1 <= one.n <= 5
         assert six.n == one.n
+
+
+class TestRecordTargetInvariants:
+    """M4: a RecordTarget that contradicts its step cannot be built."""
+
+    def test_each_valid_shape_builds(self):
+        RecordTarget("u", "p", "c", "Name", "card")
+        RecordTarget("u", "p", "c", "Name", "main")
+        RecordTarget("u", "p", None, None, "profile")
+        RecordTarget("u", None, None, None, "none")
+
+    def test_an_unknown_step_is_refused(self):
+        with pytest.raises(ValueError):
+            RecordTarget("u", "p", "c", "Name", "alt")  # type: ignore[arg-type]
+
+    def test_none_with_a_profile_is_refused(self):
+        with pytest.raises(ValueError):
+            RecordTarget("u", "p", None, None, "none")
+
+    def test_a_step_with_a_character_but_no_profile_is_refused(self):
+        with pytest.raises(ValueError):
+            RecordTarget("u", None, "c", "Name", "main")
+
+    def test_profile_with_no_profile_is_refused(self):
+        with pytest.raises(ValueError):
+            RecordTarget("u", None, None, None, "profile")
+
+    def test_profile_step_with_a_character_is_refused(self):
+        with pytest.raises(ValueError):
+            RecordTarget("u", "p", "c", "Name", "profile")
+
+    def test_card_or_main_without_a_character_is_refused(self):
+        for step in ("card", "main"):
+            with pytest.raises(ValueError):
+                RecordTarget("u", "p", None, None, step)  # type: ignore[arg-type]

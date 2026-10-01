@@ -64,6 +64,11 @@ from ..schemas.schedule import (
     PersonalAvailabilityTemplateResponse,
     PersonalAvailabilityTemplateSubmit,
 )
+from ..services.collection_records import (
+    adopt_profile_rows,
+    delete_character_records,
+    release_last_character_rows,
+)
 from ..services.player_overview import build_player_overview
 from ..services.player_profile_service import get_or_create_profile
 from ..services.share_code import generate_profile_share_code
@@ -746,6 +751,7 @@ async def link_character(
             )
 
     now = datetime.now(timezone.utc).isoformat()
+    had_no_character = not profile.characters
 
     # If this is marked as main, unset other mains
     if body.is_main:
@@ -787,6 +793,9 @@ async def link_character(
         session.add(character)
 
     await session.flush()
+    if had_no_character:
+        # The profile's first character takes its profile-level collection rows (R-S1-6).
+        await adopt_profile_rows(session, profile_id=profile.id, character_id=character.id)
     await session.commit()
 
     logger.info(
@@ -876,7 +885,21 @@ async def unlink_character(
     current_user: User = Depends(get_current_user),
 ):
     """Unlink a character from the current user's profile."""
-    _, character = await _get_own_character(session, current_user, character_id)
+    profile, character = await _get_own_character(session, current_user, character_id)
+    # Collection records go by the door, not the FK: SQLite enforces none here (R-S1-6).
+    siblings = await session.execute(
+        select(PlayerCharacter.id).where(
+            PlayerCharacter.profile_id == profile.id,
+            PlayerCharacter.id != character.id,
+        )
+    )
+    if siblings.first() is None:
+        # The last character: its records return to the profile, so a relink keeps them.
+        await release_last_character_rows(
+            session, profile_id=profile.id, character_id=character.id
+        )
+    else:
+        await delete_character_records(session, character_id=character.id)
     await session.delete(character)
     await session.flush()
     await session.commit()
@@ -1839,6 +1862,7 @@ async def _get_or_provision_plugin_character(
         if c.name.lower().strip() == name_norm and c.server.lower().strip() == world_norm:
             return c
 
+    first_character = not profile.characters
     character = PlayerCharacter(
         id=str(uuid.uuid4()),
         profile_id=profile.id,
@@ -1847,13 +1871,16 @@ async def _get_or_provision_plugin_character(
         server=character_world.strip(),
         data_center=None,
         avatar_url=None,
-        is_main=not profile.characters,  # first character becomes main
+        is_main=first_character,  # first character becomes main
         created_at=now,
         updated_at=now,
     )
     session.add(character)
     profile.characters.append(character)
     await session.flush()
+    if first_character:
+        # The profile's first character takes its profile-level collection rows (R-S1-6).
+        await adopt_profile_rows(session, profile_id=profile.id, character_id=character.id)
     logger.info(
         "plugin_character_auto_provisioned",
         user_id=profile.user_id,

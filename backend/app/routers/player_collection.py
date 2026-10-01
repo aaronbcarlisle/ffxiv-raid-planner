@@ -15,7 +15,7 @@ Endpoints:
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +30,7 @@ from ..models.player_collection_intent import (
     INTENT_VISIBILITIES,
     PlayerCollectionIntent,
 )
+from ..models.player_character import PlayerCharacter
 from ..models.player_collection_snapshot import PlayerCollectionSnapshot
 from ..models.player_profile import PlayerProfile
 from ..models.user import User
@@ -43,7 +44,15 @@ from ..schemas.player_collection import (
     DossierHuntingEntry,
     StaticCollectionSuggestion,
 )
+from ..services.collection_records import (
+    RECORD_WRITE_PERSON,
+    RecordTarget,
+    load_records,
+    main_character,
+    write_record,
+)
 from ..services.player_profile_service import get_or_create_profile
+from ..services.provenance import logged_via
 from ..services.collection_suggestion_service import (
     compute_suggestions,
     dossier_farm_match,
@@ -155,18 +164,26 @@ async def delete_intent(
 
 @router.get("/me/collection-snapshots", response_model=list[CollectionSnapshotResponse])
 async def list_my_snapshots(
+    character_id: str | None = None,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> list[CollectionSnapshotResponse]:
+    """The caller's records for one character (default: the main), with the
+    profile-level fallback for a profile with no character or an un-backfilled main."""
     profile = await _get_profile_or_none(session, user)
     if profile is None:
+        _require_no_character_id(character_id)
         return []
-    result = await session.execute(
-        select(PlayerCollectionSnapshot).where(
-            PlayerCollectionSnapshot.profile_id == profile.id
+    target = await _hub_target(session, user, profile, character_id)
+    item_ids = (
+        await session.execute(
+            select(PlayerCollectionSnapshot.catalog_item_id).where(
+                PlayerCollectionSnapshot.profile_id == profile.id
+            )
         )
-    )
-    return [CollectionSnapshotResponse.model_validate(r) for r in result.scalars().all()]
+    ).scalars().all()
+    records = (await load_records(session, [target], item_ids))[target]
+    return [CollectionSnapshotResponse.model_validate(r) for r in records.values()]
 
 
 # ── Static suggestions ─────────────────────────────────────────────────────────
@@ -255,13 +272,16 @@ async def list_my_collection_catalog(
     category: str | None = None,
     expansion: str | None = None,
     source_type: str | None = None,
+    character_id: str | None = None,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> list[CatalogPlayerEntry]:
     """Return all active catalog items merged with this player's intent and snapshot.
 
-    Filters are optional and applied server-side.
-    Items with no player record return null for intent/snapshot fields.
+    Filters are optional and applied server-side. The snapshot is the record of
+    `character_id` (default: the main; a profile with no character reads its
+    profile-level rows). Items with no player record return null for
+    intent/snapshot fields.
     """
     filters = [CollectionCatalogItem.is_active.is_(True)]
     if category:
@@ -286,7 +306,10 @@ async def list_my_collection_catalog(
     intent_map: dict[str, PlayerCollectionIntent] = {}
     snapshot_map: dict[str, PlayerCollectionSnapshot] = {}
 
-    if profile is not None:
+    if profile is None:
+        _require_no_character_id(character_id)
+    else:
+        target = await _hub_target(session, user, profile, character_id)
         item_ids = [c.id for c in catalog_items]
         intent_result = await session.execute(
             select(PlayerCollectionIntent).where(
@@ -296,13 +319,7 @@ async def list_my_collection_catalog(
         )
         intent_map = {i.catalog_item_id: i for i in intent_result.scalars().all()}
 
-        snapshot_result = await session.execute(
-            select(PlayerCollectionSnapshot).where(
-                PlayerCollectionSnapshot.profile_id == profile.id,
-                PlayerCollectionSnapshot.catalog_item_id.in_(item_ids),
-            )
-        )
-        snapshot_map = {s.catalog_item_id: s for s in snapshot_result.scalars().all()}
+        snapshot_map = (await load_records(session, [target], item_ids))[target]
 
     entries: list[CatalogPlayerEntry] = []
     for item in catalog_items:
@@ -331,16 +348,20 @@ async def list_my_collection_catalog(
 async def upsert_snapshot(
     catalog_item_id: str,
     body: CollectionSnapshotUpsert,
+    request: Request,
+    character_id: str | None = None,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> CollectionSnapshotResponse:
     """Upsert ownership state and/or token count for one catalog item.
 
-    Rules:
-    - ownership_state=have: always accepted (player confirms ownership)
-    - ownership_state=missing: not applied if plugin-confirmed 'have' exists
-    - token_count: not overwritten if snapshot source is 'plugin'
+    The record is `character_id`'s (one of the caller's characters, else 404
+    and nothing is written); default the main, and a profile with no character
+    writes its profile-level row. This is a person's write (R-S1-7): ownership
+    is set as given, so it can lower a plugin Have until the plugin's next
+    sync, and a count is stored (the newest write wins).
     """
+    via = logged_via(request)
     if body.ownership_state not in ("have", "missing", "unknown"):
         raise HTTPException(400, "ownership_state must be have, missing, or unknown")
 
@@ -350,52 +371,27 @@ async def upsert_snapshot(
     if cat_result.scalar_one_or_none() is None:
         raise HTTPException(404, "Catalog item not found")
 
-    profile = await _ensure_profile(session, user)
-    now = _now()
+    profile = await _get_profile_or_none(session, user)
+    if profile is None:
+        _require_no_character_id(character_id)
+        profile = await _ensure_profile(session, user)
+    target = await _hub_target(session, user, profile, character_id)
 
-    existing_result = await session.execute(
-        select(PlayerCollectionSnapshot).where(
-            PlayerCollectionSnapshot.profile_id == profile.id,
-            PlayerCollectionSnapshot.catalog_item_id == catalog_item_id,
-        )
+    write = await write_record(
+        session,
+        target,
+        catalog_item_id,
+        actor_user_id=user.id,
+        via=via,
+        mode=RECORD_WRITE_PERSON,
+        now=_now(),
+        ownership=body.ownership_state,
+        token_count=body.token_count,
+        source="manual",
+        confidence="medium",
     )
-    snapshot = existing_result.scalar_one_or_none()
-
-    if snapshot is None:
-        snapshot = PlayerCollectionSnapshot(
-            id=str(uuid.uuid4()),
-            profile_id=profile.id,
-            catalog_item_id=catalog_item_id,
-            ownership_state=body.ownership_state,
-            token_count=body.token_count,
-            source="manual",
-            confidence="medium",
-            updated_at=now,
-        )
-        session.add(snapshot)
-    else:
-        is_plugin = snapshot.source == "plugin"
-        if body.ownership_state == "have":
-            snapshot.ownership_state = "have"
-            snapshot.source = "manual"
-            snapshot.confidence = "medium"
-        elif body.ownership_state == "missing":
-            if not (is_plugin and snapshot.ownership_state == "have"):
-                snapshot.ownership_state = "missing"
-                if not is_plugin:
-                    snapshot.source = "manual"
-        elif body.ownership_state == "unknown":
-            if not is_plugin:
-                snapshot.ownership_state = "unknown"
-                snapshot.source = "manual"
-
-        if body.token_count is not None and not is_plugin:
-            snapshot.token_count = body.token_count
-
-        snapshot.updated_at = now
-
     await session.commit()
-    return CollectionSnapshotResponse.model_validate(snapshot)
+    return CollectionSnapshotResponse.model_validate(write.record)
 
 
 # ── Farm match for applicant ───────────────────────────────────────────────────
@@ -441,3 +437,36 @@ async def _ensure_profile(session: AsyncSession, user: User) -> PlayerProfile:
 
 async def _require_profile(session: AsyncSession, user: User) -> PlayerProfile:
     return await _ensure_profile(session, user)
+
+
+def _require_no_character_id(character_id: str | None) -> None:
+    """A caller with no profile has no characters: any `character_id` is not theirs."""
+    if character_id is not None:
+        raise HTTPException(404, "Character not found")
+
+
+async def _hub_target(
+    session: AsyncSession, user: User, profile: PlayerProfile, character_id: str | None
+) -> RecordTarget:
+    """The record target a Hub request aims at (R-S1-11).
+
+    `character_id` must be one of the caller's characters, else 404. Without
+    it: the profile's main, or the profile-level row when it has no character.
+    The main is a `main` target (it falls back to a profile-level row), any
+    other character a `card` target (it does not).
+    """
+    result = await session.execute(
+        select(PlayerCharacter).where(PlayerCharacter.profile_id == profile.id)
+    )
+    characters = list(result.scalars())
+    main = main_character(characters)
+    if character_id is None:
+        chosen = main
+    else:
+        chosen = next((c for c in characters if c.id == character_id), None)
+        if chosen is None:
+            raise HTTPException(404, "Character not found")
+    if chosen is None:
+        return RecordTarget(user.id, profile.id, None, None, "profile")
+    step = "main" if chosen is main else "card"
+    return RecordTarget(user.id, profile.id, chosen.id, chosen.name, step)
