@@ -49,6 +49,25 @@ class RewardDropLog(Base):
     api_key_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("api_keys.id", ondelete="SET NULL"), nullable=True
     )
+    # The recipient's character (S2a-1, B11): which character the drop went to,
+    # its name at write time, and its source (PROV-1's character-source values).
+    # SET NULL acts on Postgres only (SQLite runs without PRAGMA foreign_keys);
+    # the name survives an unlink.
+    recipient_character_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("player_characters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    recipient_character_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    recipient_character_source: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # The recipient's collection record before the drop raised it (R-S1-13,
+    # R-S1-14): its ownership state, when the raise happened (the record's new
+    # state_changed_at), and the record's state_changed_at before the raise
+    # (vet M-10). Undo reverts the record only while it is unchanged since.
+    recipient_record_prior_state: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    recipient_record_prior_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recipient_record_prior_changed_at: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )

@@ -44,6 +44,19 @@ class RewardParticipantState(Base):
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )
 
+    # Write provenance (S2a-1, R-PV-1 vocabulary): who last wrote the row and
+    # through which channel; NULL on rows that predate S2a-1 ("unknown origin").
+    # The user relationship below names its foreign_keys, so this second FK to
+    # users leaves it unambiguous.
+    updated_by_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    updated_via: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # When state and token_count last changed (ISO text); updated_at also moves
+    # on rank and notes edits, so the merge compares these instead.
+    state_changed_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    token_count_updated_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     goal: Mapped["CollectionGoal"] = relationship("CollectionGoal", foreign_keys=[goal_id])
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
     static_group: Mapped["StaticGroup"] = relationship("StaticGroup", foreign_keys=[static_group_id])
