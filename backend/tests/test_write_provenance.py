@@ -595,6 +595,29 @@ async def test_loot_update_registration_without_a_name_takes_its_name(
 
 
 @covers("update_loot_log_entry")
+async def test_loot_update_name_only_keeps_the_registration_and_marks_explicit(
+    client, session, auth_headers, world
+):
+    """R-PV-7, same card: a sent name that differs is stored as today (the
+    registration stays) and the client named the character, so `explicit`."""
+    entry_id = await _loot_logged_for_pm(client, session, auth_headers, world)
+
+    response = await client.put(
+        f"{_base(world)}/loot-log/{entry_id}",
+        json={"recipientCharacterName": "Typed Name"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 200, response.text
+
+    row = await _stored(session, LootLogEntry, entry_id)
+    assert row.recipient_player_id == world.pm.id
+    assert row.recipient_user_id == world.member.id  # same card: untouched
+    assert row.recipient_character_registration_id == world.r1.id  # kept
+    assert row.recipient_character_name == "Typed Name"
+    assert row.recipient_character_source == "explicit"
+
+
+@covers("update_loot_log_entry")
 async def test_loot_update_v1_full_payload_on_a_legacy_row_leaves_its_nulls(
     client, session, auth_headers, world
 ):
