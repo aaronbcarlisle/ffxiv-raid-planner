@@ -237,7 +237,7 @@ Backend commands use the main checkout's venv (`D:/FFXIV/Dev/xrp-dev/ffxiv-raid-
      - moving a PM row to PM2 with no registration → `recipient_user_id` M2, the character cleared, source NULL;
      - moving a PM row to PM2 with only `recipientCharacterName` "Typed Name" → name kept, registration NULL, source `explicit` (vet M-7);
      - sending R2 with no name on a PM row → R2, R2's name, source `explicit`;
-     - **the full V1 payload on a legacy row (vet I-3):** seed a pre-PROV-1 row directly, with every provenance column NULL and R1/"Main Name" as V1's picker stored it. PUT what `AddLootEntryModal.tsx:409-420` sends on every save: the unchanged `recipientPlayerId`, week, floor, slot, method, weapon job, R1 and its name, and new notes. Notes change. `recipient_user_id`, `logged_via`, `api_key_id` and `recipient_character_source` stay NULL;
+     - **the full V1 payload on a legacy row (vet I-3):** seed a pre-PROV-1 row directly, with every provenance column NULL and R1/"Main Name" as V1's picker stored it. PUT a superset of any shell's loot edit (`AddLootEntryModal.tsx:409-420` is V1's create payload; V1 and V2 loot edits send only changed fields, `:375-395`): the unchanged `recipientPlayerId`, week, floor, slot, method, weapon job, R1 and its name, and new notes. Notes change. `recipient_user_id`, `logged_via`, `api_key_id` and `recipient_character_source` stay NULL;
      - `logged_via` and `api_key_id` never change.
    - **`update_material_log_entry`:**
      - moving to PM2 → M2 and the character cleared;

@@ -69,6 +69,8 @@ export const RELEASES: Release[] = [
         title: 'Loot, materials and books record how they were logged',
         description:
           'New loot, material and book entries now record whether they came from the website or an API key such as the plugin\'s, and which key, whose card they were logged for, which character, and whether it was picked or filled in as the main. Nothing changes on screen yet, and older entries stay unmarked.',
+        pr: 345,
+        prTitle: 'feat(api): W0 PROV-1 — loot, material and book writes record how, which key, whose card and which character (HS-36)',
         internal: true,
       },
     ],

@@ -412,8 +412,10 @@ async def update_loot_log_entry(
         raise HTTPException(status_code=404, detail="Loot log entry not found")
 
     # A recipient change is a sent card that differs from the stored one, read
-    # before the assignment below (R-PV-7). V1 re-sends the unchanged card on
-    # every save, and that must leave a legacy row's NULLs alone.
+    # before the assignment below (R-PV-7). V1 and V2 loot edits send only
+    # changed fields (AddLootEntryModal.tsx:375-395, recipientPickerEditUpdates.ts);
+    # the full payload in the test is a superset of what any shell sends, so a
+    # legacy row must keep its NULLs under it.
     stored_recipient_id = entry.recipient_player_id
     recipient_changed = (
         data.recipient_player_id is not None and data.recipient_player_id != stored_recipient_id

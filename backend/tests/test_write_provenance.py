@@ -621,7 +621,7 @@ async def test_loot_update_name_only_keeps_the_registration_and_marks_explicit(
 async def test_loot_update_v1_full_payload_on_a_legacy_row_leaves_its_nulls(
     client, session, auth_headers, world
 ):
-    """vet I-3: a pre-PROV-1 row, edited through V1's full re-send payload."""
+    """vet I-3: a pre-PROV-1 row, edited through the full payload (superset of what any shell sends)."""
     legacy = await create_loot_log_entry(
         session,
         world.tier,
@@ -636,7 +636,7 @@ async def test_loot_update_v1_full_payload_on_a_legacy_row_leaves_its_nulls(
     await session.flush()
     _assert_every_provenance_column_null(legacy)
 
-    # What AddLootEntryModal.tsx:409-420 sends on every save; only notes change.
+    # Full payload superset: AddLootEntryModal.tsx:375-395 shows V1 and V2 send only changed fields; only notes change.
     response = await client.put(
         f"{_base(world)}/loot-log/{legacy.id}",
         json={
