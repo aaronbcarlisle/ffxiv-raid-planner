@@ -249,7 +249,8 @@ DEVTST facts (`backend/app/routers/dev_auth.py:38-54`, `:397-470`): `/api/dev-au
 
 - **C-1** Members can't register characters on their own card in "Manage characters", though the API allows it (`authz:584-607`). The panel (`RosterCharacterPanel`) is shared with V1. → W4 ROSTER (HS-36 self-service).
 - **C-2** A farm's `priority_rank` / `token_count` for others has no edit UI → S2a's "Change order" (S2-8).
-- **C-3** Four definitions of "member" on the client (`useStaticPermissions.ts:56`, `Schedule.tsx:86`, `GroupViewContent.tsx:1171`, `Home.tsx:131`), and an admin whose membership is "member" gets `canManage=false` on Tracking (it under-offers) → holistic review.
+- **C-3** Four definitions of "member" on the client (`useStaticPermissions.ts:56`, `Schedule.tsx:86`, `GroupViewContent.tsx:1171`, `Home.tsx:131`), and an admin whose membership is "member" gets `canManage=false` on Tracking (it under-offers) → holistic review. Also: an admin viewing a static outside ?adminMode=true gets "Schedule is for members" on Home while Schedule shows sessions (review M6).
 - **C-4** A non-member from the Finder lands on Roster (D-20) → W1.
 - **C-6** `CollectionsHub.tsx:204`'s empty state ("browse the catalog to track something manually") now speaks to members who have no Track. It's shared with V1, so it's carried rather than widening ruling (a) (vet F10) → holistic review / S2a-5.
 - **C-5** Whether "Needs your attention" should show at all for a non-member → holistic review (DA 15 with the Settings carry).
+- **C-7** The static seat chip lacks the selectors' mobile min-h-[44px] (review M2) → mobile pass.
