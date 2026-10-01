@@ -817,9 +817,17 @@ export function RosterCard({
     <span
       className={`inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold ${seatChipTone(role, player.tankRole, player.position)}`}
     >
-      {role === 'tank'
-        ? `${player.tankRole || '--'} · ${player.position || '--'}`
-        : player.position || '--'}
+      <span aria-hidden={role === 'tank' ? true : undefined}>
+        {role === 'tank'
+          ? `${player.tankRole || '--'} · ${player.position || '--'}`
+          : player.position || '--'}
+      </span>
+      {/* Same wording as TankSeatSelector's aria-label (PositionSelector's name is its text, kept as-is). */}
+      {role === 'tank' && (
+        <span className="sr-only">
+          {`Tank role ${player.tankRole ?? 'not set'}, position ${player.position ?? 'not set'}`}
+        </span>
+      )}
     </span>
   ) : role === 'tank' ? (
       <TankSeatSelector

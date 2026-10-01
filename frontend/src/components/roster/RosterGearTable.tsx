@@ -151,7 +151,11 @@ function StaticSourceValue({ source }: { source: GearSource | null }) {
     : 'bg-surface-interactive text-text-muted';
   return (
     <span className={`inline-flex w-7 items-center justify-center rounded py-0.5 text-xs font-bold ${tone}`}>
-      {source ? BIS_SOURCE_NAMES[source] : '--'}
+      <span aria-hidden="true">{source ? BIS_SOURCE_NAMES[source] : '--'}</span>
+      {/* Same wording as BiSSourceSelector's aria-label (the control this replaces). */}
+      <span className="sr-only">
+        {source ? `BiS source: ${BIS_SOURCE_FULL_NAMES[source]}` : 'BiS source not set'}
+      </span>
     </span>
   );
 }

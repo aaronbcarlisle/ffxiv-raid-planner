@@ -2447,6 +2447,12 @@ describe('RosterCard — one-line header (E2, R-E2-D)', () => {
       expect(within(header()).getByText('MT · T1')).toBeInTheDocument();
     });
 
+    it('tank: the static chip keeps the shared selector accessible wording, visible text hidden from AT', () => {
+      renderCard(makePlayer({ userId: 'u9' }), asMember);
+      expect(within(header()).getByText('Tank role MT, position T1')).toHaveClass('sr-only');
+      expect(within(header()).getByText('MT · T1')).toHaveAttribute('aria-hidden', 'true');
+    });
+
     it("non-tank: a member on another's card sees the position as text, with no seat button", () => {
       renderCard(makePlayer({ userId: 'u9', job: 'WHM', role: 'healer', position: 'H1', tankRole: null }), asMember);
       expect(within(header()).queryByRole('button', { name: 'H1' })).not.toBeInTheDocument();

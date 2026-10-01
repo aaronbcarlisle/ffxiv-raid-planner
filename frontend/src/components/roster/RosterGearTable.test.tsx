@@ -226,6 +226,21 @@ describe('RosterGearTable — C2 editing', () => {
       expect(onSourceChange).not.toHaveBeenCalled();
     });
 
+    // Copilot (ROLE-1): the abbreviation alone ("R", "BT") loses the meaning for
+    // assistive tech; the static value keeps the selector's accessible wording.
+    it('read-only: the static BiS value keeps the shared selector accessible name, abbreviation hidden', () => {
+      renderTable([
+        slot({ slot: 'head', bisSource: 'raid', hasItem: false }),
+        slot({ slot: 'legs', bisSource: 'base_tome', hasItem: false }),
+        slot({ slot: 'feet', bisSource: undefined, hasItem: false }),
+      ]);
+      const rowOf = (name: RegExp) => screen.getByRole('rowheader', { name }).closest('tr')!;
+      expect(within(rowOf(/^Head/)).getByText('BiS source: Raid')).toHaveClass('sr-only');
+      expect(within(rowOf(/^Legs/)).getByText('BiS source: Base Tome')).toHaveClass('sr-only');
+      expect(within(rowOf(/^Feet/)).getByText('BiS source not set')).toHaveClass('sr-only');
+      expect(within(rowOf(/^Head/)).getByText('R')).toHaveAttribute('aria-hidden', 'true');
+    });
+
     it('a miscategorized slot gets the per-slot Fix button; correct slots do not', () => {
       const onSourceFix = vi.fn();
       renderTable(
