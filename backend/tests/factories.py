@@ -23,11 +23,20 @@ from app.models import (
 )
 from app.models.availability import UserAvailability
 from app.models.bis_target_set import BiSTargetSet
+from app.models.collection_catalog_item import CollectionCatalogItem
+from app.models.collection_goal import CollectionGoal
+from app.models.invitation import Invitation
+from app.models.join_request import JoinRequest
 from app.models.personal_availability import PersonalAvailabilityTemplate
 from app.models.player_character import PlayerCharacter
 from app.models.player_job_profile import PlayerJobProfile
 from app.models.player_profile import PlayerProfile
+from app.models.reward_drop_log import RewardDropLog
+from app.models.reward_participant_state import RewardParticipantState
+from app.models.split_clear import SplitClearAssignment
 from app.models.static_character_registration import StaticCharacterRegistration
+from app.models.static_content_suggestion import StaticContentSuggestion
+from app.models.static_objective_goal import StaticObjectiveGoal
 
 
 async def create_user(
@@ -572,6 +581,235 @@ async def create_personal_availability_template(
     session.add(template)
     await session.flush()
     return template
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+async def create_collection_goal(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    created_by: User,
+    *,
+    goal_type: str = "mount",
+    title: str = "Test Farm",
+    status: str = "farming",
+) -> CollectionGoal:
+    """Create a static collection (farm) goal."""
+    goal = CollectionGoal(
+        id=str(uuid.uuid4()),
+        static_group_id=static_group.id,
+        created_by_id=created_by.id,
+        goal_type=goal_type,
+        title=title,
+        status=status,
+        created_at=_now_iso(),
+        updated_at=_now_iso(),
+    )
+    session.add(goal)
+    await session.flush()
+    return goal
+
+
+async def create_participant_state(
+    session: AsyncSession,
+    goal: CollectionGoal,
+    user: User,
+    *,
+    state: str = "need",
+) -> RewardParticipantState:
+    """Create a participant row on a collection goal."""
+    row = RewardParticipantState(
+        id=str(uuid.uuid4()),
+        goal_id=goal.id,
+        user_id=user.id,
+        static_group_id=goal.static_group_id,
+        state=state,
+        source="manual",
+        updated_at=_now_iso(),
+    )
+    session.add(row)
+    await session.flush()
+    return row
+
+
+async def create_reward_drop(
+    session: AsyncSession,
+    goal: CollectionGoal,
+    created_by: User,
+    *,
+    recipient: User | None = None,
+) -> RewardDropLog:
+    """Create a logged drop on a collection goal."""
+    drop = RewardDropLog(
+        id=str(uuid.uuid4()),
+        goal_id=goal.id,
+        static_group_id=goal.static_group_id,
+        recipient_user_id=recipient.id if recipient else None,
+        created_by_id=created_by.id,
+        quantity=1,
+        dropped_at=_now_iso(),
+        created_at=_now_iso(),
+    )
+    session.add(drop)
+    await session.flush()
+    return drop
+
+
+async def create_content_suggestion(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    suggested_by: User,
+    *,
+    category: str = "custom",
+    title: str = "Test Suggestion",
+    status: str = "open",
+) -> StaticContentSuggestion:
+    """Create an open content suggestion."""
+    suggestion = StaticContentSuggestion(
+        id=str(uuid.uuid4()),
+        static_group_id=static_group.id,
+        suggested_by_user_id=suggested_by.id,
+        category=category,
+        title=title,
+        status=status,
+        created_at=_now_iso(),
+        updated_at=_now_iso(),
+    )
+    session.add(suggestion)
+    await session.flush()
+    return suggestion
+
+
+async def create_objective_goal(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    created_by: User,
+    *,
+    category: str = "custom",
+    title: str = "Test Objective",
+    priority: str = "preferred",
+) -> StaticObjectiveGoal:
+    """Create a static objective goal."""
+    goal = StaticObjectiveGoal(
+        id=str(uuid.uuid4()),
+        static_group_id=static_group.id,
+        created_by_id=created_by.id,
+        category=category,
+        title=title,
+        priority=priority,
+        created_at=_now_iso(),
+        updated_at=_now_iso(),
+    )
+    session.add(goal)
+    await session.flush()
+    return goal
+
+
+async def create_invitation(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    created_by: User,
+    *,
+    role: str = "member",
+) -> Invitation:
+    """Create an active invitation."""
+    invitation = Invitation(
+        id=str(uuid.uuid4()),
+        static_group_id=static_group.id,
+        created_by_id=created_by.id,
+        invite_code=uuid.uuid4().hex[:8].upper(),
+        role=role,
+        use_count=0,
+        is_active=True,
+        created_at=_now_iso(),
+        updated_at=_now_iso(),
+    )
+    session.add(invitation)
+    await session.flush()
+    return invitation
+
+
+async def create_join_request(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    requester: User,
+    *,
+    status: str = "pending",
+) -> JoinRequest:
+    """Create a join request (application) to a static."""
+    request = JoinRequest(
+        id=str(uuid.uuid4()),
+        static_group_id=static_group.id,
+        requester_user_id=requester.id,
+        status=status,
+        created_at=_now_iso(),
+        updated_at=_now_iso(),
+    )
+    session.add(request)
+    await session.flush()
+    return request
+
+
+async def create_split_clear_assignment(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    snapshot_player: SnapshotPlayer,
+) -> SplitClearAssignment:
+    """Create a split-clear assignment for a roster player."""
+    assignment = SplitClearAssignment(
+        id=str(uuid.uuid4()),
+        static_group_id=static_group.id,
+        snapshot_player_id=snapshot_player.id,
+        created_at=_now_iso(),
+        updated_at=_now_iso(),
+    )
+    session.add(assignment)
+    await session.flush()
+    return assignment
+
+
+async def create_catalog_item(
+    session: AsyncSession,
+    *,
+    name: str = "Test Mount",
+    category: str = "mount",
+) -> CollectionCatalogItem:
+    """Create a collection catalog item."""
+    item = CollectionCatalogItem(
+        id=str(uuid.uuid4()),
+        name=name,
+        category=category,
+        updated_at=_now_iso(),
+    )
+    session.add(item)
+    await session.flush()
+    return item
+
+
+async def create_roster_bis_target_set(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    snapshot_player: SnapshotPlayer,
+    created_by: User,
+) -> BiSTargetSet:
+    """Create a roster (`owner_type="roster_member_job"`) BiS target set."""
+    bis_set = BiSTargetSet(
+        id=str(uuid.uuid4()),
+        owner_type="roster_member_job",
+        owner_id=snapshot_player.id,
+        snapshot_player_id=snapshot_player.id,
+        group_id=static_group.id,
+        job=snapshot_player.job,
+        name="Roster BiS",
+        created_by=created_by.id,
+        created_at=_now_iso(),
+        updated_at=_now_iso(),
+    )
+    session.add(bis_set)
+    await session.flush()
+    return bis_set
 
 
 def _generate_share_code() -> str:

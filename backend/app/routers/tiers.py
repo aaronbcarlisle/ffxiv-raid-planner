@@ -1591,6 +1591,8 @@ async def update_weapon_priorities(
 
     if not membership and not user_is_admin:
         raise PermissionDenied("You are not a member of this static group")
+    if membership and membership.role == MemberRole.VIEWER.value and not user_is_admin:
+        raise PermissionDenied("Viewers cannot edit weapon priorities")
 
     # Get player and tier snapshot
     result = await session.execute(

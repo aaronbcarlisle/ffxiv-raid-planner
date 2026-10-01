@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.60',
+    date: '2026-10-01T03:00:00Z',
+    title: 'Viewer write checks on weapon priorities and character registrations',
+    items: [
+      {
+        category: 'fix',
+        title: 'Viewers can\'t edit weapon priorities or character registrations',
+        description:
+          'The server now refuses a viewer who edits weapon priorities or character registrations on a card linked to them, matching what the app already refused. Found by the new authorization table, which lists every route that changes data with the minimum role it needs.',
+        pr: 332,
+        prTitle: 'fix(api): P0b — AUTHZ route table, role probes, plugin contract and two viewer gates (AUTHZ)',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.59',
     date: '2026-10-01T00:30:00Z',
     title: 'Farm drop and viewer write rules',
