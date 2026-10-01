@@ -261,10 +261,8 @@ ROUTES: tuple[AuthzRoute, ...] = (
       build=lambda w: _r(_g(w), None, {"isPublic": True})),
     R("DELETE", G, "owner", "helper", "delete the static", build=lambda w: _r(_g(w))),
     R("POST", G + "/duplicate", "member", "inline",
-      "copy the static into a new one the caller owns",
-      build=lambda w: _r(_g(w), None, {"newName": "Copy of Static"}),
-      gaps=_viewer_gap("#331 — a viewer can duplicate the static (201); the UI offers"
-                       " Duplicate to every role, so this needs a ruling")),
+      "copy the static into a new one the caller owns (members and up, #331)",
+      build=lambda w: _r(_g(w), None, {"newName": "Copy of Static"})),
     R("POST", G + "/members", "lead", "helper", "add a user (owners alone add leads)",
       build=lambda w: _r(_g(w), {"user_id": w.u["outsider"].id, "role": "member"})),
     R("PUT", G + "/members/{user_id}", "lead", "helper",

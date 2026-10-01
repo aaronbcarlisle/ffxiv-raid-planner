@@ -298,6 +298,12 @@ export function MyStaticsPanel() {
     if (!selectedGroup) return [];
 
     const isOwner = selectedGroup.userRole === 'owner';
+    // #331 / B12: the API refuses viewers (403) and non-members (404, as on
+    // linked-only rows), so only owner, lead and member rows offer Duplicate.
+    const canDuplicate =
+      selectedGroup.userRole === 'owner' ||
+      selectedGroup.userRole === 'lead' ||
+      selectedGroup.userRole === 'member';
 
     return [
       {
@@ -305,11 +311,11 @@ export function MyStaticsPanel() {
         icon: <FolderOpen className="w-4 h-4" />,
         onClick: handleEditStatic,
       },
-      {
+      ...(canDuplicate ? [{
         label: 'Duplicate Static',
         icon: <Copy className="w-4 h-4" />,
         onClick: handleDuplicateStatic,
-      },
+      }] : []),
       ...(isOwner ? [{
         label: 'Settings',
         icon: <Settings className="w-4 h-4" />,
