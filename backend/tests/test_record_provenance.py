@@ -21,9 +21,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
-from app.models import PlayerCollectionSnapshot
+from app.models import (
+    CollectionCatalogItem,
+    MemberRole,
+    MountFarmProgress,
+    PlayerCollectionIntent,
+    PlayerCollectionSnapshot,
+    PlayerProfile,
+)
 from tests.factories import (
     create_catalog_item,
+    create_claimed_card,
+    create_membership,
     create_player_character,
     create_player_profile,
 )
@@ -32,7 +41,12 @@ from tests.factories import (
 # Coverage registry (vet I-2)
 # ---------------------------------------------------------------------------
 
-RECORD_HANDLERS = ("upsert_snapshot",)
+RECORD_HANDLERS = (
+    "upsert_snapshot",
+    "update_mount_farm_progress",
+    "bulk_update_mount_farm_progress",
+    "plugin_sync_collections",
+)
 
 # handler name -> the test functions decorated with @covers_record(handler)
 RECORD_COVERED: dict[str, list[str]] = {}
@@ -216,3 +230,310 @@ async def test_hub_put_for_a_made_up_character_id_is_404(client, session, auth_h
     assert response.status_code == 404
     everything = await session.execute(select(PlayerCollectionSnapshot))
     assert everything.scalars().all() == []
+
+
+# ---------------------------------------------------------------------------
+# The mount-farm bridge: update_mount_farm_progress, bulk_update_mount_farm_progress
+# ---------------------------------------------------------------------------
+
+TRIAL_ID = "s2a1-record-trial"
+CLIENT_CLOCK = "2000-01-01T00:00:00+00:00"
+
+
+def _farm_url(group, bulk: bool = False) -> str:
+    url = f"/api/static-groups/{group.id}/mount-farms/progress"
+    return f"{url}/bulk" if bulk else url
+
+
+async def _farm_item(
+    session: AsyncSession,
+    name: str = "Farm Mount",
+    *,
+    game_mount_id: int | None = None,
+    token_item_id: int | None = None,
+) -> CollectionCatalogItem:
+    """A catalog mount the bridge finds from TRIAL_ID, with the plugin's game ids if given."""
+    item = await create_catalog_item(session, name=name)
+    item.source_duty_key = TRIAL_ID
+    item.is_active = True
+    item.game_mount_id = game_mount_id
+    item.token_item_id = token_item_id
+    await session.flush()
+    return item
+
+
+async def _member_of(session: AsyncSession, group, user, *, main_name: str):
+    """Make `user` a member of `group` with a profile and a main; returns (profile, main)."""
+    await create_membership(session, user, group, role=MemberRole.MEMBER)
+    profile = await create_player_profile(session, user)
+    main = await create_player_character(session, profile, name=main_name, is_main=True)
+    return profile, main
+
+
+async def _all_records(session: AsyncSession) -> list[PlayerCollectionSnapshot]:
+    """Every record in the database, read back rather than from the identity map."""
+    result = await session.execute(
+        select(PlayerCollectionSnapshot).execution_options(populate_existing=True)
+    )
+    return list(result.scalars().all())
+
+
+async def _progress(session: AsyncSession, group, user) -> MountFarmProgress:
+    result = await session.execute(
+        select(MountFarmProgress)
+        .where(
+            MountFarmProgress.static_group_id == group.id,
+            MountFarmProgress.user_id == user.id,
+            MountFarmProgress.trial_id == TRIAL_ID,
+        )
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one()
+
+
+async def _intent(session: AsyncSession, profile, item) -> PlayerCollectionIntent:
+    result = await session.execute(
+        select(PlayerCollectionIntent).where(
+            PlayerCollectionIntent.profile_id == profile.id,
+            PlayerCollectionIntent.catalog_item_id == item.id,
+        )
+    )
+    return result.scalar_one()
+
+
+@covers_record("update_mount_farm_progress")
+async def test_mount_farm_patch_for_yourself_writes_your_cards_alt_as_you_on_the_web(
+    client, session, test_user_2, test_group, auth_headers_user2
+):
+    """R-S1-10: a member's own edit writes the record the chain names in this static."""
+    profile, _ = await _member_of(session, test_group, test_user_2, main_name="Member Main")
+    alt = await create_player_character(session, profile, name="Member Alt", is_main=False)
+    await create_claimed_card(session, test_group, test_user_2, alt)
+    item = await _farm_item(session)
+    await session.commit()
+
+    response = await client.patch(
+        _farm_url(test_group),
+        json={"trial_id": TRIAL_ID, "has_mount": True, "totem_count": 5},
+        headers=auth_headers_user2,
+    )
+    assert response.status_code == 200, response.text
+
+    (row,) = await _all_records(session)
+    assert row.character_id == alt.id
+    assert (row.catalog_item_id, row.ownership_state, row.token_count) == (item.id, "have", 5)
+    assert (row.source, row.confidence) == ("player_hub", "medium")
+    assert row.updated_by_user_id == test_user_2.id
+    assert row.updated_via == "web"
+
+
+@covers_record("update_mount_farm_progress")
+async def test_mount_farm_patch_with_an_api_key_is_api_key(
+    client, session, test_user, test_group, auth_headers, world
+):
+    _, main, _, _ = world
+    await _farm_item(session)
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "PATCH",
+        _farm_url(test_group),
+        json={"trial_id": TRIAL_ID, "has_mount": False},
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+
+    (row,) = await _all_records(session)
+    assert (row.character_id, row.ownership_state) == (main.id, "missing")
+    assert row.updated_by_user_id == test_user.id
+    assert row.updated_via == "api_key"
+
+
+@covers_record("update_mount_farm_progress")
+async def test_mount_farm_patch_by_a_lead_for_a_member_writes_no_record(
+    client, session, test_user_2, test_group, auth_headers, world
+):
+    """R-S1-10: a lead's edit for someone else writes their farm row and intent, no record."""
+    member_profile, member_main = await _member_of(
+        session, test_group, test_user_2, main_name="Member Main"
+    )
+    await create_claimed_card(session, test_group, test_user_2, member_main)
+    item = await _farm_item(session)
+    await session.commit()
+
+    response = await client.patch(
+        _farm_url(test_group),
+        json={
+            "trial_id": TRIAL_ID,
+            "user_id": test_user_2.id,
+            "has_mount": True,
+            "wants_mount": True,
+            "totem_count": 7,
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 200, response.text
+
+    progress = await _progress(session, test_group, test_user_2)
+    assert (progress.has_mount, progress.wants_mount, progress.totem_count) == (True, True, 7)
+    intent = await _intent(session, member_profile, item)
+    assert (intent.intent, intent.visibility) == ("hunting", "static_only")
+    assert await _all_records(session) == []
+
+
+@covers_record("bulk_update_mount_farm_progress")
+async def test_mount_farm_bulk_writes_only_the_leads_own_record(
+    client, session, test_user, test_user_2, test_group, auth_headers, world
+):
+    _, _, alt, _ = world
+    await create_claimed_card(session, test_group, test_user, alt)
+    member_profile, _ = await _member_of(
+        session, test_group, test_user_2, main_name="Member Main"
+    )
+    item = await _farm_item(session)
+    await session.commit()
+
+    response = await client.put(
+        _farm_url(test_group, bulk=True),
+        json={
+            "updates": [
+                {"trial_id": TRIAL_ID, "has_mount": True, "totem_count": 4},
+                {
+                    "trial_id": TRIAL_ID,
+                    "user_id": test_user_2.id,
+                    "has_mount": True,
+                    "wants_mount": True,
+                },
+            ]
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 200, response.text
+
+    (row,) = await _all_records(session)
+    assert row.character_id == alt.id
+    assert (row.ownership_state, row.token_count, row.source) == ("have", 4, "player_hub")
+    assert row.updated_by_user_id == test_user.id
+    assert row.updated_via == "web"
+    assert (await _progress(session, test_group, test_user_2)).has_mount is True
+    assert (await _intent(session, member_profile, item)).intent == "hunting"
+
+
+@covers_record("bulk_update_mount_farm_progress")
+async def test_mount_farm_bulk_with_an_api_key_is_api_key(
+    client, session, test_user, test_group, auth_headers, world
+):
+    _, main, _, _ = world
+    await _farm_item(session)
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "PUT",
+        _farm_url(test_group, bulk=True),
+        json={"updates": [{"trial_id": TRIAL_ID, "has_mount": True}]},
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+
+    (row,) = await _all_records(session)
+    assert (row.character_id, row.ownership_state) == (main.id, "have")
+    assert row.updated_by_user_id == test_user.id
+    assert row.updated_via == "api_key"
+
+
+# ---------------------------------------------------------------------------
+# plugin_sync_collections (the plugin's collections sync)
+# ---------------------------------------------------------------------------
+
+SYNC_URL = "/api/plugin/collections/sync"
+
+
+@covers_record("plugin_sync_collections")
+async def test_plugin_sync_with_an_api_key_writes_the_mains_record_in_sync_mode(
+    client, session, test_user, auth_headers, world
+):
+    """No static in play: the sync aims at the main, raises Have, and stamps the server clock."""
+    profile, main, _, _ = world
+    owned = await _farm_item(session, "Owned Mount", game_mount_id=4401)
+    counted = await _farm_item(session, "Counted Mount", token_item_id=4402)
+    session.add(
+        PlayerCollectionSnapshot(
+            id=str(uuid.uuid4()),
+            profile_id=profile.id,
+            character_id=main.id,
+            catalog_item_id=counted.id,
+            ownership_state="have",
+            token_count=3,
+            source="manual",
+            confidence="medium",
+            updated_at=CLIENT_CLOCK,
+        )
+    )
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "POST",
+        SYNC_URL,
+        json={
+            "mounts": [{"mountId": 4401, "owned": True}],
+            "currencies": [{"itemId": 4402, "count": 40}],
+            "syncedAt": CLIENT_CLOCK,
+        },
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+    server_clock = response.json()["syncedAt"]
+    assert server_clock != CLIENT_CLOCK
+
+    rows = {row.catalog_item_id: row for row in await _all_records(session)}
+    assert set(rows) == {owned.id, counted.id}
+    for row in rows.values():
+        assert row.character_id == main.id
+        assert row.source == "plugin"
+        assert row.last_synced_at == server_clock
+        assert row.updated_by_user_id == test_user.id
+        assert row.updated_via == "api_key"
+    assert (rows[owned.id].ownership_state, rows[owned.id].confidence) == ("have", "high")
+    # A count-only report keeps the Have and the row becomes the plugin's (sync mode).
+    assert (rows[counted.id].ownership_state, rows[counted.id].token_count) == ("have", 40)
+
+
+@covers_record("plugin_sync_collections")
+async def test_plugin_sync_with_a_jwt_is_web(client, session, test_user, auth_headers, world):
+    _, main, _, _ = world
+    await _farm_item(session, game_mount_id=4401)
+    await session.commit()
+
+    response = await client.post(
+        SYNC_URL, json={"mounts": [{"mountId": 4401, "owned": True}]}, headers=auth_headers
+    )
+    assert response.status_code == 200, response.text
+
+    (row,) = await _all_records(session)
+    assert row.character_id == main.id
+    assert row.updated_by_user_id == test_user.id
+    assert row.updated_via == "web"
+
+
+@covers_record("plugin_sync_collections")
+async def test_plugin_sync_without_a_profile_writes_no_record(client, session, auth_headers):
+    await _farm_item(session, game_mount_id=4401, token_item_id=4402)
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "POST",
+        SYNC_URL,
+        json={
+            "mounts": [{"mountId": 4401, "owned": True}],
+            "currencies": [{"itemId": 4402, "count": 40}],
+        },
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+
+    assert await _all_records(session) == []
+    assert (await session.execute(select(PlayerProfile))).scalars().all() == []

@@ -14,8 +14,11 @@ Contract:
     visibility so the write-through can proceed.
   - Never exposes private data: new intents default to static_only visibility.
   - Never overrides an explicit pass/hidden intent with a hunting signal.
-  - Never overrides a plugin-confirmed snapshot.ownership_state.
   - Preserves higher visibility (dossier_public > static_only > private).
+  - Writes the collection record only for the member's own edit (S2a-1, R-S1-10):
+    the record the chain names for them in this static, through the record door
+    as a person's write (`player_hub`, medium), so it can lower a plugin Have and
+    stores a count (Q1). A lead's edit for another member writes the intent only.
 
 Called from:
   - PATCH /api/static-groups/{group_id}/mount-farms/progress
@@ -33,8 +36,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.collection_catalog_item import CollectionCatalogItem
 from ..models.player_collection_intent import PlayerCollectionIntent
-from ..models.player_collection_snapshot import PlayerCollectionSnapshot
 from ..models.player_profile import PlayerProfile
+from .collection_records import RECORD_WRITE_PERSON, resolve_record_targets, write_record
 from .player_profile_service import get_or_create_profile
 
 # Intents that represent an explicit opt-out — bridge must not overwrite them.
@@ -56,16 +59,20 @@ async def _get_or_create_profile(session: AsyncSession, user_id: str) -> str:
 async def write_through_from_mount_farm(
     session: AsyncSession,
     *,
+    group_id: str,
     user_id: str,
     trial_id: str,
     wants_mount: bool | None,
     has_mount: bool | None,
     totem_count: int | None,
+    actor_user_id: str,
+    via: str,
 ) -> None:
     """Mirror a MountFarmProgress update into the shared collection model.
 
     All parameters may be None when the caller did not change that field.
-    This function only writes intent/snapshot for the fields that were updated.
+    This function only writes intent/record for the fields that were updated.
+    `actor_user_id` is the caller and `via` the route's `logged_via(request)`.
     """
     profile_id = await _get_or_create_profile(session, user_id)
 
@@ -83,10 +90,19 @@ async def write_through_from_mount_farm(
 
     for catalog_item in catalog_items:
         await _write_intent(session, profile_id, catalog_item.id, wants_mount)
-        await _write_snapshot(session, profile_id, catalog_item.id, has_mount, totem_count)
+    await _write_own_records(
+        session,
+        [
+            _RecordEdit(user_id, catalog_item.id, has_mount, totem_count)
+            for catalog_item in catalog_items
+        ],
+        group_id=group_id,
+        actor_user_id=actor_user_id,
+        via=via,
+    )
 
 
-# ── Bulk variant (batches all lookups into 4 queries total) ──────────────────
+# ── Bulk variant (batches the profile, catalog and intent lookups) ───────────
 
 @dataclass
 class _BulkUpdate:
@@ -100,13 +116,19 @@ class _BulkUpdate:
 async def write_through_bulk_from_mount_farm(
     session: AsyncSession,
     updates: list[_BulkUpdate],
+    *,
+    group_id: str,
+    actor_user_id: str,
+    via: str,
 ) -> None:
     """Batch mirror for bulk MountFarmProgress updates.
 
-    Reduces N×4 individual queries to 4 batch queries, plus one race-safe
-    get-or-create per user who has no profile yet. That extra work is bounded by
-    the number of *new* users in a single bulk update -- normally zero, since
-    profiles are created once per account and then reused.
+    Batches the profile, catalog and intent lookups into 3 queries, plus one
+    race-safe get-or-create per user who has no profile yet. That extra work is
+    bounded by the number of *new* users in a single bulk update -- normally
+    zero, since profiles are created once per account and then reused. Only the
+    caller's own rows reach a record (R-S1-10), so the record writes resolve
+    one target.
     """
     if not updates:
         return
@@ -167,20 +189,7 @@ async def write_through_bulk_from_mount_farm(
         (i.profile_id, i.catalog_item_id): i for i in intent_rows
     }
 
-    # Batch 4: existing snapshots
-    snapshot_rows = (await session.execute(
-        select(PlayerCollectionSnapshot).where(
-            tuple_(
-                PlayerCollectionSnapshot.profile_id,
-                PlayerCollectionSnapshot.catalog_item_id,
-            ).in_(pairs)
-        )
-    )).scalars().all()
-    snapshot_map: dict[tuple[str, str], PlayerCollectionSnapshot] = {
-        (s.profile_id, s.catalog_item_id): s for s in snapshot_rows
-    }
-
-    # Apply write logic per update
+    # Apply intent logic per update
     for upd in updates:
         pid = profile_by_user.get(upd.user_id)
         if not pid:
@@ -188,10 +197,81 @@ async def write_through_bulk_from_mount_farm(
         for item in catalogs_by_trial.get(upd.trial_id, []):
             key = (pid, item.id)
             _apply_intent(session, pid, item.id, upd.wants_mount, intent_map.get(key))
-            _apply_snapshot(session, pid, item.id, upd.has_mount, upd.totem_count, snapshot_map.get(key))
+
+    await _write_own_records(
+        session,
+        [
+            _RecordEdit(upd.user_id, item.id, upd.has_mount, upd.totem_count)
+            for upd in updates
+            for item in catalogs_by_trial.get(upd.trial_id, [])
+        ],
+        group_id=group_id,
+        actor_user_id=actor_user_id,
+        via=via,
+    )
 
 
-# ── Shared write helpers (sync — operate on already-loaded objects) ───────────
+# ── The record (S2a-1, R-S1-10) ───────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class _RecordEdit:
+    """One mount-farm edit's record fields for one catalog item."""
+
+    user_id: str
+    catalog_item_id: str
+    has_mount: bool | None
+    totem_count: int | None
+
+
+def _ownership(has_mount: bool | None) -> str | None:
+    """`has_mount` as a record ownership; None leaves the ownership alone."""
+    if has_mount is None:
+        return None
+    return "have" if has_mount else "missing"
+
+
+async def _write_own_records(
+    session: AsyncSession,
+    edits: list[_RecordEdit],
+    *,
+    group_id: str,
+    actor_user_id: str,
+    via: str,
+) -> None:
+    """Write the caller's own edits to the record the chain names for them in this static.
+
+    Only an edit whose target is the caller reaches a record: a lead's edit for
+    another member stops at that member's farm row and intent (R-S1-10). Each
+    write is a person's write through the door, so it can lower a plugin Have
+    and stores a count (Q1). An edit with neither field set writes nothing.
+    """
+    own = [
+        edit
+        for edit in edits
+        if edit.user_id == actor_user_id
+        and (edit.has_mount is not None or edit.totem_count is not None)
+    ]
+    if not own:
+        return
+    targets = await resolve_record_targets(session, {(group_id, edit.user_id) for edit in own})
+    now = _now()
+    for edit in own:
+        await write_record(
+            session,
+            targets[(group_id, edit.user_id)],
+            edit.catalog_item_id,
+            actor_user_id=actor_user_id,
+            via=via,
+            mode=RECORD_WRITE_PERSON,
+            now=now,
+            ownership=_ownership(edit.has_mount),
+            token_count=edit.totem_count,
+            source="player_hub",
+            confidence="medium",
+        )
+
+
+# ── Intent helpers ────────────────────────────────────────────────────────────
 
 async def _write_intent(
     session: AsyncSession,
@@ -208,24 +288,6 @@ async def _write_intent(
         )
     )
     _apply_intent(session, profile_id, catalog_item_id, wants_mount, result.scalar_one_or_none())
-
-
-async def _write_snapshot(
-    session: AsyncSession,
-    profile_id: str,
-    catalog_item_id: str,
-    has_mount: bool | None,
-    totem_count: int | None,
-) -> None:
-    if has_mount is None and totem_count is None:
-        return
-    result = await session.execute(
-        select(PlayerCollectionSnapshot).where(
-            PlayerCollectionSnapshot.profile_id == profile_id,
-            PlayerCollectionSnapshot.catalog_item_id == catalog_item_id,
-        )
-    )
-    _apply_snapshot(session, profile_id, catalog_item_id, has_mount, totem_count, result.scalar_one_or_none())
 
 
 def _apply_intent(
@@ -257,53 +319,3 @@ def _apply_intent(
             visibility="static_only",
             updated_at=_now(),
         ))
-
-
-def _apply_snapshot(
-    session: AsyncSession,
-    profile_id: str,
-    catalog_item_id: str,
-    has_mount: bool | None,
-    totem_count: int | None,
-    snapshot: PlayerCollectionSnapshot | None,
-) -> None:
-    """Apply ownership/token update to a snapshot object (or create one if absent)."""
-    if has_mount is None and totem_count is None:
-        return
-
-    now = _now()
-
-    if snapshot is None:
-        ownership_state = "unknown"
-        if has_mount is True:
-            ownership_state = "have"
-        elif has_mount is False:
-            ownership_state = "missing"
-        session.add(PlayerCollectionSnapshot(
-            id=str(uuid.uuid4()),
-            profile_id=profile_id,
-            catalog_item_id=catalog_item_id,
-            ownership_state=ownership_state,
-            token_count=totem_count,
-            source="player_hub",
-            confidence="medium",
-            updated_at=now,
-        ))
-        return
-
-    is_plugin = snapshot.source == "plugin"
-
-    if has_mount is True:
-        snapshot.ownership_state = "have"
-        snapshot.source = "player_hub"
-        snapshot.confidence = "medium"
-    elif has_mount is False:
-        if not (is_plugin and snapshot.ownership_state == "have"):
-            snapshot.ownership_state = "missing"
-            if not is_plugin:
-                snapshot.source = "player_hub"
-
-    if totem_count is not None and not is_plugin:
-        snapshot.token_count = totem_count
-
-    snapshot.updated_at = now
