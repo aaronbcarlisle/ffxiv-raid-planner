@@ -24,13 +24,14 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
+const ROLE = 'tank' as const;
 const player = { id: 'p1', weaponPriorities: [] } as unknown as SnapshotPlayer;
 
 function renderStatus(linkedUser: React.ComponentProps<typeof PlayerCardStatus>['linkedUser']) {
   return render(
     <TooltipProvider>
       <PlayerCardStatus
-        role="tank"
+        role={ROLE}
         isSubstitute={false}
         userId="u-1"
         linkedUser={linkedUser}
