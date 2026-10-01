@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.62';
+export const CURRENT_VERSION = '2.1.64';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,48 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.64',
+    date: '2026-10-01T17:34:00Z',
+    title: 'Member accounts stay inside the static',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Members\' Discord accounts are hidden from non-members',
+        description:
+          'Someone who isn\'t a member of a public static (signed out, or signed in to another account) no longer receives members\' Discord usernames, IDs, avatars or display names from the static\'s pages or API. The one exception is the contact a lead publishes in the static\'s Finder listing, shown only while the listing is live. The roster, gear and loot history stay viewable by share code as before, and members, viewers and admins see what they saw before.',
+        link: { href: '/docs/privacy', label: 'Privacy' },
+        pr: 347,
+        prTitle: 'fix(api,ui): W0 GUEST-2 — member identity off every guest-reachable read; guest Tracking, Plugin and More',
+      },
+      {
+        category: 'improvement',
+        title: 'API responses for non-members leave out member accounts',
+        description:
+          'For a caller who isn\'t a member, the tier and players endpoints return linkedUser as null, GET /members returns each member\'s user as null, GET /linked-players returns an empty list, the loot, page and material logs return createdByUsername as null, and the static lookups leave the recruiting contact out of settings.discovery unless the static is listed in the Finder. API keys of members get the same responses as before.',
+        link: { href: '/docs/api', label: 'API docs' },
+        pr: 347,
+        prTitle: 'fix(api,ui): W0 GUEST-2 — member identity off every guest-reachable read; guest Tracking, Plugin and More',
+      },
+      {
+        category: 'improvement',
+        title: 'Clearer pages for visitors who aren\'t members',
+        description:
+          'Goals & Farms shows one members-only card instead of empty panels, claimed player cards no longer say who claimed them, the Plugin page asks you to log in before managing API keys, and More no longer offers Settings or Integrations to signed-out visitors.',
+        pr: 347,
+        prTitle: 'fix(api,ui): W0 GUEST-2 — member identity off every guest-reachable read; guest Tracking, Plugin and More',
+      },
+      {
+        category: 'improvement',
+        title: 'V2 preview: one members-only card on Tracking and Schedule',
+        description:
+          'V2 preview: Tracking shows the members-only card to non-members, and Schedule\'s card uses the same component, with Log in as the card\'s action.',
+        pr: 347,
+        prTitle: 'fix(api,ui): W0 GUEST-2 — member identity off every guest-reachable read; guest Tracking, Plugin and More',
+        internal: true,
+      },
+    ],
+  },
   {
     version: '2.1.63',
     date: '2026-10-01T14:40:00Z',
