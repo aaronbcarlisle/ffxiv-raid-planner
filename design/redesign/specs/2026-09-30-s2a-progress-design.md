@@ -133,7 +133,7 @@ Rows are tracks, columns are the roster's players, and each cell is that player'
 ### S2-14 · **What V2 retires** (DA 10, A5 §6.7)
 - Retirements ship last, in S2a-5 (two PRs: S2a-5a moves, S2a-5b deletes), once the matrix, the expanded rows, Find and the pointers exist, so V2 never loses an affordance before its replacement (vet C4, fold-2 #7).
 - V2 no longer reaches `GoalsPage`, `CollectionsHub` or their modals. V1 keeps all of them until D1.
-- **Settings ▸ Goals & Farms in V2 keeps only its Suggestions section** (`ContentSuggestionsPanel`, `SettingsPanel.tsx:61,304`), V2's only host for members' content suggestions. W4 HOME restores D-70 (Member Interest on Home); then the tab is hidden, as Recruitment is (B7, vet C4). In V2 the tab reads **"Suggestions"**: the host sets that label, as it sets `hiddenTabs` (`SettingsPanel.tsx:334-338`). V1 keeps "Goals & Farms" unchanged (owner Q, accepted; fold-2 #13). Until S2a-5 the tab stays whole in V2, including Add Farm (`SettingsPanel.tsx:177-184,246-259`) (fold-2 #7).
+- **Settings ▸ Goals & Farms in V2 keeps only its Suggestions section** (`ContentSuggestionsPanel`, `SettingsPanel.tsx:61,304`), V2's only host for members' content suggestions. W4 HOME restores D-70 (Member Interest on Home); then the tab is hidden, as Recruitment is (B7, vet C4). In V2 the tab reads **"Suggestions"**: the host sets that label through a new prop modelled on `hiddenTabs`, which today only filters tabs (`SettingsPanel.tsx:334-338`). V1 keeps "Goals & Farms" unchanged (owner Q, accepted; fold-2 #13). Until S2a-5 the tab stays whole in V2, including Add Farm (`SettingsPanel.tsx:177-184,246-259`) (fold-2 #7).
 - Deleted, ≈2,865 lines (fold-2 #11):
   - the orphaned mount-farm UI tree, `components/mount-farms/**` (G-24…G-28, 1,189 lines);
   - `components/profile/CollectionsTab.tsx` and its test (499 + 99 lines). Its imports at `:25,:29` reach into that tree, and only its own test imports it (vet I9);
@@ -165,7 +165,7 @@ The canvas's context bar (static ▾ / tier ▾ / dated week chip) and "Recruiti
 - **Interim, S2a-2 to S2a-5 (vet C4, fold-2 #7):**
   - S2a-2 and S2a-3a are one stack: S2a-3a sits on S2a-2 and the two merge together, so the seam goes live with drop logging, Edit, Delete and Copy plan. Each PR is demonstrated on its own branch.
   - Settings ▸ Goals & Farms stays whole in V2 (objectives, Add Farm, Suggestions) until S2a-5.
-  - Catalog Track and Suggested return with Find in S2a-4. Until then they are dated interim rows in the owner-signed parity matrix, reached through the classic view (owner Q, accepted: a temporary loss of a V2 affordance is an owner sign-off; fold-3).
+  - The Suggested and Browse Catalog tabs, browsing and Track included, return as Find in S2a-4. Until then they are dated interim rows in the owner-signed parity matrix, reached through the classic view (owner Q, accepted: a temporary loss of a V2 affordance is an owner sign-off; fold-3).
 - **URLs:** V2 writes `?tab=progress`; `progress`, `goals`, `mount-farms` and `collections` all resolve to it, so recalled tabs and old links keep working. Level 2 is `?track=<goalId|tier>`; Find is `?pview=find` (default `tracks`, omitted). The parser is shared (`useGroupViewState.ts:30-40`), so V1 also opens Tracking for `?tab=progress`: V1 delta (d).
 - **Old deep links:** `?goal=objectives` lands a lead on Recruit ▸ Listing and a member on Home. `?goal=farms` and `?farm=…` land on Progress.
 - **Spine:** `Spine.tsx` gains `{ id: 'goals', label: 'Progress' }` as the fifth tab. Keyboard: key 5 once W1's positional keys (D-17, HS-35 #12) land; until then the existing goals key opens Progress. The Spine contract (`design/redesign/DESIGN_SYSTEM.md:284`, §3.13 "4-tab") is updated to five tabs in S2a-2, as Stage 2's acceptance requires (vet I10).
@@ -197,10 +197,10 @@ Five slices, ~8 PRs, each under ~1,500 changed lines. This replaces W3's "L (2 P
 | Slice | Contents | Depends on |
 |---|---|---|
 | **S2a-1** · character records (backend) | **S2a-1a** the record and migration: re-key with the profile-level row, main rule, merge in `list_participants`, attribution columns, `state_changed_at`, the drop's character (B11) and "I got it"'s record write, the Hub API parameter (B8), S2-7's member totem write, B5's blank seed, AUTHZ rows · **S2a-1b** the syncs: match rule and B6 fallback, one service with the collision rule, B1's count gating and privacy flag | PROV-1 (needs `logged_via`; its migration follows PROV-1's head) (fold-2 #11) |
-| **S2a-2** · the Progress tab: the matrix | §4 (seam, URLs, the fifth spine tab, the Spine contract), S2-3, S2-4, S2-5's farm rows, the bare tier row (S2-6), S2-7 | S2a-1 |
+| **S2a-2** · the Progress tab: the matrix | §4 (seam, URLs, the fifth spine tab, the Spine contract), S2-3, S2-4, S2-5's farm rows, the bare tier row (S2-6), S2-7, the ⌘K label 'Go to Progress' (S2-14) | S2a-1 |
 | **S2a-3** · level 2: the expanded rows | **S2a-3a** the farm expansion: S2-8, S2-9 (with the inline Edit and Reopen), `?track=<goalId>` · **S2a-3b** the tier row in full: S2-6 (BiS selector, cells, status column, split plan with the tier filter, `?track=tier`, D-18) | S2a-2; S2a-3a stacks on S2a-2 and they merge together (§4) |
 | **S2a-4** · Find and Home's pointers | S2-11 (with the custom track), "Track a farm", S2-12's TrackCard and split row | S2a-3 (the pointers open its rows); Find alone needs only S2a-2 |
-| **S2a-5** · retirements | **S2a-5a** the moves: S2-13 (Recruit editor and Home's Objectives card), the Suggestions-only Settings tab, the ⌘K retarget · **S2a-5b** the deletions (S2-14, ≈2,865 lines) | S2a-3, S2a-4 |
+| **S2a-5** · retirements | **S2a-5a** the moves: S2-13 (Recruit editor and Home's Objectives card), the Suggestions-only Settings tab · **S2a-5b** the deletions (S2-14, ≈2,865 lines) | S2a-3, S2a-4 |
 
 If any plan's estimate still goes over the cap, it splits further at planning time.
 
@@ -251,7 +251,7 @@ Each criterion and each V1 delta names the slice that demonstrates it (fold-2 #6
 ## 8. Parity
 
 Before any code, an owner-signed matrix (`specs/2026-09-30-s2a-parity-matrix.md`, the Stage 1 / PH1 vocabulary: KEPT · RE-HOMED · RETIRED-SPEC · RETIRED-ACK · DEFERRED) covers every V2-reachable affordance of:
-- `GoalsPage` (Objectives; Farms ▸ Suggested · Active · Catalog). Catalog Track and Suggested, between S2a-2 and S2a-4, are dated interim rows (fold-2 #7; owner Q, accepted, fold-3).
+- `GoalsPage` (Objectives; Farms ▸ Suggested · Active · Catalog). The Suggested and Browse Catalog tabs, between S2a-2 and S2a-4, are dated interim rows (fold-2 #7; owner Q, accepted, fold-3).
 - `RewardGoalModal`: every field mapped, status included (`RewardGoalModal.tsx:25-29,66`, `:124-206`). G-4's "Custom Goal" → Find's custom track; G-14 → the row's inline Edit plus Mark finished and Reopen (fold-2 #5).
 - `CreateCollectionGoalModal`, Settings' Add Farm (`SettingsPanel.tsx:177-184,246-259`): every step of the 5-step wizard mapped (`CreateCollectionGoalModal.tsx:106`: content type, duty, reward type, status, name) (fold-2 #5).
 - `RewardGoalDetailModal` (participants, drop history), `LogDropModal` and `TrackFromCatalogModal`.

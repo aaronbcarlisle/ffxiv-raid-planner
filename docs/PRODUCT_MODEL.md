@@ -237,7 +237,7 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 | Off-hand slot (both shells) | ✅ | #238, #240 |
 | Stage 3 — Player Hub | ✅ except H-10 (V2 availability exceptions editor) and the static typical-week layer | PH1 #280–#282; PH2 #286–#288; PH3 #304–#306 |
 | Stage 4 — Static Finder + Recruit home | ✅ | SF1 #308–#311; RH1 #312–#316 (#308 and #312 are the spec+plan PRs) |
-| **Stage 2 — in-static IA collapse** | 🟡 S2a spec accepted 2026-10-01 ([`2026-09-30-s2a-progress-design.md`](../design/redesign/specs/2026-09-30-s2a-progress-design.md)); its parity matrix and slice plans next; no code yet | `Spine.tsx` has 4 tabs (Home/Roster/Loot/Schedule); More still has "Coming soon" stubs (`MorePage.tsx`); `MobileBottomNav` still renders under V2 |
+| **Stage 2 — in-static IA collapse** | 🟡 S2a spec accepted 2026-10-01 ([`2026-09-30-s2a-progress-design.md`](../design/redesign/specs/2026-09-30-s2a-progress-design.md)) and its parity matrix signed 2026-10-01 ([`2026-09-30-s2a-parity-matrix.md`](../design/redesign/specs/2026-09-30-s2a-parity-matrix.md)); slice plans next, starting with S2a-1 once PROV-1 merges; no code yet | `Spine.tsx` has 4 tabs (Home/Roster/Loot/Schedule); More still has "Coming soon" stubs (`MorePage.tsx`); `MobileBottomNav` still renders under V2 |
 | Stage 5 — docs and admin fit-and-finish | ◐ docs and admin are V2-chromed since Stage 1; the docs light restyle ⬜ | `V2_COVERAGE_PLAN.md` Stage 5 |
 | Stage 6 — ⌘K actions | ⬜ | `CommandPalette.tsx` is navigate-only |
 | Phase F — chrome seams + carried items | ⬜ | carried list in `ROLLOUT_ROADMAP.md` §7, itemised in `HOME_STRETCH.md` §4 F1–F3 |
