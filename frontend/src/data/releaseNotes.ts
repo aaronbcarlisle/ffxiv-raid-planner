@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.61';
+export const CURRENT_VERSION = '2.1.62';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -60,7 +60,7 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
-    version: '2.1.61',
+    version: '2.1.62',
     date: '2026-10-01T14:00:00Z',
     title: 'Static lookup API change for non-members',
     items: [
@@ -90,6 +90,21 @@ export const RELEASES: Release[] = [
         pr: 343,
         prTitle: 'fix(api,v2): W0 — guest top bar and Schedule card, the /api/auth/session bootstrap, member identity off by-code (GUEST-1)',
         internal: true,
+      },
+    ],
+  },
+  {
+    version: '2.1.61',
+    date: '2026-10-01T13:00:00Z',
+    title: 'Viewers can no longer duplicate a static',
+    items: [
+      {
+        category: 'fix',
+        title: 'Viewers can no longer duplicate a static',
+        description:
+          'A static\'s viewers no longer see Duplicate Static in My Statics, and the server refuses a duplicate request from a viewer. Statics you\'re only linked to through a card no longer offer it either, since the server never allowed that copy. Members, leads and owners can still duplicate.',
+        pr: 344,
+        prTitle: 'fix(api,ui): W0 AUTHZ-2 — viewers can\'t duplicate a static; every AUTHZ row probed (#331, #333)',
       },
     ],
   },

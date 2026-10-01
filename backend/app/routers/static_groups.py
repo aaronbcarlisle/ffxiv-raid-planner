@@ -16,6 +16,7 @@ from ..database import get_session
 from ..dependencies import get_current_user, get_current_user_optional
 from .admin.deps import require_admin
 from ..models import (
+    ROLE_HIERARCHY,
     AvailabilityTemplate,
     Membership,
     MemberRole,
@@ -756,6 +757,10 @@ async def duplicate_group(
     membership = await get_user_membership(session, current_user.id, group_id)
     if not membership and not user_is_admin:
         raise NotFound("Group not found or you don't have access")
+    # #331: a viewer seat is read-only, so it can't copy the static. Admins pass.
+    member_level = ROLE_HIERARCHY[MemberRole.MEMBER]
+    if membership and not user_is_admin and membership.role_level < member_level:
+        raise PermissionDenied("Viewers can't duplicate a static")
 
     # Load source group with all tiers and players
     result = await session.execute(
@@ -876,8 +881,12 @@ async def duplicate_group(
     await session.flush()
 
     # duplicate_group has no require_* check: R-AD-A defines override from
-    # this route's own locals rather than admin_override_for.
-    admin_override = user_is_admin and membership is None
+    # this route's own locals rather than admin_override_for. This is that
+    # helper's definition with min_role=MEMBER: an admin with no seat, or only
+    # a viewer seat, got through because they are an admin.
+    admin_override = user_is_admin and (
+        membership is None or membership.role_level < member_level
+    )
     await audit(
         session,
         actor=current_user,

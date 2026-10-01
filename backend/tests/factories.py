@@ -1,5 +1,6 @@
 """Test data factories for creating test fixtures"""
 
+import hashlib
 import json
 import uuid
 from datetime import UTC, datetime, timedelta, timezone
@@ -7,10 +8,13 @@ from datetime import UTC, datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
+    ApiKey,
     Membership,
     MemberRole,
     MaterialLogEntry,
+    Notification,
     PageLedgerEntry,
+    PlayerGoal,
     ScheduleException,
     ScheduleRsvp,
     ScheduleSession,
@@ -810,6 +814,70 @@ async def create_roster_bis_target_set(
     session.add(bis_set)
     await session.flush()
     return bis_set
+
+
+async def create_player_goal(
+    session: AsyncSession,
+    profile: PlayerProfile,
+    *,
+    title: str = "Probe goal",
+    goal_type: str = "custom",
+) -> PlayerGoal:
+    """Create a personal (player hub) goal on a profile."""
+    goal = PlayerGoal(
+        id=str(uuid.uuid4()),
+        profile_id=profile.id,
+        title=title,
+        goal_type=goal_type,
+        created_at=_now_iso(),
+        updated_at=_now_iso(),
+    )
+    session.add(goal)
+    await session.flush()
+    return goal
+
+
+async def create_notification(
+    session: AsyncSession,
+    user: User,
+    *,
+    title: str = "Probe",
+) -> Notification:
+    """Create an unread notification for a user."""
+    notification = Notification(
+        id=str(uuid.uuid4()),
+        user_id=user.id,
+        notification_type="application_accepted",
+        title=title,
+        is_read=False,
+        created_at=_now_iso(),
+    )
+    session.add(notification)
+    await session.flush()
+    return notification
+
+
+async def create_api_key(
+    session: AsyncSession,
+    user: User,
+    *,
+    name: str = "Probe key",
+) -> ApiKey:
+    """Create an active API key row. The hash is a dummy (sha256 of a uuid): revocation looks a
+    key up by `id` and `user_id` only, and nothing authenticates with this row."""
+    api_key = ApiKey(
+        id=str(uuid.uuid4()),
+        user_id=user.id,
+        key_hash=hashlib.sha256(uuid.uuid4().bytes).hexdigest(),
+        key_prefix="xrp_test",
+        name=name,
+        scopes=[],
+        is_active=True,
+        created_at=_now_iso(),
+    )
+    session.add(api_key)
+    await session.flush()
+    return api_key
 
 
 def _generate_share_code() -> str:
