@@ -24,10 +24,11 @@ class PlayerCollectionSnapshot(Base):
     manually by the player. Never stores intent — only what the player
     factually owns or is missing.
 
-    Collisions:
-      - Plugin "have" never downgrades an existing "have".
-      - Manual entries take priority over plugin for ownership_state.
-      - token_count is always updated from the most recent plugin sync.
+    Collisions (R-S1-7, the person/sync rule in services/collection_records.py):
+      - A person's write sets ownership as given, so only a person can lower a
+        plugin "have" (until the plugin's next sync reports it again).
+      - A plugin sync only ever raises ownership to "have", never lowers it.
+      - A given token_count is set by either: the newest write wins.
 
     Character records (S2a-1, R-S1-2/R-S1-3): a row belongs to one of the
     profile's characters (`character_id` set), or to the profile itself when

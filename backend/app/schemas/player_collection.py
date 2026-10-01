@@ -30,6 +30,8 @@ class CollectionIntentResponse(BaseModel):
 class CollectionSnapshotResponse(BaseModel):
     id: str
     profile_id: str
+    # The character whose record this is; None for a profile with no character.
+    character_id: str | None = None
     catalog_item_id: str
     ownership_state: str
     token_count: int | None
