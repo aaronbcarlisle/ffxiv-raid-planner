@@ -3,6 +3,7 @@
 Route tests for the six handlers in routers/loot_tracking.py that create or move
 a row: create_loot_log_entry, update_loot_log_entry, create_page_ledger_entry,
 mark_floor_cleared, create_material_log_entry and update_material_log_entry.
+PV-3 adds log_drop (routers/collection_goals.py), the farm-drop write.
 Every case reads the stored row back from the database.
 
 `covers(handler)` records which test functions exercise which handler in
@@ -21,12 +22,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
 from app.models import LootLogEntry, MaterialLogEntry, MemberRole, PageLedgerEntry
+from app.models.reward_drop_log import RewardDropLog
 from tests.factories import (
+    create_collection_goal,
     create_loot_log_entry,
     create_material_log_entry,
     create_membership,
     create_snapshot_player,
     create_static_character_registration,
+    create_user,
 )
 
 # ---------------------------------------------------------------------------
@@ -40,6 +44,7 @@ HANDLERS = (
     "mark_floor_cleared",
     "create_material_log_entry",
     "update_material_log_entry",
+    "log_drop",
 )
 
 # handler name -> the test functions decorated with @covers(handler)
@@ -836,3 +841,103 @@ async def test_material_update_response_keys_unchanged(client, auth_headers, wor
     )
     assert response.status_code == 200, response.text
     assert set(response.json()) == MATERIAL_KEYS
+
+
+# ---------------------------------------------------------------------------
+# log_drop (PV-3): a farm drop records only the channel and the key (B11)
+# ---------------------------------------------------------------------------
+
+# Copied from RewardDropResponse at HEAD (vet M-6): no field is added or removed.
+DROP_KEYS = {
+    "id",
+    "goal_id",
+    "static_group_id",
+    "recipient_user_id",
+    "created_by_id",
+    "quantity",
+    "dropped_at",
+    "notes",
+    "created_at",
+    "recipient_display_name",
+    "recipient_prior_state",
+}
+
+
+async def _drop_world(session, world):
+    """A farm goal in the world's static, plus a lead who is not the owner."""
+    goal = await create_collection_goal(session, world.group, world.owner)
+    lead = await create_user(session, discord_id="pv3_lead", discord_username="pv3lead")
+    await create_membership(session, lead, world.group, role=MemberRole.LEAD)
+    await session.flush()
+    return goal, lead
+
+
+def _drops_url(world, goal) -> str:
+    return f"/api/static-groups/{world.group.id}/collection-goals/{goal.id}/drops"
+
+
+@covers("log_drop")
+async def test_drop_member_jwt_own_drop_is_web_with_no_key(
+    client, session, auth_headers_user2, world
+):
+    goal, _lead = await _drop_world(session, world)
+    response = await client.post(
+        _drops_url(world, goal),
+        json={"recipient_user_id": world.member.id},
+        headers=auth_headers_user2,
+    )
+    assert response.status_code == 201, response.text
+
+    row = await _stored(session, RewardDropLog, response.json()["id"])
+    assert row.logged_via == "web"
+    assert row.api_key_id is None
+    assert row.created_by_id == world.member.id
+    assert row.recipient_user_id == world.member.id
+
+
+@covers("log_drop")
+async def test_drop_member_key_own_drop_records_the_minted_key(
+    client, session, auth_headers_user2, world
+):
+    goal, _lead = await _drop_world(session, world)
+    raw_key, key_id = await _mint_key(client, auth_headers_user2)
+    response = await _key_request(
+        client, "POST", _drops_url(world, goal), raw_key, {"recipient_user_id": world.member.id}
+    )
+    assert response.status_code == 201, response.text  # no CSRF header: the plugin contract
+
+    row = await _stored(session, RewardDropLog, response.json()["id"])
+    assert row.logged_via == "api_key"
+    assert row.api_key_id == key_id
+    assert row.created_by_id == world.member.id
+    assert row.recipient_user_id == world.member.id
+
+
+@covers("log_drop")
+async def test_drop_lead_jwt_for_a_member_is_derivably_on_behalf(client, session, world):
+    goal, lead = await _drop_world(session, world)
+    response = await client.post(
+        _drops_url(world, goal),
+        json={"recipient_user_id": world.member.id},
+        headers={"Authorization": f"Bearer {create_access_token(lead.id)}"},
+    )
+    assert response.status_code == 201, response.text
+
+    row = await _stored(session, RewardDropLog, response.json()["id"])
+    assert row.logged_via == "web"
+    assert row.api_key_id is None
+    assert row.created_by_id == lead.id
+    assert row.recipient_user_id == world.member.id
+    assert row.created_by_id != row.recipient_user_id  # "on behalf" needs no new column
+
+
+@covers("log_drop")
+async def test_drop_response_keys_unchanged(client, session, auth_headers, world):
+    goal, _lead = await _drop_world(session, world)
+    response = await client.post(
+        _drops_url(world, goal),
+        json={"recipient_user_id": world.member.id},
+        headers=auth_headers,
+    )
+    assert response.status_code == 201, response.text
+    assert set(response.json()) == DROP_KEYS
