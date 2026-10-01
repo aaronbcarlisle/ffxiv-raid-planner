@@ -19,10 +19,11 @@ from datetime import datetime, timezone
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
-from app.models import User
+from app.models import RewardParticipantState, User
 from app.models.collection_catalog_item import CollectionCatalogItem
 from app.models.mount_farm_progress import MountFarmProgress
 from app.models.player_collection_intent import PlayerCollectionIntent
@@ -30,8 +31,12 @@ from app.models.player_collection_snapshot import PlayerCollectionSnapshot
 from app.models.player_profile import PlayerProfile
 from tests.factories import (
     create_membership,
+    create_player_character,
     create_player_profile,
+    create_snapshot_player,
+    create_static_character_registration,
     create_static_group,
+    create_tier_snapshot,
     create_user,
 )
 
@@ -62,10 +67,14 @@ def _make_catalog(session: AsyncSession, *, name: str = "Test Mount", source_dut
     return item
 
 
-def _make_snapshot(session, profile_id, catalog_item_id, *, ownership_state="missing", token_count=None) -> PlayerCollectionSnapshot:
+def _make_snapshot(
+    session, profile_id, catalog_item_id, *,
+    ownership_state="missing", token_count=None, character_id=None,
+) -> PlayerCollectionSnapshot:
     s = PlayerCollectionSnapshot(
         id=str(uuid.uuid4()),
         profile_id=profile_id,
+        character_id=character_id,
         catalog_item_id=catalog_item_id,
         ownership_state=ownership_state,
         source="plugin",
@@ -342,3 +351,48 @@ async def test_missing_catalog_item_returns_404(
         headers=owner_headers,
     )
     assert resp.status_code == 404
+
+
+async def test_a_member_whose_card_names_the_alt_seeds_from_the_alts_record(
+    async_client: AsyncClient, session: AsyncSession,
+    owner: User, member: User, owner_profile, member_profile, group, owner_headers,
+):
+    """S2a-1 R-S1-12: the seed reads the chain's record in this static, not the main's."""
+    main = await create_player_character(session, member_profile, name="Seed Main", is_main=True)
+    alt = await create_player_character(session, member_profile, name="Seed Alt", is_main=False)
+    tier = await create_tier_snapshot(session, group)
+    card = await create_snapshot_player(session, tier, name="Seed Alt")
+    card.user_id = member.id
+    await create_static_character_registration(
+        session, group, card, player_character=alt, is_primary_for_static=True
+    )
+    catalog = _make_catalog(session, name="Seed Alt Mount")
+    await session.flush()
+    # The alt's row first and the main's last: a profile-wide read keeps the last row it sees.
+    _make_snapshot(
+        session, member_profile.id, catalog.id,
+        ownership_state="missing", token_count=12, character_id=alt.id,
+    )
+    await session.flush()
+    _make_snapshot(
+        session, member_profile.id, catalog.id,
+        ownership_state="have", token_count=99, character_id=main.id,
+    )
+    await session.commit()
+
+    resp = await async_client.post(
+        f"/api/static-groups/{group.id}/collection-goals/from-suggestion",
+        json={"catalog_item_id": catalog.id},
+        headers=owner_headers,
+    )
+    assert resp.status_code == 201, resp.text
+
+    seeded = await session.execute(
+        select(RewardParticipantState).where(
+            RewardParticipantState.goal_id == resp.json()["id"],
+            RewardParticipantState.user_id == member.id,
+        )
+    )
+    row = seeded.scalar_one()
+    assert (row.state, row.token_count, row.source) == ("want", 12, "plugin")
+    assert resp.json()["participant_summary"]["have"] == 0

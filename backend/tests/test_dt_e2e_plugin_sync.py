@@ -31,6 +31,7 @@ from app.schemas.plugin_collections import (
     PluginCollectionSyncPayload,
 )
 from app.services.plugin_collection_sync_service import sync_collection_states
+from app.services.provenance import LOGGED_VIA_API_KEY
 from tests.factories import create_membership, create_static_group, create_user
 
 pytestmark = pytest.mark.asyncio
@@ -136,7 +137,9 @@ async def test_pre_dt_mount_owned_marks_have(session: AsyncSession, user: User, 
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=MOUNT_EW_EXAMPLE, owned=True)],
     )
-    result = await sync_collection_states(session, user, payload)
+    result = await sync_collection_states(
+        session, user, payload, actor_user_id=user.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.states_updated == 1
     state = (await session.execute(
@@ -168,7 +171,9 @@ async def test_dt_mount_wings_of_ruin_marks_have(session: AsyncSession, user: Us
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=MOUNT_WINGS_OF_RUIN, owned=True)],
     )
-    result = await sync_collection_states(session, user, payload)
+    result = await sync_collection_states(
+        session, user, payload, actor_user_id=user.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.states_updated == 1
     assert result.skipped_no_id == 0
@@ -202,7 +207,9 @@ async def test_dt_token_count_updates_without_have(session: AsyncSession, user: 
     payload = PluginCollectionSyncPayload(
         currencies=[CollectionTokenItem(item_id=TOKEN_SKYRUIN_TOTEM, count=12, token_name="Skyruin Totem")],
     )
-    result = await sync_collection_states(session, user, payload)
+    result = await sync_collection_states(
+        session, user, payload, actor_user_id=user.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.token_counts_updated == 1
     state = (await session.execute(
@@ -232,7 +239,9 @@ async def test_dt_mount_not_owned_does_not_create_have(session: AsyncSession, us
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=MOUNT_WINGS_OF_RESOLVE, owned=False)],
     )
-    result = await sync_collection_states(session, user, payload)
+    result = await sync_collection_states(
+        session, user, payload, actor_user_id=user.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.states_updated == 0
     state = (await session.execute(
@@ -262,7 +271,9 @@ async def test_wrong_dt_mount_id_no_match(session: AsyncSession, user: User, gro
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=999, owned=True)],
     )
-    result = await sync_collection_states(session, user, payload)
+    result = await sync_collection_states(
+        session, user, payload, actor_user_id=user.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.states_updated == 0
     assert result.skipped_no_id == 1
@@ -289,7 +300,9 @@ async def test_dt_source_duty_key_alone_not_used_for_ownership(session: AsyncSes
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=None, trial_id="dt-recollection", owned=True)],
     )
-    result = await sync_collection_states(session, user, payload)
+    result = await sync_collection_states(
+        session, user, payload, actor_user_id=user.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.states_updated == 0
     assert result.skipped_no_id == 1
@@ -321,7 +334,9 @@ async def test_orchestrion_category_never_set_by_plugin(session: AsyncSession, u
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=MOUNT_WINGS_OF_DEATH, owned=True)],
     )
-    result = await sync_collection_states(session, user, payload)
+    result = await sync_collection_states(
+        session, user, payload, actor_user_id=user.id, via=LOGGED_VIA_API_KEY
+    )
 
     # Mount goal should be updated; orchestrion goal should NOT be
     assert result.states_updated == 1
@@ -354,7 +369,9 @@ async def test_dt_token_count_at_cost_can_buy(session: AsyncSession, user: User,
     payload = PluginCollectionSyncPayload(
         currencies=[CollectionTokenItem(item_id=TOKEN_TOTEM_ETERNAL, count=99, token_name="Totem Eternal")],
     )
-    result = await sync_collection_states(session, user, payload)
+    result = await sync_collection_states(
+        session, user, payload, actor_user_id=user.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.token_counts_updated == 1
     state = (await session.execute(
@@ -400,7 +417,9 @@ async def test_full_dt_token_payload(session: AsyncSession, user: User, group) -
         for (_, _, _, tok_name, tok_id, count) in dt_tokens
     ]
     payload = PluginCollectionSyncPayload(currencies=currencies)
-    result = await sync_collection_states(session, user, payload)
+    result = await sync_collection_states(
+        session, user, payload, actor_user_id=user.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.token_counts_updated == 6
 
@@ -448,7 +467,9 @@ async def test_dt_mount_unowned_does_not_clear_existing_have(session: AsyncSessi
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=MOUNT_WINGS_OF_MIST, owned=False)],
     )
-    result = await sync_collection_states(session, user, payload)
+    result = await sync_collection_states(
+        session, user, payload, actor_user_id=user.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.states_updated == 0
     await session.refresh(existing)
