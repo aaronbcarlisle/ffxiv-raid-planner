@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.59';
+export const CURRENT_VERSION = '2.1.61';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,34 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.61',
+    date: '2026-10-01T14:00:00Z',
+    title: 'Static lookup API change for non-members',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Static lookups leave out member accounts for non-members',
+        description:
+          'The API endpoints that look up a static by share code or by ID (GET /api/static-groups/by-code/{shareCode} and GET /api/static-groups/{id}) now return owner and each member\'s user as null when the caller isn\'t a member of the static. Members, viewers and admins, and their API keys, get the same response as before. The API docs describe the change.',
+        link: { href: '/docs/api', label: 'API docs' },
+      },
+      {
+        category: 'fix',
+        title: 'Signed-out visitors no longer log failed sign-in checks',
+        description:
+          'Signed-out visitors no longer trigger failed sign-in checks on every page load: the app asks a new `/api/auth/session` probe, which always answers, before it tries a refresh.',
+        internal: true,
+      },
+      {
+        category: 'improvement',
+        title: 'V2 preview: guests get Log in and a members-only Schedule',
+        description:
+          'V2 preview: at a static, guests see Log in instead of the bell and settings gear, Open Settings leaves their command palette, and Schedule shows one members-only card instead of empty sessions and availability.',
+        internal: true,
+      },
+    ],
+  },
   {
     version: '2.1.60',
     date: '2026-10-01T03:00:00Z',
