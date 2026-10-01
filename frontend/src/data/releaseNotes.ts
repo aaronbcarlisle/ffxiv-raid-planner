@@ -94,7 +94,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Marking a plugin mount as missing now sticks',
         description:
-          'Marking a plugin-synced mount as missing in Profile ▸ Collections now sticks until your next plugin sync, in your statics too. The count input on plugin-synced rows stays disabled.',
+          'Marking a plugin-synced mount as missing in Profile ▸ Collections now sticks until your next plugin sync, in your statics too. Once marked missing, the row is yours until your next sync, so its count input unlocks too.',
         pr: 350,
         prTitle: 'feat(api): S2a-1a·2 — the record per character; the paths and the completeness guard',
       },
