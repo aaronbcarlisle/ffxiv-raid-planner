@@ -47,6 +47,9 @@ from tests.factories import (
 
 MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_ERROR = "csrf_validation_failed"
+WORLD_USERS = (
+    "owner", "lead", "member", "member2", "viewer", "outsider", "applicant", "applicant2"
+)
 
 CS = "/api/static-groups/{group_id}/content-suggestions"
 # R-P0-6 / HS-35 #2 (a): the only static-scoped writes a viewer may make.
@@ -77,6 +80,7 @@ class World:
     u: dict[str, User]
     group: Any
     tier: Any
+    tier2: Any
     card: dict[str, Any]
     goal: Any
     drop: dict[str, Any]
@@ -125,8 +129,10 @@ class World:
 
 async def build_world(session: AsyncSession) -> World:
     """One static with every role, and one of each object a mutation route targets."""
-    names = ("owner", "lead", "member", "member2", "viewer", "outsider", "applicant", "applicant2")
-    u = {n: await create_user(session, discord_id=f"authz_{n}", discord_username=n) for n in names}
+    u = {
+        n: await create_user(session, discord_id=f"authz_{n}", discord_username=n)
+        for n in WORLD_USERS
+    }
 
     group = await create_static_group(session, u["owner"], settings={"splitClearMode": True})
     await create_membership(session, u["lead"], group, role=MemberRole.LEAD)
@@ -153,6 +159,11 @@ async def build_world(session: AsyncSession) -> World:
         if name != "open":
             player.user_id = u[name].id
         card[name] = player
+    # A second tier where no one holds a card: the claim probe's viewer must be cardless.
+    tier2 = await create_tier_snapshot(
+        session, group, tier_id="aac-light-heavyweight", is_active=False
+    )
+    card["open2"] = await create_snapshot_player(session, tier2, name="open2 card", job="SAM")
 
     goal = await create_collection_goal(session, group, u["owner"])
     await create_participant_state(session, goal, u["member"])
@@ -215,6 +226,7 @@ async def build_world(session: AsyncSession) -> World:
         u=u,
         group=group,
         tier=tier,
+        tier2=tier2,
         card=card,
         goal=goal,
         drop=drop,
@@ -344,6 +356,7 @@ def test_route_table_rows_are_well_formed():
         assert row.intent, row.id
         assert row.variant or keys.count((row.method, row.path)) == 1, f"{row.id} needs a variant"
         assert not row.static_scoped or row.build is not None, f"{row.id} has no build"
+        assert row.actor in WORLD_USERS, f"{row.id}: actor {row.actor!r} is not a world user"
 
 
 # ── R-P0-8.2: a viewer is refused every static write above viewer ────────────

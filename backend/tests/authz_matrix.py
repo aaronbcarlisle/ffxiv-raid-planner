@@ -63,8 +63,8 @@ def _t(w, **extra) -> dict[str, str]:
     return _g(w, tier_id=w.tier.tier_id, **extra)
 
 
-def _card(w, card, **extra) -> dict[str, str]:
-    return _t(w, player_id=card.id, **extra)
+def _card(w, card, *, tier=None, **extra) -> dict[str, str]:
+    return _g(w, tier_id=(tier or w.tier).tier_id, player_id=card.id, **extra)
 
 
 def _goal(w, **extra) -> dict[str, str]:
@@ -237,8 +237,8 @@ ROUTES: tuple[AuthzRoute, ...] = (
     R("POST", G + "/duplicate", "member", "inline",
       "copy the static into a new one the caller owns",
       build=lambda w: _r(_g(w), None, {"newName": "Copy of Static"}),
-      gaps=_viewer_gap("a viewer can duplicate the static (201); the UI offers Duplicate"
-                       " to every role, so this needs a ruling")),
+      gaps=_viewer_gap("#331 — a viewer can duplicate the static (201); the UI offers"
+                       " Duplicate to every role, so this needs a ruling")),
     R("POST", G + "/members", "lead", "helper", "add a user (owners alone add leads)",
       build=lambda w: _r(_g(w), {"user_id": w.u["outsider"].id, "role": "member"})),
     R("PUT", G + "/members/{user_id}", "lead", "helper",
@@ -297,9 +297,11 @@ ROUTES: tuple[AuthzRoute, ...] = (
     R("POST", P + "/admin-assign", "admin", "depends", "admin links any user to a card"),
     R("POST", P + "/owner-assign", "owner", "helper", "owner links a member to a card",
       build=lambda w: _r(_card(w, w.card["open"]), None, {"userId": w.u["member2"].id})),
+    # The claim targets the second tier, where the probing viewer holds no card: in the
+    # first tier "already linked in this tier" would answer the viewer's 403 instead.
     R("POST", P + "/claim", "member", "inline",
       "take ownership of an unclaimed card (one per tier)", actor="member2",
-      build=lambda w: _r(_card(w, w.card["open"]))),
+      build=lambda w: _r(_card(w, w.card["open2"], tier=w.tier2))),
     R("DELETE", P + "/claim", "viewer", "inline",
       "unlink yourself from your own card (open to a demoted viewer, V2)", variant="self",
       actor="viewer", build=lambda w: _r(_card(w, w.my_card))),
