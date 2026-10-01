@@ -19,7 +19,7 @@ from types import ModuleType
 
 import pytest
 from sqlalchemy import String, Text, inspect, text
-from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from sqlalchemy.orm import configure_mappers
@@ -264,6 +264,7 @@ async def test_two_characters_of_one_profile_same_item_both_insert(session):
 # ── Postgres without a server (vet I-4) ──────────────────────────────────────
 
 
+@pytest.mark.parametrize("dialect", [postgresql.dialect(), sqlite.dialect()], ids=["pg", "sqlite"])
 @pytest.mark.parametrize(
     "name, predicate",
     [
@@ -271,10 +272,10 @@ async def test_two_characters_of_one_profile_same_item_both_insert(session):
         (_PROFILE_INDEX, "WHERE character_id IS NULL"),
     ],
 )
-def test_partial_index_compiles_with_where_on_postgres(name, predicate):
+def test_partial_index_compiles_with_where(name, predicate, dialect):
     indexes = {i.name: i for i in PlayerCollectionSnapshot.__table__.indexes}
     assert name in indexes
-    ddl = str(CreateIndex(indexes[name]).compile(dialect=postgresql.dialect()))
+    ddl = str(CreateIndex(indexes[name]).compile(dialect=dialect))
     assert ddl.startswith("CREATE UNIQUE INDEX")
     assert predicate in ddl
 
@@ -392,7 +393,7 @@ async def test_backfill_snapshot_characters_gives_each_profile_its_main(
 
 async def _seed_snapshot_timestamps(session: AsyncSession) -> None:
     p = await _profile(session, "ts")
-    items = [(await create_catalog_item(session, name=f"I{i}")).id for i in range(5)]
+    items = [(await create_catalog_item(session, name=f"I{i}")).id for i in range(7)]
     # Synced last: both columns take last_synced_at's string, Z form kept.
     await _snapshot(session, "synced", p.id, items[0], ownership_state="have", token_count=3,
                     last_synced_at="2026-05-01T10:00:00Z",
@@ -412,6 +413,13 @@ async def _seed_snapshot_timestamps(session: AsyncSession) -> None:
     await _snapshot(session, "preset", p.id, items[4], ownership_state="have", token_count=2,
                     updated_at="2026-06-01T00:00:00+00:00",
                     state_changed_at="2020-01-01T00:00:00+00:00")
+    # Neither time parses: both columns stay NULL. The migration never falls back
+    # to now, so a row it can't date is left for the first real write.
+    await _snapshot(session, "garbled", p.id, items[5], ownership_state="have", token_count=4,
+                    last_synced_at="not a time", updated_at="never")
+    # Only one time parses: that one is used, and the unparseable one is ignored.
+    await _snapshot(session, "half", p.id, items[6], ownership_state="have",
+                    last_synced_at="not a time", updated_at="2026-02-01T00:00:00Z")
     await session.commit()
 
 
@@ -430,8 +438,10 @@ async def test_backfill_snapshot_timestamps(session, engine, migration):
         "manual": ("2026-04-01T00:00:00+00:00", None),
         "unknown": (None, "2026-03-02T00:00:00Z"),
         "preset": ("2020-01-01T00:00:00+00:00", "2026-06-01T00:00:00+00:00"),
+        "garbled": (None, None),
+        "half": ("2026-02-01T00:00:00Z", None),
     }
-    assert counts == (3, 4)
+    assert counts == (4, 4)
 
 
 async def _seed_participants(session: AsyncSession) -> None:

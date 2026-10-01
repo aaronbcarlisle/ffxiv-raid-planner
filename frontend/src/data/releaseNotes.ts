@@ -93,6 +93,15 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'improvement',
+        title: 'Collection records have a completeness check',
+        description:
+          'A test now fails if any server code writes a collection record outside its one write path, or without recording who made the change and how. Nothing changes on screen.',
+        pr: 353,
+        prTitle: 'feat(api): S2a-1a·2c — the completeness guard for the collection record',
+        internal: true,
+      },
+      {
+        category: 'improvement',
         title: 'Your collection follows your character',
         description:
           'Your collection is now kept per character; Profile ▸ Collections shows your main.',

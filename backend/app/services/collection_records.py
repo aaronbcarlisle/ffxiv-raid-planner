@@ -382,6 +382,10 @@ async def write_record(
             source=source,
             confidence=confidence,
             updated_at=now,
+            updated_by_user_id=actor_user_id,
+            updated_via=via,
+            state_changed_at=now if new_ownership is not None else None,
+            token_count_updated_at=now if token_count is not None else None,
         )
         db.add(record)
         state_changed = new_ownership is not None

@@ -36,7 +36,12 @@ from ..models.reward_participant_state import RewardParticipantState
 from ..models.membership import Membership, MemberRole
 from ..models.user import User
 from ..schemas.plugin_collections import CollectionSyncResult, PluginCollectionSyncPayload
-from .collection_records import RECORD_WRITE_SYNC, resolve_main_targets, write_record
+from .collection_records import (
+    RECORD_WRITE_SYNC,
+    RecordTarget,
+    resolve_main_targets,
+    write_record,
+)
 
 
 def _now() -> str:
@@ -156,6 +161,33 @@ async def sync_collection_states(
     return result
 
 
+async def _write_sync_record(
+    session: AsyncSession,
+    target: RecordTarget,
+    catalog_item_id: str,
+    *,
+    now: str,
+    actor_user_id: str,
+    via: str,
+    ownership: str | None,
+    token_count: int | None,
+) -> None:
+    """One plugin-reported fact on the target's record, written through the door."""
+    await write_record(
+        session,
+        target,
+        catalog_item_id,
+        actor_user_id=actor_user_id,
+        via=via,
+        mode=RECORD_WRITE_SYNC,
+        now=now,
+        ownership=ownership,
+        token_count=token_count,
+        source="plugin",
+        confidence="high",
+    )
+
+
 async def _sync_snapshots(
     session: AsyncSession,
     user: User,
@@ -177,23 +209,6 @@ async def _sync_snapshots(
     if target.profile_id is None:
         return
 
-    async def write(
-        catalog_item_id: str, *, ownership: str | None, token_count: int | None
-    ) -> None:
-        await write_record(
-            session,
-            target,
-            catalog_item_id,
-            actor_user_id=actor_user_id,
-            via=via,
-            mode=RECORD_WRITE_SYNC,
-            now=now,
-            ownership=ownership,
-            token_count=token_count,
-            source="plugin",
-            confidence="high",
-        )
-
     # ── Mount ownership ───────────────────────────────────────────────────────
     for mount_item in payload.mounts:
         if not mount_item.owned or mount_item.mount_id is None:
@@ -206,7 +221,16 @@ async def _sync_snapshots(
             )
         )
         for catalog_item in id_result.scalars().all():
-            await write(catalog_item.id, ownership="have", token_count=None)
+            await _write_sync_record(
+                session,
+                target,
+                catalog_item.id,
+                now=now,
+                actor_user_id=actor_user_id,
+                via=via,
+                ownership="have",
+                token_count=None,
+            )
 
     # ── Token counts ──────────────────────────────────────────────────────────
     for token_item in payload.currencies:
@@ -232,7 +256,16 @@ async def _sync_snapshots(
 
         for catalog_item in catalog_items:
             # No ownership: a count never changes it.
-            await write(catalog_item.id, ownership=None, token_count=token_item.count)
+            await _write_sync_record(
+                session,
+                target,
+                catalog_item.id,
+                now=now,
+                actor_user_id=actor_user_id,
+                via=via,
+                ownership=None,
+                token_count=token_item.count,
+            )
 
 
 async def _upsert_state(
