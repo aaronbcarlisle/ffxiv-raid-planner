@@ -68,7 +68,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Members\' Discord accounts are hidden from non-members',
         description:
-          'Someone who isn\'t a member of a public static (signed out, or signed in to another account) no longer receives members\' Discord usernames, IDs, avatars or display names from the static\'s pages or API. The one exception is the contact a lead publishes in the static\'s Finder listing, shown only while the listing is live. The roster, gear and loot history stay viewable by share code as before, and members, viewers and admins see what they saw before.',
+          'Someone who isn\'t a member of a public static (signed out, or signed in to another account) no longer receives members\' Discord usernames, IDs, avatars or display names from the static\'s pages or API. The one exception is the contact a lead publishes in the static\'s Finder listing, shown only while the listing is live. The roster, gear and loot history stay viewable by share code as before, and members, viewers and site admins see what they saw before.',
         link: { href: '/docs/privacy', label: 'Privacy' },
         pr: 347,
         prTitle: 'fix(api,ui): W0 GUEST-2 — member identity off every guest-reachable read; guest Tracking, Plugin and More',
@@ -77,7 +77,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'API responses for non-members leave out member accounts',
         description:
-          'For a caller who isn\'t a member, the tier and players endpoints return linkedUser as null, GET /members returns each member\'s user as null, GET /linked-players returns an empty list, the loot, page and material logs return createdByUsername as null, and the static lookups leave the recruiting contact out of settings.discovery unless the static is listed in the Finder. API keys of members get the same responses as before.',
+          'For a caller who is neither a member of the static nor a site admin, the tier and players endpoints return linkedUser as null, GET /members returns each member\'s user as null, GET /linked-players returns an empty list, the loot, page and material logs return createdByUsername as null, and the static lookups leave the recruiting contact out of settings.discovery unless the static is listed in the Finder. API keys of members get the same responses as before.',
         link: { href: '/docs/api', label: 'API docs' },
         pr: 347,
         prTitle: 'fix(api,ui): W0 GUEST-2 — member identity off every guest-reachable read; guest Tracking, Plugin and More',
