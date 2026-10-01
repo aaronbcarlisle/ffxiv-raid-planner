@@ -52,7 +52,7 @@ Before new UI: read the Quick Reference in [docs/UI_COMPONENTS.md](./docs/UI_COM
 
 - PRs run build, lint, design-system strict, vitest, pytest and migration checks. **Invoke the `pr-checklist` skill before opening or finalizing any PR.** Keep PRs under ~1,500 changed lines or slice them.
 - Name the agent (or `model:`) on every dispatch. Run V2 slices with the **`slice-loop` skill** (agent roster + slice rules, PR #270). **Never load `superpowers:subagent-driven-development` here.**
-- `SESSION_HANDOFF.md` (git-ignored, never committed) is where a fresh session starts; a SessionStart hook prints its head and the newest Progress Log lines. Rewrite it at session end.
+- `SESSION_HANDOFF.md` (git-ignored, never committed) is where a fresh session starts; the user-level SessionStart hook (abc-claude) prints its head and the newest Progress Log lines. Rewrite it at session end.
 - Hooks lint and typecheck the checkout that holds the edited file, so agents in `.claude/worktrees/<name>/` get feedback only after `pnpm -C frontend install` there. Copy `frontend/.npmrc` in first: it is git-excluded, and without `node-linker=hoisted` pnpm makes junctions Windows refuses. Stacked PRs: § Stacked PRs in the `slice-loop` skill.
 
 # Compact instructions
