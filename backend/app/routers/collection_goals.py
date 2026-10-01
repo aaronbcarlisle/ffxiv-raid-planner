@@ -38,6 +38,7 @@ from ..schemas.collection_goals import (
     RewardDropCreate,
     RewardDropResponse,
 )
+from ..services.collection_records import load_records, resolve_record_targets
 from ..services.provenance import logged_via, request_api_key_id
 
 router = APIRouter(prefix="/api", tags=["collection-goals"])
@@ -337,17 +338,15 @@ async def create_goal_from_suggestion(
     profile_by_user: dict[str, str] = {p.user_id: p.id for p in profiles_result.scalars().all()}
     profile_ids = list(profile_by_user.values())
 
-    # ── Snapshots ───────────────────────────────────────────────────────────
-    snapshot_map: dict[str, PlayerCollectionSnapshot] = {}
-    if profile_ids:
-        snap_result = await session.execute(
-            select(PlayerCollectionSnapshot).where(
-                PlayerCollectionSnapshot.profile_id.in_(profile_ids),
-                PlayerCollectionSnapshot.catalog_item_id == catalog_item.id,
-            )
-        )
-        for s in snap_result.scalars().all():
-            snapshot_map[s.profile_id] = s
+    # ── Records (each member's record in this static, by the chain, batched) ─
+    record_targets = await resolve_record_targets(
+        session, [(group_id, user_id) for user_id in member_user_ids]
+    )
+    records = await load_records(session, record_targets.values(), [catalog_item.id])
+    snapshot_by_user: dict[str, PlayerCollectionSnapshot | None] = {
+        user_id: records[record_targets[(group_id, user_id)]].get(catalog_item.id)
+        for user_id in member_user_ids
+    }
 
     # ── Intents (static_only + dossier_public only — never private) ─────────
     intent_map: dict[str, PlayerCollectionIntent] = {}
@@ -375,7 +374,7 @@ async def create_goal_from_suggestion(
     summary = ParticipantSummary()
     for user_id in member_user_ids:
         profile_id = profile_by_user.get(user_id)
-        snapshot = snapshot_map.get(profile_id) if profile_id else None
+        snapshot = snapshot_by_user[user_id]
         intent = intent_map.get(profile_id) if profile_id else None
         legacy = legacy_for_item.get(user_id)
 

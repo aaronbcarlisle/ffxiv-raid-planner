@@ -26,14 +26,22 @@ from app.auth_utils import create_access_token
 from app.models import MemberRole, User
 from app.models.collection_catalog_item import CollectionCatalogItem
 from app.models.collection_goal import CollectionGoal
+from app.models.player_collection_snapshot import PlayerCollectionSnapshot
 from app.models.reward_participant_state import RewardParticipantState
 from app.services.plugin_collection_sync_service import sync_collection_states
+from app.services.provenance import LOGGED_VIA_API_KEY
 from app.schemas.plugin_collections import (
     CollectionMountItem,
     CollectionTokenItem,
     PluginCollectionSyncPayload,
 )
-from tests.factories import create_membership, create_static_group, create_user
+from tests.factories import (
+    create_membership,
+    create_player_character,
+    create_player_profile,
+    create_static_group,
+    create_user,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -157,7 +165,9 @@ async def test_plugin_does_not_overwrite_manual_pass(session: AsyncSession, memb
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=777, owned=True)],
     )
-    result = await sync_collection_states(session, member, payload)
+    result = await sync_collection_states(
+        session, member, payload, actor_user_id=member.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.skipped_locked == 1
     assert result.states_updated == 0
@@ -180,7 +190,9 @@ async def test_token_count_does_not_change_pass_state(session: AsyncSession, mem
     payload = PluginCollectionSyncPayload(
         currencies=[CollectionTokenItem(token_name="Skyruin Totem", count=12)],
     )
-    await sync_collection_states(session, member, payload)
+    await sync_collection_states(
+        session, member, payload, actor_user_id=member.id, via=LOGGED_VIA_API_KEY
+    )
 
     await session.refresh(existing)
     assert existing.state == "pass"
@@ -215,7 +227,9 @@ async def test_mount_owned_does_not_mark_orchestrion(session: AsyncSession, memb
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=888, owned=True)],
     )
-    await sync_collection_states(session, member, payload)
+    await sync_collection_states(
+        session, member, payload, actor_user_id=member.id, via=LOGGED_VIA_API_KEY
+    )
 
     mount_state_r = await session.execute(
         select(RewardParticipantState).where(
@@ -248,7 +262,9 @@ async def test_plugin_cannot_update_other_groups_goals(session: AsyncSession, ou
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=333, owned=True)],
     )
-    result = await sync_collection_states(session, outsider, payload)
+    result = await sync_collection_states(
+        session, outsider, payload, actor_user_id=outsider.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.states_updated == 0
 
@@ -273,7 +289,9 @@ async def test_plugin_skips_complete_goals(session: AsyncSession, member: User, 
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=555, owned=True)],
     )
-    result = await sync_collection_states(session, member, payload)
+    result = await sync_collection_states(
+        session, member, payload, actor_user_id=member.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.states_updated == 0
     state_r = await session.execute(
@@ -327,7 +345,9 @@ async def test_mount_matched_by_game_mount_id(session: AsyncSession, member: Use
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=282, owned=True)],
     )
-    result = await sync_collection_states(session, member, payload)
+    result = await sync_collection_states(
+        session, member, payload, actor_user_id=member.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.states_updated == 1
     state_r = await session.execute(
@@ -356,7 +376,9 @@ async def test_wrong_game_mount_id_does_not_match(session: AsyncSession, member:
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(mount_id=999, owned=True)],
     )
-    result = await sync_collection_states(session, member, payload)
+    result = await sync_collection_states(
+        session, member, payload, actor_user_id=member.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.states_updated == 0
 
@@ -389,7 +411,9 @@ async def test_token_matched_by_item_id(session: AsyncSession, member: User, gro
     payload = PluginCollectionSyncPayload(
         currencies=[CollectionTokenItem(item_id=36810, count=45)],
     )
-    await sync_collection_states(session, member, payload)
+    await sync_collection_states(
+        session, member, payload, actor_user_id=member.id, via=LOGGED_VIA_API_KEY
+    )
 
     state_r = await session.execute(
         select(RewardParticipantState).where(
@@ -422,7 +446,9 @@ async def test_ownership_not_set_without_stable_id(session: AsyncSession, member
     payload = PluginCollectionSyncPayload(
         mounts=[CollectionMountItem(trial_id="dt-valigarmanda", owned=True)],
     )
-    result = await sync_collection_states(session, member, payload)
+    result = await sync_collection_states(
+        session, member, payload, actor_user_id=member.id, via=LOGGED_VIA_API_KEY
+    )
 
     assert result.states_updated == 0
     assert result.skipped_no_id == 1
@@ -462,7 +488,9 @@ async def test_token_count_update_does_not_set_have(session: AsyncSession, membe
     payload = PluginCollectionSyncPayload(
         currencies=[CollectionTokenItem(item_id=36810, count=99)],
     )
-    await sync_collection_states(session, member, payload)
+    await sync_collection_states(
+        session, member, payload, actor_user_id=member.id, via=LOGGED_VIA_API_KEY
+    )
 
     state_r = await session.execute(
         select(RewardParticipantState).where(
@@ -474,3 +502,45 @@ async def test_token_count_update_does_not_set_have(session: AsyncSession, membe
     assert state is not None
     assert state.token_count == 99
     assert state.state != "have"  # token sync must not set Have
+
+
+# ── 11. The counters count farm rows only (R-S1-17, vet M-6) ─────────────────
+
+
+async def test_record_writes_are_not_counted(session: AsyncSession, member: User, group):
+    """One mount and one count reach a farm row AND the main's record: each counter reads 1."""
+    profile = await create_player_profile(session, member)
+    main = await create_player_character(session, profile, name="Counter Main", is_main=True)
+    catalog = _catalog_item(
+        session,
+        name="Counted Mount",
+        category="mount",
+        token_name="Counter Totem",
+        game_mount_id=4501,
+        token_item_id=4502,
+    )
+    await session.flush()
+    _goal(session, group_id=group.id, catalog_item_id=catalog.id, token_name="Counter Totem")
+    await session.flush()
+
+    payload = PluginCollectionSyncPayload(
+        mounts=[CollectionMountItem(mount_id=4501, owned=True)],
+        currencies=[CollectionTokenItem(item_id=4502, count=30)],
+    )
+    result = await sync_collection_states(
+        session, member, payload, actor_user_id=member.id, via=LOGGED_VIA_API_KEY
+    )
+
+    counters = (
+        result.states_updated,
+        result.states_unchanged,
+        result.token_counts_updated,
+        result.skipped_locked,
+    )
+    assert counters == (1, 0, 1, 0)
+    record = (await session.execute(select(PlayerCollectionSnapshot))).scalar_one()
+    assert (record.character_id, record.ownership_state, record.token_count) == (
+        main.id,
+        "have",
+        30,
+    )

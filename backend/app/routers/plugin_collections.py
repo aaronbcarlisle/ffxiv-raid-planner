@@ -1,6 +1,6 @@
 """API router for plugin collection sync"""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
@@ -9,6 +9,7 @@ from ..logging_config import get_logger
 from ..models.user import User
 from ..schemas.plugin_collections import CollectionSyncResult, PluginCollectionSyncPayload
 from ..services.plugin_collection_sync_service import sync_collection_states
+from ..services.provenance import logged_via
 
 router = APIRouter(prefix="/api", tags=["plugin-collections"])
 logger = get_logger(__name__)
@@ -17,6 +18,7 @@ logger = get_logger(__name__)
 @router.post("/plugin/collections/sync", response_model=CollectionSyncResult)
 async def plugin_sync_collections(
     payload: PluginCollectionSyncPayload,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> CollectionSyncResult:
@@ -33,7 +35,9 @@ async def plugin_sync_collections(
         f"[PluginCollections] Sync from user={user.id} "
         f"mounts={len(payload.mounts)} currencies={len(payload.currencies)}"
     )
-    result = await sync_collection_states(session, user, payload)
+    result = await sync_collection_states(
+        session, user, payload, actor_user_id=user.id, via=logged_via(request)
+    )
     logger.info(
         f"[PluginCollections] Done: updated={result.states_updated} "
         f"unchanged={result.states_unchanged} tokens={result.token_counts_updated} "

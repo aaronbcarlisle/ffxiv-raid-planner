@@ -32,6 +32,7 @@ from ..models.player_profile import PlayerProfile
 from ..models.reward_participant_state import RewardParticipantState
 from ..models.user import User
 from ..schemas.player_collection import MemberSuggestionEntry, StaticCollectionSuggestion
+from .collection_records import load_records, resolve_record_targets
 from .legacy_mount_farm_bridge import LegacyFarmSignal, get_legacy_farm_signals
 
 # ── Scoring weights ────────────────────────────────────────────────────────────
@@ -291,18 +292,15 @@ async def compute_suggestions(
         c.id: c for c in catalog_result.scalars().all()
     }
 
-    # ── Snapshots (profile × item) ─────────────────────────────────────────────
-    snapshot_rows: list[PlayerCollectionSnapshot] = []
-    if profile_ids:
-        snap_result = await session.execute(
-            select(PlayerCollectionSnapshot).where(
-                PlayerCollectionSnapshot.profile_id.in_(profile_ids),
-                PlayerCollectionSnapshot.catalog_item_id.in_(catalog_item_ids),
-            )
-        )
-        snapshot_rows = snap_result.scalars().all()
-    snapshot_map: dict[tuple[str, str], PlayerCollectionSnapshot] = {
-        (s.profile_id, s.catalog_item_id): s for s in snapshot_rows
+    # ── Records (each member's record in this static, by the chain) ───────────
+    # One batch for every member: the chain's five SELECTs, then one record read.
+    record_targets = await resolve_record_targets(
+        session, [(static_group_id, user_id) for user_id in member_user_ids]
+    )
+    records = await load_records(session, record_targets.values(), catalog_item_ids)
+    records_by_user: dict[str, dict[str, PlayerCollectionSnapshot]] = {
+        user_id: records[record_targets[(static_group_id, user_id)]]
+        for user_id in member_user_ids
     }
 
     # ── Participant states (for goals that exist) ──────────────────────────────
@@ -333,7 +331,7 @@ async def compute_suggestions(
 
         for user_id in member_user_ids:
             profile_id = profile_by_user.get(user_id)
-            snapshot = snapshot_map.get((profile_id, item_id)) if profile_id else None
+            snapshot = records_by_user[user_id].get(item_id)
             intent = intent_map.get((profile_id, item_id)) if profile_id else None
             participant = participant_map.get((goal.id, user_id)) if goal else None
             legacy = legacy_signal_map.get((user_id, item_id))
