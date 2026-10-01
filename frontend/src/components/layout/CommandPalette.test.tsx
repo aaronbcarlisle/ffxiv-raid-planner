@@ -116,6 +116,23 @@ function renderPalette(isOpen = true, onClose = vi.fn()) {
   );
 }
 
+describe('CommandPalette Open Settings gate (GUEST-1 R-G1-5)', () => {
+  it('a guest typing "settings" gets "No commands found."', () => {
+    useAuthStore.setState({ user: null });
+    renderPalette();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search commands' }), { target: { value: 'settings' } });
+    expect(screen.getByText('No commands found.')).toBeInTheDocument();
+    expect(screen.queryByText('Open Settings')).toBeNull();
+  });
+
+  it('a signed-in user typing "settings" gets "Open Settings"', () => {
+    useAuthStore.setState({ user: { id: 'u1', isAdmin: false } as unknown as User });
+    renderPalette();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search commands' }), { target: { value: 'settings' } });
+    expect(screen.getByText('Open Settings')).toBeInTheDocument();
+  });
+});
+
 describe('CommandPalette onSelectTab (R-RH-G, the Recruiting route override)', () => {
   it('"Go to …" rows call onSelectTab instead of setPageMode when the prop is given, and close', () => {
     const onSelectTab = vi.fn();
@@ -316,6 +333,8 @@ describe('CommandPalette', () => {
     });
 
     it('T3-a2: ArrowDown then typing a query resets the highlight to the first match', () => {
+      // "Open Settings" exists only for a signed-in user (GUEST-1 R-G1-5).
+      useAuthStore.setState({ user: { id: 'u1', isAdmin: false } as unknown as User });
       renderPalette();
       const input = getInput();
       fireEvent.keyDown(input, { key: 'ArrowDown' });

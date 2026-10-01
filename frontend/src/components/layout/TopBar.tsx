@@ -10,7 +10,9 @@
  *   • `TierBreadcrumb` — `› TierSelector [⋮]`, reuses TierSelector via `onTierChange`.
  *   • week indicator   — minimal, reads `currentWeek` from lootTrackingStore.
  *   • affordance cluster — ⌘K palette · invite (permission-gated) · bell · theme ·
- *                        │ divider · settings gear, in that render order.
+ *                        │ divider · settings gear, in that render order; bell and
+ *                        gear are signed-in only, then the auth slot (skeleton /
+ *                        Log in for a guest) after the gear (GUEST-1 R-G1-4).
  *
  * Conformant + boundary-clean by construction: design-system primitives only,
  * semantic tokens, 12px+ text, no raw `<button>`, and no Ring 0 imports. Legacy
@@ -27,7 +29,9 @@ import { useInvitationStore } from '../../stores/invitationStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { toast } from '../../stores/toastStore';
 import { useStaticPermissions } from '../../hooks/useStaticPermissions';
+import { useAuthStore } from '../../stores/authStore';
 import { TierBreadcrumb } from '../../pages/TierBreadcrumb';
+import { GroupTopBarAuthSlot } from '../../pages/chrome/GroupTopBarAuthSlot';
 import { IconButton, Tooltip } from '../primitives';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { StaticPicker } from './StaticPicker';
@@ -64,6 +68,7 @@ export function TopBar({ onOpenPalette, onOpenNotifications }: TopBarProps) {
   const groups = useStaticGroupStore((s) => s.groups);
   const fetchGroups = useStaticGroupStore((s) => s.fetchGroups);
   const tiers = useTierStore((s) => s.tiers);
+  const user = useAuthStore((s) => s.user);
 
   const { userRole, isMember, canManageInvitations } = useStaticPermissions();
 
@@ -164,10 +169,18 @@ export function TopBar({ onOpenPalette, onOpenNotifications }: TopBarProps) {
               />
             </Tooltip>
           )}
-          <NotificationBell onOpen={onOpenNotifications} />
+          {/* Bell and gear are authed-only (GUEST-1 R-G1-4), as V1 gates them.
+              Two separate gates keep the A12 order around the theme toggle. */}
+          {user && <NotificationBell onOpen={onOpenNotifications} />}
           <ThemeToggle />
-          <span className="w-px h-4 bg-border-subtle flex-shrink-0" aria-hidden />
-          <SettingsGear />
+          {user && (
+            <>
+              <span className="w-px h-4 bg-border-subtle flex-shrink-0" aria-hidden />
+              <SettingsGear />
+            </>
+          )}
+          {/* Skeleton / Log in for a guest; nothing when signed in. */}
+          <GroupTopBarAuthSlot />
         </div>
       </div>
     </header>

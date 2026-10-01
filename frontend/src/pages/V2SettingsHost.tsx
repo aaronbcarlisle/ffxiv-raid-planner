@@ -30,7 +30,9 @@ export function V2SettingsHost() {
   const user = useAuthStore((s) => s.user);
   const onAddToRoster = useGroupAddToRoster();
   const players = useSortedMainRosterPlayers(tier);
-  if (!group) return null;
+  // A guest has no settings dock (GUEST-1 R-G1-5). Returning null here closes
+  // every V2 opener at once, including a stale `settingsPanelStore.open`.
+  if (!group || !user) return null;
   return (
     <StaticSettingsHost
       group={group}
