@@ -14,6 +14,7 @@ from urllib.parse import urlencode
 import httpx
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
 from fastapi.routing import iter_route_contexts
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,17 +25,24 @@ from app.middleware.csrf import CSRF_HEADER_NAME
 from app.models import MemberRole, ScheduleSettings, StaticContentSuggestionVote, User
 from tests.authz_matrix import ROUTES, AuthzRoute
 from tests.factories import (
+    create_api_key,
     create_catalog_item,
     create_collection_goal,
     create_content_suggestion,
+    create_hub_bis_target_set,
     create_invitation,
     create_join_request,
     create_loot_log_entry,
     create_material_log_entry,
     create_membership,
+    create_notification,
     create_objective_goal,
     create_page_ledger_entry,
     create_participant_state,
+    create_player_character,
+    create_player_goal,
+    create_player_job_profile,
+    create_player_profile,
     create_reward_drop,
     create_roster_bis_target_set,
     create_schedule_exception,
@@ -80,6 +88,19 @@ def live_mutation_routes() -> set[tuple[str, str]]:
 
 
 @dataclass(frozen=True)
+class HubObjects:
+    """One of each object a user owns outside any static: the `owned` rows' targets (R-A2-8)."""
+
+    profile: Any
+    character: Any
+    job: Any
+    bis: Any
+    goal: Any
+    notification: Any
+    api_key: Any
+
+
+@dataclass(frozen=True)
 class World:
     u: dict[str, User]
     group: Any
@@ -105,6 +126,7 @@ class World:
     catalog_item: Any
     roster_bis: Any
     assignment: Any
+    hub: dict[str, HubObjects]
     caller: str = field(default="owner")
 
     def as_(self, caller: str) -> "World":
@@ -113,6 +135,10 @@ class World:
     @property
     def me(self) -> User:
         return self.u[self.caller]
+
+    @property
+    def my_hub(self) -> HubObjects:
+        return self.hub[self.caller]
 
     @property
     def my_card(self):
@@ -136,10 +162,33 @@ class World:
         return self.card["member" if self.caller == "lead" else "lead"]
 
 
+async def _build_hub(session: AsyncSession, user: User) -> HubObjects:
+    """The user's hub objects. The character is `Hub Probe` / `Ravana`, never the plugin builds'
+    `Member Card` / `Tonberry`, so the plugin sync rows keep taking find-or-create's create path
+    (vet M-4). Its lodestone id is numeric because `sync-gear` calls `int()` on it.
+    """
+    profile = await create_player_profile(session, user)
+    character = await create_player_character(
+        session, profile, name="Hub Probe", server="Ravana", lodestone_id="12345678"
+    )
+    job = await create_player_job_profile(session, profile, job="RDM", role="caster")
+    return HubObjects(
+        profile=profile,
+        character=character,
+        job=job,
+        bis=await create_hub_bis_target_set(session, profile, job),
+        goal=await create_player_goal(session, profile),
+        notification=await create_notification(session, user),
+        api_key=await create_api_key(session, user),
+    )
+
+
 async def build_world(session: AsyncSession, *, public: bool = False) -> World:
     """One static with every role, and one of each object a mutation route targets.
 
     `public` makes the static public: the outsider probe's world (B17). It adds no object.
+    The member alone gets a hub (the `owned` rows' actor); the stranger probe builds as the
+    actor, so no other user needs one.
     """
     u = {
         n: await create_user(session, discord_id=f"authz_{n}", discord_username=n)
@@ -266,6 +315,7 @@ async def build_world(session: AsyncSession, *, public: bool = False) -> World:
         catalog_item=await create_catalog_item(session),
         roster_bis=await create_roster_bis_target_set(session, group, card["open"], u["owner"]),
         assignment=await create_weekly_assignment(session, group, tier, player=card["open"]),
+        hub={"member": await _build_hub(session, u["member"])},
     )
     await session.commit()
     return world
@@ -302,8 +352,14 @@ def no_network(monkeypatch):
     async def _noop(*args, **kwargs):
         return None
 
+    async def _lodestone_stubbed(*args, **kwargs):
+        # A domain 4xx the actor probe accepts. `sync-gear` imports this name inside the handler,
+        # at call time, so the module attribute is what it reads; the ownership lookup runs first.
+        raise HTTPException(status_code=409, detail="AUTHZ probe: Lodestone stubbed")
+
     monkeypatch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", _refuse)
     monkeypatch.setattr("app.routers.lodestone._fetch_tomestone_identity", _identity)
+    monkeypatch.setattr("app.routers.lodestone._fetch_character_payload", _lodestone_stubbed)
     monkeypatch.setattr("app.routers.schedule.post_schedule_webhook", _webhook_ok)
     monkeypatch.setattr("app.routers.schedule._post_or_edit_webhook", _noop)
 
@@ -413,8 +469,13 @@ LEAD_DENIED = [r for r in ROUTES if r.min_role == "owner"]
 ADMIN_ROWS = [r for r in ROUTES if r.min_role in ("admin", "admin_or_key")]
 ADMIN_JWT_ONLY = [r for r in ADMIN_ROWS if r.min_role == "admin"]
 OUTSIDER_DENIED = [r for r in ROUTES if r.static_scoped]
+OWNED = [r for r in ROUTES if r.owned]
+# The stranger (R-A2-7): the static's owner shares a static with every actor and holds the
+# highest non-admin role, so it is the strongest user who must still be refused another
+# user's object.
+STRANGER = "owner"
 # Every gap probe name → the rows that probe covers. A row's `gaps` may name only a probe that
-# runs on that row (R-A2-13). Task 3 adds `stranger`.
+# runs on that row (R-A2-13).
 PROBES: dict[str, list[AuthzRoute]] = {
     "viewer": VIEWER_DENIED,
     "member": MEMBER_DENIED,
@@ -424,6 +485,34 @@ PROBES: dict[str, list[AuthzRoute]] = {
     "anon": ANON_REFUSED,
     "nonadmin": ADMIN_ROWS,
     "outsider": OUTSIDER_DENIED,
+    "stranger": OWNED,
+}
+# `self` rows that act on the caller by construction (R-A2-9): no path or body names another
+# user's object, so a stranger can't reach one through them. Every other `self` row is `owned`
+# (a build on an object the actor owns, probed by the stranger). Reclassifying a row means an
+# edit here and in the table.
+PLAYER = "/api/player"
+CALLER_SCOPED = {
+    # the caller's own account
+    "PATCH /api/auth/me/preferences",
+    "POST /api/notifications/read-all",
+    f"PUT {PLAYER}/profile",
+    f"POST {PLAYER}/profile/rotate-share-code",
+    f"PUT {PLAYER}/availability/template",
+    f"POST {PLAYER}/characters",
+    f"POST {PLAYER}/goals",
+    f"POST {PLAYER}/jobs",
+    # a catalog item is a shared record; the intent and snapshot rows are the caller's own
+    "PUT /api/me/collection-intent/{catalog_item_id}",
+    "DELETE /api/me/collection-intent/{catalog_item_id}",
+    "PUT /api/me/collection-snapshot/{catalog_item_id}",
+    # the plugin syncs the key holder's own data
+    "POST /api/plugin/collections/sync",
+    "POST /api/plugin/mount-farms/sync",
+    "POST /api/plugin/player/gear-sync",
+    "POST /api/plugin/player/batch-gear-sync",
+    # the caller leaves; the other-target twin is the lead `[remove]` row
+    "DELETE /api/static-groups/{group_id}/members/{user_id} [leave]",
 }
 # Rows with a `{group_id}` or `{share_code}` path that are not static-scoped (R-A2-11): each
 # is a deliberate exception to "a static in the path is a static-scoped row".
@@ -479,6 +568,21 @@ def test_route_table_rows_are_well_formed():
                 f"{row.id}: a static in the path but not static-scoped (retype it, or add it to "
                 "GROUP_PATH_EXCEPTIONS with the reason)"
             )
+    # R-A2-9: every `self` row is either `owned` (stranger-probed) or caller-scoped.
+    stale = sorted(CALLER_SCOPED - by_id)
+    assert not stale, f"CALLER_SCOPED has ids that are not rows: {stale}"
+    unclassified = sorted(
+        r.id for r in ROUTES if r.min_role == "self" and not r.owned and r.id not in CALLER_SCOPED
+    )
+    assert not unclassified, (
+        "self rows that are neither `owned` nor in CALLER_SCOPED (give the row a build on an "
+        f"object the actor owns and `owned=True`, or list it with the reason): {unclassified}"
+    )
+    for row in ROUTES:
+        if row.owned:
+            assert row.min_role == "self", f"{row.id}: owned but not a self row"
+            assert row.build is not None, f"{row.id}: owned but has no build"
+            assert row.id not in CALLER_SCOPED, f"{row.id}: owned and in CALLER_SCOPED"
 
 
 # ── R-P0-8.2: a viewer is refused every static write above viewer ────────────
@@ -557,6 +661,22 @@ async def test_outsider_is_refused(client, public_world, row):
     resp = await send(client, row, public_world, "outsider", as_=row.actor)
     assert resp.status_code in (403, 404), (
         f"{row.id}: outsider got {resp.status_code} {resp.text[:200]}"
+    )
+    assert _error_code(resp) != CSRF_ERROR, f"{row.id}: refusal came from CSRF, not the gate"
+
+
+# ── R-A2-7: a stranger is refused every write to an object the actor owns ────
+
+
+@pytest.mark.parametrize("row", _params(OWNED, "stranger"))
+async def test_stranger_is_refused(client, world, row):
+    """The row's request, built as its actor (the actor's object), sent with the stranger's JWT.
+    404 is accepted because these routes hide whether the object exists; the same build passes
+    the actor probe (which rejects 404), so the stranger's 404 isn't a broken build.
+    """
+    resp = await send(client, row, world, STRANGER, as_=row.actor)
+    assert resp.status_code in (403, 404), (
+        f"{row.id}: stranger got {resp.status_code} {resp.text[:200]}"
     )
     assert _error_code(resp) != CSRF_ERROR, f"{row.id}: refusal came from CSRF, not the gate"
 

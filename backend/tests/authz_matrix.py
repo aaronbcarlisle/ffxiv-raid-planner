@@ -9,20 +9,24 @@ read it are in `tests/test_authz_matrix.py`.
 - `gate`: how the handler checks today (depends · helper · inline). Not asserted.
 - `build(world)` returns `(path_params, query, body)`: a minimally valid request
   against the per-test world, so a probe reaches the gate instead of a 404/422.
-  Builds that read `w.me`, `w.my_card`, `w.my_drop`, `w.my_suggestion` or
-  `w.my_reg` resolve to the caller's own object (a viewer probe targets the
+  Builds that read `w.me`, `w.my_card`, `w.my_drop`, `w.my_suggestion`,
+  `w.my_reg` or `w.my_hub` resolve to the caller's own object (a viewer probe targets the
   viewer's own card: the strongest case for a viewer). `w.other_card` is the one
   card the caller does not hold (the lead's, or the member's when the caller is the lead).
 - `actor`: who the committed allowed-actor probe sends the request as. For a `plugin` row it
   is also the user whose minted `xrp_` key the plugin-contract test sends (R-P0-8.6).
+- `owned`: the build targets an object the actor owns (a hub object, or the applicant's own
+  join request). The stranger probe (R-A2-7) sends that build with another user's JWT and
+  expects 403/404; the actor probe on the same build proves the 404 isn't a broken build.
+  Every other `self` row is listed in the test file's `CALLER_SCOPED` (R-A2-9).
 - `plugin`: the Dalamud plugin calls this route (`RaidPlannerClient.cs`). The contract test
   sends it with only `Authorization: Bearer xrp_…`; `plugin_body(world)` replaces the build's
   body where the plugin's DTO differs from the row's usual edit.
 - `variant`: names the body shape or target when one route carries two rulings
   (e.g. own card = member, someone else's card = lead).
 - `gaps`: `(probe, reason)` pairs marked strict xfail until the gap is fixed. A probe name is a
-  key of `PROBES` in the test file (viewer member lead allowed actor anon nonadmin outsider):
-  the row must be in that probe's row list.
+  key of `PROBES` in the test file (viewer member lead allowed actor anon nonadmin outsider
+  stranger): the row must be in that probe's row list.
 """
 
 from collections.abc import Callable
@@ -49,6 +53,7 @@ class AuthzRoute:
     actor: str = "owner"
     variant: str = ""
     gaps: tuple[tuple[str, str], ...] = ()
+    owned: bool = False
 
     @property
     def static_scoped(self) -> bool:
@@ -85,6 +90,10 @@ def _sched(w, **extra) -> dict[str, str]:
 
 def _lode(w, card) -> dict[str, str]:
     return {"group_id": w.group.id, "player_id": card.id}
+
+
+def _hub_bis(w) -> dict[str, str]:
+    return {"job_profile_id": w.my_hub.job.id, "target_id": w.my_hub.bis.id}
 
 
 def _r(params: dict[str, str], query: dict | None = None, body: Any = None) -> Request:
@@ -130,7 +139,8 @@ ROUTES: tuple[AuthzRoute, ...] = (
       "edit the caller's own preferences"),
     R("POST", AK, "user", "depends", "mint an API key (JWT only, never by key)"),
     R("DELETE", AK + "/{key_id}", "self", "inline",
-      "revoke one of the caller's own keys (JWT only)"),
+      "revoke one of the caller's own keys (JWT only)", owned=True, actor="member",
+      build=lambda w: _r({"key_id": w.my_hub.api_key.id})),
     R("POST", AK + "/plugin-auth/authorize", "user", "depends",
       "approve a plugin login from the browser (JWT only)"),
     R("POST", AK + "/plugin-auth/exchange", "public", "inline",
@@ -159,7 +169,8 @@ ROUTES: tuple[AuthzRoute, ...] = (
     R("POST", "/api/notifications/read-all", "self", "depends",
       "mark the caller's notifications read"),
     R("PATCH", "/api/notifications/{notification_id}/read", "self", "inline",
-      "mark one of the caller's notifications read"),
+      "mark one of the caller's notifications read", owned=True, actor="member",
+      build=lambda w: _r({"notification_id": w.my_hub.notification.id})),
 
     # ── player hub (the caller's own profile) ───────────────────────────────
     R("PUT", PLAYER + "/profile", "self", "depends", "edit the caller's player profile"),
@@ -170,30 +181,45 @@ ROUTES: tuple[AuthzRoute, ...] = (
     R("POST", PLAYER + "/characters", "self", "depends",
       "link a character to the caller's profile"),
     R("PUT", PLAYER + "/characters/{character_id}", "self", "inline",
-      "edit one of the caller's characters"),
+      "edit one of the caller's characters", owned=True, actor="member",
+      build=lambda w: _r({"character_id": w.my_hub.character.id}, None, {})),
     R("DELETE", PLAYER + "/characters/{character_id}", "self", "inline",
-      "unlink one of the caller's characters"),
+      "unlink one of the caller's characters", owned=True, actor="member",
+      build=lambda w: _r({"character_id": w.my_hub.character.id})),
+    # The actor reaches the Lodestone fetch, stubbed to 409 in the test file (R-A2-8).
     R("POST", PLAYER + "/characters/{character_id}/sync-gear", "self", "inline",
-      "sync gear for one of the caller's characters"),
+      "sync gear for one of the caller's characters", owned=True, actor="member",
+      build=lambda w: _r({"character_id": w.my_hub.character.id})),
     R("POST", PLAYER + "/goals", "self", "depends", "add a personal goal"),
-    R("PUT", PLAYER + "/goals/{goal_id}", "self", "inline", "edit one of the caller's goals"),
+    R("PUT", PLAYER + "/goals/{goal_id}", "self", "inline", "edit one of the caller's goals",
+      owned=True, actor="member",
+      build=lambda w: _r({"goal_id": w.my_hub.goal.id}, None, {"title": "Renamed goal"})),
     R("DELETE", PLAYER + "/goals/{goal_id}", "self", "inline",
-      "delete one of the caller's goals"),
+      "delete one of the caller's goals", owned=True, actor="member",
+      build=lambda w: _r({"goal_id": w.my_hub.goal.id})),
     R("POST", PLAYER + "/jobs", "self", "depends", "add a job to the caller's profile"),
     R("PUT", PLAYER + "/jobs/{job_profile_id}", "self", "inline",
-      "edit one of the caller's jobs"),
+      "edit one of the caller's jobs", owned=True, actor="member",
+      build=lambda w: _r({"job_profile_id": w.my_hub.job.id}, None, {})),
     R("DELETE", PLAYER + "/jobs/{job_profile_id}", "self", "inline",
-      "delete one of the caller's jobs"),
+      "delete one of the caller's jobs", owned=True, actor="member",
+      build=lambda w: _r({"job_profile_id": w.my_hub.job.id})),
     R("POST", PLAYER + "/jobs/{job_profile_id}/bis-targets", "self", "inline",
-      "add a BiS target to the caller's job"),
+      "add a BiS target to the caller's job", owned=True, actor="member",
+      build=lambda w: _r({"job_profile_id": w.my_hub.job.id}, None, {"name": "Job BiS 2"})),
     R("PUT", PLAYER + "/jobs/{job_profile_id}/bis-targets/{target_id}", "self", "inline",
-      "edit the caller's BiS target"),
+      "edit the caller's BiS target", owned=True, actor="member",
+      build=lambda w: _r(_hub_bis(w), None, {"name": "Renamed BiS"})),
     R("DELETE", PLAYER + "/jobs/{job_profile_id}/bis-targets/{target_id}", "self", "inline",
-      "delete the caller's BiS target"),
+      "delete the caller's BiS target", owned=True, actor="member",
+      build=lambda w: _r(_hub_bis(w))),
+    # Imports answer 400 "No external URL configured": a domain 4xx the actor probe accepts.
     R("POST", PLAYER + "/jobs/{job_profile_id}/bis-targets/{target_id}/import", "self",
-      "inline", "import gear into the caller's BiS target"),
+      "inline", "import gear into the caller's BiS target", owned=True, actor="member",
+      build=lambda w: _r(_hub_bis(w))),
     R("POST", PLAYER + "/jobs/{job_profile_id}/bis-targets/{target_id}/set-active", "self",
-      "inline", "make the caller's BiS target active"),
+      "inline", "make the caller's BiS target active", owned=True, actor="member",
+      build=lambda w: _r(_hub_bis(w))),
     R("PUT", ME + "/collection-intent/{catalog_item_id}", "self", "depends",
       "set the caller's intent for a collectible"),
     R("DELETE", ME + "/collection-intent/{catalog_item_id}", "self", "depends",
@@ -231,26 +257,32 @@ ROUTES: tuple[AuthzRoute, ...] = (
 
     # ── shared BiS targets: profile targets are self, roster targets lead ───
     R("POST", BIS, "self", "inline", "add a BiS target to the caller's job profile",
-      variant="profile"),
+      variant="profile", owned=True, actor="member",
+      build=lambda w: _r({}, None, {"ownerType": "player_job_profile",
+                                    "ownerId": w.my_hub.job.id, "name": "Profile BiS 2"})),
     R("POST", BIS, "lead", "helper", "add a BiS target to a roster card", variant="roster",
       build=lambda w: _r({}, None, {"ownerType": "roster_member_job",
                                     "ownerId": w.card["open"].id, "name": "Roster BiS 2"})),
     R("PATCH", BIS + "/{target_id}", "self", "inline", "edit the caller's profile BiS target",
-      variant="profile"),
+      variant="profile", owned=True, actor="member",
+      build=lambda w: _r({"target_id": w.my_hub.bis.id}, None, {"name": "Renamed BiS"})),
     R("PATCH", BIS + "/{target_id}", "lead", "helper", "edit a roster BiS target",
       variant="roster",
       build=lambda w: _r({"target_id": w.roster_bis.id}, None, {"name": "Renamed BiS"})),
     R("DELETE", BIS + "/{target_id}", "self", "inline", "delete the caller's profile BiS target",
-      variant="profile"),
+      variant="profile", owned=True, actor="member",
+      build=lambda w: _r({"target_id": w.my_hub.bis.id})),
     R("DELETE", BIS + "/{target_id}", "lead", "helper", "delete a roster BiS target",
       variant="roster", build=lambda w: _r({"target_id": w.roster_bis.id})),
     R("POST", BIS + "/{target_id}/import", "self", "inline",
-      "import gear into the caller's profile BiS target", variant="profile"),
+      "import gear into the caller's profile BiS target", variant="profile", owned=True,
+      actor="member", build=lambda w: _r({"target_id": w.my_hub.bis.id})),
     R("POST", BIS + "/{target_id}/import", "lead", "helper",
       "import gear into a roster BiS target", variant="roster",
       build=lambda w: _r({"target_id": w.roster_bis.id})),
     R("POST", BIS + "/{target_id}/set-active", "self", "inline",
-      "make the caller's profile BiS target active", variant="profile"),
+      "make the caller's profile BiS target active", variant="profile", owned=True,
+      actor="member", build=lambda w: _r({"target_id": w.my_hub.bis.id})),
     R("POST", BIS + "/{target_id}/set-active", "lead", "helper",
       "make a roster BiS target active", variant="roster",
       build=lambda w: _r({"target_id": w.roster_bis.id})),
@@ -290,7 +322,8 @@ ROUTES: tuple[AuthzRoute, ...] = (
       build=lambda w: _r(_g(w, invitation_id=w.invitation.id))),
 
     # ── join requests (the static comes from the request) ───────────────────
-    R("POST", JR + "/cancel", "self", "inline", "withdraw the caller's own application"),
+    R("POST", JR + "/cancel", "self", "inline", "withdraw the caller's own application",
+      owned=True, actor="applicant", build=lambda w: _r({"request_id": w.join_request.id})),
     R("POST", JR + "/accept", "lead", "helper", "accept an application",
       build=lambda w: _r({"request_id": w.join_request.id})),
     R("POST", JR + "/decline", "lead", "helper", "decline an application",
