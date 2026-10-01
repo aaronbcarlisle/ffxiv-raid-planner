@@ -68,7 +68,9 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Viewers can\'t edit weapon priorities or character registrations',
         description:
-          'The server now refuses a viewer who edits weapon priorities or character registrations on a card linked to them, matching what the app already allowed. Found by the new authorization table, which lists every route that changes data with the minimum role it needs.',
+          'The server now refuses a viewer who edits weapon priorities or character registrations on a card linked to them, matching what the app already refused. Found by the new authorization table, which lists every route that changes data with the minimum role it needs.',
+        pr: 332,
+        prTitle: 'fix(api): P0b — AUTHZ route table, role probes, plugin contract and two viewer gates (AUTHZ)',
         internal: true,
       },
     ],
