@@ -12,7 +12,11 @@ read it are in `tests/test_authz_matrix.py`.
   Builds that read `w.me`, `w.my_card`, `w.my_drop`, `w.my_suggestion` or
   `w.my_reg` resolve to the caller's own object (a viewer probe targets the
   viewer's own card: the strongest case for a viewer).
-- `actor`: who the committed allowed-actor probe sends the request as.
+- `actor`: who the committed allowed-actor probe sends the request as. For a `plugin` row it
+  is also the user whose minted `xrp_` key the plugin-contract test sends (R-P0-8.6).
+- `plugin`: the Dalamud plugin calls this route (`RaidPlannerClient.cs`). The contract test
+  sends it with only `Authorization: Bearer xrp_…`; `plugin_body(world)` replaces the build's
+  body where the plugin's DTO differs from the row's usual edit.
 - `variant`: names the body shape or target when one route carries two rulings
   (e.g. own card = member, someone else's card = lead).
 - `gaps`: `(probe, reason)` pairs marked strict xfail until the gap is fixed.
@@ -36,6 +40,7 @@ class AuthzRoute:
     gate: str
     intent: str
     plugin: bool = False
+    plugin_body: Callable[[Any], Any] | None = None
     dev_only: bool = False
     build: Callable[[Any], Request] | None = None
     actor: str = "owner"
@@ -136,7 +141,10 @@ ROUTES: tuple[AuthzRoute, ...] = (
     R("POST", ERRS + "/{fingerprint}/unreview", "admin", "depends",
       "reopen an error group (JWT admin)"),
     R("POST", CAT + "/import-verified-ids", "admin_or_key", "inline",
-      "import verified catalog ids (admin, key allowed)"),
+      "import verified catalog ids (admin, key allowed)", plugin=True, actor="admin",
+      build=lambda w: _r({}, None, [{"sourceDutyKey": TRIAL_ID, "rewardName": "Test Mount",
+                                     "gameMountId": 1, "confidence": "exact",
+                                     "verifiedBy": "plugin_lumina"}])),
     R("POST", CAT + "/seed", "admin_or_key", "inline", "seed the collection catalog (admin)"),
     R("POST", CAT + "/sync", "admin_or_key", "inline", "sync the collection catalog (admin)"),
     R("POST", "/api/discord/interactions", "public", "inline",
@@ -192,13 +200,31 @@ ROUTES: tuple[AuthzRoute, ...] = (
 
     # ── plugin sync routes (the caller's own data) ──────────────────────────
     R("POST", "/api/plugin/collections/sync", "self", "depends",
-      "plugin syncs the caller's collection"),
+      "plugin syncs the caller's collection", plugin=True, actor="member",
+      build=lambda w: _r({}, None, {"characterName": "Member Card", "characterWorld": "Tonberry",
+                                    "pluginVersion": "1.0.0",
+                                    "mounts": [{"trialId": TRIAL_ID, "owned": True}],
+                                    "currencies": [{"tokenName": "Valigarmanda Totem",
+                                                    "count": 2}]})),
     R("POST", "/api/plugin/mount-farms/sync", "self", "inline",
-      "plugin syncs the caller's mount progress (viewer statics skipped)"),
+      "plugin syncs the caller's mount progress (viewer statics skipped)", plugin=True,
+      actor="member",
+      build=lambda w: _r({}, None, {"characterName": "Member Card", "characterWorld": "Tonberry",
+                                    "mounts": [{"mountId": 1, "trialId": TRIAL_ID,
+                                                "owned": True}],
+                                    "totems": [{"itemId": 2, "trialId": TRIAL_ID, "count": 3}],
+                                    "source": "plugin", "pluginVersion": "1.0.0"})),
     R("POST", "/api/plugin/player/gear-sync", "self", "depends",
       "plugin syncs the caller's current gear"),
     R("POST", "/api/plugin/player/batch-gear-sync", "self", "depends",
-      "plugin syncs the caller's gearsets"),
+      "plugin syncs the caller's gearsets", plugin=True, actor="member",
+      build=lambda w: _r({}, None, {"characterName": "Member Card", "characterWorld": "Tonberry",
+                                    "gearsets": [{"gearsetIndex": 0, "gearsetName": "DRG",
+                                                  "job": "DRG", "classJobId": 22,
+                                                  "gear": [{"slot": "weapon", "hasItem": True,
+                                                            "currentSource": "savage",
+                                                            "itemId": 1, "itemLevel": 730}]}],
+                                    "source": "plugin", "pluginVersion": "1.0.0"})),
 
     # ── shared BiS targets: profile targets are self, roster targets lead ───
     R("POST", BIS, "self", "inline", "add a BiS target to the caller's job profile",
@@ -289,6 +315,13 @@ ROUTES: tuple[AuthzRoute, ...] = (
     R("POST", T + "/players", "lead", "helper", "add a roster card",
       build=lambda w: _r(_t(w), None, {"name": "New Card"})),
     R("PUT", P, "member", "inline", "edit your own roster card", variant="own", actor="member",
+      plugin=True,
+      plugin_body=lambda w: {"gear": [{"slot": "weapon", "bisSource": "raid",
+                                       "currentSource": "savage", "hasItem": True,
+                                       "isAugmented": False, "itemId": 1, "itemLevel": 730,
+                                       "materia": []}],
+                             "tomeWeapon": {"pursuing": False, "hasItem": False,
+                                            "isAugmented": False}},
       build=lambda w: _r(_card(w, w.my_card), None, {"rosterNote": "My note"})),
     R("PUT", P, "lead", "inline", "edit someone else's roster card", variant="other",
       build=lambda w: _r(_card(w, w.card["open"]), None, {"name": "Renamed Card"})),
@@ -333,12 +366,12 @@ ROUTES: tuple[AuthzRoute, ...] = (
 
     # ── loot, materials, pages, weeks ───────────────────────────────────────
     R("POST", T + "/loot-log", "member", "inline", "log a purchase for your own card",
-      variant="purchase", actor="member",
+      variant="purchase", actor="member", plugin=True,
       build=lambda w: _r(_t(w), None, {"weekNumber": 1, "floor": "M9S", "itemSlot": "ring1",
                                        "recipientPlayerId": w.my_card.id,
                                        "method": "purchase"})),
     R("POST", T + "/loot-log", "lead", "inline", "log a drop (or anyone else's purchase)",
-      variant="drop",
+      variant="drop", actor="lead", plugin=True,
       build=lambda w: _r(_t(w), None, {"weekNumber": 1, "floor": "M9S", "itemSlot": "hands",
                                        "recipientPlayerId": w.card["open"].id,
                                        "method": "drop"})),
@@ -348,12 +381,14 @@ ROUTES: tuple[AuthzRoute, ...] = (
       build=lambda w: _r(_t(w, entry_id=str(w.loot.id)))),
     R("POST", T + "/material-log", "member", "inline",
       "log a material purchase for your own card", variant="purchase", actor="member",
+      plugin=True,
       build=lambda w: _r(_t(w), None, {"weekNumber": 1, "floor": "M10S",
                                        "materialType": "glaze",
                                        "recipientPlayerId": w.my_card.id,
                                        "method": "purchase"})),
     R("POST", T + "/material-log", "lead", "inline",
-      "log a material drop (or anyone else's purchase)", variant="drop",
+      "log a material drop (or anyone else's purchase)", variant="drop", actor="lead",
+      plugin=True,
       build=lambda w: _r(_t(w), None, {"weekNumber": 1, "floor": "M10S",
                                        "materialType": "glaze",
                                        "recipientPlayerId": w.card["open"].id,
@@ -363,6 +398,7 @@ ROUTES: tuple[AuthzRoute, ...] = (
     R("DELETE", T + "/material-log/{entry_id}", "lead", "helper", "delete a material entry",
       build=lambda w: _r(_t(w, entry_id=str(w.material.id)))),
     R("POST", T + "/mark-floor-cleared", "lead", "helper", "credit pages for a cleared floor",
+      plugin=True, actor="lead",
       build=lambda w: _r(_t(w), None, {"weekNumber": 1, "floor": "M9S",
                                        "playerIds": [w.card["open"].id]})),
     R("POST", T + "/page-ledger", "lead", "helper", "add a page ledger entry",

@@ -8,16 +8,18 @@ import uuid
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 import pytest
 import pytest_asyncio
 from fastapi.routing import iter_route_contexts
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
 from app.main import app
+from app.middleware.csrf import CSRF_HEADER_NAME
 from app.models import MemberRole, ScheduleSettings, StaticContentSuggestionVote, User
 from tests.authz_matrix import ROUTES, AuthzRoute
 from tests.factories import (
@@ -48,7 +50,8 @@ from tests.factories import (
 MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_ERROR = "csrf_validation_failed"
 WORLD_USERS = (
-    "owner", "lead", "member", "member2", "viewer", "outsider", "applicant", "applicant2"
+    "owner", "lead", "member", "member2", "viewer", "outsider", "applicant", "applicant2",
+    "admin",
 )
 
 CS = "/api/static-groups/{group_id}/content-suggestions"
@@ -134,6 +137,7 @@ async def build_world(session: AsyncSession) -> World:
         for n in WORLD_USERS
     }
 
+    u["admin"].is_admin = True  # outside the static: only the admin-key plugin row uses them
     group = await create_static_group(session, u["owner"], settings={"splitClearMode": True})
     await create_membership(session, u["lead"], group, role=MemberRole.LEAD)
     await create_membership(session, u["member"], group, role=MemberRole.MEMBER)
@@ -407,3 +411,96 @@ async def test_allowed_actor_gets_through(client, world, row):
     assert ok and _error_code(resp) != CSRF_ERROR, (
         f"{row.id}: {row.actor} got {resp.status_code} {resp.text[:300]}"
     )
+
+
+# ── R-P0-8.6: the plugin contract (bare xrp_ key, no CSRF, 2xx) ──────────────
+
+G = "/api/static-groups/{group_id}"
+T = G + "/tiers/{tier_id}"
+# Transcribed from XIVRaidPlannerPlugin/Api/RaidPlannerClient.cs. Un-flagging a row fails
+# test_plugin_rows_match_the_client. plugin/player/gear-sync (single) is not called by the
+# client, and plugin-auth/exchange is public: neither belongs here.
+PLUGIN_MUTATIONS = {
+    ("POST", T + "/loot-log"),
+    ("POST", T + "/material-log"),
+    ("POST", T + "/mark-floor-cleared"),
+    ("POST", "/api/plugin/mount-farms/sync"),
+    ("POST", "/api/plugin/collections/sync"),
+    ("POST", "/api/plugin/player/batch-gear-sync"),
+    ("POST", "/api/admin/collection-catalog/import-verified-ids"),
+    ("POST", G + "/split-clear/mark-run-cleared"),
+    ("PUT", T + "/players/{player_id}"),
+}
+# The GET calls the client makes, sent as the member (the gear route on their own card).
+PLUGIN_GETS = [
+    "/api/auth/me",
+    "/api/static-groups",
+    G + "/tiers",
+    T + "/priority",
+    T + "/current-week",
+    T + "/players",
+    T + "/players/{player_id}/gear",
+    G + "/split-clear",
+    "/api/plugin/mount-farms/catalog",
+]
+PLUGIN_ROWS = [r for r in ROUTES if r.plugin]
+
+
+def test_plugin_rows_match_the_client():
+    flagged = {(r.method, r.path) for r in PLUGIN_ROWS}
+    assert flagged == PLUGIN_MUTATIONS, (
+        f"plugin rows differ from the client. unflagged: {sorted(PLUGIN_MUTATIONS - flagged)}"
+        f" flagged but not called: {sorted(flagged - PLUGIN_MUTATIONS)}"
+    )
+
+
+async def _mint_key(client: AsyncClient, user: User) -> str:
+    """Mint an xrp_ key under the user's JWT, the way the Settings page does."""
+    resp = await client.post(
+        "/api/auth/api-keys",
+        json={"name": "AUTHZ plugin contract"},
+        headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
+    )
+    assert resp.status_code == 201, resp.text
+    key = resp.json()["key"]
+    assert key.startswith("xrp_")
+    return key
+
+
+async def _send_bare(method: str, url: str, key: str, body: Any = None) -> httpx.Response:
+    """The plugin's request: only `Authorization`. No auth cookie, no CSRF header or cookie.
+
+    A fresh client (the test client carries a CSRF cookie and injects the header) on the same app.
+    """
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as bare:
+        assert not bare.cookies
+        resp = await bare.request(
+            method, url, json=body, headers={"Authorization": f"Bearer {key}"}
+        )
+    sent = {name.lower() for name in resp.request.headers}
+    assert "cookie" not in sent and CSRF_HEADER_NAME.lower() not in sent, sent
+    return resp
+
+
+@pytest.mark.parametrize("row", [pytest.param(r, id=r.id) for r in PLUGIN_ROWS])
+async def test_plugin_mutation_works_with_a_bare_key(client, world, row):
+    """A JWT-only regression on a plugin route fails here (the plugin sends no CSRF token)."""
+    params, query, body = row.build(world.as_(row.actor))
+    if row.plugin_body is not None:
+        body = row.plugin_body(world.as_(row.actor))
+    key = await _mint_key(client, world.u[row.actor])
+    url = row.path.format(**params)
+    if query:
+        url += "?" + urlencode(query)
+    resp = await _send_bare(row.method, url, key, body)
+    assert 200 <= resp.status_code < 300, (
+        f"{row.id}: key of {row.actor} got {resp.status_code} {resp.text[:300]}"
+    )
+
+
+@pytest.mark.parametrize("path", PLUGIN_GETS)
+async def test_plugin_read_works_with_a_bare_key(client, world, path):
+    me = world.as_("member")
+    url = path.format(group_id=world.group.id, tier_id=world.tier.tier_id, player_id=me.my_card.id)
+    resp = await _send_bare("GET", url, await _mint_key(client, me.me))
+    assert 200 <= resp.status_code < 300, f"GET {path}: got {resp.status_code} {resp.text[:300]}"
