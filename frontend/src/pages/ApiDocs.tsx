@@ -601,7 +601,7 @@ export default function ApiDocs() {
             <EndpointCard
               method="GET"
               path="/api/static-groups/by-code/{shareCode}"
-              description="Get a static group by its share code. Returns the group if public or user is a member. owner and each member's user are null when the caller isn't a member."
+              description="Get a static group by its share code. Returns the group if public or user is a member. owner and each member's user are null when the caller is neither a member of the static nor a site admin."
               responseBody={`{
   "id": "uuid",
   "name": "My Static",
@@ -623,7 +623,7 @@ export default function ApiDocs() {
             <EndpointCard
               method="GET"
               path="/api/static-groups/{id}"
-              description="Get a static group by ID. Public groups allow anonymous access. owner and each member's user are null when the caller isn't a member."
+              description="Get a static group by ID. Public groups allow anonymous access. owner and each member's user are null when the caller is neither a member of the static nor a site admin."
               responseBody={`{
   "id": "uuid",
   "name": "My Static",
