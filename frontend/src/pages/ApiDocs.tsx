@@ -684,7 +684,7 @@ export default function ApiDocs() {
             <EndpointCard
               method="GET"
               path="/api/static-groups/{id}/members"
-              description="List all members of a static group."
+              description="List all members of a static group. Each member's user is null when the caller is neither a member of the static nor a site admin."
               auth={true}
               responseBody={`[
   {
@@ -808,7 +808,7 @@ export default function ApiDocs() {
             <EndpointCard
               method="GET"
               path="/api/static-groups/{id}/tiers/{tierId}"
-              description="Get a tier snapshot with all players."
+              description="Get a tier snapshot with all players. linkedUser is null when the caller is neither a member of the static nor a site admin."
               responseBody={`{
   "id": "uuid",
   "tierId": "aac-heavyweight",
@@ -883,7 +883,7 @@ export default function ApiDocs() {
             <EndpointCard
               method="GET"
               path="/api/static-groups/{id}/tiers/{tierId}/players"
-              description="List all players in a tier snapshot."
+              description="List all players in a tier snapshot. linkedUser is null when the caller is neither a member of the static nor a site admin."
               responseBody={`[
   {
     "id": "uuid",
@@ -1057,7 +1057,7 @@ export default function ApiDocs() {
             <EndpointCard
               method="GET"
               path="/api/static-groups/{id}/tiers/{tierId}/loot-log"
-              description="Get loot log entries. Optionally filter by week using ?week=N query parameter."
+              description="Get loot log entries. Optionally filter by week using ?week=N query parameter. createdByUsername is null when the caller is neither a member of the static nor a site admin."
               responseBody={`[
   {
     "id": 1,
@@ -1158,7 +1158,7 @@ export default function ApiDocs() {
             <EndpointCard
               method="GET"
               path="/api/static-groups/{id}/tiers/{tierId}/page-ledger"
-              description="Get page ledger entries for book tracking. Optionally filter by week using ?week=N query parameter."
+              description="Get page ledger entries for book tracking. Optionally filter by week using ?week=N query parameter. createdByUsername is null when the caller is neither a member of the static nor a site admin."
               responseBody={`[
   {
     "id": 1,
@@ -1247,7 +1247,7 @@ export default function ApiDocs() {
             <EndpointCard
               method="GET"
               path="/api/static-groups/{id}/tiers/{tierId}/material-log"
-              description="Get material log entries (Twine, Glaze, Solvent, Universal Tomestone). Optionally filter by week using ?week=N query parameter."
+              description="Get material log entries (Twine, Glaze, Solvent, Universal Tomestone). Optionally filter by week using ?week=N query parameter. createdByUsername is null when the caller is neither a member of the static nor a site admin."
               responseBody={`[
   {
     "id": 1,

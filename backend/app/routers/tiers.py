@@ -138,12 +138,19 @@ async def get_user_membership_role(session: AsyncSession, user_id: str, group_id
     return membership.role if membership else None
 
 
-def player_to_response(player: SnapshotPlayer, membership_role: str | None = None) -> SnapshotPlayerResponse:
+def player_to_response(
+    player: SnapshotPlayer,
+    membership_role: str | None = None,
+    *,
+    include_identity: bool = True,
+) -> SnapshotPlayerResponse:
     """Convert SnapshotPlayer model to response schema
 
     Args:
         player: The snapshot player to convert
         membership_role: Optional membership role for the linked user (owner/lead/member/viewer)
+        include_identity: False for a caller with no role in the static (GUEST-2 R-G2-2):
+            `linked_user` is None and `user_id` stays as the claim marker.
     """
     gear = [
         GearSlotStatus(
@@ -184,7 +191,7 @@ def player_to_response(player: SnapshotPlayer, membership_role: str | None = Non
 
     # Build linked user info if user is loaded
     linked_user = None
-    if player.user:
+    if include_identity and player.user:
         linked_user = LinkedUserInfo(
             id=player.user.id,
             discord_id=player.user.discord_id,
@@ -270,15 +277,24 @@ def snapshot_to_response(snapshot: TierSnapshot) -> TierSnapshotResponse:
     )
 
 
-def snapshot_to_response_with_players(snapshot: TierSnapshot, membership_map: dict[str, str] | None = None) -> TierSnapshotWithPlayers:
+def snapshot_to_response_with_players(
+    snapshot: TierSnapshot,
+    membership_map: dict[str, str] | None = None,
+    *,
+    include_identity: bool = True,
+) -> TierSnapshotWithPlayers:
     """Convert TierSnapshot model to response schema with players
 
     Args:
         snapshot: The tier snapshot to convert
         membership_map: Optional dict mapping user_id to membership role
+        include_identity: Forwarded to `player_to_response` (GUEST-2 R-G2-2)
     """
     membership_map = membership_map or {}
-    players = [player_to_response(p, membership_map.get(p.user_id)) for p in (snapshot.players or [])]
+    players = [
+        player_to_response(p, membership_map.get(p.user_id), include_identity=include_identity)
+        for p in (snapshot.players or [])
+    ]
 
     return TierSnapshotWithPlayers(
         id=snapshot.id,
@@ -424,9 +440,12 @@ async def get_tier_snapshot(
     """Get a tier snapshot by tier ID.
 
     tier_id can be either the UUID (id) or the tier slug (tier_id).
+
+    A caller with no role in the static gets `linkedUser: null` (GUEST-2 R-G2-2).
     """
     group = await get_static_group(session, group_id)
-    await check_view_permission(session, group, current_user)
+    membership = await check_view_permission(session, group, current_user)
+    identity = membership is not None
 
     # Try to find by UUID first, then by tier slug
     result = await session.execute(
@@ -442,11 +461,11 @@ async def get_tier_snapshot(
     if not snapshot:
         raise NotFound(f"Tier snapshot for '{tier_id}' not found")
 
-    # Build membership role map for linked users
+    # Build membership role map for linked users (skipped when no identity is shown)
     user_ids = [p.user_id for p in snapshot.players if p.user_id]
     membership_map: dict[str, str] = {}
 
-    if user_ids:
+    if identity and user_ids:
         # Fetch memberships for all users in one query
         from ..models import Membership
         result = await session.execute(
@@ -458,7 +477,7 @@ async def get_tier_snapshot(
         memberships = result.scalars().all()
         membership_map = {m.user_id: m.role for m in memberships}
 
-    return snapshot_to_response_with_players(snapshot, membership_map)
+    return snapshot_to_response_with_players(snapshot, membership_map, include_identity=identity)
 
 
 @router.put("/{group_id}/tiers/{tier_id}", response_model=TierSnapshotResponse)
@@ -720,9 +739,12 @@ async def list_snapshot_players(
 
     tier_id can be either the UUID (id) or the tier slug (tier_id) — matches the
     lookup style of the other tier endpoints (get_tier_snapshot, etc.).
+
+    A caller with no role in the static gets `linkedUser: null` (GUEST-2 R-G2-2).
     """
     group = await get_static_group(session, group_id)
-    await check_view_permission(session, group, current_user)
+    membership = await check_view_permission(session, group, current_user)
+    identity = membership is not None
 
     result = await session.execute(
         select(TierSnapshot)
@@ -737,11 +759,11 @@ async def list_snapshot_players(
     if not snapshot:
         raise NotFound(f"Tier snapshot for '{tier_id}' not found")
 
-    # Build membership role map for linked users
+    # Build membership role map for linked users (skipped when no identity is shown)
     user_ids = [p.user_id for p in snapshot.players if p.user_id]
     membership_map: dict[str, str] = {}
 
-    if user_ids:
+    if identity and user_ids:
         # Fetch memberships for all users in one query
         from ..models import Membership
         result = await session.execute(
@@ -753,7 +775,10 @@ async def list_snapshot_players(
         memberships = result.scalars().all()
         membership_map = {m.user_id: m.role for m in memberships}
 
-    return [player_to_response(p, membership_map.get(p.user_id)) for p in snapshot.players]
+    return [
+        player_to_response(p, membership_map.get(p.user_id), include_identity=identity)
+        for p in snapshot.players
+    ]
 
 
 @router.post("/{group_id}/tiers/{tier_id}/players", response_model=SnapshotPlayerResponse, status_code=status.HTTP_201_CREATED)

@@ -13,11 +13,11 @@
  * week drives loot" is literal, not a slogan.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, Lock } from 'lucide-react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Calendar } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../primitives';
-import { ConfirmModal, EmptyState, Modal, TwoRegionDashboard } from '../ui';
-import { LoginButton } from '../auth/LoginButton';
+import { ConfirmModal, Modal, TwoRegionDashboard } from '../ui';
+import { MembersOnlyCard } from '../auth';
 import { PageHeader } from '../layout/PageHeader';
 import { useModal } from '../../hooks/useModal';
 import { useWeekClock } from '../../hooks/useWeekClock';
@@ -80,7 +80,6 @@ function startOfTodayLocal(): Date {
 export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const location = useLocation();
   // R-G1-7: Schedule is members-only. `userRole != null` matches the backend's
   // require_membership (viewers and admins pass), so a non-member makes no
   // sessions / availability / exceptions request at all.
@@ -426,24 +425,10 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
   // "schedule": the PageHeader h1 stays the only heading matching it (smoke
   // test 10's strict-mode locator).
   if (!isMember) {
-    const shared = `Sessions and availability are shared with members of ${group.name}.`;
     return (
       <div data-testid="schedule-screen">
         {header}
-        <EmptyState
-          icon={<Lock size={24} />}
-          heading="Members only"
-          description={
-            currentUserId
-              ? `${shared} Ask a lead for an invite, or send a join request if the static is recruiting.`
-              : `${shared} Log in to ask to join.`
-          }
-        />
-        {!currentUserId && (
-          <div className="flex justify-center -mt-6 pb-8">
-            <LoginButton redirectTo={location.pathname + location.search} />
-          </div>
-        )}
+        <MembersOnlyCard staticName={group.name} subject="Sessions and availability" />
       </div>
     );
   }

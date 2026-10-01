@@ -929,6 +929,19 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
       expect(screen.queryByText('Unclaimed')).not.toBeInTheDocument();
       expect(screen.queryByText('You')).not.toBeInTheDocument();
     });
+
+    it('(pin, GUEST-2 R-G2-3) a guest payload — userId kept, linkedUser null — shows a bare Claimed tag: no name, no avatar', () => {
+      // A caller with no role gets `linkedUser: null` with `userId` intact. The
+      // card must read as someone's, not as unclaimed, and name no one.
+      renderCard(makePlayer({ userId: 'u-1', linkedUser: null }), { currentUserId: '' });
+      const tag = screen.getByText('Claimed');
+      expect(tag).toBeInTheDocument();
+      expect(tag.querySelector('img')).toBeNull();
+      expect(tag.parentElement?.querySelector('img')).toBeNull();
+      expect(screen.queryByText(/Claimed by/)).not.toBeInTheDocument();
+      expect(screen.queryByText('Unclaimed')).not.toBeInTheDocument();
+      expect(screen.queryByText('You')).not.toBeInTheDocument();
+    });
   });
 
   describe('now-vs-BiS metrics (D-10)', () => {

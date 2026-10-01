@@ -8,7 +8,7 @@
  * The shared week clock is seeded via `useLootTrackingStore.setState`
  * (weekStartDate '2026-06-23', currentWeek 2 → week 2 = 2026-06-30…07-06).
  */
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, it, expect, vi, type Mock } from 'vitest';
 import { ApiError } from '../../services/api';
@@ -590,7 +590,7 @@ describe('Schedule — members only (R-G1-7)', () => {
   beforeEach(() => {
     loginMock.mockReset();
     useScheduleStore.setState({ sessions: [sRec] } as never);
-    useAuthStore.setState({ user: null, isLoading: false, login: loginMock } as never);
+    useAuthStore.setState({ user: null, isLoading: false, authInitialized: true, login: loginMock } as never);
   });
 
   function renderAsNonMember(currentUserId: string | null) {
@@ -617,7 +617,12 @@ describe('Schedule — members only (R-G1-7)', () => {
     expect(screen.getByRole('heading', { name: 'Members only' })).toBeInTheDocument();
     // CI twin of smoke test 10's strict-mode locator: exactly one "schedule" heading.
     expect(screen.getAllByRole('heading', { name: /schedule/i })).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'Login with Discord' })).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('members-only-card')).getByRole('button', { name: 'Login with Discord' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(
+      'Sessions and availability are shared with members of ' + group.name + '. Log in to ask to join.',
+    )).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add session' })).toBeNull();
     expect(screen.queryByText('Your availability')).toBeNull();
     // The heatmap never mounts (its prop-capturing wrapper never ran).
@@ -636,7 +641,9 @@ describe('Schedule — members only (R-G1-7)', () => {
 
   it('the guest action logs in and returns to this path + search', () => {
     renderAsNonMember(null);
-    fireEvent.click(screen.getByRole('button', { name: 'Login with Discord' }));
+    fireEvent.click(
+      within(screen.getByTestId('members-only-card')).getByRole('button', { name: 'Login with Discord' }),
+    );
     expect(loginMock).toHaveBeenCalledTimes(1);
     expect(loginMock).toHaveBeenCalledWith('/group/DEVTST?tab=schedule');
   });

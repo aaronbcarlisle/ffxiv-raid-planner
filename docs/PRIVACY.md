@@ -200,6 +200,17 @@ Only admins can view the analytics dashboard and error log. It is not shared wit
 
 ## Privacy Changes History
 
+### v2.1.64 - Member accounts hidden from non-members (October 2026)
+
+**What changed:**
+- Someone who isn't a member of a public static — signed out, or signed in to another account — no longer receives members' Discord usernames, IDs, avatars or display names from the static's pages or API. Site admins, who can open any static, still see members as before. The one other exception is the contact a lead publishes in the static's Finder listing, which is visible only while the listing is live. The roster, gear and loot history stay viewable by share code, as before.
+
+**Why:**
+Nobody outside a static needs to know which Discord accounts are in it. A recruiting contact is shown only once a lead publishes the listing.
+
+**Verification:**
+- Open a public static's share link in a private window, then check DevTools ▸ Network: no response contains `discordUsername`.
+
 ### v1.16.0 - Analytics & Error Reporting (March 2026)
 
 **What changed:**

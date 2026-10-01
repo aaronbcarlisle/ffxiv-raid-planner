@@ -19,7 +19,7 @@
  */
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { AddedPlayerSignal } from './groupActionsContext';
 
 // ── Mock the state hook: pageMode/gearSubTab pinned to the gear→history branch ──
@@ -28,11 +28,12 @@ const noop = vi.fn();
 // isAdminAccess = !viewAsUser && isAdmin && adminMode=true. Both mutated per-test.
 let mockIsAdmin = false;
 let mockAdminMode = false;
+let mockPageMode = 'gear';
 function makeState() {
   return {
     searchParams: new URLSearchParams(mockAdminMode ? 'adminMode=true' : ''),
     setSearchParams: noop,
-    pageMode: 'gear',
+    pageMode: mockPageMode,
     setPageMode: noop,
     gearSubTab: 'history', setGearSubTab: noop,
     lootSubTab: 'gear', setLootSubTab: noop,
@@ -67,7 +68,7 @@ vi.mock('../hooks/useGroupViewState', () => ({
 
 // ── Stores — userRole is the axis under test (mutated per-test via a getter) ──
 const currentTier = { id: 'snap1', tierId: 'm5s', contentType: 'savage', players: [] as unknown[] };
-let mockUserRole: 'member' | 'owner' = 'member';
+let mockUserRole: 'member' | 'owner' | 'viewer' | null = 'member';
 const currentGroup = {
   id: 'g1', name: 'Test Static', shareCode: 'DEVTST', settings: {},
   get userRole() { return mockUserRole; },
@@ -78,7 +79,10 @@ vi.mock('../stores/tierStore', () => ({
 vi.mock('../stores/staticGroupStore', () => ({
   useStaticGroupStore: () => ({ currentGroup, groups: [currentGroup] }),
 }));
-vi.mock('../stores/authStore', () => ({ useAuthStore: () => ({ user: { id: 'u1', isAdmin: mockIsAdmin } }) }));
+vi.mock('../stores/authStore', () => ({
+  useAuthStore: () => ({ user: { id: 'u1', isAdmin: mockIsAdmin } }),
+  useAuthHydrated: () => true,
+}));
 vi.mock('../stores/viewAsStore', () => ({ useViewAsStore: () => ({ viewAsUser: null }) }));
 vi.mock('../stores/lootTrackingStore', () => ({
   useLootTrackingStore: () => ({
@@ -134,6 +138,13 @@ vi.mock('../components/static-group/StaticHomeTab', () => ({
 vi.mock('../components/history/HistoryView', () => ({
   HistoryView: () => <div data-testid="history-view" />,
 }));
+// Tracking's panels: stubbed so the member case needs no network.
+vi.mock('../components/static-group/ObjectiveGoalsPanel', () => ({
+  ObjectiveGoalsPanel: () => <div data-testid="objective-goals-panel" />,
+}));
+vi.mock('../components/collections/CollectionsHub', () => ({
+  CollectionsHub: () => <div data-testid="collections-hub" />,
+}));
 
 import { GroupViewContent } from './GroupViewContent';
 
@@ -174,5 +185,35 @@ describe('GroupViewContent — canManageRoster gate on gear-log Reset Data (mobi
     renderAndOpenControlsSheet();
     expect(screen.getByText('Reset Data')).toBeInTheDocument();
     expect(screen.getByText('Reset Loot Log')).toBeInTheDocument();
+  });
+});
+
+// GUEST-2 R-G2-5 (vet M-2): GroupViewContent hands GoalsPage `isMember={userRole != null}`,
+// matching require_membership (a viewer passes). A non-member gets the members-only card.
+describe('GroupViewContent — Tracking is members-only (GUEST-2)', () => {
+  beforeEach(() => {
+    mockPageMode = 'goals';
+    mockIsAdmin = false;
+    mockAdminMode = false;
+  });
+  afterEach(() => {
+    mockPageMode = 'gear';
+    mockUserRole = 'member';
+  });
+
+  const renderGoals = () => render(<MemoryRouter><GroupViewContent actions={actions} /></MemoryRouter>);
+
+  it('a non-member (userRole null) sees the members-only card and no panels', () => {
+    mockUserRole = null;
+    renderGoals();
+    expect(screen.getByTestId('members-only-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('objective-goals-panel')).toBeNull();
+  });
+
+  it('(pin) a viewer sees the page, not the card', () => {
+    mockUserRole = 'viewer';
+    renderGoals();
+    expect(screen.queryByTestId('members-only-card')).toBeNull();
+    expect(screen.getByTestId('objective-goals-panel')).toBeInTheDocument();
   });
 });
