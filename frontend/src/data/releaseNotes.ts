@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.64';
+export const CURRENT_VERSION = '2.1.65';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,30 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.65',
+    date: '2026-10-01T21:10:03Z',
+    title: 'Buttons match what your role can do',
+    items: [
+      {
+        category: 'fix',
+        title: 'No Track button for members who can\'t create farms',
+        description:
+          'In Goals & Farms\' catalog, the Track button now shows only to owners and leads, who can create a farm goal. Members and viewers no longer see a button that always failed.',
+        pr: 350,
+        prTitle: 'fix(ui): W0 ROLE-1 — hide what a role can\'t use on Home, Roster, Loot and Tracking',
+      },
+      {
+        category: 'improvement',
+        title: 'V2 preview: lead-only controls are hidden, not greyed out',
+        description:
+          'V2 preview: members, viewers and visitors no longer see disabled lead controls on Home, Roster, Loot and Tracking. Add player, Reorder and the card menu\'s lead items are hidden, seat and BiS-source chips on other players\' cards are plain labels, a member\'s own books row is read-only until member book logging ships, Home offers "View loot priority" and "View schedule" instead of lead actions, and Take Ownership needs a membership.',
+        pr: 350,
+        prTitle: 'fix(ui): W0 ROLE-1 — hide what a role can\'t use on Home, Roster, Loot and Tracking',
+        internal: true,
+      },
+    ],
+  },
   {
     version: '2.1.64',
     date: '2026-10-01T17:34:00Z',

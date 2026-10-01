@@ -10,8 +10,8 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
-import type { SnapshotPlayer } from '../../types';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import type { MemberRole, SnapshotPlayer } from '../../types';
 import { CharacterManageBridge } from './CharacterManageBridge';
 
 vi.mock('./RosterCharacterPanel', () => ({
@@ -75,13 +75,19 @@ function makePlayer(overrides: Partial<SnapshotPlayer> = {}): SnapshotPlayer {
   } as unknown as SnapshotPlayer;
 }
 
-function openCharacters() {
-  fireEvent.click(screen.getByRole('button', { name: /manage characters/i }));
+/** The entry's label: "Manage characters" with something to edit, "Characters" otherwise (R-R1-8). */
+function openCharacters(label: 'Manage characters' | 'Characters' = 'Manage characters') {
+  fireEvent.click(screen.getByRole('button', { name: label }));
+}
+
+/** The Lodestone list's rows (the registry panel below it is mocked away). */
+function syncRows() {
+  return screen.getAllByRole('listitem');
 }
 
 describe('CharacterManageBridge', () => {
   it('opens the character panel in a modal', () => {
-    render(<CharacterManageBridge groupId="g1" players={PLAYERS} canEdit />);
+    render(<CharacterManageBridge groupId="g1" players={PLAYERS} canEdit userRole="owner" currentUserId="u1" />);
 
     expect(screen.queryByTestId('char-panel')).not.toBeInTheDocument();
 
@@ -91,13 +97,27 @@ describe('CharacterManageBridge', () => {
   });
 
   it('closes the modal when the close button is clicked', () => {
-    render(<CharacterManageBridge groupId="g1" players={PLAYERS} canEdit />);
+    render(<CharacterManageBridge groupId="g1" players={PLAYERS} canEdit userRole="owner" currentUserId="u1" />);
 
     openCharacters();
     expect(screen.getByTestId('char-panel')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /close modal/i }));
     expect(screen.queryByTestId('char-panel')).not.toBeInTheDocument();
+  });
+
+  // ROLE-1 (R-R1-8): a guest's list request 401s, so there is no entry at all
+  // without a signed-in user. Signed-in non-members and viewers may read the
+  // list (V1 shows it to every role), so they keep a read-only "Characters".
+  it('renders nothing for a guest (no signed-in user)', () => {
+    render(<CharacterManageBridge groupId="g1" players={PLAYERS} canEdit={false} userRole={null} currentUserId={null} />);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('labels the entry "Manage characters" for a manager with an empty roster (the registry is still editable)', () => {
+    render(<CharacterManageBridge groupId="g1" players={PLAYERS} canEdit userRole="owner" currentUserId="u1" />);
+    expect(screen.getByRole('button', { name: 'Manage characters' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Characters' })).not.toBeInTheDocument();
   });
 });
 
@@ -107,14 +127,17 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
     makePlayer({ id: 'p2', name: 'Sage Main', job: 'SGE', lodestoneId: '910001', lodestoneName: 'Mock Raider', lodestoneServer: 'Gilgamesh' }),
   ];
 
-  it('offers a Lodestone entry per player', () => {
+  it('offers a Lodestone entry per player (pin: an owner gets an enabled button on every row)', () => {
     render(
       <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdminAccess={false} />,
     );
     openCharacters();
 
-    expect(screen.getByRole('button', { name: /Lodestone Sync for Warrior Main/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Re-sync Lodestone for Sage Main/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Lodestone Sync for Warrior Main/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Re-sync Lodestone for Sage Main/i })).toBeEnabled();
+    for (const row of syncRows()) {
+      expect(within(row).getByRole('button')).toBeEnabled();
+    }
   });
 
   it('names the linked character on a synced player', () => {
@@ -182,10 +205,18 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
   });
 
   // Legacy gates R-041 on canEditPlayer (per player), NOT on the roster-level
-  // manage permission — a member can sync their own claimed card.
-  it('lets a member sync their own card but not another player', () => {
+  // manage permission — a member can sync their own claimed card. ROLE-1
+  // (R-R1-8): another's row shows its identity line and no button at all.
+  it("lets a member sync their own card; another's row has its identity line and no button", () => {
     const own = makePlayer({ id: 'p1', name: 'Warrior Main', userId: 'u1' } as Partial<SnapshotPlayer>);
-    const other = makePlayer({ id: 'p2', name: 'Sage Main', userId: 'u2' } as Partial<SnapshotPlayer>);
+    const other = makePlayer({
+      id: 'p2',
+      name: 'Sage Main',
+      userId: 'u2',
+      lodestoneId: '910001',
+      lodestoneName: 'Mock Raider',
+      lodestoneServer: 'Gilgamesh',
+    } as Partial<SnapshotPlayer>);
 
     render(
       <CharacterManageBridge
@@ -197,10 +228,19 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
         isAdminAccess={false}
       />,
     );
-    openCharacters();
+    // The member can edit one row, so the entry still names the action.
+    openCharacters('Manage characters');
 
+    expect(screen.getByRole('heading', { name: 'Lodestone sync' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Lodestone Sync for Warrior Main/i })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /Lodestone Sync for Sage Main/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /Lodestone for Sage Main/i })).not.toBeInTheDocument();
+    const [ownRow, otherRow] = syncRows();
+    expect(within(ownRow).getByText('Not linked')).toBeInTheDocument();
+    expect(within(otherRow).getByText('Mock Raider · Gilgamesh')).toBeInTheDocument();
+    expect(within(otherRow).queryByRole('button')).not.toBeInTheDocument();
+    // Nothing in the modal is disabled: the row without rights has no control.
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getAllByRole('button').filter((b) => (b as HTMLButtonElement).disabled)).toEqual([]);
   });
 
   // Legacy renders a full PlayerCard — kebab and all — for substitutes
@@ -226,15 +266,20 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
     expect(screen.getByText('1/3 linked')).toBeInTheDocument();
   });
 
-  // A disabled Button is `pointer-events-none`, so a native `title` can never
-  // fire — the reason has to be rendered, not attached.
-  it('shows why an entry is unavailable instead of only attaching a title', () => {
+  // ROLE-1 (R-R1-8): a row the user can't edit shows its identity line, not a
+  // reason — there is no disabled control left to explain.
+  it('shows the identity line, never a permission reason, on a row the user cannot edit', () => {
     render(
       <CharacterManageBridge groupId="g1" players={players} canEdit={false} userRole="viewer" currentUserId="u1" isAdminAccess={false} />,
     );
-    openCharacters();
+    openCharacters('Characters');
 
-    expect(screen.getAllByText(/Viewers cannot edit players/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Viewers cannot edit players/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Linked characters' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Lodestone sync' })).not.toBeInTheDocument();
+    const [unlinked, linked] = syncRows();
+    expect(within(unlinked).getByText('Not linked')).toBeInTheDocument();
+    expect(within(linked).getByText('Mock Raider · Gilgamesh')).toBeInTheDocument();
   });
 
   it('falls back to the same placeholder in the accessible name as on screen', () => {
@@ -271,13 +316,22 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
     expect(screen.getByTestId('char-panel')).toBeInTheDocument();
   });
 
-  it('disables every entry for a viewer', () => {
+  // ROLE-1 (R-R1-8): the entry never names an action the user can't take.
+  const readOnlyRoles: Array<[string, MemberRole | null]> = [
+    ['a viewer', 'viewer'],
+    ['a signed-in non-member', null],
+  ];
+  it.each(readOnlyRoles)('offers %s a read-only "Characters" whose rows carry no button', (_label, userRole) => {
     render(
-      <CharacterManageBridge groupId="g1" players={players} canEdit={false} userRole="viewer" currentUserId="u1" isAdminAccess={false} />,
+      <CharacterManageBridge groupId="g1" players={players} canEdit={false} userRole={userRole} currentUserId="u1" isAdminAccess={false} />,
     );
-    openCharacters();
+    expect(screen.queryByRole('button', { name: 'Manage characters' })).not.toBeInTheDocument();
+    openCharacters('Characters');
 
-    expect(screen.getByRole('button', { name: /Lodestone Sync for Warrior Main/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Re-sync Lodestone for Sage Main/i })).toBeDisabled();
+    expect(screen.getByTestId('char-panel')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Lodestone/i })).not.toBeInTheDocument();
+    for (const row of syncRows()) {
+      expect(within(row).queryByRole('button')).not.toBeInTheDocument();
+    }
   });
 });
