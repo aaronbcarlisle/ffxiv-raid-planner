@@ -6,8 +6,8 @@
   2. backend .py — ruff pyflakes + syntax rules (F, E9), reported as a DELTA
      against HEAD. Ruff is not CI-gated and the backend carries ~1k legacy
      violations; only violations this edit introduced are fed back.
-CRLF in an eol=lf file is flagged by the user-level line_endings hook
-(abc-claude), so this hook no longer checks it.
+  3. Any text file whose .gitattributes eol is lf — warn if it now holds CRLF
+     (CRLF in generated release notes broke the changelog test).
 
 Exit 2 feeds stderr back to Claude as feedback (the edit itself already happened).
 Fails OPEN on unexpected errors. Files outside this repo (scratchpad, another
@@ -124,6 +124,31 @@ def ruff_delta(fp, rel):
     return "ruff (F, E9) — new since HEAD:\n" + "\n".join(new)[-TAIL:]
 
 
+def crlf(fp, rel):
+    """Mixed endings anywhere, or an all-CRLF file git doesn't track yet.
+
+    An all-CRLF *tracked* file is a stale pre-.gitattributes checkout: Edit keeps
+    its endings and git normalizes on commit, so it is not flagged.
+    """
+    with open(fp, "rb") as f:
+        data = f.read()
+    n_crlf = data.count(b"\r\n")
+    if not n_crlf or b"\0" in data[:8000]:
+        return None
+    attr = run(["git", "check-attr", "eol", "--", rel], text=True).stdout
+    if not attr.strip().endswith(": lf"):
+        return None
+    mixed = n_crlf < data.count(b"\n")
+    tracked = run(["git", "ls-files", "--error-unmatch", "--", rel]).returncode == 0
+    if not mixed and tracked:
+        return None
+    what = "mixed CRLF/LF" if mixed else "CRLF"
+    return (
+        f"{rel} now has {what} line endings; the repo is eol=lf. Convert it to LF "
+        f"(re-Write the file, or `sed -i 's/\\r$//' {rel}`)."
+    )
+
+
 def main():
     global ROOT
     try:
@@ -146,7 +171,7 @@ def main():
         return 0
 
     msgs = []
-    checks = []
+    checks = [crlf]
     if rel.startswith("frontend/src/") and rel.endswith((".ts", ".tsx")):
         checks.append(eslint)
     if rel.startswith("backend/") and rel.endswith(".py"):

@@ -24,7 +24,7 @@ Progression tool and home base for FFXIV statics: roster, schedule, loot, gear. 
 ## Pitfalls
 
 - `releaseNotes.ts` strings are single-quoted — escape `'` as `\'` (broke the build twice). Edit it with Edit/Write only, never via a shell.
-- Repo is `eol=lf`; generated text must be LF. The user-level `line_endings` hook (abc-claude) warns on CRLF; the post-edit hook here warns on new ruff F-errors.
+- Repo is `eol=lf`; generated text must be LF. The post-edit hook warns on CRLF and on new ruff F-errors.
 - JSX `{n && …}` renders `0` for numbers — use `n > 0 &&`.
 - Async tests await queued work (`findBy*` / `waitFor`) and fail without the fix.
 - No stale store reads on route change or in not-found states — use the selector hooks (`useTierPlayers`, `usePlayersByGroup`).
