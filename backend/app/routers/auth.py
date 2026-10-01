@@ -23,11 +23,11 @@ from ..schemas import (
     DiscordAuthUrl,
     DiscordCallback,
     RefreshTokenRequest,
+    SessionResponse,
     TokenResponse,
     UserPreferencesUpdate,
     UserResponse,
 )
-from ..schemas.user import SessionResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 settings = get_settings()

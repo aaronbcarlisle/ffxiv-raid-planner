@@ -267,6 +267,48 @@ describe('initializeAuth', () => {
       expect(useAuthStore.getState().authInitialized).toBe(true);
     });
 
+    it('200 with { user: {}, canRefresh: false } (user without an id) falls back to /me', async () => {
+      const fetchMock = stubFetch(
+        jsonResponse(200, { user: {}, canRefresh: false }),
+        jsonResponse(200, mockUser),
+        tokenOkResponse()
+      );
+
+      await initializeAuth();
+
+      expect(calledUrls(fetchMock)).toEqual([SESSION_URL, ME_URL, REFRESH_URL]);
+      expect(useAuthStore.getState().user).toEqual(mockUser);
+      expect(useAuthStore.getState().authInitialized).toBe(true);
+    });
+
+    it("200 with { user: 'unexpected', canRefresh: false } (user not an object) falls back to /me", async () => {
+      const fetchMock = stubFetch(
+        jsonResponse(200, { user: 'unexpected', canRefresh: false }),
+        jsonResponse(200, mockUser),
+        tokenOkResponse()
+      );
+
+      await initializeAuth();
+
+      expect(calledUrls(fetchMock)).toEqual([SESSION_URL, ME_URL, REFRESH_URL]);
+      expect(useAuthStore.getState().user).toEqual(mockUser);
+      expect(useAuthStore.getState().authInitialized).toBe(true);
+    });
+
+    it('200 with { canRefresh: false } (no user key) falls back to /me', async () => {
+      const fetchMock = stubFetch(
+        jsonResponse(200, { canRefresh: false }),
+        jsonResponse(200, mockUser),
+        tokenOkResponse()
+      );
+
+      await initializeAuth();
+
+      expect(calledUrls(fetchMock)).toEqual([SESSION_URL, ME_URL, REFRESH_URL]);
+      expect(useAuthStore.getState().user).toEqual(mockUser);
+      expect(useAuthStore.getState().authInitialized).toBe(true);
+    });
+
     it('200 with a non-JSON body falls back to /me', async () => {
       const fetchMock = stubFetch(
         new Response('<!doctype html><title>maintenance</title>', {

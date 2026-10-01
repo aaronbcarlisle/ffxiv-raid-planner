@@ -619,17 +619,42 @@ interface SessionProbe {
 }
 
 /**
+ * Whether `value` is the `user` of a valid /api/auth/session answer: null, or
+ * an object (not an array) with a string `id`, the one field every User has.
+ * A missing key, `{}` or a string is not a valid answer, so a malformed 200
+ * can never read as "signed in".
+ */
+function isSessionUser(value: unknown): value is User | null {
+  if (value === null) return true;
+  return (
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    typeof (value as { id?: unknown }).id === 'string'
+  );
+}
+
+/** Whether `body` is a valid /api/auth/session answer (see probeSession). */
+function isSessionBody(body: unknown): body is SessionProbe {
+  if (typeof body !== 'object' || body === null) return false;
+  const { user, canRefresh } = body as { user?: unknown; canRefresh?: unknown };
+  return typeof canRefresh === 'boolean' && isSessionUser(user);
+}
+
+/**
  * Ask the backend whether this browser has a session. The route always
  * answers 200, so a guest's bootstrap makes no 401.
  *
  * Returns null for anything that is not a valid answer: a non-2xx (a 404 from
  * a backend that has not shipped the route yet — the frontend and backend
- * deploy separately — a 429, a 5xx), a body that is not JSON or has no
- * boolean `canRefresh`, or a network rejection. The caller then takes the
- * /me path exactly as before; reading a 404 as "no session" would sign every
- * user out until the backend ships.
+ * deploy separately — a 429, a 5xx), a body that is not JSON or is not
+ * `{ user: User | null, canRefresh: boolean }`, or a network rejection. The
+ * caller then takes the /me path exactly as before; reading a 404 as "no
+ * session" would sign every user out until the backend ships.
  */
 async function probeSession(): Promise<SessionProbe | null> {
+  let status: number | undefined;
+  let reason: string;
+
   try {
     const response = await fetch(`${API_BASE_URL}/api/auth/session`, {
       credentials: 'include',
@@ -638,19 +663,28 @@ async function probeSession(): Promise<SessionProbe | null> {
     // Capture CSRF token from response header for cross-domain scenarios,
     // as /me did through authRequest.
     storeCSRFTokenFromResponse(response);
+    status = response.status;
 
-    if (!response.ok) return null;
-
-    const body: unknown = await response.json();
-    if (typeof body !== 'object' || body === null) return null;
-    const { user, canRefresh } = body as { user?: unknown; canRefresh?: unknown };
-    if (typeof canRefresh !== 'boolean') return null;
-
-    return { user: (user ?? null) as User | null, canRefresh };
-  } catch {
-    // Network failure, or a body that is not JSON: not a valid answer.
-    return null;
+    if (response.ok) {
+      const body: unknown = await response.json();
+      if (isSessionBody(body)) {
+        return { user: body.user, canRefresh: body.canRefresh };
+      }
+      reason = 'malformed body';
+    } else {
+      reason = 'non-2xx status';
+    }
+  } catch (error) {
+    // Network failure, or a body that is not JSON.
+    reason = error instanceof Error ? error.message : String(error);
   }
+
+  // Debug level on purpose: a guest's bootstrap must not log a warning.
+  logger.debug('Session probe is not a valid answer; falling back to /api/auth/me', {
+    status,
+    reason,
+  });
+  return null;
 }
 
 /**
