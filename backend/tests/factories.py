@@ -542,6 +542,28 @@ async def create_static_character_registration(
     return reg
 
 
+async def create_claimed_card(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    user: User,
+    character: PlayerCharacter,
+    tier: TierSnapshot | None = None,
+) -> SnapshotPlayer:
+    """Give `user` a claimed card with `character` registered on it as primary.
+
+    The card goes in `tier`, or in a new tier of `static_group` when none is given.
+    """
+    if tier is None:
+        tier = await create_tier_snapshot(session, static_group)
+    card = await create_snapshot_player(session, tier, name=character.name)
+    card.user_id = user.id
+    await create_static_character_registration(
+        session, static_group, card, player_character=character, is_primary_for_static=True
+    )
+    await session.flush()
+    return card
+
+
 async def create_user_availability(
     session: AsyncSession,
     static_group: StaticGroup,

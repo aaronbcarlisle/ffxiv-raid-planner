@@ -31,12 +31,10 @@ from app.models import (
 )
 from tests.factories import (
     create_catalog_item,
+    create_claimed_card,
     create_membership,
     create_player_character,
     create_player_profile,
-    create_snapshot_player,
-    create_static_character_registration,
-    create_tier_snapshot,
 )
 
 # ---------------------------------------------------------------------------
@@ -264,17 +262,6 @@ async def _farm_item(
     return item
 
 
-async def _card_on(session: AsyncSession, group, user, character) -> None:
-    """Give `user` a claimed card in the static's active tier with `character` on it."""
-    tier = await create_tier_snapshot(session, group)
-    card = await create_snapshot_player(session, tier, name=character.name)
-    card.user_id = user.id
-    await create_static_character_registration(
-        session, group, card, player_character=character, is_primary_for_static=True
-    )
-    await session.flush()
-
-
 async def _member_of(session: AsyncSession, group, user, *, main_name: str):
     """Make `user` a member of `group` with a profile and a main; returns (profile, main)."""
     await create_membership(session, user, group, role=MemberRole.MEMBER)
@@ -321,7 +308,7 @@ async def test_mount_farm_patch_for_yourself_writes_your_cards_alt_as_you_on_the
     """R-S1-10: a member's own edit writes the record the chain names in this static."""
     profile, _ = await _member_of(session, test_group, test_user_2, main_name="Member Main")
     alt = await create_player_character(session, profile, name="Member Alt", is_main=False)
-    await _card_on(session, test_group, test_user_2, alt)
+    await create_claimed_card(session, test_group, test_user_2, alt)
     item = await _farm_item(session)
     await session.commit()
 
@@ -371,7 +358,7 @@ async def test_mount_farm_patch_by_a_lead_for_a_member_writes_no_record(
     member_profile, member_main = await _member_of(
         session, test_group, test_user_2, main_name="Member Main"
     )
-    await _card_on(session, test_group, test_user_2, member_main)
+    await create_claimed_card(session, test_group, test_user_2, member_main)
     item = await _farm_item(session)
     await session.commit()
 
@@ -400,7 +387,7 @@ async def test_mount_farm_bulk_writes_only_the_leads_own_record(
     client, session, test_user, test_user_2, test_group, auth_headers, world
 ):
     _, _, alt, _ = world
-    await _card_on(session, test_group, test_user, alt)
+    await create_claimed_card(session, test_group, test_user, alt)
     member_profile, _ = await _member_of(
         session, test_group, test_user_2, main_name="Member Main"
     )

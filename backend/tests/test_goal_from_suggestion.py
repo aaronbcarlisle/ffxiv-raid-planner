@@ -30,13 +30,11 @@ from app.models.player_collection_intent import PlayerCollectionIntent
 from app.models.player_collection_snapshot import PlayerCollectionSnapshot
 from app.models.player_profile import PlayerProfile
 from tests.factories import (
+    create_claimed_card,
     create_membership,
     create_player_character,
     create_player_profile,
-    create_snapshot_player,
-    create_static_character_registration,
     create_static_group,
-    create_tier_snapshot,
     create_user,
 )
 
@@ -360,12 +358,7 @@ async def test_a_member_whose_card_names_the_alt_seeds_from_the_alts_record(
     """S2a-1 R-S1-12: the seed reads the chain's record in this static, not the main's."""
     main = await create_player_character(session, member_profile, name="Seed Main", is_main=True)
     alt = await create_player_character(session, member_profile, name="Seed Alt", is_main=False)
-    tier = await create_tier_snapshot(session, group)
-    card = await create_snapshot_player(session, tier, name="Seed Alt")
-    card.user_id = member.id
-    await create_static_character_registration(
-        session, group, card, player_character=alt, is_primary_for_static=True
-    )
+    await create_claimed_card(session, group, member, alt)
     catalog = _make_catalog(session, name="Seed Alt Mount")
     await session.flush()
     # The alt's row first and the main's last: a profile-wide read keeps the last row it sees.

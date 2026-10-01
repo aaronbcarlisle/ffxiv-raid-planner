@@ -45,11 +45,10 @@ from app.services.collection_suggestion_service import (
 from app.services.plugin_collection_sync_service import sync_collection_states
 from app.services.provenance import LOGGED_VIA_API_KEY
 from tests.factories import (
+    create_claimed_card,
     create_membership,
     create_player_character,
     create_player_profile,
-    create_snapshot_player,
-    create_static_character_registration,
     create_static_group,
     create_tier_snapshot,
     create_user,
@@ -731,16 +730,6 @@ async def test_ultimate_cannot_buy_at_token_count_zero(
 
 # ── Test: the record a member's suggestion reads (S2a-1, R-S1-5) ──────────────
 
-async def _card_on(session: AsyncSession, group, tier, user: User, character) -> None:
-    """Give `user` a claimed card in `tier` with `character` registered on it."""
-    card = await create_snapshot_player(session, tier, name=character.name)
-    card.user_id = user.id
-    await create_static_character_registration(
-        session, group, card, player_character=character, is_primary_for_static=True
-    )
-    await session.flush()
-
-
 async def test_a_member_whose_card_names_the_alt_reads_the_alts_record(
     session: AsyncSession, owner: User, member: User, member_profile: PlayerProfile, group,
 ):
@@ -748,7 +737,7 @@ async def test_a_member_whose_card_names_the_alt_reads_the_alts_record(
     main = await create_player_character(session, member_profile, name="Member Main", is_main=True)
     alt = await create_player_character(session, member_profile, name="Member Alt", is_main=False)
     tier = await create_tier_snapshot(session, group)
-    await _card_on(session, group, tier, member, alt)
+    await create_claimed_card(session, group, member, alt, tier=tier)
     catalog = _make_catalog(session, name="Alt Record Mount", token_cost=99)
     _make_goal(session, group.id, catalog.id)
     await session.flush()
@@ -789,7 +778,7 @@ async def test_suggestions_issue_the_same_selects_for_two_and_six_members(
             alt = await create_player_character(
                 session, profile, name=f"{tag} Alt {index}", is_main=False
             )
-            await _card_on(session, static, tier, user, alt)
+            await create_claimed_card(session, static, user, alt, tier=tier)
             _make_intent(session, profile.id, catalog.id)
             _make_snapshot(session, profile.id, catalog.id, character_id=alt.id)
         _make_goal(session, static.id, catalog.id)
@@ -811,4 +800,5 @@ async def test_suggestions_issue_the_same_selects_for_two_and_six_members(
     assert [len(s.members) for s in small] == [2]
     assert [len(s.members) for s in large] == [6]
     assert {m.ownership_state for m in large[0].members} == {"missing"}
+    assert two.n > 0
     assert six.n == two.n
