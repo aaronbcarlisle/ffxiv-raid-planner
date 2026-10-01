@@ -590,7 +590,7 @@ describe('Schedule — members only (R-G1-7)', () => {
   beforeEach(() => {
     loginMock.mockReset();
     useScheduleStore.setState({ sessions: [sRec] } as never);
-    useAuthStore.setState({ user: null, isLoading: false, login: loginMock } as never);
+    useAuthStore.setState({ user: null, isLoading: false, authInitialized: true, login: loginMock } as never);
   });
 
   function renderAsNonMember(currentUserId: string | null) {

@@ -79,7 +79,12 @@ beforeEach(() => {
   mocks.login.mockReset();
   mocks.hydrated = true;
   // The key manager is for signed-in accounts (GUEST-2 R-G2-6): seed one.
-  useAuthStore.setState({ user: { id: 'u1' }, isLoading: false, login: mocks.login } as never);
+  useAuthStore.setState({
+    user: { id: 'u1' },
+    isLoading: false,
+    authInitialized: true,
+    login: mocks.login,
+  } as never);
 });
 
 describe('PluginPage', () => {
@@ -102,6 +107,17 @@ describe('PluginPage', () => {
 
     expect(within(screen.getByTestId('plugin-api-keys')).getByTestId('auth-skeleton')).toBeInTheDocument();
     expect(screen.queryByText('Log in to create an API key for the plugin.')).toBeNull();
+    expect(mocks.keyManagerMounts).not.toHaveBeenCalled();
+  });
+
+  it('a persisted user before the auth bootstrap resolves gets the skeleton: the key manager is not mounted, so no key request', () => {
+    // isLoading is false here on purpose: a child's mount effect can run before
+    // App's initializeAuth raises it, so only authInitialized can gate the mount.
+    useAuthStore.setState({ user: { id: 'u1' }, isLoading: false, authInitialized: false } as never);
+    renderPlugin();
+
+    expect(within(screen.getByTestId('plugin-api-keys')).getByTestId('auth-skeleton')).toBeInTheDocument();
+    expect(screen.queryByTestId('api-key-manager')).toBeNull();
     expect(mocks.keyManagerMounts).not.toHaveBeenCalled();
   });
 

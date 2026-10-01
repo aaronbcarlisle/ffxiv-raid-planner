@@ -79,7 +79,10 @@ vi.mock('../stores/tierStore', () => ({
 vi.mock('../stores/staticGroupStore', () => ({
   useStaticGroupStore: () => ({ currentGroup, groups: [currentGroup] }),
 }));
-vi.mock('../stores/authStore', () => ({ useAuthStore: () => ({ user: { id: 'u1', isAdmin: mockIsAdmin } }) }));
+vi.mock('../stores/authStore', () => ({
+  useAuthStore: () => ({ user: { id: 'u1', isAdmin: mockIsAdmin } }),
+  useAuthHydrated: () => true,
+}));
 vi.mock('../stores/viewAsStore', () => ({ useViewAsStore: () => ({ viewAsUser: null }) }));
 vi.mock('../stores/lootTrackingStore', () => ({
   useLootTrackingStore: () => ({

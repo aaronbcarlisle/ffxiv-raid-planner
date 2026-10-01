@@ -38,9 +38,9 @@ const INSTALL_STEPS = [
 export function PluginPage() {
   const players = useTierPlayers();
   const user = useAuthStore((s) => s.user);
-  const isLoading = useAuthStore((s) => s.isLoading);
+  const authInitialized = useAuthStore((s) => s.authInitialized);
   const hydrated = useAuthHydrated();
-  const authLoading = !hydrated || isLoading;
+  const authReady = hydrated && authInitialized;
   const { pathname, search } = useLocation();
 
   return (
@@ -105,8 +105,11 @@ export function PluginPage() {
         >
           {/* Keys belong to the account, so a signed-in non-member keeps the
               manager (GET /api/auth/api-keys answers 200 for them); only a
-              guest, who would 401, gets the prompt. */}
-          {authLoading && !user ? (
+              guest, who would 401, gets the prompt. The manager stays unmounted
+              until the bootstrap resolves (a stale persisted user would fire a
+              401 key fetch); authInitialized never goes back to false, so it is
+              never unmounted mid-session. */}
+          {!authReady ? (
             <AuthSkeleton />
           ) : !user ? (
             <>

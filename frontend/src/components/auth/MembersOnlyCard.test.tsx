@@ -21,7 +21,12 @@ function renderCard() {
 
 beforeEach(() => {
   loginMock.mockReset();
-  useAuthStore.setState({ user: null, isLoading: false, login: loginMock } as never);
+  useAuthStore.setState({
+    user: null,
+    isLoading: false,
+    authInitialized: true,
+    login: loginMock,
+  } as never);
 });
 
 describe('MembersOnlyCard', () => {
@@ -52,6 +57,28 @@ describe('MembersOnlyCard', () => {
     renderCard();
 
     expect(screen.getByRole('heading', { name: 'Members only' })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Objectives and farms are shared with members of Test Static. Ask a lead for an invite, or send a join request if the static is recruiting.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('before the auth bootstrap resolves, no user shows the shared line only: no Login, no guest copy', () => {
+    useAuthStore.setState({ authInitialized: false } as never);
+    renderCard();
+
+    expect(screen.getByRole('heading', { name: 'Members only' })).toBeInTheDocument();
+    expect(screen.getByText('Objectives and farms are shared with members of Test Static.')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.queryByText(/Log in to ask to join/)).toBeNull();
+  });
+
+  it('a persisted user before the bootstrap resolves sees the signed-in copy at once, no button', () => {
+    useAuthStore.setState({ user: { id: 'u9' }, authInitialized: false } as never);
+    renderCard();
+
     expect(
       screen.getByText(
         'Objectives and farms are shared with members of Test Static. Ask a lead for an invite, or send a join request if the static is recruiting.',

@@ -46,7 +46,7 @@ function renderGoals(isMember: boolean, search = '') {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(api.get).mockResolvedValue([]);
-  useAuthStore.setState({ user: null, isLoading: false, login: vi.fn() } as never);
+  useAuthStore.setState({ user: null, isLoading: false, authInitialized: true, login: vi.fn() } as never);
   vi.stubGlobal(
     'matchMedia',
     vi.fn().mockImplementation((query: string) => ({

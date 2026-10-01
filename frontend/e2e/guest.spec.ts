@@ -177,7 +177,8 @@ test.describe('Guest on a public static (GUEST-2)', () => {
         const keys = page.getByTestId('plugin-api-keys');
         await expect(keys.getByRole('button', { name: 'Login with Discord' })).toBeVisible();
         await expect(keys.getByText('Log in to create an API key for the plugin.')).toBeVisible();
-        await expect(keys.getByText('Your API keys')).toHaveCount(0);
+        // ApiKeyManager's own Create Key button must not be mounted for a guest.
+        await expect(keys.getByRole('button', { name: 'Create Key' })).toHaveCount(0);
       }
       if (label === 'More') {
         await expect(page.getByText('Dalamud Plugin', { exact: true })).toBeVisible();
