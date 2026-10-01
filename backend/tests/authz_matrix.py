@@ -11,7 +11,8 @@ read it are in `tests/test_authz_matrix.py`.
   against the per-test world, so a probe reaches the gate instead of a 404/422.
   Builds that read `w.me`, `w.my_card`, `w.my_drop`, `w.my_suggestion` or
   `w.my_reg` resolve to the caller's own object (a viewer probe targets the
-  viewer's own card: the strongest case for a viewer).
+  viewer's own card: the strongest case for a viewer). `w.other_card` is the one
+  card the caller does not hold (the lead's, or the member's when the caller is the lead).
 - `actor`: who the committed allowed-actor probe sends the request as. For a `plugin` row it
   is also the user whose minted `xrp_` key the plugin-contract test sends (R-P0-8.6).
 - `plugin`: the Dalamud plugin calls this route (`RaidPlannerClient.cs`). The contract test
@@ -19,7 +20,9 @@ read it are in `tests/test_authz_matrix.py`.
   body where the plugin's DTO differs from the row's usual edit.
 - `variant`: names the body shape or target when one route carries two rulings
   (e.g. own card = member, someone else's card = lead).
-- `gaps`: `(probe, reason)` pairs marked strict xfail until the gap is fixed.
+- `gaps`: `(probe, reason)` pairs marked strict xfail until the gap is fixed. A probe name is a
+  key of `PROBES` in the test file (viewer member lead allowed actor anon nonadmin outsider):
+  the row must be in that probe's row list.
 """
 
 from collections.abc import Callable
@@ -325,7 +328,9 @@ ROUTES: tuple[AuthzRoute, ...] = (
       build=lambda w: _r(_card(w, w.card["open"]), None, {"name": "Renamed Card"})),
     R("DELETE", P, "lead", "helper", "delete a roster card",
       build=lambda w: _r(_card(w, w.card["open"]))),
-    R("POST", P + "/admin-assign", "admin", "depends", "admin links any user to a card"),
+    R("POST", P + "/admin-assign", "admin", "depends", "admin links any user to a card",
+      actor="admin",
+      build=lambda w: _r(_card(w, w.card["open"]), None, {"userId": w.u["member2"].id})),
     R("POST", P + "/owner-assign", "owner", "helper", "owner links a member to a card",
       build=lambda w: _r(_card(w, w.card["open"]), None, {"userId": w.u["member2"].id})),
     # The claim targets the second tier, where the probing viewer holds no card: in the
@@ -337,7 +342,7 @@ ROUTES: tuple[AuthzRoute, ...] = (
       "unlink yourself from your own card (open to a demoted viewer, V2)", variant="self",
       actor="viewer", build=lambda w: _r(_card(w, w.my_card))),
     R("DELETE", P + "/claim", "owner", "inline", "unlink someone else from their card",
-      variant="other", build=lambda w: _r(_card(w, w.card["lead"]))),
+      variant="other", build=lambda w: _r(_card(w, w.other_card))),
     R("PUT", P + "/weapon-priorities", "member", "inline",
       "edit your own card's weapon priorities", variant="own", actor="member",
       build=lambda w: _r(_card(w, w.my_card), None, {"weaponPriorities": [{"job": "DRG"}]})),
