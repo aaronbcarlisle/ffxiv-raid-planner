@@ -4,10 +4,25 @@
  * badge disappears: nothing names the claimant, and nothing reads as unclaimed.
  */
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { PlayerCardStatus } from './PlayerCardStatus';
 import { TooltipProvider } from '../primitives';
 import type { SnapshotPlayer } from '../../types';
+
+// The badge's Tooltip reads useDevice, which needs matchMedia; jsdom has none.
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
 
 const player = { id: 'p1', weaponPriorities: [] } as unknown as SnapshotPlayer;
 
