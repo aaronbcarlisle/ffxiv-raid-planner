@@ -69,9 +69,8 @@ export const RELEASES: Release[] = [
         title: 'Viewers can no longer duplicate a static',
         description:
           'A static\'s viewers no longer see Duplicate Static in My Statics, and the server refuses a duplicate request from a viewer. Statics you\'re only linked to through a card no longer offer it either, since the server never allowed that copy. Members, leads and owners can still duplicate.',
-        // PLACEHOLDER pr number: the controller replaces it after `gh pr create`.
-        pr: 343,
-        prTitle: 'fix(api): AUTHZ-2 — viewers can\'t duplicate a static; both menus hide it (#331, B12)',
+        pr: 344,
+        prTitle: 'fix(api,ui): W0 AUTHZ-2 — viewers can\'t duplicate a static; every AUTHZ row probed (#331, #333)',
       },
     ],
   },
