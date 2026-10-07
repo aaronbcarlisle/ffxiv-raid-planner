@@ -12,6 +12,7 @@ every recorded name resolves on this module. B2 and B3 only append: a name to
 `RECORD_HANDLERS` and decorated tests below.
 """
 
+import asyncio
 import uuid
 from collections.abc import Callable
 
@@ -28,6 +29,7 @@ from app.models import (
     PlayerCollectionIntent,
     PlayerCollectionSnapshot,
     PlayerProfile,
+    RewardDropLog,
     RewardParticipantState,
 )
 from tests.factories import (
@@ -817,3 +819,190 @@ async def test_lead_route_aimed_at_the_lead_follows_the_self_rules(
     assert (row.state, row.token_count, row.priority_rank) == ("have", None, 1)
     assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "web")
     assert row.state_changed_at == record.state_changed_at
+
+
+# ---------------------------------------------------------------------------
+# The remaining row writers (C3): the plugin sync's rows, log_drop's flip, delete_drop's restore.
+# These reach `write_row`, not the record door, so they carry no @covers_record.
+# ---------------------------------------------------------------------------
+
+
+async def _row_with_history(
+    session: AsyncSession, goal, user, *, state: str, token_count: int | None = None
+) -> RewardParticipantState:
+    """A member's row written long ago by nobody in particular (pre-S2a-1 stamps)."""
+    row = await create_participant_state(session, goal, user, state=state)
+    row.token_count = token_count
+    row.updated_at = CLIENT_CLOCK
+    row.state_changed_at = CLIENT_CLOCK
+    row.token_count_updated_at = CLIENT_CLOCK if token_count is not None else None
+    await session.flush()
+    return row
+
+
+async def test_plugin_sync_rows_record_the_member_and_the_api_key_channel(
+    client, session, test_user, test_group, auth_headers
+):
+    """A created Have row, a raised row and a recounted row all name the member and the channel."""
+    new_item = await _farm_item(session, "New Row Mount", game_mount_id=4501)
+    raise_item = await _farm_item(session, "Raised Row Mount", game_mount_id=4502)
+    count_item = await _farm_item(session, "Counted Row Mount", token_item_id=4503)
+    new_goal = await _tracked_goal(session, test_group, test_user, new_item, title="New")
+    raise_goal = await _tracked_goal(session, test_group, test_user, raise_item, title="Raise")
+    count_goal = await _tracked_goal(session, test_group, test_user, count_item, title="Count")
+    await _row_with_history(session, raise_goal, test_user, state="need")
+    await _row_with_history(session, count_goal, test_user, state="need", token_count=3)
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "POST",
+        SYNC_URL,
+        json={
+            "mounts": [{"mountId": 4501, "owned": True}, {"mountId": 4502, "owned": True}],
+            "currencies": [{"itemId": 4503, "count": 40}],
+            "syncedAt": CLIENT_CLOCK,
+        },
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["statesUpdated"], body["tokenCountsUpdated"], body["skippedLocked"]) == (2, 1, 0)
+    server_clock = body["syncedAt"]
+    assert server_clock != CLIENT_CLOCK
+
+    created = await _row(session, new_goal, test_user)
+    assert (created.state, created.source) == ("have", "plugin")
+    assert created.last_synced_at == server_clock
+    assert created.state_changed_at == created.updated_at == server_clock
+    raised = await _row(session, raise_goal, test_user)
+    assert (raised.state, raised.source) == ("have", "plugin")
+    assert raised.state_changed_at == server_clock
+    counted = await _row(session, count_goal, test_user)
+    assert (counted.state, counted.token_count, counted.state_changed_at) == (
+        "need",
+        40,
+        CLIENT_CLOCK,
+    )
+    assert counted.token_count_updated_at == counted.updated_at == server_clock
+    for row in (created, raised, counted):
+        assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "api_key")
+
+
+async def test_plugin_sync_that_changes_nothing_leaves_a_row_unstamped_by_state(
+    client, session, test_user, test_group, auth_headers
+):
+    """An unchanged count writes nothing; a Have the plugin already set keeps its state clock."""
+    have_item = await _farm_item(session, "Settled Mount", game_mount_id=4511)
+    count_item = await _farm_item(session, "Settled Count", token_item_id=4512)
+    have_goal = await _tracked_goal(session, test_group, test_user, have_item, title="Settled")
+    count_goal = await _tracked_goal(session, test_group, test_user, count_item, title="Same")
+    have_row = await _row_with_history(session, have_goal, test_user, state="have")
+    have_row.source = "plugin"
+    await _row_with_history(session, count_goal, test_user, state="need", token_count=40)
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "POST",
+        SYNC_URL,
+        json={
+            "mounts": [{"mountId": 4511, "owned": True}],
+            "currencies": [{"itemId": 4512, "count": 40}],
+        },
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["statesUpdated"], body["statesUnchanged"], body["tokenCountsUpdated"]) == (0, 1, 0)
+
+    settled = await _row(session, have_goal, test_user)
+    assert settled.state_changed_at == CLIENT_CLOCK
+    same = await _row(session, count_goal, test_user)
+    assert (same.updated_at, same.updated_by_user_id) == (CLIENT_CLOCK, None)
+    assert same.updated_via is None
+
+
+async def _log_drop_for(client, group, goal, recipient, headers):
+    response = await client.post(
+        f"/api/static-groups/{group.id}/collection-goals/{goal.id}/drops",
+        json={"recipient_user_id": recipient.id},
+        headers=headers,
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+async def test_drop_flip_records_the_logger_and_moves_the_state_clock(
+    client, session, test_user, test_user_2, test_group, auth_headers
+):
+    """A lead logs a drop for a member: the flipped row names the lead (a correction)."""
+    await _member_of(session, test_group, test_user_2, main_name="Dropped Main")
+    item = await create_catalog_item(session, name="Dropped Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _row_with_history(session, goal, test_user_2, state="need")
+    await session.commit()
+
+    drop = await _log_drop_for(client, test_group, goal, test_user_2, auth_headers)
+
+    row = await _row(session, goal, test_user_2)
+    assert row.state == "have"
+    assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "web")
+    assert row.state_changed_at != CLIENT_CLOCK
+    stored = (
+        await session.execute(
+            select(RewardDropLog)
+            .where(RewardDropLog.id == drop["id"])
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one()
+    assert row.state_changed_at == row.updated_at == stored.recipient_prior_state_at
+
+
+async def test_drop_that_flips_nothing_leaves_the_row_alone(
+    client, session, test_user, test_user_2, test_group, auth_headers
+):
+    await _member_of(session, test_group, test_user_2, main_name="Pass Dropped Main")
+    item = await create_catalog_item(session, name="Pass Dropped Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _row_with_history(session, goal, test_user_2, state="pass")
+    await session.commit()
+
+    await _log_drop_for(client, test_group, goal, test_user_2, auth_headers)
+
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.updated_at, row.updated_by_user_id, row.updated_via) == (
+        "pass",
+        CLIENT_CLOCK,
+        None,
+        None,
+    )
+
+
+async def test_drop_delete_restore_records_the_deleter_and_moves_the_state_clock(
+    client, session, test_user, test_user_2, test_group, auth_headers, auth_headers_user2
+):
+    """The member logs their own drop (writer = member); the owner deletes it (writer = owner)."""
+    await _member_of(session, test_group, test_user_2, main_name="Restored Main")
+    item = await create_catalog_item(session, name="Restored Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _row_with_history(session, goal, test_user_2, state="need")
+    await session.commit()
+
+    drop = await _log_drop_for(client, test_group, goal, test_user_2, auth_headers_user2)
+    flipped = await _row(session, goal, test_user_2)
+    assert (flipped.state, flipped.updated_by_user_id) == ("have", test_user_2.id)
+    flip_clock = flipped.state_changed_at
+    await asyncio.sleep(0.02)  # cross a Windows clock tick
+
+    response = await client.delete(
+        f"/api/static-groups/{test_group.id}/collection-goals/{goal.id}/drops/{drop['id']}",
+        headers=auth_headers,
+    )
+    assert response.status_code == 204, response.text
+
+    row = await _row(session, goal, test_user_2)
+    assert row.state == "need"
+    assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "web")
+    assert row.state_changed_at == row.updated_at
+    assert row.state_changed_at != flip_clock

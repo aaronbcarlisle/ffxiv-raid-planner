@@ -20,11 +20,11 @@ Collision rules:
   - Token counts are always updated from plugin (no lock on token_count)
 
 The collection record (S2a-1): the user's main's record (`resolve_main_targets`),
-written through the record door in sync mode. The counters count farm rows only;
-record writes are not counted (R-S1-17).
+written through the record door in sync mode. The farm rows go through the row
+door (`write_row`), stamped with the member and the channel. The counters count
+farm rows only; record writes are not counted (R-S1-17).
 """
 
-import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -38,9 +38,11 @@ from ..models.user import User
 from ..schemas.plugin_collections import CollectionSyncResult, PluginCollectionSyncPayload
 from .collection_records import (
     RECORD_WRITE_SYNC,
+    UNSET,
     RecordTarget,
     resolve_main_targets,
     write_record,
+    write_row,
 )
 
 
@@ -105,7 +107,9 @@ async def sync_collection_states(
                     )
                 )
                 for goal in goals_result.scalars().all():
-                    updated, locked = await _upsert_state(session, goal, user.id, "have", now)
+                    updated, locked = await _upsert_state(
+                        session, goal, user.id, "have", now, actor_user_id=actor_user_id, via=via
+                    )
                     if locked:
                         result.skipped_locked += 1
                     elif updated:
@@ -148,7 +152,9 @@ async def sync_collection_states(
                 matched_goals = name_result.scalars().all()
 
             for goal in matched_goals:
-                updated = await _update_token_count(session, goal, user.id, token_item.count, now)
+                updated = await _update_token_count(
+                    session, goal, user.id, token_item.count, now, actor_user_id=actor_user_id, via=via
+                )
                 if updated:
                     result.token_counts_updated += 1
 
@@ -274,6 +280,9 @@ async def _upsert_state(
     user_id: str,
     new_state: str,
     now: str,
+    *,
+    actor_user_id: str,
+    via: str,
 ) -> tuple[bool, bool]:
     """Upsert a participant state from plugin data.
 
@@ -289,17 +298,19 @@ async def _upsert_state(
     existing = existing_result.scalar_one_or_none()
 
     if existing is None:
-        new_row = RewardParticipantState(
-            id=str(uuid.uuid4()),
+        await write_row(
+            session,
+            row=None,
             goal_id=goal.id,
-            user_id=user_id,
             static_group_id=goal.static_group_id,
+            user_id=user_id,
+            actor_user_id=actor_user_id,
+            via=via,
+            now=now,
             state=new_state,
             source="plugin",
             last_synced_at=now,
-            updated_at=now,
         )
-        session.add(new_row)
         return True, False
 
     # Manual "Pass" is protected — plugin must not overwrite it
@@ -311,10 +322,19 @@ async def _upsert_state(
         existing.last_synced_at = now
         return False, False
 
-    existing.state = new_state
-    existing.source = "plugin"
-    existing.last_synced_at = now
-    existing.updated_at = now
+    await write_row(
+        session,
+        row=existing,
+        goal_id=goal.id,
+        static_group_id=goal.static_group_id,
+        user_id=user_id,
+        actor_user_id=actor_user_id,
+        via=via,
+        now=now,
+        state=new_state,
+        source="plugin",
+        last_synced_at=now,
+    )
     return True, False
 
 
@@ -324,6 +344,9 @@ async def _update_token_count(
     user_id: str,
     count: int,
     now: str,
+    *,
+    actor_user_id: str,
+    via: str,
 ) -> bool:
     """Update token count for a participant. Returns True if the count changed."""
     existing_result = await session.execute(
@@ -334,25 +357,21 @@ async def _update_token_count(
     )
     existing = existing_result.scalar_one_or_none()
 
-    if existing is None:
-        new_row = RewardParticipantState(
-            id=str(uuid.uuid4()),
-            goal_id=goal.id,
-            user_id=user_id,
-            static_group_id=goal.static_group_id,
-            state="want",
-            source="plugin",
-            token_count=count,
-            last_synced_at=now,
-            updated_at=now,
-        )
-        session.add(new_row)
-        return True
-
-    if existing.token_count == count:
+    if existing is not None and existing.token_count == count:
         return False
 
-    existing.token_count = count
-    existing.last_synced_at = now
-    existing.updated_at = now
+    # A new row starts at "want", sourced from the plugin; an existing row keeps its state.
+    await write_row(
+        session,
+        row=existing,
+        goal_id=goal.id,
+        static_group_id=goal.static_group_id,
+        user_id=user_id,
+        actor_user_id=actor_user_id,
+        via=via,
+        now=now,
+        token_count=count,
+        last_synced_at=now,
+        source="plugin" if existing is None else UNSET,
+    )
     return True

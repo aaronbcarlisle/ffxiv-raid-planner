@@ -858,6 +858,7 @@ async def log_drop(
             raise HTTPException(status_code=400, detail="Recipient must be a member of this static")
 
     now = _now()
+    via = logged_via(request)
 
     # If the recipient is identified, auto-advance their state to "have" if currently
     # need/want, and remember the state it replaced, and when, so a delete can restore
@@ -875,8 +876,17 @@ async def log_drop(
         if participant and participant.state in ("need", "want"):
             recipient_prior_state = participant.state
             recipient_prior_state_at = now
-            participant.state = "have"
-            participant.updated_at = now
+            await write_row(
+                session,
+                row=participant,
+                goal_id=goal_id,
+                static_group_id=group_id,
+                user_id=recipient_id,
+                actor_user_id=current_user.id,
+                via=via,
+                now=now,
+                state="have",
+            )
 
     drop = RewardDropLog(
         id=str(uuid.uuid4()),
@@ -889,7 +899,7 @@ async def log_drop(
         notes=body.notes,
         recipient_prior_state=recipient_prior_state,
         recipient_prior_state_at=recipient_prior_state_at,
-        logged_via=logged_via(request),
+        logged_via=via,
         api_key_id=request_api_key_id(request),
         created_at=now,
     )
@@ -942,6 +952,7 @@ async def delete_drop(
     group_id: str,
     goal_id: str,
     drop_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> None:
@@ -1026,8 +1037,17 @@ async def delete_drop(
                 ):
                     outcome = "skipped"
                 else:
-                    participant.state = prior_state
-                    participant.updated_at = _now()
+                    await write_row(
+                        session,
+                        row=participant,
+                        goal_id=goal_id,
+                        static_group_id=group_id,
+                        user_id=recipient_id,
+                        actor_user_id=current_user.id,
+                        via=logged_via(request),
+                        now=_now(),
+                        state=prior_state,
+                    )
                     outcome = "restored"
 
     await session.commit()
