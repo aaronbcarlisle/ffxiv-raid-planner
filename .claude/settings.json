@@ -40,12 +40,6 @@
       "PowerShell(git tag -d*)",
       "PowerShell(git tag --delete*)",
       "PowerShell(gh repo delete*)",
-      "Bash(git push origin main)",
-      "Bash(git push origin main *)",
-      "Bash(git push origin HEAD:main*)",
-      "PowerShell(git push origin main)",
-      "PowerShell(git push origin main *)",
-      "PowerShell(git push origin HEAD:main*)",
       "Read(/frontend/dist/**)",
       "Read(/frontend/playwright-report/**)",
       "Read(/frontend/test-results/**)",
@@ -53,17 +47,6 @@
     ]
   },
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py\"",
-            "timeout": 15
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Bash|PowerShell",

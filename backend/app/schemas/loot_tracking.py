@@ -95,7 +95,7 @@ class LootLogEntryResponse(CamelModel):
     is_extra: bool  # True if extra/off-job loot
     created_at: str
     created_by_user_id: str
-    created_by_username: str  # Populated from join
+    created_by_username: str | None = None  # From join; null for a non-member caller (GUEST-2)
 
     model_config = ConfigDict(from_attributes=True, alias_generator=to_camel, populate_by_name=True)
 
@@ -130,7 +130,7 @@ class PageLedgerEntryResponse(CamelModel):
     notes: str | None
     created_at: str
     created_by_user_id: str
-    created_by_username: str  # Populated from join
+    created_by_username: str | None = None  # From join; null for a non-member caller (GUEST-2)
 
     model_config = ConfigDict(from_attributes=True, alias_generator=to_camel, populate_by_name=True)
 
@@ -209,7 +209,7 @@ class MaterialLogEntryResponse(CamelModel):
     notes: str | None
     created_at: str
     created_by_user_id: str
-    created_by_username: str  # Populated from join
+    created_by_username: str | None = None  # From join; null for a non-member caller (GUEST-2)
 
     model_config = ConfigDict(from_attributes=True, alias_generator=to_camel, populate_by_name=True)
 

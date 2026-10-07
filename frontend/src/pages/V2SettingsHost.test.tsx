@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   group: { id: 'g1', name: 'Crescent', userRole: 'owner' },
   tier: { tierId: 't1', players: [] },
-  user: { id: 'u1', isAdmin: false },
+  user: { id: 'u1', isAdmin: false } as { id: string; isAdmin: boolean } | null,
 }));
 
 const hiddenTabsRefs: (string[] | undefined)[] = [];
@@ -20,8 +20,24 @@ vi.mock('../stores/authStore', () => ({ useAuthStore: (s: (x: { user: unknown })
 vi.mock('./groupActionsContext', () => ({ useGroupAddToRoster: () => vi.fn() }));
 
 import { V2SettingsHost } from './V2SettingsHost';
+import { useSettingsPanelStore } from '../stores/settingsPanelStore';
 
 describe('V2SettingsHost', () => {
+  it('renders nothing for a guest, even with the settings panel store open (GUEST-1 R-G1-5)', () => {
+    const user = mocks.user;
+    mocks.user = null;
+    useSettingsPanelStore.getState().open();
+    try {
+      const { container } = render(<V2SettingsHost />);
+      expect(useSettingsPanelStore.getState().isOpen).toBe(true);
+      expect(screen.queryByTestId('settings-host')).toBeNull();
+      expect(container).toBeEmptyDOMElement();
+    } finally {
+      mocks.user = user;
+      useSettingsPanelStore.getState().close();
+    }
+  });
+
   it('renders StaticSettingsHost with the active group/tier', () => {
     render(<V2SettingsHost />);
     const host = screen.getByTestId('settings-host');

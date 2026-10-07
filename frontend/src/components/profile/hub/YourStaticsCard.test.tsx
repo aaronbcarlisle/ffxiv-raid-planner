@@ -150,6 +150,26 @@ describe('YourStaticsCard — kebab', () => {
     expect(screen.queryByRole('menuitem', { name: 'Delete' })).toBeNull();
   });
 
+  it('kebab hides Duplicate for a viewer', async () => {
+    renderCard([makeGroup({ userRole: 'viewer' })]);
+    fireEvent.keyDown(screen.getByRole('button', { name: /actions for/i }), { key: 'Enter' });
+    await screen.findByRole('menuitem', { name: 'Open' }); // wait for menu to open
+    expect(screen.queryByRole('menuitem', { name: 'Duplicate' })).toBeNull();
+  });
+
+  it('kebab hides Duplicate on a linked-only row (B12)', async () => {
+    renderCard([makeGroup({ source: 'linked', userRole: undefined })]);
+    fireEvent.keyDown(screen.getByRole('button', { name: /actions for/i }), { key: 'Enter' });
+    await screen.findByRole('menuitem', { name: 'Open' });
+    expect(screen.queryByRole('menuitem', { name: 'Duplicate' })).toBeNull();
+  });
+
+  it.each(['owner', 'lead', 'member'] as const)('kebab keeps Duplicate for %s', async (role) => {
+    renderCard([makeGroup({ userRole: role })]);
+    fireEvent.keyDown(screen.getByRole('button', { name: /actions for/i }), { key: 'Enter' });
+    expect(await screen.findByRole('menuitem', { name: 'Duplicate' })).toBeInTheDocument();
+  });
+
   it('Duplicate calls duplicateGroup with "(Copy)"', async () => {
     renderCard([makeGroup()]);
     fireEvent.keyDown(screen.getByRole('button', { name: /actions for/i }), { key: 'Enter' });

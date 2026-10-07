@@ -5,8 +5,10 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Membership, SnapshotPlayer, StaticGroup, TierSnapshot, User
+from app.auth_utils import create_access_token
+from app.models import MemberRole, Membership, SnapshotPlayer, StaticGroup, TierSnapshot, User
 from tests.factories import (
+    create_membership,
     create_snapshot_player,
     create_static_group,
     create_tier_snapshot,
@@ -343,6 +345,55 @@ class TestDuplicateGroupEndpoint:
         )
 
         assert response.status_code == 404
+
+    async def test_viewer_cannot_duplicate(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group: StaticGroup,
+    ):
+        """#331: a viewer seat is read-only, so it can't copy the static."""
+        viewer = await create_user(session, discord_username="viewer_dup")
+        await create_membership(session, viewer, test_group, role=MemberRole.VIEWER)
+        headers = {"Authorization": f"Bearer {create_access_token(viewer.id)}"}
+
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/duplicate",
+            json={"newName": "Viewer Copy", "copyTiers": True, "copyPlayers": True},
+            headers=headers,
+        )
+
+        assert response.status_code == 403
+
+    async def _duplicate_as(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        group: StaticGroup,
+        role: MemberRole,
+    ):
+        user = await create_user(session, discord_username=f"{role.value}_dup")
+        await create_membership(session, user, group, role=role)
+        headers = {"Authorization": f"Bearer {create_access_token(user.id)}"}
+        return await client.post(
+            f"/api/static-groups/{group.id}/duplicate",
+            json={"newName": f"{role.value} Copy", "copyTiers": True, "copyPlayers": True},
+            headers=headers,
+        )
+
+    async def test_member_can_duplicate(
+        self, client: AsyncClient, session: AsyncSession, test_group: StaticGroup
+    ):
+        """A plain member keeps Duplicate (guards against over-gating)."""
+        response = await self._duplicate_as(client, session, test_group, MemberRole.MEMBER)
+        assert response.status_code == 201
+
+    async def test_lead_can_duplicate(
+        self, client: AsyncClient, session: AsyncSession, test_group: StaticGroup
+    ):
+        """A lead keeps Duplicate: the gate is member-and-up, not owner-only."""
+        response = await self._duplicate_as(client, session, test_group, MemberRole.LEAD)
+        assert response.status_code == 201
 
     async def test_duplicate_group_not_found(
         self,

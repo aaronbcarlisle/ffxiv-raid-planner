@@ -1,5 +1,7 @@
 """Pydantic schemas for User authentication"""
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -36,6 +38,34 @@ class UserResponse(CamelModel):
     created_at: str
     updated_at: str
     last_login_at: str | None = None
+
+    @classmethod
+    def from_user(cls, user: Any) -> "UserResponse":
+        """Build the response from a User row (shared by /me, /me/preferences, /session)."""
+        return cls(
+            id=user.id,
+            discord_id=user.discord_id,
+            discord_username=user.discord_username,
+            discord_discriminator=user.discord_discriminator,
+            discord_avatar=user.discord_avatar,
+            avatar_url=user.avatar_url,
+            display_name=user.display_name,
+            is_admin=user.is_admin,
+            activity_display_mode=user.activity_display_mode,
+            tab_persistence=user.tab_persistence,
+            ui_shell=user.ui_shell,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+            last_login_at=user.last_login_at,
+        )
+
+
+class SessionResponse(CamelModel):
+    """Bootstrap probe answer: the cookie session's user (or null) and whether a
+    refresh cookie is present (presence only, never validated)."""
+
+    user: UserResponse | None = None
+    can_refresh: bool = False
 
 
 class UserUpdate(CamelModel):

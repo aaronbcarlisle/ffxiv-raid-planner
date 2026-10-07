@@ -8,11 +8,23 @@ from fastapi import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Membership, MemberRole, SnapshotPlayer, User, UserAvailability
+from app.models import (
+    LootLogEntry,
+    MaterialLogEntry,
+    Membership,
+    MemberRole,
+    PageLedgerEntry,
+    SnapshotPlayer,
+    User,
+    UserAvailability,
+)
 from app.routers import dev_auth as dev_auth_module
 from app.routers.dev_auth import DEV_USERS, _merge_duplicate_dev_users, dev_login
 from tests.factories import (
+    create_loot_log_entry,
+    create_material_log_entry,
     create_membership,
+    create_page_ledger_entry,
     create_snapshot_player,
     create_static_group,
     create_tier_snapshot,
@@ -97,6 +109,62 @@ class TestDevAuthDuplicateMerge:
         )
         merged_availability = availability_lookup.scalar_one()
         assert json.loads(merged_availability.slots) == ["03:00", "03:30"]
+
+
+    async def test_merge_repoints_recipient_user_id_on_log_rows(
+        self,
+        session: AsyncSession,
+        owner_user: User,
+    ):
+        """PROV-1 R-PV-11: a merged dev user's own rows must not read as "on behalf"."""
+        group = await create_static_group(session, owner_user)
+        canonical_user = await create_user(
+            session,
+            discord_id=DEV_USERS[1]["discord_id"],
+            discord_username=DEV_USERS[1]["discord_username"],
+        )
+        duplicate_user = await create_user(
+            session,
+            discord_id="100000000000000002",
+            discord_username=DEV_USERS[1]["discord_username"],
+        )
+        await create_membership(session, canonical_user, group, role=MemberRole.MEMBER)
+        await create_membership(session, duplicate_user, group, role=MemberRole.MEMBER)
+
+        tier = await create_tier_snapshot(session, group)
+        player = await create_snapshot_player(session, tier, name="Ayup")
+        loot = await create_loot_log_entry(session, tier, player, owner_user)
+        material = await create_material_log_entry(session, tier, player, owner_user)
+        page = await create_page_ledger_entry(session, tier, player, owner_user)
+        untouched = await create_loot_log_entry(session, tier, player, owner_user, week_number=2)
+        for row in (loot, material, page):
+            row.recipient_user_id = duplicate_user.id
+        untouched.recipient_user_id = owner_user.id
+        await session.flush()
+        row_ids = (
+            (LootLogEntry, loot.id),
+            (MaterialLogEntry, material.id),
+            (PageLedgerEntry, page.id),
+        )
+        untouched_id = untouched.id
+        canonical_id = canonical_user.id
+        owner_id = owner_user.id
+
+        await _merge_duplicate_dev_users(session, canonical_user, DEV_USERS[1])
+        await session.flush()
+        session.expire_all()
+
+        for model, row_id in row_ids:
+            stored = (
+                await session.execute(select(model.recipient_user_id).where(model.id == row_id))
+            ).scalar_one()
+            assert stored == canonical_id, model.__name__
+        other = (
+            await session.execute(
+                select(LootLogEntry.recipient_user_id).where(LootLogEntry.id == untouched_id)
+            )
+        ).scalar_one()
+        assert other == owner_id
 
 
 class TestDevLoginPreferenceNormalization:

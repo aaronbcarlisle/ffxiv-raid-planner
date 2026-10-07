@@ -182,19 +182,37 @@ describe('BookLedgerCard', () => {
     expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', 3);
   });
 
-  it('member (canEdit false) sees buttons only on their own row; other rows are plain text', () => {
-    render(<BookLedgerCard {...baseProps} canEdit={false} effectiveUserId="u-alice" />, { wrapper: MemoryRouter });
+  // ROLE-1 R-R1-7: the page-ledger write is lead-only on the server, so a member's
+  // own row is read-only too (W4 LOOT restores the own-row cells with the server).
+  it('member (canEdit false) sees no edit button on their OWN row either; the values still render', () => {
+    render(<BookLedgerCard {...baseProps} canEdit={false} />, { wrapper: MemoryRouter });
 
     const aliceRow = document.getElementById('book-row-p1')!;
     const bobRow = document.getElementById('book-row-p2')!;
 
-    // Alice owns u-alice: her four balance cells are buttons.
-    expect(aliceRow.querySelectorAll('button').length).toBeGreaterThanOrEqual(4);
-    // Bob's row has no adjust buttons (only the ledger icon button, which is
-    // always present) — its balance cells render as plain text.
-    const bobButtons = Array.from(bobRow.querySelectorAll('button'));
-    const bobAdjustButtons = bobButtons.filter((btn) => /^\d+$/.test(btn.textContent ?? ''));
-    expect(bobAdjustButtons).toHaveLength(0);
+    for (const row of [aliceRow, bobRow]) {
+      const adjustButtons = Array.from(row.querySelectorAll('button')).filter((btn) =>
+        /^Edit .* balance/.test(btn.getAttribute('aria-label') ?? ''),
+      );
+      expect(adjustButtons).toHaveLength(0);
+    }
+    // Alice's values (1, 2, 3, 4) are still shown, as plain text.
+    expect(aliceRow).toHaveTextContent('1');
+    expect(aliceRow).toHaveTextContent('2');
+    expect(aliceRow).toHaveTextContent('3');
+    expect(aliceRow).toHaveTextContent('4');
+    expect(within(aliceRow).queryByRole('button', { name: /^Edit Alice Book/ })).not.toBeInTheDocument();
+  });
+
+  it('canEdit true: every row\'s four balance cells are edit buttons (pin)', () => {
+    render(<BookLedgerCard {...baseProps} canEdit />, { wrapper: MemoryRouter });
+
+    for (const [id, name] of [['book-row-p1', 'Alice'], ['book-row-p2', 'Bob']]) {
+      const row = document.getElementById(id)!;
+      for (const label of ['I', 'II', 'III', 'IV']) {
+        expect(within(row).getByRole('button', { name: new RegExp(`^Edit ${name} Book ${label} balance`) })).toBeInTheDocument();
+      }
+    }
   });
 
   it('cell click opens EditBookBalanceModal with the right bookType/currentBalance; submit calls adjustBookBalance with the delta', async () => {
@@ -564,12 +582,12 @@ describe('BookLedgerCard — column + row kebabs (D7b, R-16 4/4)', () => {
     expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
   });
 
-  it("member-own-row (D7-g): canEdit=false + effectiveUserId matching Alice's row still shows NO row kebab", () => {
-    render(<BookLedgerCard {...baseProps} canEdit={false} effectiveUserId="u-alice" />, { wrapper: MemoryRouter });
+  it("member-own-row (D7-g): canEdit=false shows NO row kebab, Alice's row included", () => {
+    render(<BookLedgerCard {...baseProps} canEdit={false} />, { wrapper: MemoryRouter });
 
-    // Alice's cells are still editable (member-own-row exception) but the
-    // bulk-reset kebab gates on `canEdit` alone (never `rowCanEdit`) — no
-    // row grants a member a bulk-reset door onto their own ledger.
+    // The bulk-reset kebab gates on `canEdit` alone — no row grants a member
+    // a bulk-reset door onto their own ledger (R-R1-7 also removed the
+    // own-row cell edit).
     expect(screen.queryByRole('button', { name: 'Alice book actions' })).not.toBeInTheDocument();
     const row = document.getElementById('book-row-p1')!;
     fireEvent.contextMenu(row);
