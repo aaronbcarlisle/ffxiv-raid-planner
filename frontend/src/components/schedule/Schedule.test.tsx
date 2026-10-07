@@ -54,7 +54,8 @@ import { useAvailabilityStore } from '../../stores/availabilityStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useAuthStore } from '../../stores/authStore';
 import { utcSlotToLocal, formatTimeLabel } from './availabilityUtils';
-import type { ScheduleSession, ScheduleSessionCreate, StaticGroup } from '../../types';
+import { buildDiscordDeliverySummary } from './discordDeliverySummary';
+import type { ScheduleSession, ScheduleSessionCreate, ScheduleSettings, StaticGroup } from '../../types';
 
 function makeSession(overrides: Partial<ScheduleSession> = {}): ScheduleSession {
   return {
@@ -127,6 +128,7 @@ beforeEach(() => {
   useScheduleStore.setState({
     sessions: [s2, s3], settings: null, isLoading: false, error: null,
     fetchSessions: vi.fn(), fetchExceptions: vi.fn(async () => []),
+    fetchSettings: vi.fn(async () => {}),
     submitRsvp: vi.fn(async () => {}), createSession: vi.fn(async () => {}),
     updateSession: vi.fn(async () => {}), deleteSession: vi.fn(async () => {}),
     createException: vi.fn(async () => ({}) as never),
@@ -574,6 +576,96 @@ describe('Schedule', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
       await waitFor(() => expect(useScheduleStore.getState().deleteSession).toHaveBeenCalledWith('g1', 'sRec'));
+    });
+  });
+
+  // W0 DEL-1 R-D1-6: the V2 session modal shows V1's Discord Delivery block,
+  // built from THIS static's settings only.
+  describe('Discord Delivery summary (W0 DEL-1)', () => {
+    const ownSettings: ScheduleSettings = {
+      staticGroupId: 'g1',
+      webhookConfigured: true,
+      mentionTarget: 'here',
+      enable24hReminder: true,
+      enable1hReminder: false,
+      enableMissingRsvpReminder: false,
+      calendarEnabled: false,
+      canManage: true,
+      discordLinkStatus: 'connected',
+      discordGuildName: 'Raid Guild',
+    };
+    const ownSummary = {
+      serverLabel: 'Raid Guild',
+      mirrorEnabled: true,
+      remindersEnabled: true,
+      reminderLabels: ['24 hrs before'],
+      pingLabel: '@here',
+    };
+    const fetchSettingsMock = () => useScheduleStore.getState().fetchSettings as unknown as Mock;
+
+    it("passes this static's summary on the create and the edit path", async () => {
+      useScheduleStore.setState({ settings: ownSettings } as never);
+      renderSchedule();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add session' }));
+      expect(screen.getByTestId('create-session-modal-stub')).toBeInTheDocument();
+      expect(mockCreateSessionModalProps?.editSession).toBeNull();
+      expect(mockCreateSessionModalProps?.discordDeliverySummary).toStrictEqual(buildDiscordDeliverySummary(ownSettings));
+      expect(mockCreateSessionModalProps?.discordDeliverySummary).toStrictEqual(ownSummary);
+
+      act(() => (mockCreateSessionModalProps?.onClose as () => void)());
+      expect(screen.queryByTestId('create-session-modal-stub')).not.toBeInTheDocument();
+
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Session actions' }), { key: 'Enter' });
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }));
+      expect(screen.getByTestId('create-session-modal-stub')).toBeInTheDocument();
+      // editSession is null on the create path, so s2 proves this is the edit mount.
+      expect(mockCreateSessionModalProps?.editSession).toEqual(s2);
+      expect(mockCreateSessionModalProps?.discordDeliverySummary).toStrictEqual(ownSummary);
+
+      // This static's settings are already loaded: no refetch.
+      expect(fetchSettingsMock()).not.toHaveBeenCalled();
+    });
+
+    it("passes no summary while the store holds another static's settings, and fetches this static's once", async () => {
+      useScheduleStore.setState({ settings: { ...ownSettings, staticGroupId: 'g-other' } } as never);
+      renderSchedule();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add session' }));
+      expect(screen.getByTestId('create-session-modal-stub')).toBeInTheDocument();
+      expect(mockCreateSessionModalProps).not.toBeNull();
+      expect(mockCreateSessionModalProps?.discordDeliverySummary).toBeUndefined();
+
+      await act(async () => {});
+      expect(fetchSettingsMock()).toHaveBeenCalledTimes(1);
+      expect(fetchSettingsMock()).toHaveBeenCalledWith('g1');
+    });
+
+    it("shows the summary once this static's settings land, without fetching again", async () => {
+      const fetchSettings = vi.fn(async (groupId: string) => {
+        await Promise.resolve();
+        useScheduleStore.setState({ settings: { ...ownSettings, staticGroupId: groupId } } as never);
+      });
+      useScheduleStore.setState({ settings: null, fetchSettings } as never);
+      renderSchedule();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add session' }));
+      await waitFor(() => expect(mockCreateSessionModalProps?.discordDeliverySummary).toStrictEqual(ownSummary));
+      await act(async () => {});
+      expect(fetchSettings).toHaveBeenCalledTimes(1);
+      expect(fetchSettings).toHaveBeenCalledWith('g1');
+    });
+
+    it.each(['member', 'viewer'] as const)('(pin) a %s who cannot manage never fetches the settings', async (role) => {
+      const roleGroup = { ...group, userRole: role } as unknown as StaticGroup;
+      render(
+        <MemoryRouter>
+          <Schedule group={roleGroup} tier={null} canManage={false} currentUserId="u1" />
+        </MemoryRouter>,
+      );
+      await act(async () => {});
+      expect(useScheduleStore.getState().settings).toBeNull();
+      expect(fetchSettingsMock()).not.toHaveBeenCalled();
     });
   });
 });
