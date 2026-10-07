@@ -1166,7 +1166,7 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
                 groupId={currentGroup.id}
                 groupName={currentGroup.name}
                 currentUserId={effectiveUserId ?? ''}
-                canManage={canManageRoster(userRole).allowed}
+                canManage={canManageRoster(userRole, isAdminAccess).allowed}
                 isViewer={userRole === 'viewer'}
                 isMember={userRole != null}
               />
