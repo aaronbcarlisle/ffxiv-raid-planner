@@ -148,15 +148,15 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
   }, [group.id, weekDates.join(','), fetchAvailability, isMember]);
 
   // Discord Delivery (W0 DEL-1, R-D1-6): only a manager opens the session
-  // modal, and only a manager may read the scheduler settings. The store is
-  // shell-shared, so it can hold another static's settings: refetch until it
-  // holds this one's. `fetchSettings` never rejects and sets `settings` only
-  // on success, so this cannot loop.
+  // modal, so only a manager fetches the scheduler settings (the backend
+  // refuses viewers). The store is shell-shared, so it can hold another
+  // static's settings: refetch until it holds this one's. `fetchSettings`
+  // never rejects and sets `settings` only on success, so this cannot loop.
   useEffect(() => {
-    if (canManage && settings?.staticGroupId !== group.id) {
+    if (isMember && canManage && settings?.staticGroupId !== group.id) {
       void fetchSettings(group.id).catch(() => undefined);
     }
-  }, [canManage, settings?.staticGroupId, group.id, fetchSettings]);
+  }, [isMember, canManage, settings?.staticGroupId, group.id, fetchSettings]);
   const discordDeliverySummary = useDiscordDeliverySummary(settings);
 
   // ── Cancelled exceptions, batched per recurring session (plan confirmation 1).

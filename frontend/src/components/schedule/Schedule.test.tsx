@@ -697,6 +697,7 @@ describe('Schedule — members only (R-G1-7)', () => {
     expect(useScheduleStore.getState().fetchSessions).not.toHaveBeenCalled();
     expect(availabilityMock()).not.toHaveBeenCalled();
     expect(useScheduleStore.getState().fetchExceptions).not.toHaveBeenCalled();
+    expect(useScheduleStore.getState().fetchSettings).not.toHaveBeenCalled();
   }
 
   it('a guest gets one members-only card, a Login with Discord action, and no requests', async () => {

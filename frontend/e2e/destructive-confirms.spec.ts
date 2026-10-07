@@ -26,24 +26,14 @@
 import { test, expect, type Page } from '@playwright/test';
 import {
   API_BASE,
-  DEV_SHARE_CODE,
   loginAsOwner,
+  ownerApiContext,
   goToTestStatic,
   goToTestStaticLegacy,
   switchTab,
 } from './helpers/auth';
 
 const TEST_FARM_PREFIX = 'E2E Farm ';
-
-/** DEVTST's id plus a CSRF token for the owner's API writes. */
-async function ownerApiContext(page: Page): Promise<{ groupId: string; csrfToken: string }> {
-  const groupRes = await page.request.get(`${API_BASE}/api/static-groups/by-code/${DEV_SHARE_CODE}`);
-  if (!groupRes.ok()) throw new Error(`static lookup returned ${groupRes.status()}`);
-  const group = await groupRes.json() as { id: string };
-  const csrfToken = (await page.context().cookies(API_BASE)).find((c) => c.name === 'csrf_token')?.value;
-  if (!csrfToken) throw new Error('missing csrf_token cookie — call after loginAsOwner');
-  return { groupId: group.id, csrfToken };
-}
 
 /** Seed a custom-reward farm through the API. Returns its id. */
 async function seedFarm(page: Page, title: string): Promise<string> {
@@ -147,7 +137,7 @@ test.describe('Farm delete asks first (R-D1-1 / R-D1-2)', () => {
     let reached = false;
     for (let i = 0; i < 12 && !reached; i += 1) {
       await page.keyboard.press('Tab');
-      reached = (await focused.getAttribute('aria-label').catch(() => null)) === target;
+      reached = (await focused.getAttribute('aria-label', { timeout: 1_000 }).catch(() => null)) === target;
     }
     expect(reached, `Tab never reached "${target}"`).toBe(true);
 
