@@ -9,7 +9,7 @@
 
 /* eslint-disable design-system/no-raw-button */
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Settings, ListOrdered, Users, Globe, Target, Shield, Plus, Trash2, Webhook } from 'lucide-react';
 import { SettingsSubNav } from './SettingsSubNav';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
@@ -26,6 +26,9 @@ import { ContentSuggestionsPanel } from '../static-group/ContentSuggestionsPanel
 import { CreateCollectionGoalModal } from '../static-group/CreateCollectionGoalModal';
 import { ScheduleIntegrationsPanel } from '../schedule/ScheduleIntegrationsPanel';
 import { Button, IconButton } from '../primitives';
+import { ConfirmModal } from '../ui/ConfirmModal';
+import { wasToastedByApi } from '../../services/api';
+import { toast } from '../../stores/toastStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useObjectiveGoalStore } from '../../stores/objectiveGoalStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
@@ -148,6 +151,18 @@ function CollectionGoalsSection({
 }) {
   const { goals, isLoading, fetchGoals, deleteGoal } = useCollectionGoalStore();
   const createModal = useModal();
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+
+  const handleDeleteConfirm = async () => {
+    if (!pendingDelete) return;
+    try {
+      await deleteGoal(groupId, pendingDelete.id);
+    } catch (err) {
+      if (!wasToastedByApi(err)) toast.error('Failed to delete farm');
+    } finally {
+      setPendingDelete(null);
+    }
+  };
 
   useEffect(() => {
     fetchGoals(groupId);
@@ -231,11 +246,11 @@ function CollectionGoalsSection({
                 {canManage && (
                   <IconButton
                     icon={<Trash2 className="w-3.5 h-3.5" />}
-                    aria-label="Delete"
+                    aria-label={`Delete ${goal.title}`}
                     variant="ghost"
                     size="sm"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-status-error"
-                    onClick={() => deleteGoal(groupId, goal.id)}
+                    className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-status-error"
+                    onClick={() => setPendingDelete({ id: goal.id, title: goal.title })}
                   />
                 )}
               </div>
@@ -261,6 +276,18 @@ function CollectionGoalsSection({
         onClose={createModal.close}
         groupId={groupId}
       />
+
+      {pendingDelete && (
+        <ConfirmModal
+          isOpen
+          title="Delete Farm"
+          message={`Delete "${pendingDelete.title}"? This removes its participant progress and drop history.`}
+          confirmLabel="Delete"
+          variant="danger"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </>
   );
 }
