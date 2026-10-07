@@ -2,7 +2,7 @@
 
 import logging
 import secrets
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Callable, Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Any
@@ -288,14 +288,21 @@ def count_statements() -> Any:
     for the block's duration and leaves `counts.n` holding the tally. Single
     source so query-budget tests never hand-roll their own counter/listener
     pair (test_player_overview.py, test_availability_layering.py).
+
+    An optional `match` filters on the statement text: `count_statements(engine,
+    match=lambda sql: "player_characters" in sql)` counts only the statements
+    it accepts. Without it every statement counts (vet I-2).
     """
 
     @contextmanager
-    def _count_statements(engine: AsyncEngine) -> Generator[SimpleNamespace, None, None]:
+    def _count_statements(
+        engine: AsyncEngine, match: Callable[[str], bool] | None = None
+    ) -> Generator[SimpleNamespace, None, None]:
         counts = SimpleNamespace(n=0)
 
         def _listener(conn, cursor, statement, parameters, context, executemany):
-            counts.n += 1
+            if match is None or match(statement):
+                counts.n += 1
 
         event.listen(engine.sync_engine, "before_cursor_execute", _listener)
         try:

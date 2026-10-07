@@ -4,6 +4,7 @@ The table is `tests/authz_matrix.py`. Each probe builds its own world (V6c):
 owner calls to DELETE routes would wreck a shared one.
 """
 
+import re
 import uuid
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
@@ -13,6 +14,7 @@ from urllib.parse import urlencode
 import httpx
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
 from fastapi.routing import iter_route_contexts
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,17 +25,24 @@ from app.middleware.csrf import CSRF_HEADER_NAME
 from app.models import MemberRole, ScheduleSettings, StaticContentSuggestionVote, User
 from tests.authz_matrix import ROUTES, AuthzRoute
 from tests.factories import (
+    create_api_key,
     create_catalog_item,
     create_collection_goal,
     create_content_suggestion,
+    create_hub_bis_target_set,
     create_invitation,
     create_join_request,
     create_loot_log_entry,
     create_material_log_entry,
     create_membership,
+    create_notification,
     create_objective_goal,
     create_page_ledger_entry,
     create_participant_state,
+    create_player_character,
+    create_player_goal,
+    create_player_job_profile,
+    create_player_profile,
     create_reward_drop,
     create_roster_bis_target_set,
     create_schedule_exception,
@@ -79,6 +88,19 @@ def live_mutation_routes() -> set[tuple[str, str]]:
 
 
 @dataclass(frozen=True)
+class HubObjects:
+    """One of each object a user owns outside any static: the `owned` rows' targets (R-A2-8)."""
+
+    profile: Any
+    character: Any
+    job: Any
+    bis: Any
+    goal: Any
+    notification: Any
+    api_key: Any
+
+
+@dataclass(frozen=True)
 class World:
     u: dict[str, User]
     group: Any
@@ -104,6 +126,7 @@ class World:
     catalog_item: Any
     roster_bis: Any
     assignment: Any
+    hub: dict[str, HubObjects]
     caller: str = field(default="owner")
 
     def as_(self, caller: str) -> "World":
@@ -112,6 +135,10 @@ class World:
     @property
     def me(self) -> User:
         return self.u[self.caller]
+
+    @property
+    def my_hub(self) -> HubObjects:
+        return self.hub[self.caller]
 
     @property
     def my_card(self):
@@ -129,16 +156,51 @@ class World:
     def my_reg(self):
         return self.reg[self.caller]
 
+    @property
+    def other_card(self):
+        """A card the caller does not hold: the lead's, or the member's when the caller is lead."""
+        return self.card["member" if self.caller == "lead" else "lead"]
 
-async def build_world(session: AsyncSession) -> World:
-    """One static with every role, and one of each object a mutation route targets."""
+
+async def _build_hub(session: AsyncSession, user: User) -> HubObjects:
+    """The user's hub objects. The character is `Hub Probe` / `Ravana`, never the plugin builds'
+    `Member Card` / `Tonberry`, so the plugin sync rows keep taking find-or-create's create path
+    (vet M-4). Its lodestone id is numeric because `sync-gear` calls `int()` on it.
+    """
+    profile = await create_player_profile(session, user)
+    character = await create_player_character(
+        session, profile, name="Hub Probe", server="Ravana", lodestone_id="12345678"
+    )
+    job = await create_player_job_profile(session, profile, job="RDM", role="caster")
+    return HubObjects(
+        profile=profile,
+        character=character,
+        job=job,
+        bis=await create_hub_bis_target_set(session, profile, job),
+        goal=await create_player_goal(session, profile),
+        notification=await create_notification(session, user),
+        api_key=await create_api_key(session, user),
+    )
+
+
+async def build_world(session: AsyncSession, *, public: bool = False) -> World:
+    """One static with every role, and one of each object a mutation route targets.
+
+    `public` makes the static public: the outsider probe's world (B17). It adds no object.
+    The member alone gets a hub (the `owned` rows' actor); the stranger probe builds as the
+    actor, so no other user needs one.
+    """
     u = {
         n: await create_user(session, discord_id=f"authz_{n}", discord_username=n)
         for n in WORLD_USERS
     }
 
-    u["admin"].is_admin = True  # outside the static: only the admin-key plugin row uses them
-    group = await create_static_group(session, u["owner"], settings={"splitClearMode": True})
+    # The admin is outside the static. Used by the admin-key plugin row, the admin-assign
+    # actor probe and the admin-key probe.
+    u["admin"].is_admin = True
+    group = await create_static_group(
+        session, u["owner"], settings={"splitClearMode": True}, is_public=public
+    )
     await create_membership(session, u["lead"], group, role=MemberRole.LEAD)
     await create_membership(session, u["member"], group, role=MemberRole.MEMBER)
     await create_membership(session, u["member2"], group, role=MemberRole.MEMBER)
@@ -253,6 +315,7 @@ async def build_world(session: AsyncSession) -> World:
         catalog_item=await create_catalog_item(session),
         roster_bis=await create_roster_bis_target_set(session, group, card["open"], u["owner"]),
         assignment=await create_weekly_assignment(session, group, tier, player=card["open"]),
+        hub={"member": await _build_hub(session, u["member"])},
     )
     await session.commit()
     return world
@@ -261,6 +324,12 @@ async def build_world(session: AsyncSession) -> World:
 @pytest_asyncio.fixture
 async def world(session: AsyncSession) -> World:
     return await build_world(session)
+
+
+@pytest_asyncio.fixture
+async def public_world(session: AsyncSession) -> World:
+    """The same world with a public static: the outsider probe's target (B17)."""
+    return await build_world(session, public=True)
 
 
 @pytest.fixture(autouse=True)
@@ -283,8 +352,14 @@ def no_network(monkeypatch):
     async def _noop(*args, **kwargs):
         return None
 
+    async def _lodestone_stubbed(*args, **kwargs):
+        # A domain 4xx the actor probe accepts. `sync-gear` imports this name inside the handler,
+        # at call time, so the module attribute is what it reads; the ownership lookup runs first.
+        raise HTTPException(status_code=409, detail="AUTHZ probe: Lodestone stubbed")
+
     monkeypatch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", _refuse)
     monkeypatch.setattr("app.routers.lodestone._fetch_tomestone_identity", _identity)
+    monkeypatch.setattr("app.routers.lodestone._fetch_character_payload", _lodestone_stubbed)
     monkeypatch.setattr("app.routers.schedule.post_schedule_webhook", _webhook_ok)
     monkeypatch.setattr("app.routers.schedule._post_or_edit_webhook", _noop)
 
@@ -292,16 +367,22 @@ def no_network(monkeypatch):
 # ── Sending a row's request ──────────────────────────────────────────────────
 
 
-async def send(client: AsyncClient, row: AuthzRoute, world: World, caller: str) -> httpx.Response:
-    """Send the row's request as `caller` through the CSRF-injecting client methods."""
-    params, query, body = row.build(world.as_(caller))
-    url = row.path.format(**params)
-    kwargs: dict[str, Any] = {
-        "headers": {"Authorization": f"Bearer {create_access_token(world.u[caller].id)}"}
-    }
+async def _request(
+    client: AsyncClient,
+    method: str,
+    url: str,
+    *,
+    token: str | None,
+    query: dict | None = None,
+    body: Any = None,
+) -> httpx.Response:
+    """One request through the CSRF-injecting client methods. `token=None` sends no credential."""
+    kwargs: dict[str, Any] = {}
+    if token is not None:
+        kwargs["headers"] = {"Authorization": f"Bearer {token}"}
     if query:
         kwargs["params"] = query
-    method = row.method.lower()
+    method = method.lower()
     if body is not None and method == "delete":
         # httpx's delete() takes no body; inject CSRF exactly as the client's verbs do.
         client._inject_csrf_header(kwargs)
@@ -310,6 +391,57 @@ async def send(client: AsyncClient, row: AuthzRoute, world: World, caller: str) 
         kwargs["json"] = body
     return await getattr(client, method)(url, **kwargs)
 
+
+async def send(
+    client: AsyncClient, row: AuthzRoute, world: World, caller: str, *, as_: str | None = None
+) -> httpx.Response:
+    """Send the row's request with `caller`'s JWT through the CSRF-injecting client methods.
+
+    The build runs as `as_` (default `caller`): a probe that is not the row's actor still
+    addresses the actor's objects, and a caller with no card can't break a `w.my_card` build.
+    """
+    params, query, body = row.build(world.as_(as_ or caller))
+    return await _request(
+        client,
+        row.method,
+        row.path.format(**params),
+        token=create_access_token(world.u[caller].id),
+        query=query,
+        body=body,
+    )
+
+
+def blank_url(row: AuthzRoute) -> str:
+    """The path of a build-less row: every `{param}` is "1"."""
+    return re.sub(r"\{[^}]+\}", "1", row.path)
+
+
+async def send_blank(
+    client: AsyncClient, row: AuthzRoute, *, token: str | None = None
+) -> httpx.Response:
+    """A build-less row's request: every path param "1", no body, no query."""
+    return await _request(client, row.method, blank_url(row), token=token)
+
+
+async def send_admin_row(
+    client: AsyncClient, world: World, row: AuthzRoute, caller: str, how: str
+) -> httpx.Response:
+    """R-A2-6's send rule: a row with a build sends it, built as the row's actor, a build-less
+    row sends "1" path params and no body. `how` is "jwt" (the CSRF client) or "key" (bare)."""
+    if row.build is None:
+        url, query, body = blank_url(row), None, None
+    else:
+        params, query, body = row.build(world.as_(row.actor))
+        url = row.path.format(**params)
+    if how == "jwt":
+        return await _request(
+            client, row.method, url, token=create_access_token(world.u[caller].id),
+            query=query, body=body,
+        )
+    assert how == "key", how
+    if query:
+        url += "?" + urlencode(query)
+    return await _send_bare(row.method, url, await _mint_key(client, world.u[caller]), body)
 
 def _error_code(resp: httpx.Response) -> Any:
     try:
@@ -332,6 +464,66 @@ VIEWER_DENIED = [r for r in ROUTES if r.static_scoped and r.min_role != "viewer"
 MEMBER_DENIED = [r for r in ROUTES if r.min_role in ("lead", "owner")]
 VIEWER_ALLOWED = [r for r in ROUTES if r.min_role == "viewer"]
 WITH_BUILD = [r for r in ROUTES if r.build is not None]
+ANON_REFUSED = [r for r in ROUTES if r.min_role not in ("public", "optional", "dev")]
+LEAD_DENIED = [r for r in ROUTES if r.min_role == "owner"]
+ADMIN_ROWS = [r for r in ROUTES if r.min_role in ("admin", "admin_or_key")]
+ADMIN_JWT_ONLY = [r for r in ADMIN_ROWS if r.min_role == "admin"]
+OUTSIDER_DENIED = [r for r in ROUTES if r.static_scoped]
+OWNED = [r for r in ROUTES if r.owned]
+# The stranger (R-A2-7): the static's owner shares a static with every actor and holds the
+# highest non-admin role, so it is the strongest user who must still be refused another
+# user's object.
+STRANGER = "owner"
+# Every gap probe name → the rows that probe covers. A row's `gaps` may name only a probe that
+# runs on that row (R-A2-13).
+PROBES: dict[str, list[AuthzRoute]] = {
+    "viewer": VIEWER_DENIED,
+    "member": MEMBER_DENIED,
+    "lead": LEAD_DENIED,
+    "allowed": VIEWER_ALLOWED,
+    "actor": WITH_BUILD,
+    "anon": ANON_REFUSED,
+    "nonadmin": ADMIN_ROWS,
+    "outsider": OUTSIDER_DENIED,
+    "stranger": OWNED,
+}
+# `self` rows that act on the caller by construction (R-A2-9): no path or body names another
+# user's object, so a stranger can't reach one through them. Every other `self` row is `owned`
+# (a build on an object the actor owns, probed by the stranger). Reclassifying a row means an
+# edit here and in the table.
+PLAYER = "/api/player"
+CALLER_SCOPED = {
+    # the caller's own account
+    "PATCH /api/auth/me/preferences",
+    "POST /api/notifications/read-all",
+    f"PUT {PLAYER}/profile",
+    f"POST {PLAYER}/profile/rotate-share-code",
+    f"PUT {PLAYER}/availability/template",
+    f"POST {PLAYER}/characters",
+    f"POST {PLAYER}/goals",
+    f"POST {PLAYER}/jobs",
+    # a catalog item is a shared record; the intent and snapshot rows are the caller's own
+    "PUT /api/me/collection-intent/{catalog_item_id}",
+    "DELETE /api/me/collection-intent/{catalog_item_id}",
+    "PUT /api/me/collection-snapshot/{catalog_item_id}",
+    # the plugin syncs the key holder's own data
+    "POST /api/plugin/collections/sync",
+    "POST /api/plugin/mount-farms/sync",
+    "POST /api/plugin/player/gear-sync",
+    "POST /api/plugin/player/batch-gear-sync",
+    # the caller leaves; the other-target twin is the lead `[remove]` row
+    "DELETE /api/static-groups/{group_id}/members/{user_id} [leave]",
+}
+# Rows with a `{group_id}` or `{share_code}` path that are not static-scoped (R-A2-11): each
+# is a deliberate exception to "a static in the path is a static-scoped row".
+GROUP_PATH_EXCEPTIONS = {
+    # self: any role but the owner leaves (the owner is refused inline)
+    "DELETE /api/static-groups/{group_id}/members/{user_id} [leave]",
+    # admin: the non-admin probe (R-A2-6) covers it
+    "POST /api/static-groups/{group_id}/tiers/{tier_id}/players/{player_id}/admin-assign",
+    # user: the caller applies as a non-member, by design (a share code names a static)
+    "POST /api/static-groups/{share_code}/join-requests",
+}
 
 
 # ── R-P0-8.1: completeness (the CI gate) ─────────────────────────────────────
@@ -361,6 +553,36 @@ def test_route_table_rows_are_well_formed():
         assert row.variant or keys.count((row.method, row.path)) == 1, f"{row.id} needs a variant"
         assert not row.static_scoped or row.build is not None, f"{row.id} has no build"
         assert row.actor in WORLD_USERS, f"{row.id}: actor {row.actor!r} is not a world user"
+        assert row.plugin or row.plugin_body is None, f"{row.id}: plugin_body on a non-plugin row"
+        assert not row.plugin or row.build is not None, f"{row.id}: plugin row has no build"
+        for name, _reason in row.gaps:
+            assert name in PROBES, f"{row.id}: gap names no probe: {name!r}"
+            assert row.id in {r.id for r in PROBES[name]}, f"{row.id}: probe {name!r} skips it"
+    by_id = set(ids)
+    stale = sorted(GROUP_PATH_EXCEPTIONS - by_id)
+    assert not stale, f"GROUP_PATH_EXCEPTIONS has ids that are not rows: {stale}"
+    for row in ROUTES:
+        in_path = "{group_id}" in row.path or "{share_code}" in row.path
+        if in_path and not row.static_scoped:
+            assert row.id in GROUP_PATH_EXCEPTIONS, (
+                f"{row.id}: a static in the path but not static-scoped (retype it, or add it to "
+                "GROUP_PATH_EXCEPTIONS with the reason)"
+            )
+    # R-A2-9: every `self` row is either `owned` (stranger-probed) or caller-scoped.
+    stale = sorted(CALLER_SCOPED - by_id)
+    assert not stale, f"CALLER_SCOPED has ids that are not rows: {stale}"
+    unclassified = sorted(
+        r.id for r in ROUTES if r.min_role == "self" and not r.owned and r.id not in CALLER_SCOPED
+    )
+    assert not unclassified, (
+        "self rows that are neither `owned` nor in CALLER_SCOPED (give the row a build on an "
+        f"object the actor owns and `owned=True`, or list it with the reason): {unclassified}"
+    )
+    for row in ROUTES:
+        if row.owned:
+            assert row.min_role == "self", f"{row.id}: owned but not a self row"
+            assert row.build is not None, f"{row.id}: owned but has no build"
+            assert row.id not in CALLER_SCOPED, f"{row.id}: owned and in CALLER_SCOPED"
 
 
 # ── R-P0-8.2: a viewer is refused every static write above viewer ────────────
@@ -381,6 +603,82 @@ async def test_member_is_refused(client, world, row):
     resp = await send(client, row, world, "member")
     assert resp.status_code == 403, f"{row.id}: member got {resp.status_code} {resp.text[:200]}"
     assert _error_code(resp) != CSRF_ERROR, f"{row.id}: 403 came from CSRF, not the gate"
+
+
+# ── R-A2-12: a lead is refused every owner-only write ────────────────────────
+
+
+@pytest.mark.parametrize("row", _params(LEAD_DENIED, "lead"))
+async def test_lead_is_refused(client, world, row):
+    resp = await send(client, row, world, "lead")
+    assert resp.status_code == 403, f"{row.id}: lead got {resp.status_code} {resp.text[:200]}"
+    assert _error_code(resp) != CSRF_ERROR, f"{row.id}: 403 came from CSRF, not the gate"
+
+
+# ── R-A2-5: an anonymous caller is refused every authenticated write ─────────
+
+
+@pytest.mark.parametrize("row", _params(ANON_REFUSED, "anon"))
+async def test_anonymous_is_refused(client, row):
+    """No credential, no body, every path param "1": every auth gate answers before validation."""
+    resp = await send_blank(client, row)
+    assert resp.status_code == 401, f"{row.id}: anonymous got {resp.status_code} {resp.text[:200]}"
+    assert _error_code(resp) != CSRF_ERROR, f"{row.id}: refusal came from CSRF, not the gate"
+
+
+# ── R-A2-6: a non-admin is refused the admin rows, by JWT and by key ─────────
+
+
+@pytest.mark.parametrize("how", ("jwt", "key"))
+@pytest.mark.parametrize("row", _params(ADMIN_ROWS, "nonadmin"))
+async def test_non_admin_is_refused(client, world, row, how):
+    """The static's owner (the strongest non-admin) is refused with exactly 403."""
+    resp = await send_admin_row(client, world, row, "owner", how)
+    assert resp.status_code == 403, (
+        f"{row.id}: owner's {how} got {resp.status_code} {resp.text[:200]}"
+    )
+    assert _error_code(resp) != CSRF_ERROR, f"{row.id}: 403 came from CSRF, not the gate"
+
+
+@pytest.mark.parametrize("row", _params(ADMIN_JWT_ONLY, "nonadmin"))
+async def test_admin_key_is_refused_on_jwt_only_rows(client, world, row):
+    """`admin` rows refuse any key, the admin's own included (`admin_or_key` rows allow it)."""
+    resp = await send_admin_row(client, world, row, "admin", "key")
+    assert resp.status_code == 403, (
+        f"{row.id}: admin's key got {resp.status_code} {resp.text[:200]}"
+    )
+    assert _error_code(resp) != CSRF_ERROR, f"{row.id}: 403 came from CSRF, not the gate"
+
+
+# ── R-A2-17 (B17): a non-member of a public static is refused every static write ─
+
+
+@pytest.mark.parametrize("row", _params(OUTSIDER_DENIED, "outsider"))
+async def test_outsider_is_refused(client, public_world, row):
+    """403 from `require_membership`, 404 from an inline lookup. The build runs as the row's actor
+    (the outsider holds no card); the same build passes the actor probe, so a 404 isn't a bad build.
+    """
+    resp = await send(client, row, public_world, "outsider", as_=row.actor)
+    assert resp.status_code in (403, 404), (
+        f"{row.id}: outsider got {resp.status_code} {resp.text[:200]}"
+    )
+    assert _error_code(resp) != CSRF_ERROR, f"{row.id}: refusal came from CSRF, not the gate"
+
+
+# ── R-A2-7: a stranger is refused every write to an object the actor owns ────
+
+
+@pytest.mark.parametrize("row", _params(OWNED, "stranger"))
+async def test_stranger_is_refused(client, world, row):
+    """The row's request, built as its actor (the actor's object), sent with the stranger's JWT.
+    404 is accepted because these routes hide whether the object exists; the same build passes
+    the actor probe (which rejects 404), so the stranger's 404 isn't a broken build.
+    """
+    resp = await send(client, row, world, STRANGER, as_=row.actor)
+    assert resp.status_code in (403, 404), (
+        f"{row.id}: stranger got {resp.status_code} {resp.text[:200]}"
+    )
+    assert _error_code(resp) != CSRF_ERROR, f"{row.id}: refusal came from CSRF, not the gate"
 
 
 # ── R-P0-8.4: the viewer allowlist is exact, and those calls go through ──────
@@ -417,19 +715,22 @@ async def test_allowed_actor_gets_through(client, world, row):
 
 G = "/api/static-groups/{group_id}"
 T = G + "/tiers/{tier_id}"
-# Transcribed from XIVRaidPlannerPlugin/Api/RaidPlannerClient.cs. Un-flagging a row fails
+# Transcribed from XIVRaidPlannerPlugin/Api/RaidPlannerClient.cs, pinned by row id so that
+# un-flagging one variant of a pair (loot-log [purchase] while [drop] stays) fails
 # test_plugin_rows_match_the_client. plugin/player/gear-sync (single) is not called by the
 # client, and plugin-auth/exchange is public: neither belongs here.
-PLUGIN_MUTATIONS = {
-    ("POST", T + "/loot-log"),
-    ("POST", T + "/material-log"),
-    ("POST", T + "/mark-floor-cleared"),
-    ("POST", "/api/plugin/mount-farms/sync"),
-    ("POST", "/api/plugin/collections/sync"),
-    ("POST", "/api/plugin/player/batch-gear-sync"),
-    ("POST", "/api/admin/collection-catalog/import-verified-ids"),
-    ("POST", G + "/split-clear/mark-run-cleared"),
-    ("PUT", T + "/players/{player_id}"),
+PLUGIN_ROW_IDS = {
+    f"POST {T}/loot-log [purchase]",
+    f"POST {T}/loot-log [drop]",
+    f"POST {T}/material-log [purchase]",
+    f"POST {T}/material-log [drop]",
+    f"POST {T}/mark-floor-cleared",
+    "POST /api/plugin/mount-farms/sync",
+    "POST /api/plugin/collections/sync",
+    "POST /api/plugin/player/batch-gear-sync",
+    "POST /api/admin/collection-catalog/import-verified-ids",
+    f"POST {G}/split-clear/mark-run-cleared",
+    f"PUT {T}/players/{{player_id}} [own]",
 }
 # The GET calls the client makes, sent as the member (the gear route on their own card).
 PLUGIN_GETS = [
@@ -447,10 +748,10 @@ PLUGIN_ROWS = [r for r in ROUTES if r.plugin]
 
 
 def test_plugin_rows_match_the_client():
-    flagged = {(r.method, r.path) for r in PLUGIN_ROWS}
-    assert flagged == PLUGIN_MUTATIONS, (
-        f"plugin rows differ from the client. unflagged: {sorted(PLUGIN_MUTATIONS - flagged)}"
-        f" flagged but not called: {sorted(flagged - PLUGIN_MUTATIONS)}"
+    flagged = {r.id for r in PLUGIN_ROWS}
+    assert flagged == PLUGIN_ROW_IDS, (
+        f"plugin rows differ from the client. unflagged: {sorted(PLUGIN_ROW_IDS - flagged)}"
+        f" flagged but not called: {sorted(flagged - PLUGIN_ROW_IDS)}"
     )
 
 

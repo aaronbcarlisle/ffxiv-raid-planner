@@ -16,6 +16,7 @@ from ..database import get_session
 from ..dependencies import get_current_user, get_current_user_optional
 from .admin.deps import require_admin
 from ..models import (
+    ROLE_HIERARCHY,
     AvailabilityTemplate,
     Membership,
     MemberRole,
@@ -65,6 +66,7 @@ from ..schemas import (
 from ..services import generate_share_code
 from ..services.audit import audit
 from ..services.availability_layering import load_zone
+from ..services.discovery_settings import get_discovery, is_discoverable
 
 router = APIRouter(prefix="/api/static-groups", tags=["static-groups"])
 logger = structlog.get_logger(__name__)
@@ -109,6 +111,23 @@ def settings_to_schema(settings: dict | None) -> StaticSettingsSchema | None:
     if not settings:
         return None
     return StaticSettingsSchema(**settings)
+
+
+LISTING_CONTACT_KEYS = ("contactMethod", "contactValue")
+
+
+def settings_without_listing_contact(settings: dict | None) -> dict | None:
+    """`settings` with the recruiting contact removed from `discovery` (GUEST-2 R-G2-12).
+
+    Returns new dicts; the input (an ORM-tracked JSON column) is never mutated.
+    """
+    discovery = get_discovery(settings)
+    if discovery is None or not any(k in discovery for k in LISTING_CONTACT_KEYS):
+        return settings
+    return {
+        **settings,
+        "discovery": {k: v for k, v in discovery.items() if k not in LISTING_CONTACT_KEYS},
+    }
 
 
 def membership_to_response(membership: Membership, include_user: bool = True) -> MembershipResponse:
@@ -160,9 +179,23 @@ def group_to_response_with_members(
     user_role: MemberRole | None = None,
     is_admin_access: bool = False,
 ) -> StaticGroupWithMembers:
-    """Convert StaticGroup model to StaticGroupWithMembers schema"""
+    """Convert StaticGroup model to StaticGroupWithMembers schema.
+
+    Identity gate (GUEST-1 R-G1-2): `user_role is not None` — every membership
+    role (viewers included) and admins (who resolve to OWNER). A caller with no
+    role (anonymous or a signed-in outsider) gets `owner: null` and
+    `members[].user: null`; the members list itself stays.
+
+    GUEST-2 R-G2-12: that caller also gets `settings.discovery` without the
+    recruiting contact unless the static is listed in the Finder, which
+    publishes the contact anyway.
+    """
+    identity = user_role is not None
+    settings = group.settings
+    if not identity and not is_discoverable(group):
+        settings = settings_without_listing_contact(settings)
     owner_info = None
-    if group.owner:
+    if identity and group.owner:
         owner_info = OwnerInfo(
             id=group.owner.id,
             discord_username=group.owner.discord_username,
@@ -172,7 +205,7 @@ def group_to_response_with_members(
         )
 
     members = [
-        membership_to_response(m, include_user=True)
+        membership_to_response(m, include_user=identity)
         for m in (group.memberships or [])
     ]
 
@@ -184,7 +217,7 @@ def group_to_response_with_members(
         owner_id=group.owner_id,
         owner=owner_info,
         members=members,
-        settings=settings_to_schema(group.settings),
+        settings=settings_to_schema(settings),
         created_at=group.created_at,
         updated_at=group.updated_at,
         user_role=MemberRoleEnum(user_role.value) if user_role else None,
@@ -749,6 +782,10 @@ async def duplicate_group(
     membership = await get_user_membership(session, current_user.id, group_id)
     if not membership and not user_is_admin:
         raise NotFound("Group not found or you don't have access")
+    # #331: a viewer seat is read-only, so it can't copy the static. Admins pass.
+    member_level = ROLE_HIERARCHY[MemberRole.MEMBER]
+    if membership and not user_is_admin and membership.role_level < member_level:
+        raise PermissionDenied("Viewers can't duplicate a static")
 
     # Load source group with all tiers and players
     result = await session.execute(
@@ -869,8 +906,12 @@ async def duplicate_group(
     await session.flush()
 
     # duplicate_group has no require_* check: R-AD-A defines override from
-    # this route's own locals rather than admin_override_for.
-    admin_override = user_is_admin and membership is None
+    # this route's own locals rather than admin_override_for. This is that
+    # helper's definition with min_role=MEMBER: an admin with no seat, or only
+    # a viewer seat, got through because they are an admin.
+    admin_override = user_is_admin and (
+        membership is None or membership.role_level < member_level
+    )
     await audit(
         session,
         actor=current_user,
@@ -933,10 +974,11 @@ async def list_members(
     if not group:
         raise NotFound("Static group not found")
 
-    # Check view permission
-    await check_view_permission(session, group, current_user)
+    # Check view permission; a caller with no role gets `user: null` (GUEST-2 R-G2-2)
+    membership = await check_view_permission(session, group, current_user)
+    identity = membership is not None
 
-    return [membership_to_response(m) for m in group.memberships]
+    return [membership_to_response(m, include_user=identity) for m in group.memberships]
 
 
 @router.get("/{group_id}/linked-players", response_model=list[LinkedPlayerInfo])
@@ -951,7 +993,12 @@ async def list_linked_players(
 
     # Check group exists and user has view permission (also loads memberships for role lookup)
     group = await get_static_group(session, group_id, load_memberships=True)
-    await check_view_permission(session, group, current_user)
+    membership = await check_view_permission(session, group, current_user)
+    identity = membership is not None
+
+    # Every entry is a user, so a caller with no role gets none (GUEST-2 R-G2-2)
+    if not identity:
+        return []
 
     # Build membership role lookup (user_id -> role)
     membership_roles: dict[str, str] = {

@@ -8,7 +8,7 @@
  * The shared week clock is seeded via `useLootTrackingStore.setState`
  * (weekStartDate '2026-06-23', currentWeek 2 → week 2 = 2026-06-30…07-06).
  */
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, it, expect, vi, type Mock } from 'vitest';
 import { ApiError } from '../../services/api';
@@ -52,6 +52,7 @@ import { Schedule } from './Schedule';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useAuthStore } from '../../stores/authStore';
 import { utcSlotToLocal, formatTimeLabel } from './availabilityUtils';
 import type { ScheduleSession, ScheduleSessionCreate, StaticGroup } from '../../types';
 
@@ -574,5 +575,100 @@ describe('Schedule', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
       await waitFor(() => expect(useScheduleStore.getState().deleteSession).toHaveBeenCalledWith('g1', 'sRec'));
     });
+  });
+});
+
+// GUEST-1 R-G1-7: Schedule is members-only. A non-member (guest or signed-in)
+// gets ONE card and no member-only request. The schedule store is shell-shared
+// and never cleared (Schedule.tsx), so every test seeds a stale recurring
+// session first: without it the exceptions effect returns early on zero
+// recurring ids and the `fetchExceptions` assertion would pass trivially.
+describe('Schedule — members only (R-G1-7)', () => {
+  const nonMember = { ...group, userRole: null } as unknown as StaticGroup;
+  const loginMock = vi.fn();
+
+  beforeEach(() => {
+    loginMock.mockReset();
+    useScheduleStore.setState({ sessions: [sRec] } as never);
+    useAuthStore.setState({ user: null, isLoading: false, authInitialized: true, login: loginMock } as never);
+  });
+
+  function renderAsNonMember(currentUserId: string | null) {
+    return render(
+      <MemoryRouter initialEntries={['/group/DEVTST?tab=schedule']}>
+        <Schedule group={nonMember} tier={null} canManage={false} currentUserId={currentUserId} />
+      </MemoryRouter>,
+    );
+  }
+
+  function expectNoMemberOnlyRequests() {
+    expect(useScheduleStore.getState().fetchSessions).not.toHaveBeenCalled();
+    expect(availabilityMock()).not.toHaveBeenCalled();
+    expect(useScheduleStore.getState().fetchExceptions).not.toHaveBeenCalled();
+  }
+
+  it('a guest gets one members-only card, a Login with Discord action, and no requests', async () => {
+    renderAsNonMember(null);
+    await act(async () => {});
+
+    expectNoMemberOnlyRequests();
+    expect(screen.getByTestId('schedule-screen')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Schedule' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Members only' })).toBeInTheDocument();
+    // CI twin of smoke test 10's strict-mode locator: exactly one "schedule" heading.
+    expect(screen.getAllByRole('heading', { name: /schedule/i })).toHaveLength(1);
+    expect(
+      within(screen.getByTestId('members-only-card')).getByRole('button', { name: 'Login with Discord' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(
+      'Sessions and availability are shared with members of ' + group.name + '. Log in to ask to join.',
+    )).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add session' })).toBeNull();
+    expect(screen.queryByText('Your availability')).toBeNull();
+    // The heatmap never mounts (its prop-capturing wrapper never ran).
+    expect(mockHeatmapProps).toBeNull();
+  });
+
+  it('stepping the clock does not fire a member-only request either', async () => {
+    renderAsNonMember(null);
+    await act(async () => {});
+    act(() => {
+      useLootTrackingStore.setState({ currentWeek: 3, maxWeek: 3 } as never);
+    });
+    await act(async () => {});
+    expectNoMemberOnlyRequests();
+  });
+
+  it('the guest action logs in and returns to this path + search', () => {
+    renderAsNonMember(null);
+    fireEvent.click(
+      within(screen.getByTestId('members-only-card')).getByRole('button', { name: 'Login with Discord' }),
+    );
+    expect(loginMock).toHaveBeenCalledTimes(1);
+    expect(loginMock).toHaveBeenCalledWith('/group/DEVTST?tab=schedule');
+  });
+
+  it('a signed-in non-member gets the same card with no action and no requests', async () => {
+    useAuthStore.setState({ user: { id: 'u9' } } as never);
+    renderAsNonMember('u9');
+    await act(async () => {});
+
+    expectNoMemberOnlyRequests();
+    expect(screen.getByRole('heading', { name: 'Members only' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: /schedule/i })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /login/i })).toBeNull();
+  });
+
+  it('(pin) a viewer still fetches sessions and availability', async () => {
+    const viewer = { ...group, userRole: 'viewer' } as unknown as StaticGroup;
+    render(
+      <MemoryRouter>
+        <Schedule group={viewer} tier={null} canManage={false} currentUserId="u1" />
+      </MemoryRouter>,
+    );
+    expect(useScheduleStore.getState().fetchSessions).toHaveBeenCalledWith('g1');
+    await waitFor(() => expect(availabilityMock()).toHaveBeenCalled());
+    await waitFor(() => expect(useScheduleStore.getState().fetchExceptions).toHaveBeenCalledWith('g1', 'sRec'));
+    expect(screen.queryByRole('heading', { name: 'Members only' })).toBeNull();
   });
 });
