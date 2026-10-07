@@ -30,7 +30,10 @@ import { useAltHeld } from '../../hooks/useAltHeld';
 import { getCorrectBisSource } from '../../utils/bisSourceDetection';
 import type { GearSlot, GearSlotStatus, GearSource, TomeWeaponStatus } from '../../types';
 import {
+  BIS_SOURCE_BG_COLORS,
+  BIS_SOURCE_COLORS,
   BIS_SOURCE_FULL_NAMES,
+  BIS_SOURCE_NAMES,
   GEAR_SLOTS,
   GEAR_SLOT_ICONS,
   GEAR_SLOT_NAMES,
@@ -134,8 +137,27 @@ export interface RosterGearTableProps {
    * above it (R-D12-E) — the inverse of `findMaterialEntry`'s own rule.
    */
   highlightedSlot?: JumpAnchorSlot | null;
-  /** Why editing is unavailable (shown by the disabled selector). */
-  disabledReason?: string;
+}
+
+/**
+ * ROLE-1 (R-R1-15): the BiS cell for a non-editor — the source as a static
+ * value in the shared selector's tone (`BiSSourceSelector.getTriggerClasses`,
+ * which is shared with V1's `GearTable` and not edited). Data, so no
+ * half-opacity "disabled" look and no popover.
+ */
+function StaticSourceValue({ source }: { source: GearSource | null }) {
+  const tone = source
+    ? `${BIS_SOURCE_BG_COLORS[source]} ${BIS_SOURCE_COLORS[source]}`
+    : 'bg-surface-interactive text-text-muted';
+  return (
+    <span className={`inline-flex w-7 items-center justify-center rounded py-0.5 text-xs font-bold ${tone}`}>
+      <span aria-hidden="true">{source ? BIS_SOURCE_NAMES[source] : '--'}</span>
+      {/* Same wording as BiSSourceSelector's aria-label (the control this replaces). */}
+      <span className="sr-only">
+        {source ? `BiS source: ${BIS_SOURCE_FULL_NAMES[source]}` : 'BiS source not set'}
+      </span>
+    </span>
+  );
 }
 
 export function RosterGearTable({
@@ -153,11 +175,13 @@ export function RosterGearTable({
   onSlotJump,
   playerId,
   highlightedSlot = null,
-  disabledReason,
 }: RosterGearTableProps) {
   const bySlot = new Map(gear.map((g) => [g.slot, g]));
   // Affordances track ACTUAL interactivity: `editable` without a handler
   // would advertise an action that persists nothing (one flag per handler).
+  // `editable` itself is the ROLE gate (the card passes `canEditGear`): a
+  // non-editor's source cells render as static values (R-R1-15), while an
+  // editor whose host wired no handler keeps the inert control (a state).
   const interactive = editable && !!onSlotChange;
   const sourceInteractive = editable && !!onSourceChange;
   const fixInteractive = editable && !!onSourceFix;
@@ -383,7 +407,13 @@ export function RosterGearTable({
                 )}
               </th>
               <td className="py-1.5 text-center">
-                {isWeapon ? (
+                {!editable ? (
+                  // ROLE-1 (R-R1-15): a non-editor sees the value, not a
+                  // disabled selector or "+" toggle. The weapon's BiS is
+                  // always raid; the tome sub-row below still tells the
+                  // interim-tome story while pursuing.
+                  <StaticSourceValue source={isWeapon ? 'raid' : status.bisSource} />
+                ) : isWeapon ? (
                   // C4 (D-04): the SHARED weapon selector — BiS weapon is
                   // ALWAYS raid (fixed R), the "+" toggles interim tome
                   // tracking and reveals the sub-row below. Replaces C1's
@@ -394,7 +424,6 @@ export function RosterGearTable({
                     tomeWeapon={tomeWeapon}
                     onTomeWeaponChange={(updates) => onTomeWeaponChange?.(updates)}
                     disabled={!tomeInteractive}
-                    disabledReason={disabledReason}
                   />
                 ) : (
                   // C3 (D-03): the shared R/T/C/BT selector popover (its
@@ -429,7 +458,6 @@ export function RosterGearTable({
                           bisSource={status.bisSource}
                           onSelect={(source) => onSourceChange?.(slot, source)}
                           disabled={!sourceInteractive}
-                          disabledReason={disabledReason}
                           hasItemData={!!status.itemName}
                           itemName={status.itemName}
                           itemIcon={status.itemIcon}
@@ -558,7 +586,7 @@ export function RosterGearTable({
                 </th>
                 <td className="py-1.5 text-center">
                   <span
-                    className={`inline-flex w-7 items-center justify-center rounded py-0.5 text-xs font-bold text-gear-tome ${tomeInteractive ? '' : 'opacity-50'}`}
+                    className={`inline-flex w-7 items-center justify-center rounded py-0.5 text-xs font-bold text-gear-tome`}
                   >
                     T
                   </span>

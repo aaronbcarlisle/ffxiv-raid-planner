@@ -27,6 +27,8 @@ import {
 interface CatalogBrowseProps {
   groupId: string;
   activeGoals: CollectionGoal[];
+  /** Creating a goal is lead-only on the server, so "Track" shows only when true (ROLE-1 R-R1-9). */
+  canManage: boolean;
 }
 
 // Categories shown as filter chips, in display order.
@@ -50,7 +52,7 @@ const SOURCE_TYPE_ORDER = ['ultimate', 'savage', 'extreme', 'criterion', 'chaoti
 // Expansion chips use full names on sm+, abbreviations on mobile — labels resolved in JSX.
 const EXPANSION_CHIP_KEYS = EXPANSION_KEYS as unknown as CatalogExpansion[];
 
-export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
+export function CatalogBrowse({ groupId, activeGoals, canManage }: CatalogBrowseProps) {
   const { catalog, catalogLoading, catalogLoaded, catalogError, fetchCatalog } = useCollectionGoalStore();
 
   const [activeCategory, setActiveCategory] = useState<CatalogCategory | 'all'>('all');
@@ -314,7 +316,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
               group={group}
               groupId={groupId}
               goalsByItemId={goalsByItemId}
-              trackDisabled={usingFallback}
+              trackDisabled={usingFallback || !canManage}
             />
           ))}
         </div>

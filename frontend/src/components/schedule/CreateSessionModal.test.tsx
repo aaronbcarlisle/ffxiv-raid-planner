@@ -191,4 +191,34 @@ describe('CreateSessionModal', () => {
     expect(screen.getByRole('button', { name: 'Thu' }).className).toContain('bg-accent');
     expect(screen.getByRole('button', { name: 'Sat' }).className).not.toContain('bg-accent');
   });
+
+  // W0 DEL-1 (R-D1-7): the block says plainly when nothing will publish yet.
+  describe('(pin) Discord Delivery block', () => {
+    const disconnected = {
+      serverLabel: 'Discord',
+      mirrorEnabled: false,
+      remindersEnabled: false,
+      reminderLabels: [],
+      pingLabel: 'No ping',
+    };
+
+    it('without a summary, renders no Discord Delivery block', () => {
+      renderModal();
+      expect(screen.queryByText('Discord Delivery')).toBeNull();
+    });
+
+    it('with nothing connected, says the event and the reminders cannot go out yet', () => {
+      renderModal({ discordDeliverySummary: disconnected });
+      expect(screen.getByText('Discord Delivery')).toBeInTheDocument();
+      expect(screen.getByText('Mirror to Discord Events')).toBeInTheDocument();
+      expect(screen.getByText('Connect Discord Events in settings before this can publish.')).toBeInTheDocument();
+      expect(screen.getByText('Configure a reminder webhook in settings before reminders can send.')).toBeInTheDocument();
+    });
+
+    it('with Discord Events connected, names the server', () => {
+      renderModal({ discordDeliverySummary: { ...disconnected, serverLabel: 'Raid Guild', mirrorEnabled: true } });
+      expect(screen.getByText('Mirror to Discord Events on Raid Guild')).toBeInTheDocument();
+      expect(screen.queryByText('Connect Discord Events in settings before this can publish.')).toBeNull();
+    });
+  });
 });

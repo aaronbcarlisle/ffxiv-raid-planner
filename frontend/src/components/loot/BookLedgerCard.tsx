@@ -10,9 +10,11 @@
  * legacy `PageBalancesPanel`'s default `viewMode` — that file was itself
  * orphaned and deleted in DC; see git history).
  *
- * Member-own-row exception (spec §5.7): a non-editor can still adjust the
- * balances on their OWN row (`playersById.get(b.playerId)?.userId === effectiveUserId`)
- * — every other row's cells render as plain text.
+ * Read-only without `canEdit` (ROLE-1 R-R1-7): the page-ledger write is
+ * lead-only on the server, so a member's OWN row renders as plain text too —
+ * spec §5.7's member-own-row exception is retired for now. HS-36's member
+ * books ship with W4 LOOT, which changes the server and restores both the own-row
+ * cells here and the roster's "Edit Books" item.
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
@@ -54,7 +56,6 @@ type BookLedgerCardBaseProps = {
    */
   clockWeek: number;
   canEdit: boolean;
-  effectiveUserId?: string;
   className?: string;
 };
 
@@ -156,7 +157,6 @@ export function BookLedgerCard({
   currentWeek,
   clockWeek,
   canEdit,
-  effectiveUserId,
   onResetConfig,
   className,
   markClearedOpen,
@@ -348,7 +348,6 @@ export function BookLedgerCard({
         <tbody>
           {rows.map((b) => {
             const player = playersById.get(b.playerId);
-            const rowCanEdit = canEdit || (!!effectiveUserId && player?.userId === effectiveUserId);
 
             return (
               <tr
@@ -374,7 +373,7 @@ export function BookLedgerCard({
                 </td>
                 {BOOK_KEYS.map(([label, key]) => (
                   <td key={label} className="px-3 py-2 text-center">
-                    {rowCanEdit ? (
+                    {canEdit ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -404,10 +403,8 @@ export function BookLedgerCard({
                       size="sm"
                       onClick={() => setLedgerState({ playerId: b.playerId, playerName: b.playerName })}
                     />
-                    {/* D7b (R-16 4/4): gates on `canEdit` ONLY — never
-                        `rowCanEdit`. The member-own-row exception above
-                        grants cell editing on this player's own row, not a
-                        bulk-reset door onto it (D7-g). */}
+                    {/* D7b (R-16 4/4): the bulk-reset kebab gates on `canEdit`
+                        (D7-g). */}
                     {canEdit && (
                       <IconButton
                         aria-label={`${b.playerName} book actions`}
