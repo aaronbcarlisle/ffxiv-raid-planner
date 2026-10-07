@@ -10,6 +10,7 @@ import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useIsViewingAs } from '../../stores/viewAsStore';
+import { useAuthStore } from '../../stores/authStore';
 import { DashboardCard, IconMedallion, SectionLabel } from '../ui/DashboardCard';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { Button } from '../primitives';
@@ -75,6 +76,9 @@ export function MorePage({
   const isOwner = userRole === 'owner';
   const isMember = !!userRole && userRole !== 'viewer';
   const isViewingAs = useIsViewingAs();
+  // Settings and Integrations are for signed-in accounts (GUEST-2 R-G2-7). A
+  // guest has no Settings to open (V2's dock is closed to them).
+  const user = useAuthStore((s) => s.user);
   // D-50 (HS-30): Delete is withheld under View As; Leave already is (the host
   // doesn't wire onLeaveStatic), so the whole Danger Zone can be empty.
   const showDelete = isOwner && !isViewingAs;
@@ -195,41 +199,43 @@ export function MorePage({
           )}
 
           {/* Integrations */}
-          <DashboardCard
-            title="Integrations"
-            icon={<Link2 size={13} />}
-            accentColor={discordLinked || webhookOk ? 'teal' : undefined}
-            onClick={onOpenIntegrations}
-          >
-            <p className="text-xs text-text-secondary mb-4">
-              Connect Discord and other services to enhance scheduling and reminders.
-            </p>
-            <div className="space-y-2 text-sm mb-4">
-              <div className="flex justify-between items-center">
-                <span className="text-text-secondary">Discord</span>
-                {discordLinked || webhookOk ? (
-                  <div className="flex items-center gap-1 text-status-success">
-                    <CheckCircle size={12} />
-                    <span className="text-xs font-medium">
-                      {discordLinked && discordGuild ? discordGuild : 'Connected'}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 text-text-muted">
-                    <XCircle size={12} />
-                    <span className="text-xs">Not connected</span>
-                  </div>
-                )}
+          {user && (
+            <DashboardCard
+              title="Integrations"
+              icon={<Link2 size={13} />}
+              accentColor={discordLinked || webhookOk ? 'teal' : undefined}
+              onClick={onOpenIntegrations}
+            >
+              <p className="text-xs text-text-secondary mb-4">
+                Connect Discord and other services to enhance scheduling and reminders.
+              </p>
+              <div className="space-y-2 text-sm mb-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-text-secondary">Discord</span>
+                  {discordLinked || webhookOk ? (
+                    <div className="flex items-center gap-1 text-status-success">
+                      <CheckCircle size={12} />
+                      <span className="text-xs font-medium">
+                        {discordLinked && discordGuild ? discordGuild : 'Connected'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 text-text-muted">
+                      <XCircle size={12} />
+                      <span className="text-xs">Not connected</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-text-secondary">Plugin sync</span>
+                  <span className="text-text-secondary text-xs">Via API key</span>
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-text-secondary">Plugin sync</span>
-                <span className="text-text-secondary text-xs">Via API key</span>
+              <div className="flex items-center gap-1 text-accent text-xs font-medium">
+                Manage integrations <ChevronRight size={12} />
               </div>
-            </div>
-            <div className="flex items-center gap-1 text-accent text-xs font-medium">
-              Manage integrations <ChevronRight size={12} />
-            </div>
-          </DashboardCard>
+            </DashboardCard>
+          )}
 
           {/* Plugin */}
           <DashboardCard
@@ -257,28 +263,30 @@ export function MorePage({
           </DashboardCard>
 
           {/* Settings */}
-          <DashboardCard
-            title="Settings"
-            icon={<Settings size={13} />}
-            onClick={() => onOpenSettings('general')}
-          >
-            <p className="text-xs text-text-secondary mb-4">
-              Configure your static details, visibility, and member notifications.
-            </p>
-            <div className="space-y-1.5 text-sm mb-4">
-              <div className="flex justify-between">
-                <span className="text-text-secondary">General settings</span>
-                <span className="text-accent font-medium">Open</span>
+          {user && (
+            <DashboardCard
+              title="Settings"
+              icon={<Settings size={13} />}
+              onClick={() => onOpenSettings('general')}
+            >
+              <p className="text-xs text-text-secondary mb-4">
+                Configure your static details, visibility, and member notifications.
+              </p>
+              <div className="space-y-1.5 text-sm mb-4">
+                <div className="flex justify-between">
+                  <span className="text-text-secondary">General settings</span>
+                  <span className="text-accent font-medium">Open</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-secondary">Notifications</span>
+                  <span className="text-accent font-medium">Configure</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-text-secondary">Notifications</span>
-                <span className="text-accent font-medium">Configure</span>
+              <div className="flex items-center gap-1 text-accent text-xs font-medium">
+                Open settings <ChevronRight size={12} />
               </div>
-            </div>
-            <div className="flex items-center gap-1 text-accent text-xs font-medium">
-              Open settings <ChevronRight size={12} />
-            </div>
-          </DashboardCard>
+            </DashboardCard>
+          )}
 
         </div>
       </section>

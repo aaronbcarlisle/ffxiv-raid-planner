@@ -33,6 +33,20 @@ const CSRF_COOKIE_NAME = 'csrf_token';
 // are different origins. Cookies with domain=.domain.com work across both.
 const OAUTH_STATE_COOKIE_NAME = 'oauth_state';
 
+// sessionStorage key AuthCallback reads (and clears) to land the user back
+// where they started the login. Also written directly by InviteAccept,
+// PluginAuth and ProtectedRoute, which then call bare login().
+const AUTH_REDIRECT_KEY = 'auth_redirect';
+
+/**
+ * Whether `value` is a path inside this app: starts with "/" and not "//"
+ * (a protocol-relative URL would leave the app). Anything that is not a
+ * string — including an event object from a bare `onClick={login}` — fails.
+ */
+function isInAppPath(value: unknown): value is string {
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//');
+}
+
 /**
  * Get the root domain for cookie settings.
  * Returns ".xivraidplanner.app" for production, or current hostname for dev.
@@ -197,7 +211,13 @@ interface AuthState {
   authInitialized: boolean;
 
   // Actions
-  login: () => Promise<void>;
+  /**
+   * Start the Discord OAuth login.
+   * @param redirectTo - In-app path to return to after the callback. Written
+   *   to sessionStorage synchronously, before any await; ignored unless it
+   *   starts with "/" and not "//". Bare login() never touches the key.
+   */
+  login: (redirectTo?: string) => Promise<void>;
   handleCallback: (code: string, state: string, capturedOAuthState?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
@@ -275,7 +295,20 @@ export const useAuthStore = create<AuthState>()(
       /**
        * Initiate Discord OAuth login
        */
-      login: async () => {
+      login: async (redirectTo?: string) => {
+        // Record the return path first, before the first set or await, so a
+        // caller can rely on it even if the redirect happens elsewhere.
+        // Bare login() must not read, write or clear the key: InviteAccept,
+        // PluginAuth and ProtectedRoute set it themselves and then call this.
+        if (isInAppPath(redirectTo)) {
+          try {
+            sessionStorage.setItem(AUTH_REDIRECT_KEY, redirectTo);
+          } catch {
+            // Storage unavailable (blocked or private mode): log in without
+            // a return path rather than fail the login.
+          }
+        }
+
         set({ isLoading: true, error: null });
 
         try {
@@ -576,15 +609,99 @@ export function useAuthHydrated(): boolean {
 }
 
 /**
+ * Answer of GET /api/auth/session. `user` has the same shape as /api/auth/me;
+ * `canRefresh` is the presence of the refresh cookie, which only the server
+ * can see (it is httpOnly, and a JS-readable hint cookie fails cross-subdomain).
+ */
+interface SessionProbe {
+  user: User | null;
+  canRefresh: boolean;
+}
+
+/**
+ * Whether `value` is the `user` of a valid /api/auth/session answer: null, or
+ * an object (not an array) with a string `id`, the one field every User has.
+ * A missing key, `{}` or a string is not a valid answer, so a malformed 200
+ * can never read as "signed in".
+ */
+function isSessionUser(value: unknown): value is User | null {
+  if (value === null) return true;
+  return (
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    typeof (value as { id?: unknown }).id === 'string'
+  );
+}
+
+/** Whether `body` is a valid /api/auth/session answer (see probeSession). */
+function isSessionBody(body: unknown): body is SessionProbe {
+  if (typeof body !== 'object' || body === null) return false;
+  const { user, canRefresh } = body as { user?: unknown; canRefresh?: unknown };
+  return typeof canRefresh === 'boolean' && isSessionUser(user);
+}
+
+/**
+ * Ask the backend whether this browser has a session. The route always
+ * answers 200, so a guest's bootstrap makes no 401.
+ *
+ * Returns null for anything that is not a valid answer: a non-2xx (a 404 from
+ * a backend that has not shipped the route yet — the frontend and backend
+ * deploy separately — a 429, a 5xx), a body that is not JSON or is not
+ * `{ user: User | null, canRefresh: boolean }`, or a network rejection. The
+ * caller then takes the /me path exactly as before; reading a 404 as "no
+ * session" would sign every user out until the backend ships.
+ */
+async function probeSession(): Promise<SessionProbe | null> {
+  let status: number | undefined;
+  let reason: string;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/session`, {
+      credentials: 'include',
+    });
+
+    // Capture CSRF token from response header for cross-domain scenarios,
+    // as /me did through authRequest.
+    storeCSRFTokenFromResponse(response);
+    status = response.status;
+
+    if (response.ok) {
+      const body: unknown = await response.json();
+      if (isSessionBody(body)) {
+        return { user: body.user, canRefresh: body.canRefresh };
+      }
+      reason = 'malformed body';
+    } else {
+      reason = 'non-2xx status';
+    }
+  } catch (error) {
+    // Network failure, or a body that is not JSON.
+    reason = error instanceof Error ? error.message : String(error);
+  }
+
+  // Debug level on purpose: a guest's bootstrap must not log a warning.
+  logger.debug('Session probe is not a valid answer; falling back to /api/auth/me', {
+    status,
+    reason,
+  });
+  return null;
+}
+
+/**
  * Initialize auth on app load.
  * Call this once when the app starts to check for existing session.
  *
- * With httpOnly cookies, we can't check token expiration client-side.
- * Instead, we simply try to fetch the user - if cookies are valid, it works.
- * If not, the backend will return 401 and we'll try to refresh.
+ * With httpOnly cookies, we can't check token expiration client-side, so we
+ * ask GET /api/auth/session first. A valid answer decides the session:
+ * - a user: signed in, then one proactive refresh to set the refresh schedule;
+ * - no user but a refresh cookie: refresh, then /me (which now answers 200);
+ * - neither: signed out, and a stale persisted user is cleared.
+ * Anything else (a 404 during deploy skew, a 429, a 5xx, a malformed body, a
+ * rejected request) takes the fetchUser() path unchanged, which never signs
+ * anyone out on a transient failure.
  *
- * After successful authentication, schedules proactive token refresh
- * to prevent 401/403 errors during the session.
+ * `isLoading` goes up before the first await so ProtectedRoute's mount effect
+ * cannot start a parallel fetchUser(). `authInitialized` is set regardless.
  */
 export async function initializeAuth(): Promise<void> {
   const state = useAuthStore.getState();
@@ -598,22 +715,53 @@ export async function initializeAuth(): Promise<void> {
     );
   }
 
-  try {
-    // Always reconcile auth state with the backend on app startup.
-    // A valid httpOnly cookie session can exist even when persisted Zustand
-    // state is empty, such as in fresh dev-auth or incognito sessions.
-    await fetchUser();
+  useAuthStore.setState({ isLoading: true });
 
-    // If still authenticated after fetchUser, do a proactive refresh to
-    // establish the refresh schedule. This ensures we know when to refresh
-    // even if the initial fetchUser succeeded with an existing valid token.
-    const currentState = useAuthStore.getState();
-    if (currentState.isAuthenticated) {
-      // Await refresh to ensure consistent auth state; silent catch since
-      // failure just means user will re-auth on first API call
+  try {
+    const probe = await probeSession();
+
+    if (probe === null) {
+      // Not a valid answer: reconcile auth state with the backend the way we
+      // always have. A valid httpOnly cookie session can exist even when
+      // persisted Zustand state is empty, such as in fresh dev-auth or
+      // incognito sessions.
+      await fetchUser();
+
+      // If still authenticated after fetchUser, do a proactive refresh to
+      // establish the refresh schedule. This ensures we know when to refresh
+      // even if the initial fetchUser succeeded with an existing valid token.
+      if (useAuthStore.getState().isAuthenticated) {
+        // Await refresh to ensure consistent auth state; silent catch since
+        // failure just means user will re-auth on first API call
+        await refreshAccessToken().catch(() => {
+          // Silent - will re-auth on first API call if needed
+        });
+      }
+    } else if (probe.user) {
+      useAuthStore.setState({ user: probe.user, isAuthenticated: true, isLoading: false });
+
+      // The access cookie is valid but we don't know when it expires: one
+      // proactive refresh establishes the refresh schedule, as before.
       await refreshAccessToken().catch(() => {
         // Silent - will re-auth on first API call if needed
       });
+    } else if (probe.canRefresh) {
+      // Expired access cookie, live refresh cookie: refresh first, so /me
+      // never answers 401. A successful refresh schedules the next one itself,
+      // so this branch adds no second proactive refresh (the auth tier is
+      // rate-limited to 10/min).
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        await fetchUser();
+      } else {
+        // refreshAccessToken has already decided the session: cleared on
+        // 401/403, kept on a transient failure (429/5xx/network).
+        useAuthStore.setState({ isLoading: false });
+      }
+    } else {
+      // No session. A stale persisted user is cleared, which is today's
+      // outcome too.
+      useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
     }
   } finally {
     // Mark auth as initialized regardless of outcome

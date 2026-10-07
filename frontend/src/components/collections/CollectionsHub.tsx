@@ -190,6 +190,7 @@ export function CollectionsHub({ groupId, currentUserId, canManage, isViewer }: 
         <CatalogBrowse
           groupId={groupId}
           activeGoals={activeGoals}
+          canManage={canManage}
         />
       ) : (
         // Active farms tab

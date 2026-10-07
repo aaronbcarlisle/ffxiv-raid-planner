@@ -470,6 +470,27 @@ export function PrivacyDocs() {
                     <Shield className="w-6 h-6 text-status-success" />
                   </div>
                   <div>
+                    <h3 className="text-lg font-semibold text-text-primary">v2.1.64 - Member accounts hidden from non-members</h3>
+                    <p className="text-sm text-text-muted mb-3">October 2026</p>
+                    <p className="text-text-secondary mb-3">
+                      <strong>What changed:</strong> Someone who isn't a member of a public static — signed out, or signed in to another account — no longer receives members' Discord usernames, IDs, avatars or display names from the static's pages or API. Site admins, who can open any static, still see members as before. The one other exception is the contact a lead publishes in the static's Finder listing, which is visible only while the listing is live. The roster, gear and loot history stay viewable by share code, as before.
+                    </p>
+                    <p className="text-text-secondary mb-3">
+                      <strong>Why:</strong> Nobody outside a static needs to know which Discord accounts are in it. A recruiting contact is shown only once a lead publishes the listing.
+                    </p>
+                    <p className="text-text-secondary">
+                      <strong>Verification:</strong> Open a public static's share link in a private window, then check DevTools ▸ Network: no response contains <code className="bg-surface-sunken px-1.5 py-0.5 rounded text-sm">discordUsername</code>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-surface-card border border-border-subtle rounded-xl p-6 mb-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-status-success/10 flex items-center justify-center shrink-0">
+                    <Shield className="w-6 h-6 text-status-success" />
+                  </div>
+                  <div>
                     <h3 className="text-lg font-semibold text-text-primary">v2.1.52 - Admin Action Log</h3>
                     <p className="text-sm text-text-muted mb-3">September 2026</p>
                     <p className="text-text-secondary">
@@ -540,7 +561,7 @@ export function PrivacyDocs() {
                 <div className="bg-surface-card border border-border-subtle rounded-xl p-6">
                   <h4 className="font-semibold text-text-primary mb-2">Check API Response</h4>
                   <p className="text-text-secondary text-sm">
-                    Open browser DevTools → Network tab. Find the <code className="bg-surface-sunken px-1.5 py-0.5 rounded">/api/auth/me</code> request.
+                    Open browser DevTools → Network tab. Find the <code className="bg-surface-sunken px-1.5 py-0.5 rounded">/api/auth/session</code> request.
                     The response should NOT contain an "email" field.
                   </p>
                 </div>

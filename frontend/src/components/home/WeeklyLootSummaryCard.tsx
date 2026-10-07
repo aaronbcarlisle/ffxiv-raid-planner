@@ -26,7 +26,9 @@ import { useWeeklyLootSummary } from '../../hooks/useWeeklyLootSummary';
 export interface WeeklyLootSummaryCardProps {
   /** Active tier id; resolves the tier's fights. Undefined → empty card. */
   tierId: string | undefined;
-  /** Routes to the Loot tab to log this week's loot. */
+  /** Lead-and-up: the CTA reads "Log this week's loot"; everyone else gets "View loot priority". */
+  canManage: boolean;
+  /** Routes to the Loot tab (Log for managers, Priority for everyone else; the caller picks the view). */
   onLogWeek: () => void;
 }
 
@@ -34,7 +36,7 @@ function pluralizeDrops(n: number): string {
   return `${n} drop${n === 1 ? '' : 's'}`;
 }
 
-export function WeeklyLootSummaryCard({ tierId, onLogWeek }: WeeklyLootSummaryCardProps) {
+export function WeeklyLootSummaryCard({ tierId, canManage, onLogWeek }: WeeklyLootSummaryCardProps) {
   const lootLog = useLootTrackingStore((s) => s.lootLog);
   const pageLedger = useLootTrackingStore((s) => s.pageLedger);
   const currentWeek = useLootTrackingStore((s) => s.currentWeek);
@@ -75,7 +77,7 @@ export function WeeklyLootSummaryCard({ tierId, onLogWeek }: WeeklyLootSummaryCa
       </ul>
 
       <Button variant="primary" className="w-full mt-4" onClick={onLogWeek}>
-        Log this week's loot
+        {canManage ? "Log this week's loot" : 'View loot priority'}
       </Button>
     </CardShell>
   );

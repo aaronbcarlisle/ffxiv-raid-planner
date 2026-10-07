@@ -17,6 +17,7 @@ import { Calendar } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../primitives';
 import { ConfirmModal, Modal, TwoRegionDashboard } from '../ui';
+import { MembersOnlyCard } from '../auth';
 import { PageHeader } from '../layout/PageHeader';
 import { useModal } from '../../hooks/useModal';
 import { useWeekClock } from '../../hooks/useWeekClock';
@@ -79,6 +80,10 @@ function startOfTodayLocal(): Date {
 export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  // R-G1-7: Schedule is members-only. `userRole != null` matches the backend's
+  // require_membership (viewers and admins pass), so a non-member makes no
+  // sessions / availability / exceptions request at all.
+  const isMember = group.userRole != null;
 
   const {
     sessions,
@@ -128,14 +133,16 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
   // unmount, which would wipe Home's copy of the same store. Deliberately not
   // replicated — the store is shell-shared now.
   useEffect(() => {
+    if (!isMember) return;
     void fetchSessions(group.id);
-  }, [group.id, fetchSessions]);
+  }, [group.id, fetchSessions, isMember]);
 
   useEffect(() => {
+    if (!isMember) return;
     const { startDate, endDate } = getUtcDateRange(weekDates);
     void fetchAvailability(group.id, startDate, endDate, { includeTemplates: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [group.id, weekDates.join(','), fetchAvailability]);
+  }, [group.id, weekDates.join(','), fetchAvailability, isMember]);
 
   // ── Cancelled exceptions, batched per recurring session (plan confirmation 1).
   // `recurringKey` keeps the effect dep array honest (a stable sorted id string);
@@ -150,6 +157,9 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
   );
 
   useEffect(() => {
+    // A non-member never fetches exceptions, even when the shell-shared store
+    // still holds recurring sessions from another static.
+    if (!isMember) return;
     const ids = recurringKey ? recurringKey.split(',') : [];
     if (ids.length === 0) {
       // Preserve identity when already empty — a fresh Map here would churn
@@ -173,7 +183,7 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
     return () => {
       alive = false;
     };
-  }, [group.id, recurringKey, exceptionsRefresh]);
+  }, [group.id, recurringKey, exceptionsRefresh, isMember]);
 
   // ── Derivations ─────────────────────────────────────────────────────────────
   const occurrences = useMemo(
@@ -293,6 +303,7 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
   const editModal = useModal();
   const handleEditClose = () => {
     editModal.close();
+    if (!isMember) return;
     const { startDate, endDate } = getUtcDateRange(weekDates);
     void fetchAvailability(group.id, startDate, endDate, { includeTemplates: true });
   };
@@ -402,13 +413,29 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
   // ── Manage occurrences ───────────────────────────────────────────────────────
   const [occurrenceSession, setOccurrenceSession] = useState<ScheduleSession | null>(null);
 
+  const header = (
+    <PageHeader
+      icon={<Calendar size={14} className="text-accent" />}
+      title="Schedule"
+      subtitle="This week's sessions and when everyone's free · the same week drives loot"
+    />
+  );
+
+  // One card instead of the strip and dashboard. The heading must not contain
+  // "schedule": the PageHeader h1 stays the only heading matching it (smoke
+  // test 10's strict-mode locator).
+  if (!isMember) {
+    return (
+      <div data-testid="schedule-screen">
+        {header}
+        <MembersOnlyCard staticName={group.name} subject="Sessions and availability" />
+      </div>
+    );
+  }
+
   return (
     <div data-testid="schedule-screen">
-      <PageHeader
-        icon={<Calendar size={14} className="text-accent" />}
-        title="Schedule"
-        subtitle="This week's sessions and when everyone's free · the same week drives loot"
-      />
+      {header}
 
       <WeekNavigatorStrip
         clock={clock}

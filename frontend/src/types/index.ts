@@ -1292,7 +1292,7 @@ export interface LootLogEntry {
   isExtra: boolean;    // True if extra/off-job loot
   createdAt: string;
   createdByUserId: string;
-  createdByUsername: string;
+  createdByUsername: string | null;
 }
 
 // Page ledger entry
@@ -1309,7 +1309,7 @@ export interface PageLedgerEntry {
   notes?: string;
   createdAt: string;
   createdByUserId: string;
-  createdByUsername: string;
+  createdByUsername: string | null;
 }
 
 // Page balance for a player
@@ -1340,7 +1340,7 @@ export interface MaterialLogEntry {
   notes?: string;
   createdAt: string;
   createdByUserId: string;
-  createdByUsername: string;
+  createdByUsername: string | null;
 }
 
 // Material balance for a player

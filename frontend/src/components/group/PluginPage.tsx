@@ -5,9 +5,12 @@
  * its own URL (`?tab=plugin`) and isn't buried under a sync dashboard.
  */
 import { Download, Search, KeyRound, Gamepad2 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { ApiKeyManager } from '../settings/ApiKeyManager';
+import { AuthSkeleton, LoginButton } from '../auth';
 import { GearSyncDashboard } from './GearSyncDashboard';
 import { useTierPlayers } from '../../stores/tierStore';
+import { useAuthStore, useAuthHydrated } from '../../stores/authStore';
 
 const INSTALL_STEPS = [
   {
@@ -34,6 +37,11 @@ const INSTALL_STEPS = [
 
 export function PluginPage() {
   const players = useTierPlayers();
+  const user = useAuthStore((s) => s.user);
+  const authInitialized = useAuthStore((s) => s.authInitialized);
+  const hydrated = useAuthHydrated();
+  const authReady = hydrated && authInitialized;
+  const { pathname, search } = useLocation();
 
   return (
     <div className="space-y-10 max-w-5xl">
@@ -91,10 +99,26 @@ export function PluginPage() {
           Your API keys
         </p>
         <div
+          data-testid="plugin-api-keys"
           className="rounded-lg border border-border-subtle p-4"
           style={{ background: 'rgba(255,255,255,0.02)' }}
         >
-          <ApiKeyManager />
+          {/* Keys belong to the account, so a signed-in non-member keeps the
+              manager (GET /api/auth/api-keys answers 200 for them); only a
+              guest, who would 401, gets the prompt. The manager stays unmounted
+              until the bootstrap resolves (a stale persisted user would fire a
+              401 key fetch); authInitialized never goes back to false, so it is
+              never unmounted mid-session. */}
+          {!authReady ? (
+            <AuthSkeleton />
+          ) : !user ? (
+            <>
+              <p className="text-sm text-text-secondary mb-3">Log in to create an API key for the plugin.</p>
+              <LoginButton redirectTo={pathname + search} />
+            </>
+          ) : (
+            <ApiKeyManager />
+          )}
         </div>
       </div>
     </div>
