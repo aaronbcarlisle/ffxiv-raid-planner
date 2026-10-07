@@ -14,21 +14,11 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { API_BASE, DEV_SHARE_CODE, loginAsOwner, goToTestStatic, switchTab } from './helpers/auth';
+import { API_BASE, loginAsOwner, ownerApiContext, goToTestStatic, switchTab } from './helpers/auth';
 
 const TEST_SESSION_PREFIX = 'E2E Scheduler ';
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
-
-/** DEVTST's id plus a CSRF token for the owner's API writes. */
-async function ownerApiContext(page: Page): Promise<{ groupId: string; csrfToken: string }> {
-  const groupRes = await page.request.get(`${API_BASE}/api/static-groups/by-code/${DEV_SHARE_CODE}`);
-  if (!groupRes.ok()) throw new Error(`static lookup returned ${groupRes.status()}`);
-  const group = await groupRes.json() as { id: string };
-  const csrfToken = (await page.context().cookies(API_BASE)).find((c) => c.name === 'csrf_token')?.value;
-  if (!csrfToken) throw new Error('missing csrf_token cookie — call after loginAsOwner');
-  return { groupId: group.id, csrfToken };
-}
 
 /** Seed a Tue/Fri weekly series (UTC, 1 h) that started 14 days ago. Returns its id. */
 async function seedTueFriSeries(page: Page, title: string): Promise<string> {

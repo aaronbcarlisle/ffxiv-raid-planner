@@ -226,6 +226,16 @@ export async function setStaticPublic(page: Page, isPublic: boolean): Promise<vo
   if (!putRes.ok()) throw new Error(`setStaticPublic(${isPublic}) failed: ${putRes.status()}`);
 }
 
+/** DEVTST's id plus a CSRF token for the owner's API writes (call after loginAsOwner). */
+export async function ownerApiContext(page: Page): Promise<{ groupId: string; csrfToken: string }> {
+  const groupRes = await page.request.get(`${API_BASE}/api/static-groups/by-code/${DEV_SHARE_CODE}`);
+  if (!groupRes.ok()) throw new Error(`static lookup returned ${groupRes.status()}`);
+  const group = await groupRes.json() as { id: string };
+  const csrfToken = (await page.context().cookies(API_BASE)).find((c) => c.name === 'csrf_token')?.value;
+  if (!csrfToken) throw new Error('missing csrf_token cookie — call after loginAsOwner');
+  return { groupId: group.id, csrfToken };
+}
+
 /**
  * Create a fresh browser context with an isolated session.
  */
