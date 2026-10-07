@@ -1,6 +1,7 @@
 """API router for static-group collection goals (mounts, music, rare drops, etc.)"""
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -32,13 +33,22 @@ from ..schemas.collection_goals import (
     CollectionGoalFromSuggestion,
     CollectionGoalResponse,
     CollectionGoalUpdate,
+    ParticipantRecordView,
     ParticipantStateResponse,
     ParticipantStateUpsert,
     ParticipantSummary,
     RewardDropCreate,
     RewardDropResponse,
 )
-from ..services.collection_records import load_records, resolve_record_targets
+from ..services.collection_records import (
+    MergedParticipant,
+    is_after,
+    load_records,
+    merge_participant,
+    merged_participants,
+    parse_ts,
+    resolve_record_targets,
+)
 from ..services.provenance import logged_via, request_api_key_id
 
 router = APIRouter(prefix="/api", tags=["collection-goals"])
@@ -54,20 +64,10 @@ def _now() -> str:
 _LEAD_LEVEL = ROLE_HIERARCHY[MemberRole.LEAD]
 
 
-def _parse_ts(value: str | None) -> datetime | None:
-    """ISO-8601 text → aware datetime (UTC when naive); None when missing or unparseable."""
-    if not value:
-        return None
-    try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
-
-
-def _is_after(candidate: str | None, reference: str) -> bool:
-    later, base = _parse_ts(candidate), _parse_ts(reference)
-    return later is not None and base is not None and later > base
+# The ISO-text comparisons moved to the record service with the merge (R-S1-9);
+# the router keeps its names.
+_parse_ts = parse_ts
+_is_after = is_after
 
 
 async def _member_role(session: AsyncSession, group_id: str, user_id: str) -> str | None:
@@ -81,24 +81,52 @@ async def _member_role(session: AsyncSession, group_id: str, user_id: str) -> st
     return result.scalar_one_or_none()
 
 
+def _record_view(record: PlayerCollectionSnapshot | None) -> ParticipantRecordView | None:
+    if record is None:
+        return None
+    return ParticipantRecordView(
+        character_id=record.character_id,
+        ownership_state=record.ownership_state,
+        token_count=record.token_count,
+        source=record.source,
+        updated_by_user_id=record.updated_by_user_id,
+        updated_via=record.updated_via,
+        state_changed_at=record.state_changed_at,
+        token_count_updated_at=record.token_count_updated_at,
+        last_synced_at=record.last_synced_at,
+    )
+
+
 def _participant_to_response(
-    p: RewardParticipantState, *, display_name: str | None, member_role: str | None
+    p: RewardParticipantState,
+    *,
+    display_name: str | None,
+    member_role: str | None,
+    merged: MergedParticipant,
 ) -> ParticipantStateResponse:
+    """The row as the static sees it: `state`, `token_count` and `source` are merged (R-S1-9)."""
     return ParticipantStateResponse(
         id=p.id,
         goal_id=p.goal_id,
         user_id=p.user_id,
         static_group_id=p.static_group_id,
-        state=p.state,
-        token_count=p.token_count,
+        state=merged.state,
+        token_count=merged.token_count,
         priority_rank=p.priority_rank,
-        source=p.source,
+        source=merged.source,
         last_synced_at=p.last_synced_at,
         last_manual_override_at=p.last_manual_override_at,
         notes=p.notes,
         updated_at=p.updated_at,
         display_name=display_name,
         member_role=member_role,
+        updated_by_user_id=p.updated_by_user_id,
+        updated_via=p.updated_via,
+        state_changed_at=p.state_changed_at,
+        token_count_updated_at=p.token_count_updated_at,
+        state_from_record=merged.state_from_record,
+        count_from_record=merged.count_from_record,
+        record=_record_view(merged.record),
     )
 
 
@@ -136,18 +164,38 @@ async def _get_goal(
     return goal
 
 
-async def _participant_summary(session: AsyncSession, goal_id: str) -> ParticipantSummary:
+def _tally(summary: ParticipantSummary, state: str) -> None:
+    if state == "need":
+        summary.need += 1
+    elif state == "want":
+        summary.want += 1
+    elif state == "have":
+        summary.have += 1
+    elif state == "pass":
+        summary.passing += 1
+    summary.total += 1
+
+
+async def _participant_summaries(
+    session: AsyncSession, group_id: str, goals: Sequence[CollectionGoal]
+) -> dict[str, ParticipantSummary]:
+    """Each goal's counts of merged states (R-S1-9): one row SELECT for all the goals."""
+    summaries = {goal.id: ParticipantSummary() for goal in goals}
+    if not goals:
+        return summaries
     result = await session.execute(
-        select(RewardParticipantState).where(RewardParticipantState.goal_id == goal_id)
+        select(RewardParticipantState).where(RewardParticipantState.goal_id.in_(list(summaries)))
     )
     rows = list(result.scalars().all())
-    return ParticipantSummary(
-        need=sum(1 for r in rows if r.state == "need"),
-        want=sum(1 for r in rows if r.state == "want"),
-        have=sum(1 for r in rows if r.state == "have"),
-        passing=sum(1 for r in rows if r.state == "pass"),
-        total=len(rows),
+    merged = await merged_participants(
+        session,
+        static_group_id=group_id,
+        rows=rows,
+        catalog_item_by_goal={goal.id: goal.catalog_item_id for goal in goals},
     )
+    for row in rows:
+        _tally(summaries[row.goal_id], merged[row.id].state)
+    return summaries
 
 
 def _goal_to_response(goal: CollectionGoal, summary: ParticipantSummary | None = None) -> CollectionGoalResponse:
@@ -196,12 +244,8 @@ async def list_collection_goals(
         .order_by(CollectionGoal.created_at)
     )
     goals = list(result.scalars().all())
-
-    responses = []
-    for goal in goals:
-        summary = await _participant_summary(session, goal.id)
-        responses.append(_goal_to_response(goal, summary))
-    return responses
+    summaries = await _participant_summaries(session, group_id, goals)
+    return [_goal_to_response(goal, summaries[goal.id]) for goal in goals]
 
 
 @router.post(
@@ -419,15 +463,8 @@ async def create_goal_from_suggestion(
             updated_at=now,
         )
         session.add(participant)
-
-        # Tally summary
-        if state == "have":
-            summary.have += 1
-        elif state == "pass":
-            summary.passing += 1
-        else:
-            summary.want += 1
-        summary.total += 1
+        # The response's summary counts what the static will see (R-S1-9).
+        _tally(summary, merge_participant(participant, snapshot).state)
 
     await session.commit()
     await session.refresh(goal)
@@ -469,7 +506,7 @@ async def update_collection_goal(
 
     await session.commit()
     await session.refresh(goal)
-    summary = await _participant_summary(session, goal.id)
+    summary = (await _participant_summaries(session, group_id, [goal]))[goal.id]
     return _goal_to_response(goal, summary)
 
 
@@ -505,7 +542,7 @@ async def list_participants(
 ) -> list[ParticipantStateResponse]:
     await get_static_group(session, group_id)
     await require_membership(session, current_user.id, group_id)
-    await _get_goal(session, group_id, goal_id)
+    goal = await _get_goal(session, group_id, goal_id)
 
     result = await session.execute(
         select(RewardParticipantState, User.display_name, Membership.role)
@@ -521,8 +558,16 @@ async def list_participants(
         .order_by(RewardParticipantState.priority_rank.nulls_last(), RewardParticipantState.updated_at)
     )
     rows = result.all()
+    merged = await merged_participants(
+        session,
+        static_group_id=group_id,
+        rows=[p for p, _, _ in rows],
+        catalog_item_by_goal={goal.id: goal.catalog_item_id},
+    )
     return [
-        _participant_to_response(p, display_name=display_name, member_role=member_role)
+        _participant_to_response(
+            p, display_name=display_name, member_role=member_role, merged=merged[p.id]
+        )
         for p, display_name, member_role in rows
     ]
 
@@ -545,7 +590,8 @@ async def upsert_participant_state(
     """
     await get_static_group(session, group_id)
     membership = await require_membership(session, current_user.id, group_id)
-    await _get_goal(session, group_id, goal_id)
+    goal = await _get_goal(session, group_id, goal_id)
+    catalog_item_id = goal.catalog_item_id
 
     if membership.role == MemberRole.VIEWER:
         raise PermissionDenied("Viewers cannot track farms")
@@ -595,9 +641,18 @@ async def upsert_participant_state(
     user_result = await session.execute(select(User).where(User.id == current_user.id))
     user = user_result.scalar_one_or_none()
     member_role = await _member_role(session, group_id, current_user.id)
+    merged = await merged_participants(
+        session,
+        static_group_id=group_id,
+        rows=[participant],
+        catalog_item_by_goal={goal_id: catalog_item_id},
+    )
 
     return _participant_to_response(
-        participant, display_name=user.display_name if user else None, member_role=member_role
+        participant,
+        display_name=user.display_name if user else None,
+        member_role=member_role,
+        merged=merged[participant.id],
     )
 
 
@@ -616,7 +671,8 @@ async def upsert_participant_state_for_user(
     """Lead/owner can set participant state for any member."""
     await get_static_group(session, group_id)
     await require_can_manage_members(session, current_user.id, group_id)
-    await _get_goal(session, group_id, goal_id)
+    goal = await _get_goal(session, group_id, goal_id)
+    catalog_item_id = goal.catalog_item_id
 
     # Confirm target user is a member, and not a viewer (R-P0-3: a viewer can't be
     # made a drop recipient through the back door).
@@ -673,11 +729,18 @@ async def upsert_participant_state_for_user(
 
     user_result = await session.execute(select(User).where(User.id == target_user_id))
     user = user_result.scalar_one_or_none()
+    merged = await merged_participants(
+        session,
+        static_group_id=group_id,
+        rows=[participant],
+        catalog_item_by_goal={goal_id: catalog_item_id},
+    )
 
     return _participant_to_response(
         participant,
         display_name=user.display_name if user else None,
         member_role=target_membership.role,
+        merged=merged[participant.id],
     )
 
 

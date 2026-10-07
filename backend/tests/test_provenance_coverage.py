@@ -100,11 +100,14 @@ TRACKED = {
     "token_count_updated_at",
 }
 # Every function of DOOR_MODULE that assigns a TRACKED attribute, and no other.
+# `write_row` is the farm row's door (R-S1-7): its stamp columns share the
+# record's names, so it is the one row writer the door module holds.
 DOOR_FUNCTIONS = {
     "write_record",
     "_find_or_adopt_record",
     "adopt_profile_rows",
     "release_last_character_rows",
+    "write_row",
 }
 # (f) Door writes of these also stamp the writer and the channel.
 FACT_ATTRS = {"state", "token_count", "ownership_state", "priority_rank"}
