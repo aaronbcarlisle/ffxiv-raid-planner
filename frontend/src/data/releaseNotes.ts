@@ -74,9 +74,9 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'fix',
-        title: 'Easier-to-read Discord Delivery notes when creating a session',
+        title: 'Easier-to-read label in the Discord Delivery block',
         description:
-          'The small notes under the Discord Delivery options in the session form are now the same size as the rest of the form.',
+          'The "Per-event controls" label in the session form\'s Discord Delivery block is no longer smaller than the rest of the form text.',
         pr: 355,
         prTitle: 'fix(ui): W0 DEL-1 — the farm delete asks first; the V2 session modal shows what Discord will do',
       },
