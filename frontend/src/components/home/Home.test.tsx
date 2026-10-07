@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type {
   JoinRequest,
@@ -36,6 +36,10 @@ const mocks = vi.hoisted(() => ({
   fetchRegistrations: vi.fn().mockResolvedValue(undefined),
   toastError: vi.fn(),
   user: { id: 'u1' } as { id: string } | null,
+  // Effective role (useStaticPermissions) + View As target; renderHome seeds
+  // userRole from the group unless a test overrides it.
+  userRole: 'owner' as string | null | undefined,
+  viewAsUser: null as { userId: string; role: string } | null,
   fairnessCalls: [] as Record<string, unknown>[],
 }));
 
@@ -91,6 +95,12 @@ vi.mock('../../stores/staticCharacterStore', () => ({
 }));
 vi.mock('../../stores/authStore', () => ({
   useAuthStore: (sel: (s: Record<string, unknown>) => unknown) => sel({ user: mocks.user }),
+}));
+vi.mock('../../hooks/useStaticPermissions', () => ({
+  useStaticPermissions: () => ({ userRole: mocks.userRole }),
+}));
+vi.mock('../../stores/viewAsStore', () => ({
+  useViewAsStore: (sel: (s: Record<string, unknown>) => unknown) => sel({ viewAsUser: mocks.viewAsUser }),
 }));
 vi.mock('../../stores/toastStore', () => ({
   toast: { error: mocks.toastError, success: vi.fn(), warning: vi.fn(), info: vi.fn() },
@@ -164,7 +174,11 @@ function futureSession(partial: Partial<ScheduleSession> = {}): ScheduleSession 
   };
 }
 
-function renderHome(props: Partial<Parameters<typeof Home>[0]> = {}) {
+function renderHome(
+  props: Partial<Parameters<typeof Home>[0]> = {},
+  effectiveRole?: string | null,
+) {
+  mocks.userRole = effectiveRole !== undefined ? effectiveRole : (props.group ?? group).userRole;
   return render(
     <Home
       group={group}
@@ -203,6 +217,8 @@ beforeEach(() => {
   mocks.fetchRegistrations = vi.fn().mockResolvedValue(undefined);
   mocks.toastError.mockClear();
   mocks.user = { id: 'u1' };
+  mocks.userRole = 'owner';
+  mocks.viewAsUser = null;
   mocks.fairnessCalls = [];
 });
 
@@ -464,6 +480,93 @@ describe('Home', () => {
     expect(last.currentWeek).toBe(mocks.currentWeek);
     expect(last.floors).toEqual(['M9S', 'M10S']);
     expect(last.settings).toEqual(DEFAULT_SETTINGS);
+  });
+
+  // ── ROLE-1: Home hides lead controls from non-managers (R-R1-1…R-R1-3) ─────
+  describe('role gating (ROLE-1)', () => {
+    const memberGroup = { id: 'g1', name: 'Crescent Static', userRole: 'member' } as unknown as StaticGroup;
+    const viewerGroup = { id: 'g1', name: 'Crescent Static', userRole: null } as unknown as StaticGroup;
+
+    function noBisTier() {
+      const mine = player({ id: 'A', userId: 'u1', name: 'Mine', gear: [] });
+      const theirs = player({ id: 'B', userId: 'uB', name: 'Theirs', gear: [] });
+      return { tierId: 't1', players: [mine, theirs] } as unknown as TierSnapshot;
+    }
+
+    it('manager: the loot button logs the week (lview=log)', () => {
+      const onNavigate = vi.fn();
+      renderHome({ onNavigate });
+      fireEvent.click(screen.getByRole('button', { name: /log this week's loot/i }));
+      expect(onNavigate).toHaveBeenCalledWith('gear', { lview: 'log' });
+    });
+
+    it('member: "View loot priority" lands on Priority explicitly, with no log button (F4)', () => {
+      const onNavigate = vi.fn();
+      renderHome({ group: memberGroup, canManage: false, onNavigate });
+      expect(screen.queryByRole('button', { name: /log this week's loot/i })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'View loot priority' }));
+      expect(onNavigate).toHaveBeenCalledWith('gear', { lview: 'priority' });
+    });
+
+    it('member: no sessions → "View schedule" instead of "Add session"', () => {
+      const onNavigate = vi.fn();
+      renderHome({ group: memberGroup, canManage: false, onNavigate });
+      expect(screen.queryByRole('button', { name: /add session/i })).not.toBeInTheDocument();
+      expect(screen.getByText('No upcoming session')).toBeInTheDocument();
+      expect(screen.getByText("Nothing's scheduled yet. Your lead adds sessions on Schedule.")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'View schedule' }));
+      expect(onNavigate).toHaveBeenCalledWith('schedule');
+    });
+
+    it('non-member: no sessions → "Schedule is for members" and no button', () => {
+      renderHome({ group: viewerGroup, canManage: false });
+      expect(screen.getByText('Schedule is for members')).toBeInTheDocument();
+      expect(screen.getByText('Members see the next session and RSVP here.')).toBeInTheDocument();
+      expect(screen.queryByText('No upcoming session')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /add session|view schedule/i })).not.toBeInTheDocument();
+    });
+
+    it('member: only their own claimed raider gets an "Import BiS" row', () => {
+      renderHome({ group: memberGroup, canManage: false, tier: noBisTier() });
+      expect(screen.getAllByRole('button', { name: /import bis/i })).toHaveLength(1);
+      expect(screen.getByText('Mine')).toBeInTheDocument();
+      expect(screen.queryByText('Theirs')).not.toBeInTheDocument();
+    });
+
+    it('non-member: no "Import BiS" rows and the empty state reads "Nothing needs you right now."', () => {
+      renderHome({ group: viewerGroup, canManage: false, tier: noBisTier() });
+      expect(screen.queryByRole('button', { name: /import bis/i })).not.toBeInTheDocument();
+      expect(screen.getByText("You're all caught up")).toBeInTheDocument();
+      expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
+    });
+
+    it('manager: both raiders get an "Import BiS" row and the empty-state copy is unchanged', () => {
+      renderHome({ tier: noBisTier() });
+      expect(screen.getAllByRole('button', { name: /import bis/i })).toHaveLength(2);
+      cleanup();
+      renderHome();
+      expect(screen.getByText('No BiS, roster, or recruitment items need you right now.')).toBeInTheDocument();
+    });
+
+    it('View As a member (signed in as the owner): only the viewed member\'s own row (F5)', () => {
+      const viewedMine = player({ id: 'V', userId: 'uM', name: 'Viewed Member', gear: [] });
+      const other = player({ id: 'O', userId: 'uO', name: 'Other', gear: [] });
+      const ownersOwn = player({ id: 'W', userId: 'u1', name: 'Owner Card', gear: [] });
+      const t = { tierId: 't1', players: [ownersOwn, viewedMine, other] } as unknown as TierSnapshot;
+      mocks.viewAsUser = { userId: 'uM', role: 'member' };
+      renderHome({ tier: t, canManage: false }, 'member');
+      expect(screen.getAllByRole('button', { name: /import bis/i })).toHaveLength(1);
+      expect(screen.getByText('Viewed Member')).toBeInTheDocument();
+      expect(screen.queryByText('Owner Card')).not.toBeInTheDocument();
+      expect(screen.queryByText('Other')).not.toBeInTheDocument();
+    });
+
+    it('View As a non-member (signed in as the owner): "Schedule is for members" (F5)', () => {
+      mocks.viewAsUser = { userId: 'uN', role: 'viewer' };
+      renderHome({ canManage: false }, null);
+      expect(screen.getByText('Schedule is for members')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /add session/i })).not.toBeInTheDocument();
+    });
   });
 
   // ── Recruiting line (R-RH-P) ────────────────────────────────────────────────

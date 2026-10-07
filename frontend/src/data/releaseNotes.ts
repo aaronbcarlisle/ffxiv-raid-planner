@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.59';
+export const CURRENT_VERSION = '2.1.65';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,147 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.65',
+    date: '2026-10-01T21:10:03Z',
+    title: 'Buttons match what your role can do',
+    items: [
+      {
+        category: 'fix',
+        title: 'No Track button for members who can\'t create farms',
+        description:
+          'In Goals & Farms\' catalog, the Track button now shows only to owners and leads, who can create a farm goal. Members and viewers no longer see a button that always failed.',
+        pr: 350,
+        prTitle: 'fix(ui): W0 ROLE-1 — hide what a role can\'t use on Home, Roster, Loot and Tracking',
+      },
+      {
+        category: 'improvement',
+        title: 'V2 preview: lead-only controls are hidden, not greyed out',
+        description:
+          'V2 preview: members, viewers and visitors no longer see disabled lead controls on Home, Roster, Loot and Tracking. Add player, Reorder and the card menu\'s lead items are hidden, seat and BiS-source chips on other players\' cards are plain labels, a member\'s own books row is read-only until member book logging ships, Home offers "View loot priority" and "View schedule" instead of lead actions, and Take Ownership needs a membership.',
+        pr: 350,
+        prTitle: 'fix(ui): W0 ROLE-1 — hide what a role can\'t use on Home, Roster, Loot and Tracking',
+        internal: true,
+      },
+    ],
+  },
+  {
+    version: '2.1.64',
+    date: '2026-10-01T17:34:00Z',
+    title: 'Member accounts stay inside the static',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Members\' Discord accounts are hidden from non-members',
+        description:
+          'Someone who isn\'t a member of a public static (signed out, or signed in to another account) no longer receives members\' Discord usernames, IDs, avatars or display names from the static\'s pages or API. The one exception is the contact a lead publishes in the static\'s Finder listing, shown only while the listing is live. The roster, gear and loot history stay viewable by share code as before, and members, viewers and site admins see what they saw before.',
+        link: { href: '/docs/privacy', label: 'Privacy' },
+        pr: 347,
+        prTitle: 'fix(api,ui): W0 GUEST-2 — member identity off every guest-reachable read; guest Tracking, Plugin and More',
+      },
+      {
+        category: 'improvement',
+        title: 'API responses for non-members leave out member accounts',
+        description:
+          'For a caller who is neither a member of the static nor a site admin, the tier and players endpoints return linkedUser as null, GET /members returns each member\'s user as null, GET /linked-players returns an empty list, the loot, page and material logs return createdByUsername as null, and the static lookups leave the recruiting contact out of settings.discovery unless the static is listed in the Finder. API keys of members get the same responses as before.',
+        link: { href: '/docs/api', label: 'API docs' },
+        pr: 347,
+        prTitle: 'fix(api,ui): W0 GUEST-2 — member identity off every guest-reachable read; guest Tracking, Plugin and More',
+      },
+      {
+        category: 'improvement',
+        title: 'Clearer pages for visitors who aren\'t members',
+        description:
+          'Goals & Farms shows one members-only card instead of empty panels, claimed player cards no longer say who claimed them, the Plugin page asks you to log in before managing API keys, and More no longer offers Settings or Integrations to signed-out visitors.',
+        pr: 347,
+        prTitle: 'fix(api,ui): W0 GUEST-2 — member identity off every guest-reachable read; guest Tracking, Plugin and More',
+      },
+      {
+        category: 'improvement',
+        title: 'V2 preview: one members-only card on Tracking and Schedule',
+        description:
+          'V2 preview: Tracking shows the members-only card to non-members, and Schedule\'s card uses the same component, with Log in as the card\'s action.',
+        pr: 347,
+        prTitle: 'fix(api,ui): W0 GUEST-2 — member identity off every guest-reachable read; guest Tracking, Plugin and More',
+        internal: true,
+      },
+    ],
+  },
+  {
+    version: '2.1.63',
+    date: '2026-10-01T14:40:00Z',
+    title: 'Loot, books and farm drops record how they were logged',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Loot, materials and books record how they were logged',
+        description:
+          'New loot, material and book entries now record whether they came from the website or an API key such as the plugin\'s, and which key, whose card they were logged for, which character, and whether it was picked or filled in as the main. Nothing changes on screen yet, and older entries stay unmarked.',
+        pr: 345,
+        prTitle: 'feat(api): W0 PROV-1 — loot, material and book writes record how, which key, whose card and which character (HS-36)',
+        internal: true,
+      },
+      {
+        category: 'improvement',
+        title: 'Farm drops record how they were logged',
+        description:
+          'New farm-drop entries now record whether they came from the website or an API key such as the plugin\'s, and which key. Nothing changes on screen yet, and older entries stay unmarked.',
+        pr: 346,
+        prTitle: 'feat(api): W0 PROV-1 — farm drops record how and which key; the provenance completeness guard',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '2.1.62',
+    date: '2026-10-01T14:00:00Z',
+    title: 'Static lookup API change for non-members',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Static lookups leave out member accounts for non-members',
+        description:
+          'The API endpoints that look up a static by share code or by ID (GET /api/static-groups/by-code/{shareCode} and GET /api/static-groups/{id}) now return owner and each member\'s user as null when the caller isn\'t a member of the static. Members, viewers and admins, and their API keys, get the same response as before. The API docs describe the change.',
+        link: { href: '/docs/api', label: 'API docs' },
+        pr: 343,
+        prTitle: 'fix(api,v2): W0 — guest top bar and Schedule card, the /api/auth/session bootstrap, member identity off by-code (GUEST-1)',
+      },
+      {
+        category: 'fix',
+        title: 'Signed-out visitors no longer log failed sign-in checks',
+        description:
+          'Signed-out visitors no longer trigger failed sign-in checks on every page load: the app asks a new `/api/auth/session` probe, which always answers, before it tries a refresh.',
+        pr: 343,
+        prTitle: 'fix(api,v2): W0 — guest top bar and Schedule card, the /api/auth/session bootstrap, member identity off by-code (GUEST-1)',
+        internal: true,
+      },
+      {
+        category: 'improvement',
+        title: 'V2 preview: guests get Log in and a members-only Schedule',
+        description:
+          'V2 preview: at a static, guests see Log in instead of the bell and settings gear, Open Settings leaves their command palette, and Schedule shows one members-only card instead of empty sessions and availability.',
+        pr: 343,
+        prTitle: 'fix(api,v2): W0 — guest top bar and Schedule card, the /api/auth/session bootstrap, member identity off by-code (GUEST-1)',
+        internal: true,
+      },
+    ],
+  },
+  {
+    version: '2.1.61',
+    date: '2026-10-01T13:00:00Z',
+    title: 'Viewers can no longer duplicate a static',
+    items: [
+      {
+        category: 'fix',
+        title: 'Viewers can no longer duplicate a static',
+        description:
+          'A static\'s viewers no longer see Duplicate Static in My Statics, and the server refuses a duplicate request from a viewer. Statics you\'re only linked to through a card no longer offer it either, since the server never allowed that copy. Members, leads and owners can still duplicate.',
+        pr: 344,
+        prTitle: 'fix(api,ui): W0 AUTHZ-2 — viewers can\'t duplicate a static; every AUTHZ row probed (#331, #333)',
+      },
+    ],
+  },
   {
     version: '2.1.60',
     date: '2026-10-01T03:00:00Z',

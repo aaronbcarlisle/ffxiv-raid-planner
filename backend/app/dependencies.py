@@ -83,8 +83,9 @@ async def _validate_api_key(token: str, session: AsyncSession, request: Request)
         if datetime.now(timezone.utc) > expires:
             raise _API_KEY_AUTH_FAILED
 
-    # Save user_id before flushing (ORM objects may expire after flush)
+    # Save user_id and key_id before flushing (ORM objects may expire after flush)
     user_id = api_key.user_id
+    key_id = api_key.id
 
     # Throttle last_used_at updates to reduce write load from high-volume polling
     now = datetime.now(timezone.utc)
@@ -125,6 +126,7 @@ async def _validate_api_key(token: str, session: AsyncSession, request: Request)
         )
 
     request.state.auth_credential = "api_key"
+    request.state.api_key_id = key_id
     return user
 
 

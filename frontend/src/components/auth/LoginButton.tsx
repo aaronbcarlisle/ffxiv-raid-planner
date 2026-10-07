@@ -8,14 +8,20 @@ import { DiscordIcon } from '../ui/DiscordIcon';
 
 interface LoginButtonProps {
   className?: string;
+  /**
+   * In-app path to return to after login (see authStore.login). Omitted, the
+   * click is V1's bare login(): callers such as ProtectedRoute set
+   * auth_redirect themselves and rely on bare login() leaving it alone.
+   */
+  redirectTo?: string;
 }
 
-export function LoginButton({ className = '' }: LoginButtonProps) {
+export function LoginButton({ className = '', redirectTo }: LoginButtonProps) {
   const { login, isLoading } = useAuthStore();
 
   return (
     <button
-      onClick={() => login()}
+      onClick={() => (redirectTo ? login(redirectTo) : login())}
       disabled={isLoading}
       className={`
         flex items-center gap-2 px-4 py-2

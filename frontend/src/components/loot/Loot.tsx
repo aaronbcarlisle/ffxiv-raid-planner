@@ -17,7 +17,7 @@
  * reused legacy confirm modals (DeleteLootConfirmModal, ResetConfirmModal,
  * ConfirmModal — read-only reuse, never edited), and reads STORES/HOOKS
  * directly (useWeekClock, useLogWeek, useUrlTabState, useLootTrackingStore,
- * useTierStore, useAuthStore, useViewAsStore, useSettingsPanelStore).
+ * useTierStore, useSettingsPanelStore).
  *
  * Deliberate decisions (documented to pre-empt review false-positives):
  *   - ── The week belongs to the LOG tab (D4, R-15) ──
@@ -197,8 +197,6 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useKeyboardShortcuts, type KeyboardShortcut } from '../../hooks/useKeyboardShortcuts';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useTierStore } from '../../stores/tierStore';
-import { useAuthStore } from '../../stores/authStore';
-import { useViewAsStore } from '../../stores/viewAsStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { useGroupActionModalOpen } from '../../pages/groupActionsContext';
 import { toast } from '../../stores/toastStore';
@@ -419,12 +417,6 @@ export function Loot({ group, tier, canEdit }: LootProps) {
 
   const fetchTier = useTierStore((s) => s.fetchTier);
   const updatePlayer = useTierStore((s) => s.updatePlayer);
-
-  // ── Effective viewer identity (BookLedgerCard's member-own-row exception) —
-  // sourced exactly as Roster.tsx does. ──
-  const user = useAuthStore((s) => s.user);
-  const viewAsUser = useViewAsStore((s) => s.viewAsUser);
-  const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
   // ── Priority ⇄ Log ⇄ History view (URL-backed) + the session-local History query ──
   // Declared before `useLogWeek` because the hook's `?week=` mirror is gated on
@@ -1447,7 +1439,6 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             currentWeek={logWeek.week}
             clockWeek={clock.currentWeek}
             canEdit={canEdit}
-            effectiveUserId={effectiveUserId}
             onResetConfig={setResetConfig}
             markClearedOpen={markClearedOpen}
             onMarkClearedOpenChange={setMarkClearedOpen}

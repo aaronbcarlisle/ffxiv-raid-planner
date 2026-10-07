@@ -187,6 +187,8 @@ export function YourStaticsCard({ staticSuggestions, onCreateStatic, overviewByI
           <ul className="flex flex-col divide-y divide-border-subtle">
             {groups.map((g) => {
               const isOwner = g.userRole === 'owner';
+              // #331 / B12: viewers (403) and linked-only rows (404) can't duplicate.
+              const canDuplicate = g.userRole === 'owner' || g.userRole === 'lead' || g.userRole === 'member';
               const isLinked = g.source === 'linked';
               const roleLabel = isLinked ? 'Linked' : (ROLE_LABEL[g.userRole ?? ''] ?? (g.userRole ?? ''));
               const overview = overviewById?.get(g.id);
@@ -228,7 +230,9 @@ export function YourStaticsCard({ staticSuggestions, onCreateStatic, overviewByI
                       <DropdownItem onSelect={() => navigate(buildStaticNavHref(g.shareCode, { remember }))}>Open</DropdownItem>
                       <DropdownItem onSelect={() => void handleCopyCode(g)}>Copy share code</DropdownItem>
                       <DropdownItem onSelect={() => void handleCopyLink(g)}>Copy share link</DropdownItem>
-                      <DropdownItem onSelect={() => void handleDuplicate(g)}>Duplicate</DropdownItem>
+                      {canDuplicate && (
+                        <DropdownItem onSelect={() => void handleDuplicate(g)}>Duplicate</DropdownItem>
+                      )}
                       {isOwner && (
                         <DropdownItem onSelect={() => navigate(`/group/${g.shareCode}?showSettings=true`)}>Settings</DropdownItem>
                       )}

@@ -121,6 +121,26 @@ describe('MembersPanel avatarless fallback (Task 6 InitialsAvatar swap, R-V2)', 
     expect(chip.style.width).toBe('32px');
   });
 
+  it('(pin, GUEST-2 vet I-2) a non-member payload — every member user null, no linked players — renders no handle and does not throw', async () => {
+    // A caller with no role gets `members[].user: null` and `linked-players: []`.
+    // Rows with a null user are skipped; the count heading stays over an empty list.
+    vi.mocked(authRequest).mockImplementation(async (url: string) => {
+      if (url.includes('/linked-players')) return [] as unknown;
+      return [
+        { ...membership({ id: 'm1', userId: 'u1' }), user: null },
+        { ...membership({ id: 'm2', userId: 'u2' }), user: null },
+      ] as unknown;
+    });
+    const { container } = renderPanel();
+
+    await waitFor(() => expect(screen.getByText('Members (2)')).toBeInTheDocument());
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.queryByText('No Avatar')).not.toBeInTheDocument();
+    expect(screen.queryByText(/@|noavatar/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Linked Players/)).not.toBeInTheDocument();
+  });
+
   it('does not render the initials fallback when avatarUrl is present', async () => {
     vi.mocked(authRequest).mockImplementation(async (url: string) => {
       if (url.includes('/linked-players')) return [] as unknown;

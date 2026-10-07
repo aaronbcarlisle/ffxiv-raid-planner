@@ -160,6 +160,16 @@ async def _merge_duplicate_dev_users(
         for page_entry in page_result.scalars().all():
             page_entry.created_by_user_id = canonical_user.id
 
+        # PROV-1 R-PV-11: the recipient user is a second user FK on the same rows.
+        # Re-point it too, or a merged dev user's own rows would read as logged
+        # on their behalf.
+        for log_model in (LootLogEntry, MaterialLogEntry, PageLedgerEntry):
+            recipient_result = await session.execute(
+                select(log_model).where(log_model.recipient_user_id == duplicate.id)
+            )
+            for log_entry in recipient_result.scalars().all():
+                log_entry.recipient_user_id = canonical_user.id
+
         player_result = await session.execute(
             select(SnapshotPlayer).where(SnapshotPlayer.user_id == duplicate.id)
         )

@@ -1,6 +1,7 @@
 /* eslint-disable design-system/no-raw-button */
 import { ObjectiveGoalsPanel } from '../static-group/ObjectiveGoalsPanel';
 import { CollectionsHub } from '../collections/CollectionsHub';
+import { MembersOnlyCard } from '../auth';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
 
 const GOALS_SUB_TABS = ['objectives', 'farms'] as const;
@@ -13,15 +14,24 @@ const GOALS_TABS: { id: GoalsSubTab; label: string }[] = [
 
 interface GoalsPageProps {
   groupId: string;
+  /** Required so a call site that omits them fails `tsc -b` (GUEST-2 R-G2-5). */
+  groupName: string;
   currentUserId: string;
   canManage: boolean;
   isViewer: boolean;
+  /** `userRole != null`, matching the backend's require_membership (viewers and
+   *  admins pass). A non-member gets the members-only card and nothing mounts. */
+  isMember: boolean;
 }
 
-export function GoalsPage({ groupId, currentUserId, canManage, isViewer }: GoalsPageProps) {
+export function GoalsPage({ groupId, groupName, currentUserId, canManage, isViewer, isMember }: GoalsPageProps) {
   // Sub-tab in the URL (?goal=objectives|farms) — deep-linkable, reload-safe, and
   // follows back/forward. Links like "Open Mount Farms" target Farms via this param.
   const [subTab, setSubTab] = useUrlTabState('goal', GOALS_SUB_TABS, 'objectives');
+
+  if (!isMember) {
+    return <MembersOnlyCard staticName={groupName} subject="Objectives and farms" />;
+  }
 
   return (
     <div>

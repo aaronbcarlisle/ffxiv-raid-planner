@@ -15,7 +15,7 @@ from ..auth_utils import create_access_token, create_refresh_token, verify_token
 from ..cache import oauth_state_cache
 from ..config import get_settings
 from ..database import get_session
-from ..dependencies import get_current_user
+from ..dependencies import _validate_jwt, get_current_user
 from ..logging_config import get_logger
 from ..models import User
 from ..rate_limit import RATE_LIMITS, limiter
@@ -23,6 +23,7 @@ from ..schemas import (
     DiscordAuthUrl,
     DiscordCallback,
     RefreshTokenRequest,
+    SessionResponse,
     TokenResponse,
     UserPreferencesUpdate,
     UserResponse,
@@ -402,21 +403,37 @@ async def get_current_user_info(
     user: User = Depends(get_current_user),
 ) -> UserResponse:
     """Get current authenticated user info"""
-    return UserResponse(
-        id=user.id,
-        discord_id=user.discord_id,
-        discord_username=user.discord_username,
-        discord_discriminator=user.discord_discriminator,
-        discord_avatar=user.discord_avatar,
-        avatar_url=user.avatar_url,
-        display_name=user.display_name,
-        is_admin=user.is_admin,
-        activity_display_mode=user.activity_display_mode,
-        tab_persistence=user.tab_persistence,
-        ui_shell=user.ui_shell,
-        created_at=user.created_at,
-        updated_at=user.updated_at,
-        last_login_at=user.last_login_at,
+    return UserResponse.from_user(user)
+
+
+# No @limiter.limit here, like /me: a 429 would send every client to its 401
+# fallback path, which is what this probe exists to avoid.
+@router.get("/session", response_model=SessionResponse)
+async def get_session_probe(
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+) -> SessionResponse:
+    """Always-200 auth bootstrap probe for browsers.
+
+    Reads the httpOnly `access_token` cookie only: never an Authorization
+    header and never an xrp_ API key (key validation writes `last_used_at`,
+    and a probe must not write). `can_refresh` is presence of the refresh
+    cookie, never validated here.
+    """
+    response.headers["Cache-Control"] = "no-store"
+
+    user: User | None = None
+    token = request.cookies.get("access_token")
+    if token and not token.startswith("xrp_"):
+        try:
+            user = await _validate_jwt(token, session, request)
+        except HTTPException:
+            user = None
+
+    return SessionResponse(
+        user=UserResponse.from_user(user) if user else None,
+        can_refresh="refresh_token" in request.cookies,
     )
 
 
@@ -442,19 +459,4 @@ async def update_user_preferences(
         current_user.updated_at = now
     await session.flush()
     await session.commit()
-    return UserResponse(
-        id=current_user.id,
-        discord_id=current_user.discord_id,
-        discord_username=current_user.discord_username,
-        discord_discriminator=current_user.discord_discriminator,
-        discord_avatar=current_user.discord_avatar,
-        avatar_url=current_user.avatar_url,
-        display_name=current_user.display_name,
-        is_admin=current_user.is_admin,
-        activity_display_mode=current_user.activity_display_mode,
-        tab_persistence=current_user.tab_persistence,
-        ui_shell=current_user.ui_shell,
-        created_at=current_user.created_at,
-        updated_at=current_user.updated_at,
-        last_login_at=current_user.last_login_at,
-    )
+    return UserResponse.from_user(current_user)

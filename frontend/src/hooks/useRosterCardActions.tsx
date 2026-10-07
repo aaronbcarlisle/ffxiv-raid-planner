@@ -16,16 +16,21 @@
  *   - No trailing-arrow glyphs on any item (§4.1 lexicon).
  *   - The job-change confirm flow is OUT of scope (owned by the card header).
  *
- * Gating matches the legacy card exactly — `canEditPlayer` / `canManageRoster` /
+ * Gating reads the legacy card's checks — `canEditPlayer` / `canManageRoster` /
  * `canResetGear`, each passed `isAdminAccess` as the admin arg (so "View As"
- * context is respected, as legacy does). **Take Ownership / Release** are NOT
- * gated via `canClaimPlayer`: that helper early-returns disabled for any
- * non-admin when its `hasMembership` arg is omitted, which would permanently
- * disable claim/release for every owner/lead/member. Instead we replicate the
- * legacy card's inline visibility booleans (`PlayerCard.tsx:361-364`): show
- * Take only when the card is unclaimed and the current user hasn't already
- * claimed another card; show Release only for the linked user or the owner —
- * enabled whenever shown.
+ * context is respected, as legacy does) — but ROLE-1 (R-R1-0, R-R1-5) changes
+ * what a failed check does: an item the viewer's ROLE rules out is omitted,
+ * never rendered disabled with its reason. A STATE still disables (Paste with
+ * an empty clipboard, Reset Gear without a host handler). `pruneMenu` then
+ * drops the section header or separator an omission left empty (vet F6).
+ * **Take Ownership / Release** are NOT gated via `canClaimPlayer`: that helper
+ * early-returns disabled for any non-admin when its `hasMembership` arg is
+ * omitted, which would permanently disable claim/release for every
+ * owner/lead/member. Instead we replicate the legacy card's inline visibility
+ * booleans (`PlayerCard.tsx:361-364`): show Take only when the card is
+ * unclaimed, the current user hasn't already claimed another card and is a
+ * raid member (`isRaidMember`, R-R1-6 — a signed-in non-member's claim 403s);
+ * show Release only for the linked user or the owner — enabled whenever shown.
  *
  * ── Params that extend the brief's documented interface (justified per the
  *    brief's "adjust the param types to match what the modals actually
@@ -73,6 +78,7 @@ import {
   canEditPlayer,
   canManageRoster,
   canResetGear,
+  isRaidMember,
   type PermissionCheck,
 } from '../utils/permissions';
 import type {
@@ -174,9 +180,58 @@ interface BuildMenuContext {
 
 const ICON = 'w-4 h-4';
 
+const isSeparator = (item: ContextMenuItem): boolean => 'separator' in item && !!item.separator;
+const isHeader = (item: ContextMenuItem): boolean => 'sectionHeader' in item && !!item.sectionHeader;
+const isMenuItem = (item: ContextMenuItem): boolean => !isSeparator(item) && !isHeader(item);
+
+/**
+ * ROLE-1 (R-R1-5, vet F6): a separator that is leading, trailing, doubled, or
+ * next to a section header is dropped. The Danger Zone separator is pushed
+ * unconditionally below, so for a viewer who can't remove it would trail.
+ */
+function dropStraySeparators(items: ContextMenuItem[]): ContextMenuItem[] {
+  const kept: ContextMenuItem[] = [];
+  items.forEach((item, i) => {
+    if (!isSeparator(item)) {
+      kept.push(item);
+      return;
+    }
+    const prev = kept[kept.length - 1];
+    const next = items[i + 1];
+    if (!prev || !isMenuItem(prev)) return;
+    if (!next || !isMenuItem(next)) return;
+    kept.push(item);
+  });
+  return kept;
+}
+
+/**
+ * ROLE-1 (R-R1-5, vet F6): a section header followed by no item (another
+ * header, a separator, or the end) is dropped, so the menu never shows an
+ * empty section. Runs after `dropStraySeparators`, which leaves every
+ * surviving separator between two items.
+ */
+function dropEmptySections(items: ContextMenuItem[]): ContextMenuItem[] {
+  return items.filter((item, i) => {
+    if (!isHeader(item)) return true;
+    const next = items[i + 1];
+    return !!next && isMenuItem(next);
+  });
+}
+
+const pruneMenu = (items: ContextMenuItem[]): ContextMenuItem[] =>
+  dropEmptySections(dropStraySeparators(items));
+
 /**
  * The audited kebab menu. Intentionally distinct from the legacy PlayerCard
  * array (re-homed items removed, sections reordered) — this is not a clone.
+ *
+ * ROLE-1 (R-R1-0, R-R1-5): an item the viewer's role rules out is OMITTED
+ * (`editPermission` / `rosterPermission` / `resetPermission` false), never
+ * rendered disabled with its reason; BiS Targets (read-only), Copy and Copy
+ * URL stay for everyone, so the kebab always has something. A STATE still
+ * disables, with its reason: Paste with an empty clipboard, Reset Gear
+ * without a host handler.
  */
 function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
   const {
@@ -194,27 +249,25 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
     open,
   } = ctx;
 
-  const editTip = editPermission.allowed ? undefined : editPermission.reason;
-  const rosterTip = rosterPermission.allowed ? undefined : rosterPermission.reason;
+  const canEdit = editPermission.allowed;
+  const canManage = rosterPermission.allowed;
 
   const items: ContextMenuItem[] = [];
 
   // ── BiS & Gear ─────────────────────────────────────────────
   items.push({ sectionHeader: 'BiS & Gear' });
-  items.push({
-    label: player.bisLink ? 'Update BiS' : 'Import BiS',
-    icon: <FileDown className={ICON} />,
-    onClick: open.bisImport,
-    disabled: !editPermission.allowed,
-    tooltip: editTip,
-  });
-  if (player.bisLink) {
+  if (canEdit) {
+    items.push({
+      label: player.bisLink ? 'Update BiS' : 'Import BiS',
+      icon: <FileDown className={ICON} />,
+      onClick: open.bisImport,
+    });
+  }
+  if (canEdit && player.bisLink) {
     items.push({
       label: 'Unlink BiS',
       icon: <Link2Off className={ICON} />,
       onClick: open.unlink,
-      disabled: !editPermission.allowed,
-      tooltip: editTip,
     });
   }
   items.push({
@@ -222,18 +275,18 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
     icon: <Target className={ICON} />,
     onClick: open.bisTargets,
   });
-  items.push({
-    label: 'Weapon Priorities',
-    icon: <Swords className={ICON} />,
-    onClick: open.weaponPriority,
-    disabled: !editPermission.allowed,
-    tooltip: editTip,
-  });
+  if (canEdit) {
+    items.push({
+      label: 'Weapon Priorities',
+      icon: <Swords className={ICON} />,
+      onClick: open.weaponPriority,
+    });
+  }
   // C7 (D-05): the books JUMP (not the books editor — see RosterCardActions).
-  // Shown, never disabled-with-a-tooltip: legacy's item was visibility-gated
-  // by the same expression `canEditPlayer` encodes (owner/lead/admin anywhere,
-  // a member on their own claimed card), and a viewer has no row to adjust.
-  if (actions.onEditBooks && editPermission.allowed) {
+  // ROLE-1 (R-R1-7): the page-ledger write it lands on is lead-only on the
+  // server today, so the jump follows `rosterPermission`; a member's own-row
+  // books return with W4 LOOT, which changes the server and restores this.
+  if (actions.onEditBooks && canManage) {
     items.push({
       label: 'Edit Books',
       icon: <BookOpen className={ICON} />,
@@ -246,36 +299,35 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
   // and the weapon row's "+" toggle stay in sync with no extra wiring.
   // `player.tomeWeapon` is required in production but read defensively (`?.`)
   // because test doubles may omit it.
-  items.push({
-    label: player.tomeWeapon?.pursuing ? 'Stop Tracking Tome Weapon' : 'Track Tome Weapon',
-    icon: <BookMarked className={ICON} />,
-    onClick: async () => {
-      // Whole-branch review Finding 1: onUpdate re-throws (tierStore rollback
-      // contract) — await + toast so a rejected toggle can't become an
-      // unhandled rejection (ContextMenuItem.onClick is `() => void`, which
-      // silently dropped the bare promise before).
-      try {
-        await actions.onUpdate({
-          tomeWeapon: { ...player.tomeWeapon, pursuing: !player.tomeWeapon?.pursuing },
-        });
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to update tome weapon tracking');
-      }
-    },
-    disabled: !editPermission.allowed,
-    tooltip: editTip,
-  });
-  items.push({
-    label: 'Reset Gear',
-    icon: <RotateCcw className={ICON} />,
-    onClick: open.reset,
-    disabled: !actions.onResetGear || !resetPermission.allowed,
-    tooltip: !actions.onResetGear
-      ? 'Feature not available'
-      : resetPermission.allowed
-        ? undefined
-        : resetPermission.reason,
-  });
+  if (canEdit) {
+    items.push({
+      label: player.tomeWeapon?.pursuing ? 'Stop Tracking Tome Weapon' : 'Track Tome Weapon',
+      icon: <BookMarked className={ICON} />,
+      onClick: async () => {
+        // Whole-branch review Finding 1: onUpdate re-throws (tierStore rollback
+        // contract) — await + toast so a rejected toggle can't become an
+        // unhandled rejection (ContextMenuItem.onClick is `() => void`, which
+        // silently dropped the bare promise before).
+        try {
+          await actions.onUpdate({
+            tomeWeapon: { ...player.tomeWeapon, pursuing: !player.tomeWeapon?.pursuing },
+          });
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to update tome weapon tracking');
+        }
+      },
+    });
+  }
+  if (resetPermission.allowed) {
+    items.push({
+      label: 'Reset Gear',
+      icon: <RotateCcw className={ICON} />,
+      onClick: open.reset,
+      // A host without the reset flow is a state, not a role (R-R1-0).
+      disabled: !actions.onResetGear,
+      tooltip: actions.onResetGear ? undefined : 'Feature not available',
+    });
+  }
 
   // ── Player Management ──────────────────────────────────────
   items.push({ sectionHeader: 'Player Management' });
@@ -296,29 +348,29 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
       onClick: actions.onReleasePlayer,
     });
   }
-  items.push({
-    label: 'Flex Roles',
-    icon: <GitBranch className={ICON} />,
-    onClick: open.flexRoles,
-    disabled: !editPermission.allowed,
-    tooltip: editTip,
-  });
-  items.push({
-    label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
-    icon: player.isSubstitute ? <UserPlus className={ICON} /> : <UserMinus className={ICON} />,
-    onClick: async () => {
-      // Whole-branch review Finding 1: same re-throw contract as the
-      // tome-weapon toggle above — guard so a rejected update can't become an
-      // unhandled rejection.
-      try {
-        await actions.onUpdate({ isSubstitute: !player.isSubstitute });
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to update sub status');
-      }
-    },
-    disabled: !rosterPermission.allowed,
-    tooltip: rosterTip,
-  });
+  if (canEdit) {
+    items.push({
+      label: 'Flex Roles',
+      icon: <GitBranch className={ICON} />,
+      onClick: open.flexRoles,
+    });
+  }
+  if (canManage) {
+    items.push({
+      label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
+      icon: player.isSubstitute ? <UserPlus className={ICON} /> : <UserMinus className={ICON} />,
+      onClick: async () => {
+        // Whole-branch review Finding 1: same re-throw contract as the
+        // tome-weapon toggle above — guard so a rejected update can't become an
+        // unhandled rejection.
+        try {
+          await actions.onUpdate({ isSubstitute: !player.isSubstitute });
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to update sub status');
+        }
+      },
+    });
+  }
   if (showOwnerAssignItem) {
     items.push({
       label: 'Assign User',
@@ -348,33 +400,39 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
       onClick: actions.onCopyUrl,
     });
   }
-  items.push({
-    label: 'Paste',
-    icon: <ClipboardPaste className={ICON} />,
-    onClick: open.paste,
-    disabled: !clipboardPlayer || !editPermission.allowed || !actions.onPaste,
-    tooltip: !clipboardPlayer ? 'No player copied' : editTip,
-  });
-  items.push({
-    label: 'Duplicate',
-    icon: <CopyPlus className={ICON} />,
-    onClick: actions.onDuplicate,
-    disabled: !rosterPermission.allowed,
-    tooltip: rosterTip,
-  });
+  if (canEdit) {
+    items.push({
+      label: 'Paste',
+      icon: <ClipboardPaste className={ICON} />,
+      onClick: open.paste,
+      // An empty clipboard (or a host without paste) is a state, not a role.
+      disabled: !clipboardPlayer || !actions.onPaste,
+      tooltip: clipboardPlayer ? undefined : 'No player copied',
+    });
+  }
+  if (canManage) {
+    items.push({
+      label: 'Duplicate',
+      icon: <CopyPlus className={ICON} />,
+      onClick: actions.onDuplicate,
+    });
+  }
 
   // ── Danger Zone ────────────────────────────────────────────
+  // The separator is unconditional (its item is the gated thing);
+  // `pruneMenu` drops it when nothing follows.
   items.push({ separator: true });
-  items.push({
-    label: 'Remove Player',
-    icon: <Trash2 className={ICON} />,
-    onClick: open.remove,
-    danger: true,
-    disabled: !rosterPermission.allowed || !actions.onRemove,
-    tooltip: rosterTip,
-  });
+  if (canManage) {
+    items.push({
+      label: 'Remove Player',
+      icon: <Trash2 className={ICON} />,
+      onClick: open.remove,
+      danger: true,
+      disabled: !actions.onRemove,
+    });
+  }
 
-  return items;
+  return pruneMenu(items);
 }
 
 export function useRosterCardActions(params: RosterCardActionParams): RosterCardActionResult {
@@ -436,9 +494,14 @@ export function useRosterCardActions(params: RosterCardActionParams): RosterCard
   // is `userRole === 'owner'`, the equivalent of legacy's separate prop.
   const isGroupOwner = userRole === 'owner';
   const isLinkedToMe = !!player.userId && player.userId === currentUserId;
-  // Viewers are read-only and the server refuses their claim; self-release stays open.
+  // Only a raid member (owner/lead/member) can claim (R-R1-6): the server
+  // refuses a viewer's and a signed-in non-member's claim. Self-release stays.
   const showTake =
-    !player.userId && !!currentUserId && !!actions.onClaimPlayer && !userHasClaimedPlayer && userRole !== 'viewer';
+    !player.userId &&
+    !!currentUserId &&
+    !!actions.onClaimPlayer &&
+    !userHasClaimedPlayer &&
+    isRaidMember(userRole);
   const showRelease =
     (isLinkedToMe || isGroupOwner) && !!player.userId && !!actions.onReleasePlayer;
   // Owner-assign shows for an actual owner (not via admin access); admin-assign

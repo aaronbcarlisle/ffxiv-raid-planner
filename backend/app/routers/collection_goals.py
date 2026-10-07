@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,6 +38,7 @@ from ..schemas.collection_goals import (
     RewardDropCreate,
     RewardDropResponse,
 )
+from ..services.provenance import logged_via, request_api_key_id
 
 router = APIRouter(prefix="/api", tags=["collection-goals"])
 logger = get_logger(__name__)
@@ -692,6 +693,7 @@ async def log_drop(
     group_id: str,
     goal_id: str,
     body: RewardDropCreate,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> RewardDropResponse:
@@ -743,6 +745,8 @@ async def log_drop(
         notes=body.notes,
         recipient_prior_state=recipient_prior_state,
         recipient_prior_state_at=recipient_prior_state_at,
+        logged_via=logged_via(request),
+        api_key_id=request_api_key_id(request),
         created_at=now,
     )
     session.add(drop)
