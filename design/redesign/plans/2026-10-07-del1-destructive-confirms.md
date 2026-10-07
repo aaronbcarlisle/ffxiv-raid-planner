@@ -125,4 +125,5 @@ Also binding: the `CLAUDE.md` § UI rules (`ConfirmModal` with a header icon; "A
 
 - C-1: hover-only deletes outside farms: `history/WeeklyLootGrid.tsx:409/425`, `profile/GoalCard.tsx:128` (a hover-only Edit/Delete cluster with no focus reveal; vet M-6), and any others the reviewer finds. These go to the holistic list, keyboard-visibility pass.
 - C-2: if the owner wants `mirrorToDiscord`/`sendDiscordReminders` to default **off** when Discord isn't connected (R-D1-7), that's a both-shell behaviour change and needs an owner call.
+- C-4 (whole-branch review): `pages/MorePage.tsx:65-68` reads `useScheduleStore(s => s.settings)` with no `staticGroupId` guard, the stale-static class R-D1-6 guards against. It predates DEL-1 → holistic list.
 - C-3: the S2a Progress row menu Delete (`specs/2026-09-30-s2a-progress-design.md:68`) reuses R-D1-3's copy when S2a-5 re-homes the farm list.
