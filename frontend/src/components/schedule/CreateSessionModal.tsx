@@ -14,6 +14,7 @@ import {
   getBrowserTimezone,
   toZonedDatetimeLocalValue,
 } from '../../utils/timezone';
+import type { DiscordDeliverySummary } from './discordDeliverySummary';
 
 const COMMON_TIMEZONES = [
   { value: 'Asia/Tokyo', label: 'JST (Asia/Tokyo)' },
@@ -63,13 +64,7 @@ interface CreateSessionModalProps {
   onSubmit: (data: ScheduleSessionCreate) => Promise<void>;
   editSession?: ScheduleSession | null;
   initialDraft?: ScheduleSessionCreate | null;
-  discordDeliverySummary?: {
-    serverLabel: string;
-    mirrorEnabled: boolean;
-    remindersEnabled: boolean;
-    reminderLabels: string[];
-    pingLabel: string;
-  };
+  discordDeliverySummary?: DiscordDeliverySummary;
 }
 
 /** Explicit BYDAY days from a rule, or null when the rule has none (unset). */
@@ -485,7 +480,7 @@ export function CreateSessionModal({
           <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 p-3">
             <div className="flex items-center justify-between gap-2">
               <Label size="sm">Discord Delivery</Label>
-              <span className="text-[11px] text-text-muted">Per-event controls</span>
+              <span className="text-xs text-text-muted">Per-event controls</span>
             </div>
             <div className="mt-3 space-y-3">
               <Checkbox

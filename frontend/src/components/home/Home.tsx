@@ -57,6 +57,9 @@ import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useViewAsStore } from '../../stores/viewAsStore';
+import { useStaticPermissions } from '../../hooks/useStaticPermissions';
+import { canEditPlayer } from '../../utils/permissions';
 import { toast } from '../../stores/toastStore';
 import { wasToastedByApi } from '../../services/api';
 import { useWeeklyLootSummary } from '../../hooks/useWeeklyLootSummary';
@@ -118,7 +121,15 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
 
   const fetchRegistrations = useStaticCharacterStore((s) => s.fetchRegistrations);
 
-  const userId = useAuthStore((s) => s.user?.id);
+  const authUserId = useAuthStore((s) => s.user?.id);
+  // ROLE-1 (vet F5): the gates below read the EFFECTIVE role and user, so View
+  // As previews the right Home (`Roster.tsx:190-194`). The fetch gate above
+  // keeps `group.userRole` and is deliberately untouched.
+  const viewAsUser = useViewAsStore((s) => s.viewAsUser);
+  const { userRole: effectiveRole } = useStaticPermissions();
+  const effectiveUserId = viewAsUser?.userId ?? authUserId;
+  // RSVP stays the signed-in user's own (the write goes out as them).
+  const userId = authUserId;
 
   const tierId = tier?.tierId;
 
@@ -248,9 +259,12 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
     const players = tier?.players ?? [];
     const items: AttentionItem[] = [];
 
-    // (a) claimed raiders missing BiS → "Import BiS"
+    // (a) claimed raiders missing BiS → "Import BiS". R-R1-3: managers see
+    // any claimed raider; everyone else only the rows they may act on (a
+    // member's own card — none for a non-member or guest).
     players
       .filter((p) => p.configured && !p.isSubstitute && p.userId && !hasBis(p.gear))
+      .filter((p) => canManage || canEditPlayer(effectiveRole, p, effectiveUserId, false).allowed)
       .slice(0, 3)
       .forEach((p) => {
         const detail = [p.job, p.position ?? p.role].filter(Boolean).join(' · ');
@@ -311,7 +325,7 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
     }
 
     return items;
-  }, [tier?.players, groupRequests, canManage, onNavigate, onOpenRequests]);
+  }, [tier?.players, groupRequests, canManage, effectiveRole, effectiveUserId, onNavigate, onOpenRequests]);
 
   // ── Recruiting line (manage-only, R-RH-P): "Recruiting · Live/Listing off
   // · {status label} · {n} waiting". The store's `pendingCount` is kept warm
@@ -349,12 +363,30 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
     />
   ) : (
     <CardShell title="Next session">
-      <EmptyStateInvite
-        icon={<CalendarPlus className="h-5 w-5" />}
-        title="No upcoming session"
-        description="Schedule one so the team can RSVP."
-        action={{ label: 'Add session', onClick: () => onNavigate('schedule') }}
-      />
+      {canManage ? (
+        <EmptyStateInvite
+          icon={<CalendarPlus className="h-5 w-5" />}
+          title="No upcoming session"
+          description="Schedule one so the team can RSVP."
+          action={{ label: 'Add session', onClick: () => onNavigate('schedule') }}
+        />
+      ) : effectiveRole ? (
+        // R-R1-2: members and viewers can't add sessions; point them at Schedule.
+        <EmptyStateInvite
+          icon={<CalendarPlus className="h-5 w-5" />}
+          title="No upcoming session"
+          description="Nothing's scheduled yet. Your lead adds sessions on Schedule."
+          action={{ label: 'View schedule', onClick: () => onNavigate('schedule') }}
+        />
+      ) : (
+        // Non-members never fetch sessions, so "No upcoming session" would be
+        // a claim Home can't make for them.
+        <EmptyStateInvite
+          icon={<CalendarPlus className="h-5 w-5" />}
+          title="Schedule is for members"
+          description="Members see the next session and RSVP here."
+        />
+      )}
     </CardShell>
   );
 
@@ -370,7 +402,12 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
           dashboard-row stacks below. */}
       <div className="grid grid-cols-1 gap-4 min-[1181px]:grid-cols-[minmax(0,1.15fr)_minmax(0,1.15fr)_minmax(0,1fr)]">
         {heroSession}
-        <WeeklyLootSummaryCard tierId={tierId} onLogWeek={() => onNavigate('gear')} />
+        <WeeklyLootSummaryCard
+          tierId={tierId}
+          canManage={canManage}
+          // R-R1-1 (vet F4): the explicit `lview` beats tab memory's stale value.
+          onLogWeek={() => onNavigate('gear', { lview: canManage ? 'log' : 'priority' })}
+        />
         <RosterReadinessCard />
 
         {/* DASHBOARD — actionable (spans cols 1-2) + ambient (col 3) */}
@@ -380,7 +417,11 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
               <EmptyStateInvite
                 icon={<AlertTriangle className="h-5 w-5" />}
                 title="You're all caught up"
-                description="No BiS, roster, or recruitment items need you right now."
+                description={
+                  canManage
+                    ? 'No BiS, roster, or recruitment items need you right now.'
+                    : 'Nothing needs you right now.'
+                }
               />
             ) : (
               <div className="flex flex-col divide-y divide-border-subtle">

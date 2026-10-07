@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.65';
+export const CURRENT_VERSION = '2.1.67';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -60,8 +60,8 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
-    version: '2.1.65',
-    date: '2026-10-01T18:30:00Z',
+    version: '2.1.67',
+    date: '2026-10-08T00:00:00Z',
     title: 'Your collection is kept per character',
     items: [
       {
@@ -105,6 +105,62 @@ export const RELEASES: Release[] = [
           'Removing a character from your profile permanently removes its collection; removing your last character keeps it on your profile. Changing your main changes which collection Profile ▸ Collections shows.',
         pr: 351,
         prTitle: 'feat(api): S2a-1a·2 — the Hub takes a character; adoption and unlink go through the record door',
+      },
+    ],
+  },
+  {
+    version: '2.1.66',
+    date: '2026-10-07T20:00:00Z',
+    title: 'Deleting a farm asks first',
+    items: [
+      {
+        category: 'fix',
+        title: 'Deleting a farm asks for confirmation',
+        description:
+          'In Settings → Goals & Farms → Farms, the trash button now opens a "Delete Farm" confirmation that names the farm, instead of deleting it on one click. Keyboard users can see the button when it has focus, and screen readers announce which farm it deletes.',
+        pr: 355,
+        prTitle: 'fix(ui): W0 DEL-1 — the farm delete asks first; the V2 session modal shows what Discord will do',
+      },
+      {
+        category: 'fix',
+        title: 'Easier-to-read label in the Discord Delivery block',
+        description:
+          'The "Per-event controls" label in the session form\'s Discord Delivery block is no longer smaller than the rest of the form text.',
+        pr: 355,
+        prTitle: 'fix(ui): W0 DEL-1 — the farm delete asks first; the V2 session modal shows what Discord will do',
+      },
+      {
+        category: 'improvement',
+        title: 'V2 preview: the session form shows what Discord will do',
+        description:
+          'V2 preview: creating or editing a session now shows the same Discord Delivery block as the classic Schedule, so leads can see whether the session will mirror to Discord Events and which reminders will send, or what to connect first.',
+        pr: 355,
+        prTitle: 'fix(ui): W0 DEL-1 — the farm delete asks first; the V2 session modal shows what Discord will do',
+        internal: true,
+      },
+    ],
+  },
+  {
+    version: '2.1.65',
+    date: '2026-10-01T21:10:03Z',
+    title: 'Buttons match what your role can do',
+    items: [
+      {
+        category: 'fix',
+        title: 'No Track button for members who can\'t create farms',
+        description:
+          'In Goals & Farms\' catalog, the Track button now shows only to owners and leads, who can create a farm goal. Members and viewers no longer see a button that always failed.',
+        pr: 350,
+        prTitle: 'fix(ui): W0 ROLE-1 — hide what a role can\'t use on Home, Roster, Loot and Tracking',
+      },
+      {
+        category: 'improvement',
+        title: 'V2 preview: lead-only controls are hidden, not greyed out',
+        description:
+          'V2 preview: members, viewers and visitors no longer see disabled lead controls on Home, Roster, Loot and Tracking. Add player, Reorder and the card menu\'s lead items are hidden, seat and BiS-source chips on other players\' cards are plain labels, a member\'s own books row is read-only until member book logging ships, Home offers "View loot priority" and "View schedule" instead of lead actions, and Take Ownership needs a membership.',
+        pr: 350,
+        prTitle: 'fix(ui): W0 ROLE-1 — hide what a role can\'t use on Home, Roster, Loot and Tracking',
+        internal: true,
       },
     ],
   },
