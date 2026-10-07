@@ -603,9 +603,10 @@ async def test_viewer_cannot_self_upsert(async_client, session, group, goal, vie
     assert rows.scalars().all() == []
 
 
-async def test_member_self_upsert_ignores_token_and_rank_on_create(
+async def test_member_self_upsert_stores_token_and_ignores_rank_on_create(
     async_client, group, goal, member
 ):
+    """S2a-1 delta (h): a member's count is stored (on the row: the goal has no catalog item)."""
     resp = await async_client.patch(
         _participants_url(group.id, goal["id"]),
         json={"state": "need", "token_count": 45, "priority_rank": 1, "notes": "soon"},
@@ -615,11 +616,12 @@ async def test_member_self_upsert_ignores_token_and_rank_on_create(
     data = resp.json()
     assert data["state"] == "need"
     assert data["notes"] == "soon"
-    assert data["token_count"] is None
+    assert data["token_count"] == 45
+    assert data["count_from_record"] is False
     assert data["priority_rank"] is None
 
 
-async def test_member_self_upsert_ignores_token_and_rank_on_update(
+async def test_member_self_upsert_stores_token_and_ignores_rank_on_update(
     async_client, group, goal, owner, member
 ):
     seeded = await async_client.patch(
@@ -638,7 +640,7 @@ async def test_member_self_upsert_ignores_token_and_rank_on_update(
     assert resp.status_code == 200
     data = resp.json()
     assert data["state"] == "need"
-    assert data["token_count"] == 10
+    assert data["token_count"] == 45
     assert data["priority_rank"] == 2
 
 

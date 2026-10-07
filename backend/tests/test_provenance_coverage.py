@@ -129,6 +129,7 @@ EXPECTED_DOOR_CALLERS = {
     ("app/routers/player_collection.py", "upsert_snapshot"),
     ("app/services/player_reward_bridge_service.py", "_write_own_records"),
     ("app/services/plugin_collection_sync_service.py", "_write_sync_record"),
+    ("app/routers/collection_goals.py", "_write_own_state"),
 }
 # (d) Door caller -> the route handlers whose @covers_record tests exercise it. The
 # record tests are labelled by route, because a route test is what reads the stored
@@ -141,6 +142,10 @@ DOOR_CALLER_ROUTES = {
     },
     ("app/services/plugin_collection_sync_service.py", "_write_sync_record"): {
         "plugin_sync_collections"
+    },
+    ("app/routers/collection_goals.py", "_write_own_state"): {
+        "upsert_participant_state",
+        "upsert_participant_state_for_user",
     },
 }
 

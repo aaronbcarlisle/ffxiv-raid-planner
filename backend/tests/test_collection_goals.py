@@ -3,12 +3,19 @@
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
 from app.main import app
-from app.models import User
-from tests.factories import create_membership, create_static_group, create_user
+from app.models import PlayerCollectionSnapshot, User
+from tests.factories import (
+    create_catalog_item,
+    create_collection_goal,
+    create_membership,
+    create_static_group,
+    create_user,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -170,10 +177,10 @@ async def goal(async_client: AsyncClient, group, owner_headers):
     return resp.json()
 
 
-async def test_member_sets_own_state_but_token_count_is_not_stored(
+async def test_member_sets_own_state_and_token_count_is_stored(
     async_client: AsyncClient, group, goal, member_headers
 ):
-    """R-P0-3: a member's self-upsert writes state, and ignores token_count/priority_rank."""
+    """S2a-1 delta (h): a member's count is stored; with no catalog item the row holds it."""
     resp = await async_client.patch(
         f"/api/static-groups/{group.id}/collection-goals/{goal['id']}/participants",
         json={"state": "need", "token_count": 45},
@@ -182,7 +189,30 @@ async def test_member_sets_own_state_but_token_count_is_not_stored(
     assert resp.status_code == 200
     data = resp.json()
     assert data["state"] == "need"
-    assert data["token_count"] is None
+    assert data["token_count"] == 45
+    assert data["count_from_record"] is False
+
+
+async def test_member_count_with_no_profile_goes_to_the_row_even_on_a_catalog_goal(
+    async_client: AsyncClient, session: AsyncSession, group, owner, member, member_headers
+):
+    """R-S1-10: a member with no profile has no record to hold the count, so the row does."""
+    item = await create_catalog_item(session, name="No Profile Mount")
+    catalog_goal = await create_collection_goal(session, group, owner)
+    catalog_goal.catalog_item_id = item.id
+    await session.commit()
+
+    resp = await async_client.patch(
+        f"/api/static-groups/{group.id}/collection-goals/{catalog_goal.id}/participants",
+        json={"state": "have", "token_count": 12},
+        headers=member_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert (data["state"], data["token_count"], data["count_from_record"]) == ("have", 12, False)
+    assert data["record"] is None
+    records = await session.execute(select(PlayerCollectionSnapshot))
+    assert records.scalars().all() == []
 
 
 async def test_lead_sets_own_state_and_token_count_is_stored(
