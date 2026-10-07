@@ -46,6 +46,7 @@ import { AvailabilityHeatmap } from './AvailabilityHeatmap';
 import { BestTimesCard } from './BestTimesCard';
 import { PersonLayerEntryPoint } from './PersonLayerEntryPoint';
 import { CreateSessionModal } from './CreateSessionModal';
+import { useDiscordDeliverySummary } from './discordDeliverySummary';
 import { OccurrenceListModal } from './OccurrenceListModal';
 // Task 10 (§5.1 stopgap): the only availability EDITOR reachable from v2 —
 // reused import-only inside a Modal, until the Ring-1 Person→Static pipe.
@@ -87,7 +88,9 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
 
   const {
     sessions,
+    settings,
     fetchSessions,
+    fetchSettings,
     submitRsvp,
     createSession,
     updateSession,
@@ -143,6 +146,18 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
     void fetchAvailability(group.id, startDate, endDate, { includeTemplates: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group.id, weekDates.join(','), fetchAvailability, isMember]);
+
+  // Discord Delivery (W0 DEL-1, R-D1-6): only a manager opens the session
+  // modal, so only a manager fetches the scheduler settings (the backend
+  // refuses viewers). The store is shell-shared, so it can hold another
+  // static's settings: refetch until it holds this one's. `fetchSettings`
+  // never rejects and sets `settings` only on success, so this cannot loop.
+  useEffect(() => {
+    if (isMember && canManage && settings?.staticGroupId !== group.id) {
+      void fetchSettings(group.id).catch(() => undefined);
+    }
+  }, [isMember, canManage, settings?.staticGroupId, group.id, fetchSettings]);
+  const discordDeliverySummary = useDiscordDeliverySummary(settings);
 
   // ── Cancelled exceptions, batched per recurring session (plan confirmation 1).
   // `recurringKey` keeps the effect dep array honest (a stable sorted id string);
@@ -507,6 +522,7 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
           onSubmit={handleSubmit}
           editSession={editSession}
           initialDraft={createDraft}
+          discordDeliverySummary={settings?.staticGroupId === group.id ? discordDeliverySummary : undefined}
         />
       )}
 
