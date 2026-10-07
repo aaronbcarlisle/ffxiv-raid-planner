@@ -77,6 +77,7 @@ export function CommandPalette({ isOpen, onClose, onSelectTab }: CommandPaletteP
   const setPageMode = onSelectTab ?? setPageModeFromState;
   const openSettingsPanel = useSettingsPanelStore((s) => s.open);
   const groups = useStaticGroupStore((s) => s.groups);
+  const user = useAuthStore((s) => s.user);
   const rememberStaticTab = useAuthStore((s) => prefRememberTabs(s.user));
   // Fix wave (D14a review, IMPORTANT #2): same read as Layout.tsx's
   // `isAdmin` (`state.user?.isAdmin ?? false`) — `V2_SHORTCUT_GROUPS` carries
@@ -153,15 +154,18 @@ export function CommandPalette({ isOpen, onClose, onSelectTab }: CommandPaletteP
         onSelect: () => { setPageMode('more'); handleClose(); },
       },
       // ── Settings ─────────────────────────────────────────────────────
-      {
-        id: 'open-settings',
-        label: 'Open Settings',
-        icon: <Settings className="w-4 h-4" aria-hidden="true" />,
-        // Use the same opener as SettingsGear (settingsPanelStore.open), not the
-        // legacy showSettings URL-param path. The palette mounts only in NewShell,
-        // where V2SettingsHost (F6b) hosts the panel — so this opens Settings in v2.
-        onSelect: () => { openSettingsPanel(); handleClose(); },
-      },
+      // Signed-in only (GUEST-1 R-G1-5): a guest has no settings dock.
+      ...(user
+        ? [{
+            id: 'open-settings',
+            label: 'Open Settings',
+            icon: <Settings className="w-4 h-4" aria-hidden="true" />,
+            // Use the same opener as SettingsGear (settingsPanelStore.open), not the
+            // legacy showSettings URL-param path. The palette mounts only in NewShell,
+            // where V2SettingsHost (F6b) hosts the panel — so this opens Settings in v2.
+            onSelect: () => { openSettingsPanel(); handleClose(); },
+          }]
+        : []),
       // ── Switch static — one row per group ────────────────────────────
       // Repointed (Task 7 follow-up) to the same `buildStaticNavHref` call
       // StaticPicker uses, so this affordance also restores the target
@@ -181,7 +185,7 @@ export function CommandPalette({ isOpen, onClose, onSelectTab }: CommandPaletteP
         },
       })),
     ],
-    [setPageMode, openSettingsPanel, groups, navigate, handleClose, rememberStaticTab, searchParams],
+    [setPageMode, openSettingsPanel, user, groups, navigate, handleClose, rememberStaticTab, searchParams],
   );
 
   const filtered = useMemo(() => {

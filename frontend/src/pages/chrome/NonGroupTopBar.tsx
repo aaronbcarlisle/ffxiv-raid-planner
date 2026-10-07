@@ -46,7 +46,7 @@ import { useNotificationStore } from '../../stores/notificationStore';
 import { usePlayerProfileStore } from '../../stores/playerProfileStore';
 import { NotificationBell } from '../../components/layout/NotificationBell';
 import { SettingsGear } from '../../components/layout/SettingsGear';
-import { LoginButton, UserMenu } from '../../components/auth';
+import { AuthSkeleton, LoginButton, UserMenu } from '../../components/auth';
 import { DiscordIcon, GitHubIcon, ThemeToggle } from '../../components/ui';
 import { Tooltip } from '../../components/primitives';
 import { DISCORD_INVITE_URL, GITHUB_REPO_URL } from '../../config';
@@ -105,11 +105,6 @@ function ExternalLinks() {
       </Tooltip>
     </div>
   );
-}
-
-/** H13: the exact `Header.tsx:407-408` pre-hydration placeholder. */
-function AuthSkeleton() {
-  return <div data-testid="auth-skeleton" className="w-8 h-8 rounded-full bg-surface-interactive animate-pulse" />;
 }
 
 export function NonGroupTopBar() {

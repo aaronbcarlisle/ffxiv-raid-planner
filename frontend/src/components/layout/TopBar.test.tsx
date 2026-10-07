@@ -2,9 +2,9 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import type { StaticGroup, StaticGroupListItem, TierSnapshot } from '../../types';
+import type { StaticGroup, StaticGroupListItem, TierSnapshot, User } from '../../types';
 
 // Mock the GroupActions context so we can assert onTierChange fires via it,
 // without standing up the whole <GroupActionModals> provider.
@@ -36,6 +36,7 @@ import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
+import { useAuthStore } from '../../stores/authStore';
 import { ThemeProvider } from '../../hooks/useTheme';
 
 const currentGroup = { id: 'g1', shareCode: 'ABC', name: 'Alpha Static', userRole: 'owner' } as unknown as StaticGroup;
@@ -68,15 +69,24 @@ beforeEach(() => {
   useStaticGroupStore.setState({ currentGroup, groups });
   useTierStore.setState({ tiers, currentTier });
   useLootTrackingStore.setState({ currentWeek: 3, maxWeek: 5 });
+  // Signed-in by default: the bell and gear are authed-only (GUEST-1 R-G1-4).
+  // Guest and pre-hydration cases override this explicitly.
+  useAuthStore.setState({ user: signedInUser, isLoading: false });
   // Prevent NotificationBell's join-count fetch from making real API calls.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useJoinRequestStore.setState({ fetchGroupRequests: vi.fn().mockResolvedValue(undefined) as any });
 });
 
-function renderTopBar(onOpenPalette = vi.fn(), onOpenNotifications = vi.fn()) {
+const signedInUser = { id: 'u1', discordId: 'd1', username: 'tester', isAdmin: false } as unknown as User;
+
+function renderTopBar(
+  onOpenPalette = vi.fn(),
+  onOpenNotifications = vi.fn(),
+  initialEntry = '/group/ABC',
+) {
   return render(
     <ThemeProvider>
-      <MemoryRouter initialEntries={['/group/ABC']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <TopBar onOpenPalette={onOpenPalette} onOpenNotifications={onOpenNotifications} />
       </MemoryRouter>
     </ThemeProvider>
@@ -146,5 +156,88 @@ describe('TopBar', () => {
     expect(precedes(bell, theme)).toBe(true);
     expect(precedes(theme, divider!)).toBe(true);
     expect(precedes(divider!, settings)).toBe(true);
+  });
+
+  // ── GUEST-1 R-G1-4: the auth slot and the authed-only bell/gear ───────────
+  describe('auth gates (GUEST-1 R-G1-4)', () => {
+    const precedes = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+    it('guest (hydrated): Login in the header, no bell, no gear; ⌘K and theme stay', () => {
+      useAuthStore.setState({ user: null, isLoading: false });
+      renderTopBar();
+      const header = screen.getByRole('banner');
+      expect(within(header).getByRole('button', { name: 'Login with Discord' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Notifications/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull();
+      expect(screen.queryByTestId('auth-skeleton')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Command palette' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeInTheDocument();
+    });
+
+    it('signed-in (pin): bell and gear present in A12 order, no Login, no skeleton', () => {
+      renderTopBar();
+      expect(screen.queryByRole('button', { name: 'Login with Discord' })).toBeNull();
+      expect(screen.queryByTestId('auth-skeleton')).toBeNull();
+      const bell = screen.getByRole('button', { name: /^Notifications/ });
+      const theme = screen.getByRole('button', { name: 'Toggle theme' });
+      const settings = screen.getByRole('button', { name: 'Settings' });
+      expect(precedes(bell, theme)).toBe(true);
+      expect(precedes(theme, settings)).toBe(true);
+    });
+
+    it('pre-hydration, no user: skeleton only (no Login, no bell, no gear)', () => {
+      const spy = vi.spyOn(useAuthStore.persist, 'hasHydrated').mockReturnValue(false);
+      try {
+        useAuthStore.setState({ user: null, isLoading: false });
+        renderTopBar();
+        expect(screen.getByTestId('auth-skeleton')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Login with Discord' })).toBeNull();
+        expect(screen.queryByRole('button', { name: /^Notifications/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('isLoading, no user: skeleton only', () => {
+      useAuthStore.setState({ user: null, isLoading: true });
+      renderTopBar();
+      expect(screen.getByTestId('auth-skeleton')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Login/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Notifications/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull();
+    });
+
+    it('pre-hydration with a persisted user: bell and gear in A12 order, no skeleton, no Login', () => {
+      const spy = vi.spyOn(useAuthStore.persist, 'hasHydrated').mockReturnValue(false);
+      try {
+        useAuthStore.setState({ user: signedInUser, isLoading: true });
+        renderTopBar();
+        expect(screen.queryByTestId('auth-skeleton')).toBeNull();
+        expect(screen.queryByRole('button', { name: /Login/ })).toBeNull();
+        const bell = screen.getByRole('button', { name: /^Notifications/ });
+        const theme = screen.getByRole('button', { name: 'Toggle theme' });
+        const settings = screen.getByRole('button', { name: 'Settings' });
+        expect(precedes(bell, theme)).toBe(true);
+        expect(precedes(theme, settings)).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('guest Login click passes the rendered route path + search to login()', () => {
+      const originalLogin = useAuthStore.getState().login;
+      const login = vi.fn();
+      try {
+        useAuthStore.setState({ user: null, isLoading: false, login: login as unknown as typeof originalLogin });
+        renderTopBar(vi.fn(), vi.fn(), '/group/ABC?tab=roster');
+        fireEvent.click(screen.getByRole('button', { name: 'Login with Discord' }));
+        expect(login).toHaveBeenCalledTimes(1);
+        expect(login).toHaveBeenCalledWith('/group/ABC?tab=roster');
+      } finally {
+        useAuthStore.setState({ login: originalLogin });
+      }
+    });
   });
 });
