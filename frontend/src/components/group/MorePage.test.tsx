@@ -15,6 +15,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { MemberRole } from '../../types';
 import { useViewAsStore } from '../../stores/viewAsStore';
+import { useAuthStore } from '../../stores/authStore';
 
 vi.mock('../../stores/joinRequestStore', () => ({
   useJoinRequestStore: (selector: (s: { pendingCount: number; groupRequests: unknown[] }) => unknown) =>
@@ -49,6 +50,8 @@ function renderMorePage(overrides: Partial<Parameters<typeof MorePage>[0]> = {})
 describe('MorePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Settings and Integrations are for signed-in accounts (GUEST-2 R-G2-7).
+    useAuthStore.setState({ user: { id: 'u1' } } as never);
     // jsdom has no matchMedia; ConfirmModal -> Modal -> useDevice needs it
     // (Modal's hooks run even while isOpen is false). Same stub as
     // WeekScopeControl.test.tsx.
@@ -128,6 +131,34 @@ describe('MorePage', () => {
     renderMorePage();
     expect(screen.getByText('Integrations')).toBeInTheDocument();
     expect(screen.getByText(/Connect Discord and other services/i)).toBeInTheDocument();
+  });
+
+  // ── GUEST-2 R-G2-7: Settings and Integrations are hidden for guests only ──
+
+  describe('Settings and Integrations by account', () => {
+    it('a guest (no user) sees neither card, but keeps Loot History and the Plugin card', () => {
+      useAuthStore.setState({ user: null } as never);
+      renderMorePage({ canManage: false, userRole: null });
+
+      expect(screen.queryByText('Integrations')).toBeNull();
+      expect(screen.queryByText('Settings')).toBeNull();
+      expect(screen.getByText('Loot History')).toBeInTheDocument();
+      expect(screen.getByText('Dalamud Plugin')).toBeInTheDocument();
+    });
+
+    it('(pin) a signed-in non-member keeps both cards', () => {
+      renderMorePage({ canManage: false, userRole: null });
+
+      expect(screen.getByText('Integrations')).toBeInTheDocument();
+      expect(screen.getByText('Settings')).toBeInTheDocument();
+    });
+
+    it('(pin) a member keeps both cards', () => {
+      renderMorePage({ canManage: false, userRole: 'member' as MemberRole });
+
+      expect(screen.getByText('Integrations')).toBeInTheDocument();
+      expect(screen.getByText('Settings')).toBeInTheDocument();
+    });
   });
 
   // ── Danger Zone (Phase A Task 5 / A4) ──
