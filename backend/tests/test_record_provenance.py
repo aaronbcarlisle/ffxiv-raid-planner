@@ -62,6 +62,7 @@ RECORD_HANDLERS = (
     "delete_drop",
     "create_goal_from_suggestion",
     "undo_participant_edits",
+    "mark_blank_cells_need",
 )
 
 # handler name -> the test functions decorated with @covers_record(handler)
@@ -1708,3 +1709,46 @@ async def test_leads_undo_of_a_correction_puts_the_members_own_writer_back(
     row = await _row(session, goal, test_user_2)
     assert (row.state, row.updated_by_user_id, row.updated_via) == ("pass", test_user_2.id, "web")
     assert row.state_changed_at == CLIENT_CLOCK
+
+
+# ---------------------------------------------------------------------------
+# mark_blank_cells_need (R-S2-12): the row door alone, the caller as writer.
+# ---------------------------------------------------------------------------
+
+
+@covers_record("mark_blank_cells_need")
+async def test_bulk_need_writes_rows_as_the_callers_correction_and_leaves_records_alone(
+    client, session, test_user, test_user_2, test_group, auth_headers
+):
+    """A lead's bulk Need by API key: each row's writer is the lead and its channel
+    `api_key`; the member's record (not `have`) is not written."""
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Bulk Need Main")
+    item = await create_catalog_item(session, name="Bulk Need Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _put_record(session, profile, main, item, ownership="missing")
+    await session.commit()
+    (record_before,) = await _all_records(session)
+    key = {"Authorization": f"Bearer {await _mint_key(client, auth_headers)}"}
+
+    response = await client.request(
+        "POST",
+        f"/api/static-groups/{test_group.id}/collection-participants/mark-need",
+        json={"cells": [{"goal_id": goal.id, "user_id": test_user_2.id}]},
+        headers=key,
+    )
+    assert response.status_code == 200, response.text
+    assert len(response.json()["created"]) == 1
+
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.source, row.updated_by_user_id, row.updated_via) == (
+        "need",
+        "manual",
+        test_user.id,
+        "api_key",
+    )
+    (record,) = await _all_records(session)
+    assert (record.updated_at, record.updated_by_user_id, record.updated_via) == (
+        record_before.updated_at,
+        record_before.updated_by_user_id,
+        record_before.updated_via,
+    )

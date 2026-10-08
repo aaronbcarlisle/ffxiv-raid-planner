@@ -60,6 +60,28 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.71',
+    date: '2026-10-08T00:00:00Z',
+    title: 'Undo route and bulk Need for farm status',
+    items: [
+      {
+        category: 'improvement',
+        title: 'A farm-status undo route puts an edit back exactly',
+        description:
+          'A new route takes the undo token an edit returned and restores the member\'s status and collection record to what they held before, the writer and channel included, but only while nothing has changed them since; anything changed later is skipped and counted. The caller must be the token\'s owner and still hold the role the edit needed.',
+        internal: true,
+      },
+      {
+        category: 'feature',
+        title: 'A lead can mark blank farm cells Need in one request',
+        description:
+          'A new lead-only route takes up to 200 blank cells and writes a Need row for each one whose goal isn\'t complete, whose member isn\'t a viewer, and whose collection record doesn\'t already say they have the item. Every other cell is skipped and counted, existing rows are never touched, and one undo token covers all the rows it created.',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.70',
     date: '2026-10-08T00:00:00Z',
     title: 'Undo tokens for farm-status edits',

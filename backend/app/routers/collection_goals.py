@@ -36,6 +36,8 @@ from ..schemas.collection_goals import (
     CollectionGoalResponse,
     CollectionGoalUpdate,
     GoalParticipantsResponse,
+    MarkNeedRequest,
+    MarkNeedResponse,
     ParticipantRecordView,
     ParticipantStateResponse,
     ParticipantStateUpsert,
@@ -1255,6 +1257,158 @@ async def undo_participant_edits(
         skipped=skipped,
     )
     return UndoResponse(restored=restored, skipped=skipped)
+
+
+@router.post(
+    "/static-groups/{group_id}/collection-participants/mark-need",
+    response_model=MarkNeedResponse,
+)
+async def mark_blank_cells_need(
+    group_id: str,
+    body: MarkNeedRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> MarkNeedResponse:
+    """Fill the blank cells the client names with Need, once (R-S2-12, Q2). Lead and above.
+
+    A cell gets a `need` row only when its goal is in this static and not
+    `complete`, its user is a non-viewer member with no row for the goal, and the
+    user's record for the goal's item doesn't say `have`. Every other cell is
+    skipped and counted; an existing row is never touched. A goal that isn't this
+    static's is a 404 for the whole request. Rows go through `write_row` with the
+    caller as writer and `source="manual"`: a correction for others, the member's
+    own for the caller's cell (R-S1-8). One `undo_token` covers every created row,
+    minted after the flush and before the commit; the undo route deletes the ones
+    unchanged since. Duplicate cells count once.
+    """
+    await get_static_group(session, group_id)
+    caller = await require_can_manage_members(session, current_user.id, group_id)
+
+    goal_ids = {cell.goal_id for cell in body.cells}
+    result = await session.execute(
+        select(CollectionGoal).where(
+            CollectionGoal.static_group_id == group_id, CollectionGoal.id.in_(goal_ids)
+        )
+    )
+    goals = {goal.id: goal for goal in result.scalars()}
+    if len(goals) != len(goal_ids):
+        raise NotFound("Collection goal not found")
+
+    user_ids = {cell.user_id for cell in body.cells}
+    result = await session.execute(
+        select(Membership.user_id, Membership.role).where(
+            Membership.static_group_id == group_id, Membership.user_id.in_(user_ids)
+        )
+    )
+    roles = {user_id: role for user_id, role in result.all()}
+    result = await session.execute(
+        select(RewardParticipantState.goal_id, RewardParticipantState.user_id).where(
+            RewardParticipantState.static_group_id == group_id,
+            RewardParticipantState.goal_id.in_(goal_ids),
+            RewardParticipantState.user_id.in_(user_ids),
+        )
+    )
+    has_row = {(goal_id, user_id) for goal_id, user_id in result.all()}
+
+    # The cells that can still be written, then the ones whose record says `have`.
+    candidates: list[tuple[CollectionGoal, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for cell in body.cells:
+        key = (cell.goal_id, cell.user_id)
+        goal = goals[cell.goal_id]
+        if (
+            key in seen
+            or key in has_row
+            or goal.status == "complete"
+            or roles.get(cell.user_id, MemberRole.VIEWER.value) == MemberRole.VIEWER.value
+        ):
+            continue
+        seen.add(key)
+        candidates.append((goal, cell.user_id))
+
+    item_ids = {goal.catalog_item_id for goal, _ in candidates if goal.catalog_item_id}
+    records: dict[RecordTarget, dict[str, PlayerCollectionSnapshot]] = {}
+    targets: dict[tuple[str, str], RecordTarget] = {}
+    if item_ids:
+        targets = await resolve_record_targets(
+            session,
+            {(group_id, user_id) for goal, user_id in candidates if goal.catalog_item_id},
+        )
+        records = await load_records(session, targets.values(), item_ids)
+
+    via = logged_via(request)  # an unset channel raises before anything is written (R-PV-2)
+    now = _now()
+    cells: list[UndoCell] = []
+    rows: list[RewardParticipantState] = []
+    for goal, user_id in candidates:
+        if goal.catalog_item_id is not None:
+            record = records.get(targets[(group_id, user_id)], {}).get(goal.catalog_item_id)
+            if record is not None and record.ownership_state == "have":
+                continue
+        write = await write_row(
+            session,
+            row=None,
+            goal_id=goal.id,
+            static_group_id=group_id,
+            user_id=user_id,
+            actor_user_id=current_user.id,
+            via=via,
+            now=now,
+            state="need",
+            source="manual",
+            last_manual_override_at=now,
+        )
+        rows.append(write.row)
+        cells.append(
+            UndoCell(
+                goal_id=goal.id,
+                user_id=user_id,
+                row_prior=None,
+                row_updated_at=write.row.updated_at,
+            )
+        )
+
+    undo_token = (
+        _undo_token_or_none(group_id=group_id, actor_user_id=current_user.id, cells=cells)
+        if cells
+        else None
+    )
+    await session.commit()
+
+    created: list[ParticipantStateResponse] = []
+    if rows:
+        result = await session.execute(
+            select(User.id, User.display_name).where(User.id.in_({row.user_id for row in rows}))
+        )
+        names = {user_id: name for user_id, name in result.all()}
+        merged = await merged_participants(
+            session,
+            static_group_id=group_id,
+            rows=rows,
+            catalog_item_by_goal={gid: goal.catalog_item_id for gid, goal in goals.items()},
+        )
+        shown = await count_visibility(
+            session,
+            static_group_id=group_id,
+            viewer_user_id=current_user.id,
+            viewer_role=caller.role,
+            user_ids={row.user_id for row in rows},
+        )
+        created = [
+            _participant_to_response(
+                row,
+                display_name=names.get(row.user_id),
+                member_role=roles.get(row.user_id),
+                merged=merged[row.id],
+                show_count=row.user_id in shown,
+                show_rank=True,  # a lead or owner has a queue order
+            )
+            for row in rows
+        ]
+    return MarkNeedResponse(
+        created=created, skipped=len(body.cells) - len(created), undo_token=undo_token
+    )
 
 
 # ── Drop Log ──────────────────────────────────────────────────────────────────

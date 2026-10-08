@@ -185,6 +185,32 @@ class UndoResponse(BaseModel):
     skipped: int
 
 
+# The bulk Need's cap (R-S2-12): the client sends the blank claimed cells it shows.
+MARK_NEED_MAX_CELLS = 200
+
+
+class MarkNeedCell(BaseModel):
+    goal_id: str
+    user_id: str
+
+
+class MarkNeedRequest(BaseModel):
+    """The bulk Need's body (R-S2-12): one to 200 cells the client shows blank."""
+
+    cells: list[MarkNeedCell] = Field(..., min_length=1, max_length=MARK_NEED_MAX_CELLS)
+
+
+class MarkNeedResponse(BaseModel):
+    """What a bulk Need did (R-S2-12): the rows it created, as the caller reads them;
+    `skipped` counts every other requested cell (it already had a row, its goal is
+    complete, its member has the item, or it is no cell of this static); and one
+    `undo_token` for all the created rows (null when none, or when minting failed)."""
+
+    created: list[ParticipantStateResponse]
+    skipped: int
+    undo_token: str | None = None
+
+
 class RecordOnlyCellResponse(BaseModel):
     """A claimant's record for a goal's item when they have no row for the goal (Q1, R-S2-13).
 

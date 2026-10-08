@@ -539,6 +539,9 @@ ROUTES: tuple[AuthzRoute, ...] = (
       variant="own", actor="member", build=lambda w: _undo(w, w.me)),
     R("POST", CP + "/undo", "lead", "inline", "undo a farm-status correction (S2-7)",
       variant="other", build=lambda w: _undo(w, w.u["member2"])),
+    R("POST", CP + "/mark-need", "lead", "helper", "mark blank farm cells Need (S2-7)",
+      build=lambda w: _r(_g(w), None, {"cells": [{"goal_id": w.goal.id,
+                                                  "user_id": w.u["member2"].id}]})),
 
     # ── content suggestions (viewers may suggest and vote: HS-35 #2 (a)) ───
     R("POST", CS, "viewer", "helper", "suggest content (any role, HS-35 #2 (a))",

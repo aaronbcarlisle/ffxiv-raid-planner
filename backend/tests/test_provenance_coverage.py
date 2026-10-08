@@ -164,6 +164,8 @@ EXPECTED_DOOR_CALLERS = {
     ("app/routers/collection_goals.py", "upsert_participant_state_for_user"),
     # Undo (R-S2-11): both doors, with the token's prior writer and channel (Q4).
     ("app/routers/collection_goals.py", "undo_participant_edits"),
+    # The bulk Need (R-S2-12): the row door, the caller as writer.
+    ("app/routers/collection_goals.py", "mark_blank_cells_need"),
     # The plugin syncs (R-S1-17): `apply_sync` writes the record, `_sync_row` the rows.
     (DOOR_MODULE, "apply_sync"),
     (DOOR_MODULE, "_sync_row"),
@@ -193,6 +195,7 @@ DOOR_CALLER_ROUTES = {
         "upsert_participant_state_for_user"
     },
     ("app/routers/collection_goals.py", "undo_participant_edits"): {"undo_participant_edits"},
+    ("app/routers/collection_goals.py", "mark_blank_cells_need"): {"mark_blank_cells_need"},
     (DOOR_MODULE, "apply_sync"): {"plugin_sync_collections"},
     (DOOR_MODULE, "_sync_row"): {"plugin_sync_collections"},
     ("app/services/plugin_collection_sync_service.py", "sync_collection_states"): {
