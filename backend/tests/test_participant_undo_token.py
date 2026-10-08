@@ -15,7 +15,7 @@ import base64
 import json
 import uuid
 from collections.abc import Iterator
-from dataclasses import fields, replace
+from dataclasses import asdict, fields, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -29,6 +29,7 @@ from app.auth_utils import create_access_token, verify_token
 from app.models import PlayerCollectionSnapshot, RewardParticipantState, User
 from app.routers import collection_goals as goals_router
 from app.schemas.collection_goals import ParticipantStateResponse, ParticipantWriteResponse
+from app.services import participant_undo
 from app.services.collection_records import (
     RECORD_WRITE_PERSON,
     RecordTarget,
@@ -198,6 +199,8 @@ ROW_PRIOR = RowPrior(
     updated_by_user_id="user-prior-row",
     updated_via="api_key",
     last_manual_override_at=ts(3),
+    priority_rank=2,
+    notes="prior note",
 )
 RECORD_PRIOR = RecordPrior(
     ownership_state="have",
@@ -229,6 +232,13 @@ def _read(token, *, group_id="static-1", actor="actor-1", now=CLOCK) -> UndoClai
     return read_undo_token(token, group_id=group_id, actor_user_id=actor, now=now)
 
 
+def _sealed(version: int, cell: dict) -> str:
+    """A token sealed with the real key whose payload says `version` and holds `cell`."""
+    payload = {"v": version, "group_id": "static-1", "actor_user_id": "actor-1", "cells": [cell]}
+    data = json.dumps(payload).encode("utf-8")
+    return participant_undo._fernet().encrypt_at_time(data, CLOCK).decode("ascii")
+
+
 # ── The token (R-S2-11) ──────────────────────────────────────────────────────
 
 
@@ -249,6 +259,7 @@ class TestToken:
             "web",
         )
         assert cell.row_prior.last_manual_override_at == ts(3)
+        assert (cell.row_prior.priority_rank, cell.row_prior.notes) == (2, "prior note")
         assert cell.record_prior.confidence == "high"
         # A created row and no record travel as None, not as a hole.
         assert (created.row_prior, created.record_id, created.record_prior) == (None, None, None)
@@ -257,6 +268,7 @@ class TestToken:
         prior = replace(
             ROW_PRIOR, token_count=None, state_changed_at=None, token_count_updated_at=None,
             updated_by_user_id=None, updated_via=None, last_manual_override_at=None,
+            priority_rank=None, notes=None,
         )
         cell = replace(CELL, row_prior=prior, record_prior=None)
         (read,) = _read(_mint([cell])).cells
@@ -295,6 +307,21 @@ class TestToken:
     def test_a_token_names_at_least_one_cell(self):
         with pytest.raises(ValueError):
             _mint([])
+
+    def test_a_format_1_token_is_refused(self):
+        """B3 added the row's `priority_rank` and `notes` and bumped the format, so a token
+        minted before (format 1, without them) is refused, whatever fields it carries."""
+        new_cell = asdict(CELL)
+        added = ("priority_rank", "notes")
+        old_cell = {
+            **new_cell,
+            "row_prior": {k: v for k, v in new_cell["row_prior"].items() if k not in added},
+        }
+        for version, cell in ((1, old_cell), (1, new_cell), (participant_undo._FORMAT, old_cell)):
+            with pytest.raises(UndoTokenInvalid):
+                _read(_sealed(version, cell))
+        (read,) = _read(_sealed(participant_undo._FORMAT, new_cell)).cells
+        assert read == CELL
 
     def test_the_sentinel_count_is_encrypted(self):
         """vet M-4: a lead's token for a flagged member's row must not show the prior count."""
@@ -374,7 +401,7 @@ class TestPatchRoutes:
         assert cell.row_prior == RowPrior(
             state="have", token_count=None, source="manual", state_changed_at=ts(2),
             token_count_updated_at=None, updated_by_user_id=member.id, updated_via="web",
-            last_manual_override_at=ts(3),
+            last_manual_override_at=ts(3), priority_rank=None, notes=None,
         )
         (record,) = await _records(session)
         assert record.ownership_state == "missing"  # the write un-Haved it (Q6)
@@ -414,8 +441,9 @@ class TestPatchRoutes:
         catalog = await create_catalog_item(session, name="Lead Mount")
         goal = await _goal(session, group, owner, catalog)
         _record(session, profile, main, catalog, ownership="have", token_count=7)
-        await _row(session, goal, member, state="pass", writer=member.id, via="web",
-                   token_count=3, token_count_updated_at=ts(2))
+        row = await _row(session, goal, member, state="pass", writer=member.id, via="web",
+                         token_count=3, token_count_updated_at=ts(2))
+        row.priority_rank, row.notes = 4, "lead's note"
         await session.commit()
 
         resp = await client.patch(
@@ -431,7 +459,7 @@ class TestPatchRoutes:
         assert cell.row_prior == RowPrior(
             state="pass", token_count=3, source="manual", state_changed_at=ts(2),
             token_count_updated_at=ts(2), updated_by_user_id=member.id, updated_via="web",
-            last_manual_override_at=None,
+            last_manual_override_at=None, priority_rank=4, notes="lead's note",
         )
         assert cell.row_updated_at == body["updated_at"]
         assert (cell.record_id, cell.record_prior, cell.record_updated_at) == (None, None, None)
@@ -720,6 +748,9 @@ def _callee(call: ast.Call, names: dict[str, str]) -> str | None:
     if isinstance(call.func, ast.Name):
         return names.get(call.func.id)
     if isinstance(call.func, ast.Attribute):
+        # By attribute name alone, whatever the object: `records.write_row(...)` is the
+        # door's, and so is any other `.write_row`/`.delete_record` method of that name,
+        # which the guard then refuses outside the undo route (rename such a method).
         return names.get(call.func.attr)
     return None
 
@@ -766,6 +797,7 @@ def test_the_guard_sees_the_doors_current_callers():
         ("app/routers/collection_goals.py", "_write_own_state"),
         ("app/routers/collection_goals.py", "upsert_participant_state_for_user"),
         ("app/routers/collection_goals.py", "delete_drop"),
+        ("app/routers/collection_goals.py", UNDO_ROUTE),
     } <= seen, seen
 
 
@@ -857,6 +889,7 @@ def test_the_priors_carry_the_fields_the_ruling_names():
     assert {f.name for f in fields(RowPrior)} == {
         "state", "token_count", "source", "state_changed_at", "token_count_updated_at",
         "updated_by_user_id", "updated_via", "last_manual_override_at",
+        "priority_rank", "notes",  # B3 (B2's parked Minor): a V1 PATCH can change them
     }
     assert {f.name for f in fields(RecordPrior)} == {
         "ownership_state", "token_count", "source", "confidence", "state_changed_at",

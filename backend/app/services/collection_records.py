@@ -460,9 +460,11 @@ async def write_record(
     UNSET by default. `restore_state_changed_at`, with an ownership, stores that
     `state_changed_at` (None included) instead of `now`. `restore_token_count`
     sets the count exactly, None clearing it (a `token_count` of None means
-    "not given"), and dates it `now` unless `restore_token_count_updated_at`
-    is passed, which stores that stamp exactly (None included). Only the undo
-    route passes them (a test asserts it). The caller commits.
+    "not given"): a count it sets is dated `now`, and a clear leaves
+    `token_count_updated_at` as it was (None on a create).
+    `restore_token_count_updated_at`, when passed, stores that stamp exactly
+    instead (None included). Only the undo route passes them (a test asserts
+    it). The caller commits.
     """
     if mode not in _RECORD_WRITE_MODES:
         raise ValueError(f"mode must be one of {sorted(_RECORD_WRITE_MODES)}, got {mode!r}")

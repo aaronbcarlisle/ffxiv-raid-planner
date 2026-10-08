@@ -31,7 +31,8 @@ from app.models import PlayerCollectionSnapshot, RewardParticipantState
 
 UNDO_TTL_SECONDS = 600
 _KEY_PURPOSE = b"participant-undo"
-_FORMAT = 1
+# 2: the row's prior gained `priority_rank` and `notes` (B3); a format-1 token is refused.
+_FORMAT = 2
 
 
 class UndoTokenInvalid(Exception):
@@ -40,7 +41,8 @@ class UndoTokenInvalid(Exception):
 
 @dataclass(frozen=True)
 class RowPrior:
-    """A farm row as it was before a write (R-S2-11): the values a restore puts back."""
+    """A farm row as it was before a write (R-S2-11): the values a restore puts back,
+    the queue rank and notes included (a lead's V1 PATCH can change them)."""
 
     state: str
     token_count: int | None
@@ -50,6 +52,8 @@ class RowPrior:
     updated_by_user_id: str | None
     updated_via: str | None
     last_manual_override_at: str | None
+    priority_rank: int | None
+    notes: str | None
 
     @classmethod
     def of(cls, row: RewardParticipantState) -> "RowPrior":
@@ -62,6 +66,8 @@ class RowPrior:
             updated_by_user_id=row.updated_by_user_id,
             updated_via=row.updated_via,
             last_manual_override_at=row.last_manual_override_at,
+            priority_rank=row.priority_rank,
+            notes=row.notes,
         )
 
 

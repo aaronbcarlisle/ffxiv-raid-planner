@@ -34,6 +34,7 @@ from app.models import (
     RewardDropLog,
     RewardParticipantState,
 )
+from app.routers import collection_goals as goals_router
 from tests.factories import (
     create_catalog_item,
     create_claimed_card,
@@ -60,6 +61,8 @@ RECORD_HANDLERS = (
     "log_drop",
     "delete_drop",
     "create_goal_from_suggestion",
+    "undo_participant_edits",
+    "mark_blank_cells_need",
 )
 
 # handler name -> the test functions decorated with @covers_record(handler)
@@ -1591,3 +1594,161 @@ async def test_leads_delete_restores_the_members_row_and_keeps_the_record_record
     assert (record.updated_by_user_id, record.updated_via) == (test_user_2.id, "web")
     row = await _row(session, goal, test_user_2)
     assert (row.state, row.updated_by_user_id, row.updated_via) == ("need", test_user.id, "web")
+
+
+# ---------------------------------------------------------------------------
+# undo_participant_edits (R-S2-11, Q4): the restore writes back the prior's writer and
+# channel, carried in the token, and the undo itself is logged with the undoer's.
+# ---------------------------------------------------------------------------
+
+
+def _undo_url(group) -> str:
+    return f"/api/static-groups/{group.id}/collection-participants/undo"
+
+
+class _LogSpy:
+    def __init__(self):
+        self.events: list[tuple[str, dict]] = []
+
+    def info(self, event: str, **fields):
+        self.events.append((event, fields))
+
+    warning = info
+
+
+@covers_record("undo_participant_edits")
+async def test_undo_restores_the_records_prior_writer_and_channel_not_the_undoers(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2
+):
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Undo Rec Main")
+    item = await create_catalog_item(session, name="Undo Rec Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    record = await _put_record(session, profile, main, item, ownership="have")
+    record.updated_by_user_id, record.updated_via = test_user_2.id, "api_key"  # a plugin sync's
+    await session.commit()
+
+    edit = await client.patch(
+        _participants_url(test_group, goal), json={"state": "need"}, headers=auth_headers_user2
+    )
+    assert edit.status_code == 200, edit.text
+    (record,) = await _all_records(session)
+    assert (record.ownership_state, record.updated_via) == ("missing", "web")
+
+    response = await client.post(
+        _undo_url(test_group), json={"token": edit.json()["undo_token"]}, headers=auth_headers_user2
+    )
+    assert response.status_code == 200, response.text
+    assert response.json() == {"restored": 2, "skipped": 0}
+
+    (record,) = await _all_records(session)
+    assert (record.ownership_state, record.state_changed_at, record.source) == (
+        "have",
+        CLIENT_CLOCK,
+        "plugin",
+    )
+    assert (record.updated_by_user_id, record.updated_via) == (test_user_2.id, "api_key")
+    assert await _row(session, goal, test_user_2) is None  # the edit created it
+
+
+@covers_record("undo_participant_edits")
+async def test_undo_by_api_key_restores_the_prior_web_channel_and_logs_the_key(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2, monkeypatch
+):
+    await _member_of(session, test_group, test_user_2, main_name="Undo Key Main")
+    goal = await create_collection_goal(session, test_group, test_user, title="Undo Key Goal")
+    row = await _row_with_history(session, goal, test_user_2, state="want")
+    row.updated_by_user_id, row.updated_via = test_user_2.id, "web"
+    await session.commit()
+    key = {"Authorization": f"Bearer {await _mint_key(client, auth_headers_user2)}"}
+
+    edit = await client.request(
+        "PATCH", _participants_url(test_group, goal), json={"state": "need"}, headers=key
+    )
+    assert edit.status_code == 200, edit.text
+    assert (await _row(session, goal, test_user_2)).updated_via == "api_key"
+
+    spy = _LogSpy()
+    monkeypatch.setattr(goals_router, "logger", spy)
+    response = await client.request(
+        "POST", _undo_url(test_group), json={"token": edit.json()["undo_token"]}, headers=key
+    )
+    assert response.status_code == 200, response.text
+
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.updated_by_user_id, row.updated_via) == ("want", test_user_2.id, "web")
+    ((event, fields),) = spy.events
+    assert event == "participant_undo"
+    assert (fields["user_id"], fields["via"]) == (test_user_2.id, "api_key")
+    assert (fields["restored"], fields["skipped"]) == (1, 0)
+
+
+@covers_record("undo_participant_edits")
+async def test_leads_undo_of_a_correction_puts_the_members_own_writer_back(
+    client, session, test_user, test_user_2, test_group, auth_headers
+):
+    """The owner corrects the member's own Pass and undoes it: the row is the member's again."""
+    await _member_of(session, test_group, test_user_2, main_name="Undo Lead Main")
+    goal = await create_collection_goal(session, test_group, test_user, title="Undo Lead Goal")
+    row = await _row_with_history(session, goal, test_user_2, state="pass")
+    row.updated_by_user_id, row.updated_via = test_user_2.id, "web"
+    await session.commit()
+
+    edit = await client.patch(
+        _participants_url(test_group, goal, test_user_2),
+        json={"state": "need"},
+        headers=auth_headers,
+    )
+    assert edit.status_code == 200, edit.text
+    assert (await _row(session, goal, test_user_2)).updated_by_user_id == test_user.id
+
+    response = await client.post(
+        _undo_url(test_group), json={"token": edit.json()["undo_token"]}, headers=auth_headers
+    )
+    assert response.status_code == 200, response.text
+
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.updated_by_user_id, row.updated_via) == ("pass", test_user_2.id, "web")
+    assert row.state_changed_at == CLIENT_CLOCK
+
+
+# ---------------------------------------------------------------------------
+# mark_blank_cells_need (R-S2-12): the row door alone, the caller as writer.
+# ---------------------------------------------------------------------------
+
+
+@covers_record("mark_blank_cells_need")
+async def test_bulk_need_writes_rows_as_the_callers_correction_and_leaves_records_alone(
+    client, session, test_user, test_user_2, test_group, auth_headers
+):
+    """A lead's bulk Need by API key: each row's writer is the lead and its channel
+    `api_key`; the member's record (not `have`) is not written."""
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Bulk Need Main")
+    item = await create_catalog_item(session, name="Bulk Need Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _put_record(session, profile, main, item, ownership="missing")
+    await session.commit()
+    (record_before,) = await _all_records(session)
+    key = {"Authorization": f"Bearer {await _mint_key(client, auth_headers)}"}
+
+    response = await client.request(
+        "POST",
+        f"/api/static-groups/{test_group.id}/collection-participants/mark-need",
+        json={"cells": [{"goal_id": goal.id, "user_id": test_user_2.id}]},
+        headers=key,
+    )
+    assert response.status_code == 200, response.text
+    assert len(response.json()["created"]) == 1
+
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.source, row.updated_by_user_id, row.updated_via) == (
+        "need",
+        "manual",
+        test_user.id,
+        "api_key",
+    )
+    (record,) = await _all_records(session)
+    assert (record.updated_at, record.updated_by_user_id, record.updated_via) == (
+        record_before.updated_at,
+        record_before.updated_by_user_id,
+        record_before.updated_via,
+    )
