@@ -149,7 +149,7 @@ DYNAMIC_SETATTR_OK = {
 
 # (g) Entry points of the doors, the record's and the farm row's: each call names its
 # writer and channel.
-DOOR_ENTRY_POINTS = {"write_record", "write_row"}
+DOOR_ENTRY_POINTS = {"write_record", "write_row", "apply_sync"}
 # The only callers that may pass `actor_user_id=None` (R-S1-8).
 DERIVED_CALLERS = {("app/routers/collection_goals.py", "create_goal_from_suggestion")}
 # The (module, function) pairs that call a door entry point.
@@ -165,6 +165,8 @@ EXPECTED_DOOR_CALLERS = {
     # The plugin syncs (R-S1-17): `apply_sync` writes the record, `_sync_row` the rows.
     (DOOR_MODULE, "apply_sync"),
     (DOOR_MODULE, "_sync_row"),
+    # `apply_sync` is itself a door entry point: its callers name the writer and channel.
+    ("app/services/plugin_collection_sync_service.py", "sync_collection_states"),
 }
 # (d) Door caller -> the route handlers whose @covers_record tests exercise it. The
 # record tests are labelled by route, because a route test is what reads the stored
@@ -189,6 +191,9 @@ DOOR_CALLER_ROUTES = {
     },
     (DOOR_MODULE, "apply_sync"): {"plugin_sync_collections"},
     (DOOR_MODULE, "_sync_row"): {"plugin_sync_collections"},
+    ("app/services/plugin_collection_sync_service.py", "sync_collection_states"): {
+        "plugin_sync_collections"
+    },
 }
 
 # (d) The callers of the record's lifecycle functions (adopt, release, delete), each
