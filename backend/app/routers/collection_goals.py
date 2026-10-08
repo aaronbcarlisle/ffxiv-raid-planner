@@ -1137,9 +1137,11 @@ async def delete_drop(
                             target
                         ].get(catalog_item_id)
                 record_at = None if record is None else _parse_ts(record.state_changed_at)
-                if (
-                    record is not None
-                    and record.ownership_state == "have"
+                if record is None:
+                    # No catalog item, no profile, or no record row: nothing to revert.
+                    record_outcome = "none"
+                elif (
+                    record.ownership_state == "have"
                     and record_at is not None
                     and record_at == _parse_ts(record_prior_at)
                 ):

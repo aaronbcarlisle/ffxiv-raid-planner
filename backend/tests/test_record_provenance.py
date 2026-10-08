@@ -55,6 +55,7 @@ RECORD_HANDLERS = (
     "upsert_participant_state",
     "upsert_participant_state_for_user",
     "log_drop",
+    "delete_drop",
 )
 
 # handler name -> the test functions decorated with @covers_record(handler)
@@ -823,8 +824,9 @@ async def test_lead_route_aimed_at_the_lead_follows_the_self_rules(
 
 
 # ---------------------------------------------------------------------------
-# The remaining row writers (C3): the plugin sync's rows, log_drop's flip, delete_drop's restore.
-# These reach `write_row`, not the record door, so they carry no @covers_record.
+# The row writers (C3): the plugin sync's rows, log_drop's flip, delete_drop's restore.
+# These tests exercise `write_row` only, so they carry no @covers_record; the record
+# writes of log_drop (D1) and delete_drop (D2) have their decorated tests below.
 # ---------------------------------------------------------------------------
 
 
@@ -1163,3 +1165,79 @@ async def test_own_drop_on_a_goal_without_a_catalog_item_records_the_character_o
     assert stored.recipient_character_id == main.id
     assert _prior_triple(stored) == (None, None, None)
     assert await _all_records(session) == []
+
+
+# ---------------------------------------------------------------------------
+# delete_drop (D2): the member's own Undo reverts the record it raised (R-S1-14)
+# ---------------------------------------------------------------------------
+
+
+def _drop_url(group, goal, drop: dict) -> str:
+    return f"/api/static-groups/{group.id}/collection-goals/{goal.id}/drops/{drop['id']}"
+
+
+async def _own_drop_over_missing(client, session, test_user, test_user_2, test_group, headers):
+    """test_user_2's record `missing` since CLIENT_CLOCK and row `need`; their own drop
+    raises both. Returns (goal, drop, the record's new clock, its updated_at) as strings,
+    since `_all_records` refreshes one instance."""
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Undo Main")
+    item = await create_catalog_item(session, name="Undo Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _put_record(session, profile, main, item, ownership="missing", source="manual")
+    await _row_with_history(session, goal, test_user_2, state="need")
+    await session.commit()
+
+    drop = await _log_drop_for(client, test_group, goal, test_user_2, headers)
+    (raised,) = await _all_records(session)
+    assert raised.ownership_state == "have"
+    raised_at, raised_updated_at = raised.state_changed_at, raised.updated_at
+    assert raised_at not in (None, CLIENT_CLOCK)
+    assert _prior_triple(await _stored_drop(session, drop)) == ("missing", raised_at, CLIENT_CLOCK)
+    await asyncio.sleep(0.02)  # cross a Windows clock tick
+    return goal, drop, raised_at, raised_updated_at
+
+
+@covers_record("delete_drop")
+async def test_own_undo_reverts_the_record_as_the_member_with_its_old_clock(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2
+):
+    """The revert is the member's web write; it restores the prior ownership and the
+    state clock the record had before the drop (vet M-10), not the delete's clock."""
+    goal, drop, raised_at, _ = await _own_drop_over_missing(
+        client, session, test_user, test_user_2, test_group, auth_headers_user2
+    )
+
+    response = await client.delete(_drop_url(test_group, goal, drop), headers=auth_headers_user2)
+    assert response.status_code == 204, response.text
+
+    (record,) = await _all_records(session)
+    assert (record.ownership_state, record.state_changed_at) == ("missing", CLIENT_CLOCK)
+    assert (record.updated_by_user_id, record.updated_via) == (test_user_2.id, "web")
+    assert (record.source, record.confidence) == ("manual", "medium")
+    assert record.updated_at not in (CLIENT_CLOCK, raised_at)
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.updated_by_user_id, row.updated_via) == ("need", test_user_2.id, "web")
+
+
+@covers_record("delete_drop")
+async def test_leads_delete_of_a_members_own_drop_restores_the_row_and_leaves_the_record(
+    client, session, test_user, test_user_2, test_group, auth_headers, auth_headers_user2
+):
+    """The owner deletes the member's own drop: this static's row is restored as the
+    owner's correction; the record keeps the drop's Have, its clock and its writer."""
+    goal, drop, raised_at, raised_updated_at = await _own_drop_over_missing(
+        client, session, test_user, test_user_2, test_group, auth_headers_user2
+    )
+
+    response = await client.delete(_drop_url(test_group, goal, drop), headers=auth_headers)
+    assert response.status_code == 204, response.text
+
+    (record,) = await _all_records(session)
+    assert (record.ownership_state, record.state_changed_at, record.updated_at) == (
+        "have",
+        raised_at,
+        raised_updated_at,
+    )
+    assert (record.updated_by_user_id, record.updated_via) == (test_user_2.id, "web")
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.updated_by_user_id, row.updated_via) == ("need", test_user.id, "web")
