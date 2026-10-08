@@ -336,7 +336,7 @@ class TestRestores:
         profile, main = await _carded(session, group, member)
         item = await create_catalog_item(session, name="Corrected Mount")
         goal = await _goal(session, group, owner, item)
-        await _row(
+        row = await _row(
             session, goal, member, state="want", writer=member.id, via="web", token_count=3,
             token_count_updated_at=ts(2), priority_rank=1, notes="own note",
         )
@@ -346,6 +346,7 @@ class TestRestores:
         )
         await session.commit()
         before = await _cell(client, group, goal, member, as_=owner)
+        row_before = _columns(row)
         record_before = _columns(record, but=())
 
         body = {"state": "need", "token_count": 9, "priority_rank": 2, "notes": "lead's note"}
@@ -354,11 +355,42 @@ class TestRestores:
         assert (edited["state"], edited["priority_rank"], edited["notes"]) == (
             "need", 2, "lead's note",
         )
+        assert (await _stored_row(session, goal, member)).token_count == 9
 
         assert await _undone(client, group, token, lead) == {"restored": 1, "skipped": 0}
         assert await _cell(client, group, goal, member, as_=owner) == before
+        # The merge shows the record's newer 7 either way: the row's own count is read back.
+        assert _columns(await _stored_row(session, goal, member)) == row_before
         (stored,) = await _records(session)
         assert _columns(stored, but=()) == record_before  # untouched, `updated_at` included
+
+    @pytest.mark.parametrize(
+        ("prior", "prior_at"), [(5, ts(2)), (None, None)], ids=["count-5", "count-null"]
+    )
+    async def test_a_count_edit_on_a_goal_without_an_item_then_undo_restores_the_rows_count(
+        self, client, session, group, owner, member, prior, prior_at
+    ):
+        """No catalog item, no record: `_write_own_state` puts the member's count on the row."""
+        await _carded(session, group, member)
+        goal = await _goal(session, group, owner)
+        row = await _row(
+            session, goal, member, state="want", writer=member.id, via="api_key",
+            token_count=prior, token_count_updated_at=prior_at,
+        )
+        await session.commit()
+        before = await _cell(client, group, goal, member, as_=owner)
+        row_before = _columns(row)
+        assert (before["token_count"], before["count_from_record"]) == (prior, False)
+
+        token = await _patch(client, group, goal, {"state": "want", "token_count": 12}, member)
+        assert (await _stored_row(session, goal, member)).token_count == 12
+
+        assert await _undone(client, group, token, member) == {"restored": 1, "skipped": 0}
+        stored = await _stored_row(session, goal, member)
+        assert (stored.token_count, stored.token_count_updated_at) == (prior, prior_at)
+        assert _columns(stored) == row_before
+        assert await _cell(client, group, goal, member, as_=owner) == before
+        assert await _records(session) == []
 
     async def test_flip_rule_1_a_leads_undo_gives_the_member_their_own_pass_back(
         self, client, session, group, owner, lead, member

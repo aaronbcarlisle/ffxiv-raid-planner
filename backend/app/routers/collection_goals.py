@@ -1159,7 +1159,9 @@ async def undo_participant_edits(
     now = _now()
 
     # Lock what the token names, records before rows as the PATCH writes them, so a
-    # concurrent write is either seen here or waits for this commit.
+    # concurrent write is either seen here or waits for this commit. `apply_sync` and
+    # `delete_drop` write a row before its record, the opposite order: against one of
+    # them Postgres may abort one transaction as a deadlock (no partial write lands).
     record_ids = sorted({cell.record_id for cell in claims.cells if cell.record_id})
     records: dict[str, PlayerCollectionSnapshot] = {}
     if record_ids:
@@ -1184,6 +1186,8 @@ async def undo_participant_edits(
     )
     rows = {(row.goal_id, row.user_id): row for row in result.scalars()}
 
+    # "Unchanged since" is equality with the write's `updated_at`: one stamp per request,
+    # from the server clock in microseconds, which every door write moves.
     restored = skipped = 0
     for cell in claims.cells:
         if cell.record_id is not None:
