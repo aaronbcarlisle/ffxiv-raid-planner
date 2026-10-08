@@ -3,8 +3,9 @@
 import uuid
 from collections.abc import Sequence
 from datetime import datetime, timezone
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,10 +34,12 @@ from ..schemas.collection_goals import (
     CollectionGoalFromSuggestion,
     CollectionGoalResponse,
     CollectionGoalUpdate,
+    GoalParticipantsResponse,
     ParticipantRecordView,
     ParticipantStateResponse,
     ParticipantStateUpsert,
     ParticipantSummary,
+    RecordOnlyCellResponse,
     RewardDropCreate,
     RewardDropResponse,
 )
@@ -44,6 +47,7 @@ from ..services.collection_records import (
     RECORD_WRITE_PERSON,
     UNSET,
     MergedParticipant,
+    active_tier_claimants,
     count_visibility,
     is_after,
     load_records,
@@ -116,9 +120,9 @@ def _participant_to_response(
 ) -> ParticipantStateResponse:
     """The row as the static sees it: `state`, `token_count` and `source` are merged (R-S1-9).
 
-    `show_count=False` leaves `token_count` (and the record's) null, and
-    `show_rank=False` leaves `priority_rank` null: a viewer has no queue order
-    (R-S1-19, S2-7).
+    `show_count=False` leaves `token_count` (and the record's) null and sets
+    `count_hidden` (R-S2-13, vet I-1), and `show_rank=False` leaves
+    `priority_rank` null: a viewer has no queue order (R-S1-19, S2-7).
     """
     return ParticipantStateResponse(
         id=p.id,
@@ -142,7 +146,52 @@ def _participant_to_response(
         state_from_record=merged.state_from_record,
         count_from_record=merged.count_from_record,
         record=_record_view(merged.record, show_count=show_count),
+        count_hidden=not show_count,
     )
+
+
+def _record_only_to_response(
+    user_id: str,
+    record: PlayerCollectionSnapshot,
+    *,
+    display_name: str | None,
+    member_role: str,
+    show_count: bool,
+) -> RecordOnlyCellResponse:
+    """A claimant's record with no row behind it (Q1): `have` when the record says
+    so, else no state; counts follow the gate as a row's do (R-S2-13)."""
+    return RecordOnlyCellResponse(
+        user_id=user_id,
+        display_name=display_name,
+        member_role=member_role,
+        state="have" if record.ownership_state == "have" else None,
+        token_count=record.token_count if show_count else None,
+        count_hidden=not show_count,
+        record=_record_view(record, show_count=show_count),
+    )
+
+
+async def _participant_rows(
+    session: AsyncSession, goal_ids: Sequence[str]
+) -> list[tuple[RewardParticipantState, str | None, str | None]]:
+    """The goals' rows, queue order first, each with its member's display name and
+    role in the static (None when no longer a member), in one SELECT."""
+    result = await session.execute(
+        select(RewardParticipantState, User.display_name, Membership.role)
+        .join(User, RewardParticipantState.user_id == User.id)
+        .outerjoin(
+            Membership,
+            and_(
+                Membership.user_id == RewardParticipantState.user_id,
+                Membership.static_group_id == RewardParticipantState.static_group_id,
+            ),
+        )
+        .where(RewardParticipantState.goal_id.in_(goal_ids))
+        .order_by(
+            RewardParticipantState.priority_rank.nulls_last(), RewardParticipantState.updated_at
+        )
+    )
+    return [(p, display_name, member_role) for p, display_name, member_role in result.all()]
 
 
 def _drop_to_response(
@@ -261,6 +310,137 @@ async def list_collection_goals(
     goals = list(result.scalars().all())
     summaries = await _participant_summaries(session, group_id, goals)
     return [_goal_to_response(goal, summaries[goal.id]) for goal in goals]
+
+
+# ── Progress: every farm's cells in one read (R-S2-13) ────────────────────────
+
+_PROGRESS_MAX_GOAL_IDS = 50
+
+
+@router.get(
+    "/static-groups/{group_id}/collection-participants",
+    response_model=list[GoalParticipantsResponse],
+)
+async def list_progress_participants(
+    group_id: str,
+    goal_id: Annotated[list[str] | None, Query(max_length=_PROGRESS_MAX_GOAL_IDS)] = None,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[GoalParticipantsResponse]:
+    """The Progress tab's cells for many goals in one read; any member, viewers included.
+
+    With no `goal_id`, every goal that is not `complete`; with ids (repeated, at
+    most 50), those goals whatever their status, and 404 if one is not this
+    static's. Goals come oldest first. A goal's `participants` are what
+    `list_participants` returns for it. Its `record_only` cells (Q1) are the
+    newest active tier's claimants (`active_tier_claimants`) with no row for the
+    goal and a record for its item, by user id. Counts follow the gate, with
+    `count_hidden` set where it withheld one, and a viewer gets no queue order.
+    The SELECTs are the same however many goals or members.
+    """
+    await get_static_group(session, group_id)
+    caller = await require_membership(session, current_user.id, group_id)
+
+    named = set(goal_id or ())
+    stmt = select(CollectionGoal).where(CollectionGoal.static_group_id == group_id)
+    if named:
+        stmt = stmt.where(CollectionGoal.id.in_(named))
+    else:
+        stmt = stmt.where(CollectionGoal.status != "complete")
+    result = await session.execute(stmt.order_by(CollectionGoal.created_at, CollectionGoal.id))
+    goals = list(result.scalars().all())
+    if named and len(goals) != len(named):
+        raise NotFound("Collection goal not found")
+    if not goals:
+        return []
+
+    rows = await _participant_rows(session, [goal.id for goal in goals])
+    merged = await merged_participants(
+        session,
+        static_group_id=group_id,
+        rows=[p for p, _, _ in rows],
+        catalog_item_by_goal={goal.id: goal.catalog_item_id for goal in goals},
+    )
+
+    # Record-only cells (Q1): a claimant with no row for an item goal, whose record
+    # in this static (the chain's) holds the item.
+    rowed = {(p.goal_id, p.user_id) for p, _, _ in rows}
+    item_goals = [goal for goal in goals if goal.catalog_item_id is not None]
+    found: dict[str, list[tuple[str, PlayerCollectionSnapshot]]] = {goal.id: [] for goal in goals}
+    if item_goals:
+        claimants = sorted(await active_tier_claimants(session, static_group_id=group_id))
+        rowless = {
+            user_id
+            for user_id in claimants
+            if any((goal.id, user_id) not in rowed for goal in item_goals)
+        }
+        if rowless:
+            targets = await resolve_record_targets(
+                session, [(group_id, user_id) for user_id in rowless]
+            )
+            records = await load_records(
+                session, targets.values(), {goal.catalog_item_id for goal in item_goals}
+            )
+            for goal in item_goals:
+                for user_id in claimants:
+                    if (goal.id, user_id) in rowed:
+                        continue
+                    record = records[targets[(group_id, user_id)]].get(goal.catalog_item_id)
+                    if record is not None:
+                        found[goal.id].append((user_id, record))
+    cell_users = {user_id for cells in found.values() for user_id, _ in cells}
+    member_of: dict[str, tuple[str | None, str]] = {}
+    if cell_users:
+        result = await session.execute(
+            select(User.id, User.display_name, Membership.role)
+            .join(
+                Membership,
+                and_(Membership.user_id == User.id, Membership.static_group_id == group_id),
+            )
+            .where(User.id.in_(cell_users))
+        )
+        member_of = {user_id: (name, role) for user_id, name, role in result.all()}
+
+    # One gate for every row and cell: a viewer sees only their own counts, and a
+    # Hub flag hides a member's from everyone else, leads included (R-S1-19).
+    shown = await count_visibility(
+        session,
+        static_group_id=group_id,
+        viewer_user_id=current_user.id,
+        viewer_role=caller.role,
+        user_ids={p.user_id for p, _, _ in rows} | cell_users,
+    )
+    show_rank = caller.role != MemberRole.VIEWER.value
+    participants: dict[str, list[ParticipantStateResponse]] = {goal.id: [] for goal in goals}
+    for p, display_name, member_role in rows:
+        participants[p.goal_id].append(
+            _participant_to_response(
+                p,
+                display_name=display_name,
+                member_role=member_role,
+                merged=merged[p.id],
+                show_count=p.user_id in shown,
+                show_rank=show_rank,
+            )
+        )
+    return [
+        GoalParticipantsResponse(
+            goal_id=goal.id,
+            participants=participants[goal.id],
+            record_only=[
+                _record_only_to_response(
+                    user_id,
+                    record,
+                    display_name=member_of[user_id][0],
+                    member_role=member_of[user_id][1],
+                    show_count=user_id in shown,
+                )
+                for user_id, record in found[goal.id]
+                if user_id in member_of  # left the static since the claimant read
+            ],
+        )
+        for goal in goals
+    ]
 
 
 @router.post(
@@ -565,20 +745,7 @@ async def list_participants(
     caller = await require_membership(session, current_user.id, group_id)
     goal = await _get_goal(session, group_id, goal_id)
 
-    result = await session.execute(
-        select(RewardParticipantState, User.display_name, Membership.role)
-        .join(User, RewardParticipantState.user_id == User.id)
-        .outerjoin(
-            Membership,
-            and_(
-                Membership.user_id == RewardParticipantState.user_id,
-                Membership.static_group_id == RewardParticipantState.static_group_id,
-            ),
-        )
-        .where(RewardParticipantState.goal_id == goal_id)
-        .order_by(RewardParticipantState.priority_rank.nulls_last(), RewardParticipantState.updated_at)
-    )
-    rows = result.all()
+    rows = await _participant_rows(session, [goal.id])
     merged = await merged_participants(
         session,
         static_group_id=group_id,

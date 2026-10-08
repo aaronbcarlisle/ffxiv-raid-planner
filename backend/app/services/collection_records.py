@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     MemberRole,
+    Membership,
     PlayerCharacter,
     PlayerCollectionSnapshot,
     PlayerProfile,
@@ -198,6 +199,12 @@ async def _profiles_and_characters(
     return profile_by_user, characters_by_profile
 
 
+def _tier_rank(created_at: str | None, tier_id: str) -> tuple[str, str]:
+    """How recent a tier is, as the chain ranks a static's active tiers: the stored
+    `created_at` text (none sorts oldest), then `id`. The highest is the newest."""
+    return (created_at or "", tier_id)
+
+
 async def resolve_record_targets(
     db: AsyncSession, pairs: Iterable[tuple[str, str]]
 ) -> dict[tuple[str, str], RecordTarget]:
@@ -225,7 +232,7 @@ async def resolve_record_targets(
     tier_rank: dict[str, tuple[str, str]] = {}
     for tier_id, static_id, created_at in tier_result.all():
         tier_static[tier_id] = static_id
-        tier_rank[tier_id] = (created_at or "", tier_id)
+        tier_rank[tier_id] = _tier_rank(created_at, tier_id)
 
     # 2. The users' claimed players in those tiers: one card per (static, user).
     cards: dict[tuple[str, str], SnapshotPlayer] = {}
@@ -302,6 +309,42 @@ async def resolve_main_targets(
         characters = characters_by_profile.get(profile_id, []) if profile_id else []
         targets[user_id] = _fallback_target(user_id, profile_id, characters)
     return targets
+
+
+async def active_tier_claimants(db: AsyncSession, *, static_group_id: str) -> set[str]:
+    """The users with a claimed card in the static's newest active tier whose
+    membership is not `viewer` (R-S2-13, vet M-3), in at most two SELECTs.
+
+    The newest tier is the one the chain ranks highest (`_tier_rank`), so each
+    claimant's record is the one `resolve_record_targets` reads from that card.
+    A claimed card's user who has left the static is not a claimant. With no
+    active tier there are none, after one SELECT.
+    """
+    result = await db.execute(
+        select(TierSnapshot.id, TierSnapshot.created_at).where(
+            TierSnapshot.static_group_id == static_group_id, TierSnapshot.is_active.is_(True)
+        )
+    )
+    tiers = result.all()
+    if not tiers:
+        return set()
+    newest_id = max(tiers, key=lambda tier: _tier_rank(tier.created_at, tier.id)).id
+    result = await db.execute(
+        select(SnapshotPlayer.user_id)
+        .join(
+            Membership,
+            and_(
+                Membership.user_id == SnapshotPlayer.user_id,
+                Membership.static_group_id == static_group_id,
+            ),
+        )
+        .where(
+            SnapshotPlayer.tier_snapshot_id == newest_id,
+            Membership.role != MemberRole.VIEWER.value,
+        )
+        .distinct()
+    )
+    return set(result.scalars())
 
 
 # ---------------------------------------------------------------------------

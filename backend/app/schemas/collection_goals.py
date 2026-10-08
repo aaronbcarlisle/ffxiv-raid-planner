@@ -151,8 +151,36 @@ class ParticipantStateResponse(BaseModel):
     state_from_record: bool = False
     count_from_record: bool = False
     record: ParticipantRecordView | None = None
+    # True when the count gate withheld this member's counts from the caller
+    # (R-S2-13, vet I-1): a null `token_count` alone can also mean "no count yet".
+    count_hidden: bool
 
     model_config = {"from_attributes": True}
+
+
+class RecordOnlyCellResponse(BaseModel):
+    """A claimant's record for a goal's item when they have no row for the goal (Q1, R-S2-13).
+
+    `state` is `"have"` when the record says so, else null; `token_count` and the
+    record's count follow the count gate, and `count_hidden` says when it withheld them.
+    """
+
+    user_id: str
+    display_name: str | None = None
+    member_role: str
+    state: Literal["have"] | None
+    token_count: int | None
+    count_hidden: bool
+    record: ParticipantRecordView
+
+
+class GoalParticipantsResponse(BaseModel):
+    """One goal's cells for the Progress tab (R-S2-13): its merged rows, as
+    `list_participants` returns them, and its record-only cells."""
+
+    goal_id: str
+    participants: list[ParticipantStateResponse]
+    record_only: list[RecordOnlyCellResponse]
 
 
 # ── Drop Log ─────────────────────────────────────────────────────────────────

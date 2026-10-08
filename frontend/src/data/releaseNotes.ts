@@ -60,6 +60,21 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.69',
+    date: '2026-10-08T00:00:00Z',
+    title: 'Every farm\'s statuses in one read',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Every farm\'s statuses load in one request',
+        description:
+          'A new read, GET /api/static-groups/{id}/collection-participants, returns the member statuses of every farm a static is working on in one request. It includes a carded member who has no status on a farm yet but whose collection already has the item or a totem count, and it says when a totem count was hidden rather than not set. Farm status responses now say that too. Nothing changes on screen yet.',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.68',
     date: '2026-10-08T00:00:00Z',
     title: 'Plugin syncs follow your character',
