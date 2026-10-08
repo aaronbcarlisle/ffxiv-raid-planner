@@ -16,6 +16,8 @@ class PlayerProfileResponse(CamelModel):
     share_code: str | None = None
     share_enabled: bool = False
     bio: str | None = None
+    # Hide this member's token counts from everyone but themselves (R-S1-19).
+    hide_collection_counts: bool = False
     created_at: str
     updated_at: str
     characters: list["PlayerCharacterResponse"] = []
@@ -37,6 +39,7 @@ class PlayerProfileUpdate(CamelModel):
     visibility: str | None = Field(default=None, max_length=20)
     bio: str | None = Field(default=None, max_length=500)
     share_enabled: bool | None = None
+    hide_collection_counts: bool | None = None
 
 
 # --- Player Character ---

@@ -186,6 +186,7 @@ def _profile_to_response(profile: PlayerProfile) -> PlayerProfileResponse:
         share_code=profile.share_code,
         share_enabled=profile.share_enabled,
         bio=profile.bio,
+        hide_collection_counts=profile.hide_collection_counts,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
         characters=characters,
@@ -353,6 +354,9 @@ async def update_profile(
         profile.share_enabled = body.share_enabled
         if body.share_enabled and not profile.share_code:
             profile.share_code = await generate_profile_share_code(session)
+
+    if body.hide_collection_counts is not None:
+        profile.hide_collection_counts = body.hide_collection_counts
 
     profile.updated_at = datetime.now(timezone.utc).isoformat()
     await session.flush()
