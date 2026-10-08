@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -39,6 +40,7 @@ from ..schemas.collection_goals import (
     ParticipantStateResponse,
     ParticipantStateUpsert,
     ParticipantSummary,
+    ParticipantWriteResponse,
     RecordOnlyCellResponse,
     RewardDropCreate,
     RewardDropResponse,
@@ -59,6 +61,7 @@ from ..services.collection_records import (
     write_record,
     write_row,
 )
+from ..services.participant_undo import RecordPrior, RowPrior, UndoCell, mint_undo_token
 from ..services.provenance import CHARACTER_SOURCE_DEFAULT, logged_via, request_api_key_id
 
 router = APIRouter(prefix="/api", tags=["collection-goals"])
@@ -188,7 +191,9 @@ async def _participant_rows(
         )
         .where(RewardParticipantState.goal_id.in_(goal_ids))
         .order_by(
-            RewardParticipantState.priority_rank.nulls_last(), RewardParticipantState.updated_at
+            RewardParticipantState.priority_rank.nulls_last(),
+            RewardParticipantState.updated_at,
+            RewardParticipantState.id,  # tied rows order the same on every read route
         )
     )
     return [(p, display_name, member_role) for p, display_name, member_role in result.all()]
@@ -775,6 +780,15 @@ async def list_participants(
     ]
 
 
+@dataclass(frozen=True)
+class _OwnStateWrite:
+    """What `_write_own_state` wrote: the row, and the undo cell that holds what the
+    row and the record (when one was written) held before the write (R-S2-11)."""
+
+    row: RewardParticipantState
+    cell: UndoCell
+
+
 async def _write_own_state(
     session: AsyncSession,
     *,
@@ -786,7 +800,7 @@ async def _write_own_state(
     can_rank: bool,
     via: str,
     now: str,
-) -> RewardParticipantState:
+) -> _OwnStateWrite:
     """A member's own cell: the row, and the record of their character in this static (R-S1-10).
 
     The record is the character the chain names, and only for a goal with a
@@ -795,8 +809,10 @@ async def _write_own_state(
     says `have` is not written for a `have` (its source and writer stay). A
     count from anyone goes to the record, else (no profile, or no catalog item)
     to the row; `None` means unchanged. `priority_rank` is a lead's. One `now`
-    stamps the row and the record. The caller commits.
+    stamps the row and the record. The priors are read before the door moves
+    anything, for the undo token (R-S2-11). The caller commits.
     """
+    row_prior = None if row is None else RowPrior.of(row)
     target = None
     record = None
     catalog_item_id = goal.catalog_item_id
@@ -809,6 +825,7 @@ async def _write_own_state(
             record = (await load_records(session, [target], [catalog_item_id]))[target].get(
                 catalog_item_id
             )
+    record_prior = None if record is None else RecordPrior.of(record)
 
     ownership = None
     if body.state == "have":
@@ -817,10 +834,11 @@ async def _write_own_state(
     elif body.state in ("need", "want") and record is not None and record.ownership_state == "have":
         ownership = "missing"
 
+    written = None
     if target is not None and catalog_item_id is not None and (
         ownership is not None or body.token_count is not None
     ):
-        await write_record(
+        written = await write_record(
             session,
             target,
             catalog_item_id,
@@ -850,12 +868,39 @@ async def _write_own_state(
         source="manual",
         last_manual_override_at=now,
     )
-    return write.row
+    cell = UndoCell(
+        goal_id=goal.id,
+        user_id=user_id,
+        row_prior=row_prior,
+        row_updated_at=write.row.updated_at,
+        record_id=None if written is None else written.record.id,
+        record_prior=None if written is None else record_prior,
+        record_updated_at=None if written is None else written.record.updated_at,
+    )
+    return _OwnStateWrite(row=write.row, cell=cell)
+
+
+def _undo_token_or_none(
+    *, group_id: str, actor_user_id: str, cells: Sequence[UndoCell]
+) -> str | None:
+    """The write's undo token, minted after the flush and before the commit (R-S2-11,
+    vet M-4); None when minting fails, so a token failure never fails a saved edit."""
+    try:
+        return mint_undo_token(group_id=group_id, actor_user_id=actor_user_id, cells=cells)
+    except Exception:
+        logger.warning("participant_undo_mint_failed", group_id=group_id, exc_info=True)
+        return None
+
+
+def _with_undo(
+    response: ParticipantStateResponse, undo_token: str | None
+) -> ParticipantWriteResponse:
+    return ParticipantWriteResponse(**response.model_dump(), undo_token=undo_token)
 
 
 @router.patch(
     "/static-groups/{group_id}/collection-goals/{goal_id}/participants",
-    response_model=ParticipantStateResponse,
+    response_model=ParticipantWriteResponse,
 )
 async def upsert_participant_state(
     group_id: str,
@@ -864,12 +909,12 @@ async def upsert_participant_state(
     request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> ParticipantStateResponse:
+) -> ParticipantWriteResponse:
     """Members and above update their own state; viewers are refused (R-P0-3).
 
     Anyone's `token_count` is stored (S2a-1 delta (h)), on their character's
     record where there is one; `priority_rank` stays a lead's, and a member's
-    is ignored, not refused.
+    is ignored, not refused. The response carries an `undo_token` (R-S2-11).
     """
     await get_static_group(session, group_id)
     membership = await require_membership(session, current_user.id, group_id)
@@ -887,7 +932,7 @@ async def upsert_participant_state(
             RewardParticipantState.user_id == current_user.id,
         )
     )
-    participant = await _write_own_state(
+    write = await _write_own_state(
         session,
         group_id=group_id,
         goal=goal,
@@ -897,6 +942,10 @@ async def upsert_participant_state(
         can_rank=can_rank,
         via=logged_via(request),
         now=now,
+    )
+    participant = write.row
+    undo_token = _undo_token_or_none(
+        group_id=group_id, actor_user_id=current_user.id, cells=[write.cell]
     )
 
     await session.commit()
@@ -913,7 +962,7 @@ async def upsert_participant_state(
     )
 
     # The caller's own cell: their count is theirs to see (a viewer never gets here).
-    return _participant_to_response(
+    response = _participant_to_response(
         participant,
         display_name=user.display_name if user else None,
         member_role=member_role,
@@ -921,11 +970,12 @@ async def upsert_participant_state(
         show_count=True,
         show_rank=True,
     )
+    return _with_undo(response, undo_token)
 
 
 @router.patch(
     "/static-groups/{group_id}/collection-goals/{goal_id}/participants/{target_user_id}",
-    response_model=ParticipantStateResponse,
+    response_model=ParticipantWriteResponse,
 )
 async def upsert_participant_state_for_user(
     group_id: str,
@@ -935,12 +985,13 @@ async def upsert_participant_state_for_user(
     request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> ParticipantStateResponse:
+) -> ParticipantWriteResponse:
     """Lead/owner can set participant state for any member.
 
     For another member this is a correction: the row only, with the lead as
     its writer, and the member's record is untouched. Aimed at themselves, the
-    lead follows the self rules and writes their own record (R-S1-10).
+    lead follows the self rules and writes their own record (R-S1-10). The
+    response carries an `undo_token` (R-S2-11).
     """
     await get_static_group(session, group_id)
     caller = await require_can_manage_members(session, current_user.id, group_id)
@@ -972,7 +1023,7 @@ async def upsert_participant_state_for_user(
     row = result.scalar_one_or_none()
 
     if target_user_id == current_user.id:
-        participant = await _write_own_state(
+        own = await _write_own_state(
             session,
             group_id=group_id,
             goal=goal,
@@ -983,7 +1034,9 @@ async def upsert_participant_state_for_user(
             via=via,
             now=now,
         )
+        participant, cell = own.row, own.cell
     else:
+        row_prior = None if row is None else RowPrior.of(row)
         write = await write_row(
             session,
             row=row,
@@ -1001,6 +1054,15 @@ async def upsert_participant_state_for_user(
             last_manual_override_at=now,
         )
         participant = write.row
+        cell = UndoCell(
+            goal_id=goal_id,
+            user_id=target_user_id,
+            row_prior=row_prior,
+            row_updated_at=participant.updated_at,
+        )
+    undo_token = _undo_token_or_none(
+        group_id=group_id, actor_user_id=current_user.id, cells=[cell]
+    )
 
     await session.commit()
     await session.refresh(participant)
@@ -1022,7 +1084,7 @@ async def upsert_participant_state_for_user(
         viewer_role=caller.role,
         user_ids=[target_user_id],
     )
-    return _participant_to_response(
+    response = _participant_to_response(
         participant,
         display_name=user.display_name if user else None,
         member_role=target_membership.role,
@@ -1030,6 +1092,7 @@ async def upsert_participant_state_for_user(
         show_count=target_user_id in shown,
         show_rank=True,  # a lead or owner has a queue order
     )
+    return _with_undo(response, undo_token)
 
 
 # ── Drop Log ──────────────────────────────────────────────────────────────────

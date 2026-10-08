@@ -158,6 +158,14 @@ class ParticipantStateResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ParticipantWriteResponse(ParticipantStateResponse):
+    """A farm-status PATCH's response (R-S2-11, R-S2-15): the cell as written, plus
+    `undo_token`, which puts the write back exactly for ten minutes through the undo
+    route. Null when minting failed; the write still committed."""
+
+    undo_token: str | None = None
+
+
 class RecordOnlyCellResponse(BaseModel):
     """A claimant's record for a goal's item when they have no row for the goal (Q1, R-S2-13).
 

@@ -436,6 +436,8 @@ async def write_record(
     source: str,
     confidence: str,
     restore_state_changed_at: str | None | _Unset = UNSET,
+    restore_token_count: int | None | _Unset = UNSET,
+    restore_token_count_updated_at: str | None | _Unset = UNSET,
 ) -> RecordWrite:
     """Create or update the record `target` names: the only code that does (R-S1-7).
 
@@ -454,9 +456,13 @@ async def write_record(
     `actor_user_id` is None for a derived write (R-S1-8); `via` is computed by
     the route (`logged_via`), never here.
 
-    `restore_state_changed_at` is for Undo's revert alone (R-S1-14): when
-    passed, with an ownership, the stored `state_changed_at` is that value
-    (None included) instead of `now`. The caller commits.
+    The `restore_*` keywords are for Undo's revert alone (R-S1-14, R-S2-11),
+    UNSET by default. `restore_state_changed_at`, with an ownership, stores that
+    `state_changed_at` (None included) instead of `now`. `restore_token_count`
+    sets the count exactly, None clearing it (a `token_count` of None means
+    "not given"), and dates it `now` unless `restore_token_count_updated_at`
+    is passed, which stores that stamp exactly (None included). Only the undo
+    route passes them (a test asserts it). The caller commits.
     """
     if mode not in _RECORD_WRITE_MODES:
         raise ValueError(f"mode must be one of {sorted(_RECORD_WRITE_MODES)}, got {mode!r}")
@@ -472,6 +478,14 @@ async def write_record(
     prior_ownership = None if record is None else record.ownership_state
     prior_count = None if record is None else record.token_count
 
+    # The count this write stores: a given `token_count` (None is "not given"),
+    # or Undo's exact `restore_token_count` (None clears).
+    count_given = token_count is not None
+    new_count = token_count
+    if not isinstance(restore_token_count, _Unset):
+        count_given = True
+        new_count = restore_token_count
+
     # The ownership this write stores, or None when it leaves it alone.
     if sync_mode:
         # The plugin only ever asserts Have; anything else is "no news".
@@ -486,14 +500,14 @@ async def write_record(
             character_id=target.character_id,
             catalog_item_id=catalog_item_id,
             ownership_state=new_ownership or "unknown",
-            token_count=token_count,
+            token_count=new_count,
             source=source,
             confidence=confidence,
             updated_at=now,
             updated_by_user_id=actor_user_id,
             updated_via=via,
             state_changed_at=now if new_ownership is not None else None,
-            token_count_updated_at=now if token_count is not None else None,
+            token_count_updated_at=now if new_count is not None else None,
         )
         db.add(record)
         state_changed = new_ownership is not None
@@ -501,8 +515,8 @@ async def write_record(
         state_changed = new_ownership is not None and new_ownership != record.ownership_state
         if state_changed:
             record.ownership_state = new_ownership
-        if token_count is not None:
-            record.token_count = token_count
+        if count_given:
+            record.token_count = new_count
         if sync_mode:
             record.source = source
             if state_changed:
@@ -515,8 +529,10 @@ async def write_record(
         record.state_changed_at = now
     if new_ownership is not None and not isinstance(restore_state_changed_at, _Unset):
         record.state_changed_at = restore_state_changed_at
-    if token_count is not None:
+    if count_given and new_count is not None:
         record.token_count_updated_at = now
+    if not isinstance(restore_token_count_updated_at, _Unset):
+        record.token_count_updated_at = restore_token_count_updated_at
     if sync_mode:
         record.last_synced_at = now
     record.updated_at = now
@@ -528,8 +544,17 @@ async def write_record(
         record=record,
         prior_ownership=prior_ownership,
         state_changed=state_changed,
-        count_changed=token_count is not None and token_count != prior_count,
+        count_changed=count_given and new_count != prior_count,
     )
+
+
+async def delete_record(db: AsyncSession, record: PlayerCollectionSnapshot) -> None:
+    """Delete one record: Undo's revert of the write that created it (R-S2-11).
+
+    Only the undo route calls this (a test asserts it). The caller commits.
+    """
+    await db.delete(record)
+    await db.flush()
 
 
 async def adopt_profile_rows(db: AsyncSession, *, profile_id: str, character_id: str) -> int:
@@ -695,6 +720,8 @@ async def write_row(
     source: str | _Unset = UNSET,
     last_synced_at: str | None | _Unset = UNSET,
     last_manual_override_at: str | None | _Unset = UNSET,
+    restore_state_changed_at: str | None | _Unset = UNSET,
+    restore_token_count_updated_at: str | None | _Unset = UNSET,
 ) -> RowWrite:
     """Create or update a member's farm row: the row's door (R-S1-7). It decides nothing.
 
@@ -707,6 +734,11 @@ async def write_row(
     move on every write. `now` is the caller's server clock, `actor_user_id` is
     None for a derived write (R-S1-8) and `via` is computed by the route.
     Each caller keeps its own collision rule. The caller commits.
+
+    The `restore_*` keywords are for Undo's revert alone (R-S2-11), UNSET by
+    default: when passed, the stored `state_changed_at` or
+    `token_count_updated_at` is that value exactly (None included) instead of
+    `now`. Only the undo route passes them (a test asserts it).
     """
     if not isinstance(state, _Unset):
         _validated(state, PARTICIPANT_STATES, "state")
@@ -761,6 +793,10 @@ async def write_row(
         row.state_changed_at = now
     if count_given and token_count is not None:
         row.token_count_updated_at = now
+    if not isinstance(restore_state_changed_at, _Unset):
+        row.state_changed_at = restore_state_changed_at
+    if not isinstance(restore_token_count_updated_at, _Unset):
+        row.token_count_updated_at = restore_token_count_updated_at
     row.updated_at = now
     row.updated_by_user_id = actor_user_id
     row.updated_via = via
@@ -772,6 +808,15 @@ async def write_row(
         state_changed=state_changed,
         count_changed=count_given and token_count != prior_count,
     )
+
+
+async def delete_row(db: AsyncSession, row: RewardParticipantState) -> None:
+    """Delete one farm row: Undo's revert of the write that created it (R-S2-11).
+
+    Only the undo route calls this (a test asserts it). The caller commits.
+    """
+    await db.delete(row)
+    await db.flush()
 
 
 # ---------------------------------------------------------------------------
