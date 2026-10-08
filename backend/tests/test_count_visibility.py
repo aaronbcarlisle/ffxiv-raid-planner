@@ -117,6 +117,23 @@ class TestCountVisibility:
             session, group, viewer.id, "viewer", [target.id, viewer.id]
         ) == {viewer.id}
 
+    async def test_no_role_sees_only_their_own(self, session):
+        # A share-code or non-member reader has no role (get_user_role_for_response -> None).
+        group, target = await self._setup(session, hidden=False)
+        viewer = await create_user(session, discord_id="1003", discord_username="v")
+        assert await self._visible(session, group, viewer.id, None, [target.id]) == set()
+        assert await self._visible(
+            session, group, viewer.id, None, [target.id, viewer.id]
+        ) == {viewer.id}
+
+    async def test_unknown_role_sees_only_their_own(self, session):
+        group, target = await self._setup(session, hidden=False)
+        viewer = await create_user(session, discord_id="1003", discord_username="v")
+        assert await self._visible(session, group, viewer.id, "bogus", [target.id]) == set()
+        assert await self._visible(
+            session, group, viewer.id, "bogus", [target.id, viewer.id]
+        ) == {viewer.id}
+
     @pytest.mark.parametrize("role", ROLES)
     async def test_a_caller_always_sees_their_own_even_when_flagged(self, session, role):
         group, target = await self._setup(session, hidden=True)

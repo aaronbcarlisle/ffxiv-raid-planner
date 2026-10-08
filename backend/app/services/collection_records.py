@@ -1076,17 +1076,25 @@ async def apply_sync(
 # ---------------------------------------------------------------------------
 
 
+# Roles that may see other members' counts; anything else (viewer, no role, an
+# unknown string) sees only its own (default deny).
+_COUNT_READER_ROLES = frozenset(
+    {MemberRole.OWNER.value, MemberRole.LEAD.value, MemberRole.MEMBER.value}
+)
+
+
 async def count_visibility(
     db: AsyncSession,
     *,
     static_group_id: str,
     viewer_user_id: str,
-    viewer_role: str,
+    viewer_role: str | None,
     user_ids: Iterable[str],
 ) -> set[str]:
     """The subset of `user_ids` whose token counts the caller may see (R-S1-19).
 
-    A caller always sees their own. A viewer sees no one else's. Any other role
+    A caller always sees their own. A viewer, or a caller with no role or an
+    unknown one, sees no one else's (default deny). Any other role
     sees everyone's except members whose `hide_collection_counts` flag is set,
     and that holds for leads and owners too. An admin acts as owner (pass the
     role `get_user_role_for_response` gives), so a flagged count is hidden from
@@ -1097,7 +1105,7 @@ async def count_visibility(
     """
     wanted = set(user_ids)
     own = {viewer_user_id} & wanted
-    if viewer_role == MemberRole.VIEWER.value:
+    if viewer_role not in _COUNT_READER_ROLES:
         return own
     others = wanted - own
     if not others:
