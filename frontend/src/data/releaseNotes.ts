@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.67',
+    date: '2026-10-08T00:00:00Z',
+    title: 'Collection records can be kept per character',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Collection records can be kept per character',
+        description:
+          'Your collection records can now belong to a character instead of only to your profile, and record who last changed them, how, and when their status and token count last changed. Existing records move to your main character. Nothing changes on screen yet.',
+        pr: 348,
+        prTitle: 'feat(api): S2a-1a·1 — collection records get a character; partial unique indexes, writer and change-time columns, the drop\'s character',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.66',
     date: '2026-10-07T20:00:00Z',
     title: 'Deleting a farm asks first',

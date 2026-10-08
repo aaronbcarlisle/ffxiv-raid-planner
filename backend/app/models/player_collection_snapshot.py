@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -28,6 +28,14 @@ class PlayerCollectionSnapshot(Base):
       - Plugin "have" never downgrades an existing "have".
       - Manual entries take priority over plugin for ownership_state.
       - token_count is always updated from the most recent plugin sync.
+
+    Character records (S2a-1, R-S1-2/R-S1-3): a row belongs to one of the
+    profile's characters (`character_id` set), or to the profile itself when
+    it has no character (`character_id` NULL). Two partial unique indexes keep
+    one row per (character, item) and one profile-level row per
+    (profile, item). Every index carries both postgresql_where and
+    sqlite_where: without the predicate the profile-level index is plain
+    unique on (profile, item) and every alt's row collides with the main's.
     """
 
     __tablename__ = "player_collection_snapshots"
@@ -47,6 +55,16 @@ class PlayerCollectionSnapshot(Base):
         nullable=False,
     )
 
+    # The character whose record this is; NULL for a profile-level row (a
+    # profile with no character). CASCADE acts on Postgres only: SQLite runs
+    # without PRAGMA foreign_keys here, so the code deletes an unlinked
+    # character's rows explicitly (R-S1-6) and the FK is the backstop.
+    character_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("player_characters.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+
     ownership_state: Mapped[str] = mapped_column(
         String(10), nullable=False, default="unknown"
     )
@@ -62,6 +80,17 @@ class PlayerCollectionSnapshot(Base):
         default=lambda: datetime.now(timezone.utc).isoformat(),
     )
 
+    # Write provenance (R-PV-1 vocabulary): who last wrote the row and through
+    # which channel; NULL on rows that predate S2a-1 ("unknown origin").
+    updated_by_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    updated_via: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # When ownership_state and token_count last changed (ISO text). updated_at
+    # moves on every write, so the merge compares these instead (R-S1-7).
+    state_changed_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    token_count_updated_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     profile: Mapped["PlayerProfile"] = relationship(
         "PlayerProfile", foreign_keys=[profile_id]
     )
@@ -70,9 +99,19 @@ class PlayerCollectionSnapshot(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_pcs_character_item",
+            "character_id", "catalog_item_id",
+            unique=True,
+            postgresql_where=text("character_id IS NOT NULL"),
+            sqlite_where=text("character_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_pcs_profile_item_no_character",
             "profile_id", "catalog_item_id",
-            name="uq_player_collection_snapshot_profile_item",
+            unique=True,
+            postgresql_where=text("character_id IS NULL"),
+            sqlite_where=text("character_id IS NULL"),
         ),
     )
 
