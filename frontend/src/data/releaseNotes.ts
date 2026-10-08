@@ -77,8 +77,8 @@ export const RELEASES: Release[] = [
         title: 'You can hide your totem counts from other members',
         description:
           'PUT /api/player/profile now accepts hideCollectionCounts, which hides your totem counts from the other members of your statics, leads and owners included. You always see your own. There is no setting for it on screen yet.',
-        pr: 361,
-        prTitle: 'feat(api): S2a-1b·1 — plugin syncs match your character and write through one service',
+        pr: 362,
+        prTitle: 'feat(db): S2a-1b·2a — legacy mount-farm history becomes character records; the count-privacy flag',
         internal: true,
       },
     ],
