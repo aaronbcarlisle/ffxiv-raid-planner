@@ -886,24 +886,32 @@ async def plugin_sync_mount_farms(
     source = data.source or "plugin"
 
     # Player Hub is the personal collection source. Run this even when the user
-    # is not currently in a static so plugin sync is never lost.
+    # is not currently in a static so plugin sync is never lost. Both secondary
+    # writes run in a SAVEPOINT: a flush failure (e.g. a `uq_pcs_character_item`
+    # race with `collections/sync`) rolls back only that write, so the session
+    # stays usable and the farm rows below are still written and committed.
     try:
-        await _bridge_mount_farm_goals(db, user, data, now)
+        async with db.begin_nested():
+            await _bridge_mount_farm_goals(db, user, data, now)
     except Exception:
         logger.warning("mount_farm_goal_bridge_failed", user_id=user.id)
 
     # The record too, static or not: records-only form (no statics, no row changes).
-    await apply_sync(
-        db,
-        user_id=user.id,
-        character_name=data.character_name,
-        character_world=data.character_world,
-        static_group_ids=(),
-        changes=await _record_changes(db, data),
-        actor_user_id=user.id,
-        via=logged_via(request),
-        now=datetime.now(timezone.utc).isoformat(),
-    )
+    try:
+        async with db.begin_nested():
+            await apply_sync(
+                db,
+                user_id=user.id,
+                character_name=data.character_name,
+                character_world=data.character_world,
+                static_group_ids=(),
+                changes=await _record_changes(db, data),
+                actor_user_id=user.id,
+                via=logged_via(request),
+                now=datetime.now(timezone.utc).isoformat(),
+            )
+    except Exception:
+        logger.warning("mount_farm_record_write_failed", user_id=user.id)
 
     # Find all groups the user belongs to (non-viewer)
     memberships_result = await db.execute(

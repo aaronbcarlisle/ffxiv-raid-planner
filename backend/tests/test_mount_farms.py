@@ -709,6 +709,67 @@ class TestPluginSyncRecordWrite:
             "syncedAt": self.CLIENT_CLOCK,
         }
 
+    @staticmethod
+    async def _flush_a_unique_violation(db: AsyncSession, user: User) -> None:
+        """A real flush failure: a second user row with the caller's unique discord_id."""
+        db.add(User(id="dup-user-id", discord_id=user.discord_id, discord_username="dup"))
+        await db.flush()
+
+    async def _assert_owned_farm_rows_survive(
+        self, client: AsyncClient, session: AsyncSession, test_user, test_group, auth_headers
+    ) -> None:
+        group_id = test_group.id  # read before the rollback below expires it
+        response = await client.post(
+            "/api/plugin/mount-farms/sync",
+            json={
+                "mounts": [{"mountId": 330, "trialId": TRIAL_ID, "owned": True}],
+                "totems": [],
+                "source": "plugin",
+                "syncedAt": self.CLIENT_CLOCK,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["mountsUpdated"] == 1
+
+        # Committed, not merely pending: drop anything uncommitted, then re-read.
+        await session.rollback()
+        result = await session.execute(
+            select(MountFarmProgress)
+            .where(
+                MountFarmProgress.static_group_id == group_id,
+                MountFarmProgress.trial_id == TRIAL_ID,
+            )
+            .execution_options(populate_existing=True)
+        )
+        row = result.scalar_one()
+        assert row.has_mount is True
+        assert row.ownership_source == "plugin"
+
+    async def test_a_record_write_failure_does_not_lose_the_farm_rows(
+        self, client: AsyncClient, session: AsyncSession, test_user, test_group, auth_headers,
+        monkeypatch,
+    ):
+        async def failing_apply_sync(db, **_kwargs):
+            await self._flush_a_unique_violation(db, test_user)
+
+        monkeypatch.setattr("app.routers.mount_farms.apply_sync", failing_apply_sync)
+        await self._assert_owned_farm_rows_survive(
+            client, session, test_user, test_group, auth_headers
+        )
+
+    async def test_a_goal_bridge_failure_does_not_lose_the_farm_rows(
+        self, client: AsyncClient, session: AsyncSession, test_user, test_group, auth_headers,
+        monkeypatch,
+    ):
+        async def failing_bridge(db, user, _data, _now):
+            await self._flush_a_unique_violation(db, user)
+
+        monkeypatch.setattr("app.routers.mount_farms._bridge_mount_farm_goals", failing_bridge)
+        await self._assert_owned_farm_rows_survive(
+            client, session, test_user, test_group, auth_headers
+        )
+
 
 class TestBulkUpdate:
     async def test_lead_can_bulk_update(
