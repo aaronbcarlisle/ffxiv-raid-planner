@@ -166,6 +166,25 @@ class ParticipantWriteResponse(ParticipantStateResponse):
     undo_token: str | None = None
 
 
+# A bulk Need's token for its 200 cells is about 60 KB (tests pin the room); a longer
+# string is no token, refused before it is decrypted.
+UNDO_TOKEN_MAX_LENGTH = 131_072
+
+
+class UndoRequest(BaseModel):
+    """The undo route's body (R-S2-11): an `undo_token` a farm-status write returned."""
+
+    token: str = Field(..., min_length=1, max_length=UNDO_TOKEN_MAX_LENGTH)
+
+
+class UndoResponse(BaseModel):
+    """What an undo did, by part (a cell's row, and its record when the write wrote
+    one): `restored` parts were put back; `skipped` ones had changed since (R-S2-11)."""
+
+    restored: int
+    skipped: int
+
+
 class RecordOnlyCellResponse(BaseModel):
     """A claimant's record for a goal's item when they have no row for the goal (Q1, R-S2-13).
 

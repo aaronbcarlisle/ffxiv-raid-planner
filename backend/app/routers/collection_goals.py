@@ -44,13 +44,18 @@ from ..schemas.collection_goals import (
     RecordOnlyCellResponse,
     RewardDropCreate,
     RewardDropResponse,
+    UndoRequest,
+    UndoResponse,
 )
 from ..services.collection_records import (
     RECORD_WRITE_PERSON,
     UNSET,
     MergedParticipant,
+    RecordTarget,
     active_tier_claimants,
     count_visibility,
+    delete_record,
+    delete_row,
     is_after,
     load_records,
     merge_participant,
@@ -61,7 +66,14 @@ from ..services.collection_records import (
     write_record,
     write_row,
 )
-from ..services.participant_undo import RecordPrior, RowPrior, UndoCell, mint_undo_token
+from ..services.participant_undo import (
+    RecordPrior,
+    RowPrior,
+    UndoCell,
+    UndoTokenInvalid,
+    mint_undo_token,
+    read_undo_token,
+)
 from ..services.provenance import CHARACTER_SOURCE_DEFAULT, logged_via, request_api_key_id
 
 router = APIRouter(prefix="/api", tags=["collection-goals"])
@@ -1093,6 +1105,152 @@ async def upsert_participant_state_for_user(
         show_rank=True,  # a lead or owner has a queue order
     )
     return _with_undo(response, undo_token)
+
+
+def _target_of(user_id: str, record: PlayerCollectionSnapshot) -> RecordTarget:
+    """The target whose write lands on exactly `record`, whatever the chain names today:
+    its character's (one record per character and item), or the profile-level one."""
+    if record.character_id is None:
+        return RecordTarget(user_id, record.profile_id, None, None, "profile")
+    return RecordTarget(user_id, record.profile_id, record.character_id, None, "card")
+
+
+@router.post(
+    "/static-groups/{group_id}/collection-participants/undo",
+    response_model=UndoResponse,
+)
+async def undo_participant_edits(
+    group_id: str,
+    body: UndoRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> UndoResponse:
+    """Put back what a farm-status write's `undo_token` names (R-S2-11, Q4).
+
+    The role check runs before the token is read (vet M-4): a viewer gets 403
+    whatever they send. The token must then be this caller's, for this static,
+    within its ten minutes (else 400), and the caller must still hold the role
+    each cell's write needed: member for their own cell, lead for another's
+    (else 403, before anything is written). Each part of a cell (its row, and
+    its record when the write wrote one) is restored only while its
+    `updated_at` is still the one the write left; otherwise it is skipped.
+    A part the write created is deleted; any other gets its prior values back
+    through the door, its writer and channel included, so the merge and the
+    labels read as before. The undo itself is logged with the undoer and the
+    request's channel. The restoring door calls stay in this body: a guard
+    test refuses them anywhere else.
+    """
+    await get_static_group(session, group_id)
+    membership = await require_membership(session, current_user.id, group_id)
+    if membership.role == MemberRole.VIEWER:
+        raise PermissionDenied("Viewers cannot undo farm edits")
+    try:
+        claims = read_undo_token(body.token, group_id=group_id, actor_user_id=current_user.id)
+    except UndoTokenInvalid as exc:
+        raise HTTPException(
+            status_code=400, detail="This undo has expired or isn't yours"
+        ) from exc
+    if membership.role_level < _LEAD_LEVEL and any(
+        cell.user_id != current_user.id for cell in claims.cells
+    ):
+        raise PermissionDenied("Only leads and owners can undo an edit of another member")
+    via = logged_via(request)  # an unset channel raises before anything is written (R-PV-2)
+    now = _now()
+
+    # Lock what the token names, records before rows as the PATCH writes them, so a
+    # concurrent write is either seen here or waits for this commit.
+    record_ids = sorted({cell.record_id for cell in claims.cells if cell.record_id})
+    records: dict[str, PlayerCollectionSnapshot] = {}
+    if record_ids:
+        result = await session.execute(
+            select(PlayerCollectionSnapshot)
+            .where(PlayerCollectionSnapshot.id.in_(record_ids))
+            .order_by(PlayerCollectionSnapshot.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        records = {record.id: record for record in result.scalars()}
+    result = await session.execute(
+        select(RewardParticipantState)
+        .where(
+            RewardParticipantState.static_group_id == group_id,
+            RewardParticipantState.goal_id.in_({cell.goal_id for cell in claims.cells}),
+            RewardParticipantState.user_id.in_({cell.user_id for cell in claims.cells}),
+        )
+        .order_by(RewardParticipantState.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    rows = {(row.goal_id, row.user_id): row for row in result.scalars()}
+
+    restored = skipped = 0
+    for cell in claims.cells:
+        if cell.record_id is not None:
+            record = records.get(cell.record_id)
+            if record is None or record.updated_at != cell.record_updated_at:
+                skipped += 1
+            elif cell.record_prior is None:
+                await delete_record(session, record)
+                restored += 1
+            else:
+                record_prior = cell.record_prior
+                await write_record(
+                    session,
+                    _target_of(cell.user_id, record),
+                    record.catalog_item_id,
+                    actor_user_id=record_prior.updated_by_user_id,
+                    via=record_prior.updated_via,
+                    mode=RECORD_WRITE_PERSON,
+                    now=now,
+                    ownership=record_prior.ownership_state,
+                    source=record_prior.source,
+                    confidence=record_prior.confidence,
+                    restore_state_changed_at=record_prior.state_changed_at,
+                    restore_token_count=record_prior.token_count,
+                    restore_token_count_updated_at=record_prior.token_count_updated_at,
+                )
+                restored += 1
+
+        row = rows.get((cell.goal_id, cell.user_id))
+        if row is None or row.updated_at != cell.row_updated_at:
+            skipped += 1
+        elif cell.row_prior is None:
+            await delete_row(session, row)
+            restored += 1
+        else:
+            row_prior = cell.row_prior
+            await write_row(
+                session,
+                row=row,
+                goal_id=row.goal_id,
+                static_group_id=group_id,
+                user_id=row.user_id,
+                actor_user_id=row_prior.updated_by_user_id,
+                via=row_prior.updated_via,
+                now=now,
+                state=row_prior.state,
+                token_count=row_prior.token_count,
+                priority_rank=row_prior.priority_rank,
+                notes=row_prior.notes,
+                source=row_prior.source,
+                last_manual_override_at=row_prior.last_manual_override_at,
+                restore_state_changed_at=row_prior.state_changed_at,
+                restore_token_count_updated_at=row_prior.token_count_updated_at,
+            )
+            restored += 1
+
+    await session.commit()
+    logger.info(
+        "participant_undo",
+        group_id=group_id,
+        user_id=current_user.id,
+        via=via,
+        cells=len(claims.cells),
+        restored=restored,
+        skipped=skipped,
+    )
+    return UndoResponse(restored=restored, skipped=skipped)
 
 
 # ── Drop Log ──────────────────────────────────────────────────────────────────

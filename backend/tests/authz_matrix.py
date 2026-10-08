@@ -33,6 +33,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from app.services.participant_undo import UndoCell, mint_undo_token
+
 Request = tuple[dict[str, str], dict[str, Any] | None, Any]
 
 STATIC_ROLES = ("viewer", "member", "lead", "owner")
@@ -104,6 +106,20 @@ def _viewer_gap(what: str) -> tuple[tuple[str, str], ...]:
     return (("viewer", f"gap: {what}"),)
 
 
+def _undo(w, cell_user) -> Request:
+    """An undo token minted through the service for the caller (`w.me`), naming
+    `cell_user`'s cell on the world's goal (R-S2-14). Its "after" is no write's, so an
+    allowed caller's undo skips the cell: the probes reach the gate, not a restore."""
+    cell = UndoCell(
+        goal_id=w.goal.id,
+        user_id=cell_user.id,
+        row_prior=None,
+        row_updated_at="2000-01-01T00:00:00+00:00",
+    )
+    token = mint_undo_token(group_id=w.group.id, actor_user_id=w.me.id, cells=[cell])
+    return _r(_g(w), None, {"token": token})
+
+
 R = AuthzRoute
 G = "/api/static-groups/{group_id}"
 T = G + "/tiers/{tier_id}"
@@ -112,6 +128,7 @@ WA = G + "/weekly-assignments"
 SCHED = G + "/schedule/{session_id}"
 SCH = G + "/scheduler"
 CG = G + "/collection-goals"
+CP = G + "/collection-participants"
 CS = G + "/content-suggestions"
 REG = G + "/character-registrations"
 MF = G + "/mount-farms/progress"
@@ -518,6 +535,10 @@ ROUTES: tuple[AuthzRoute, ...] = (
     R("PATCH", CG + "/{goal_id}/participants/{target_user_id}", "lead", "helper",
       "set another member's farm state",
       build=lambda w: _r(_goal(w, target_user_id=w.u["member2"].id), None, {"state": "want"})),
+    R("POST", CP + "/undo", "member", "inline", "undo your own farm-status edit (S2-7)",
+      variant="own", actor="member", build=lambda w: _undo(w, w.me)),
+    R("POST", CP + "/undo", "lead", "inline", "undo a farm-status correction (S2-7)",
+      variant="other", build=lambda w: _undo(w, w.u["member2"])),
 
     # ── content suggestions (viewers may suggest and vote: HS-35 #2 (a)) ───
     R("POST", CS, "viewer", "helper", "suggest content (any role, HS-35 #2 (a))",
