@@ -1,14 +1,18 @@
 """Collection records: which character a member's farm rows belong to (S2a-1, R-S1-5).
 
-Two sections. The "chain" section resolves, for (static, user) pairs, which
-character's record a member's farm rows read. The "door" section is where writes
-enter and records are read. Nothing here edits `provenance.py`: its
-R-PV-4 pick serves log rows and stays pinned by PROV-1's tests.
+Four sections. The "chain" section resolves, for (static, user) pairs, which
+character's record a member's farm rows read. The "door" section is where
+record writes enter and records are read. The "rows" section is the farm row's
+own door (`write_row`), and the "merge" section is what a static sees once a
+row and its member's record are put together (R-S1-9). Nothing here edits
+`provenance.py`: its R-PV-4 pick serves log rows and stays pinned by PROV-1's
+tests.
 """
 
 import uuid
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Literal
 
 from sqlalchemy import and_, or_, select
@@ -18,6 +22,7 @@ from app.models import (
     PlayerCharacter,
     PlayerCollectionSnapshot,
     PlayerProfile,
+    RewardParticipantState,
     SnapshotPlayer,
     StaticCharacterRegistration,
     TierSnapshot,
@@ -27,6 +32,28 @@ from app.models.player_collection_snapshot import (
     SNAPSHOT_OWNERSHIP_STATES,
     SNAPSHOT_SOURCES,
 )
+from app.models.reward_participant_state import PARTICIPANT_SOURCES, PARTICIPANT_STATES
+
+# ---------------------------------------------------------------------------
+# Timestamps (ISO text, mixed offsets possible; R-S1-4)
+# ---------------------------------------------------------------------------
+
+
+def parse_ts(value: str | None) -> datetime | None:
+    """ISO-8601 text → aware datetime (UTC when naive); None when missing or unparseable."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def is_after(candidate: str | None, reference: str | None) -> bool:
+    """True when both parse and `candidate` is strictly later than `reference`."""
+    later, base = parse_ts(candidate), parse_ts(reference)
+    return later is not None and base is not None and later > base
 
 # ---------------------------------------------------------------------------
 # Chain
@@ -552,3 +579,215 @@ async def load_records(
             if record is not None:
                 loaded[target][item_id] = record
     return loaded
+
+
+# ---------------------------------------------------------------------------
+# Rows: the farm row's door (R-S1-7)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RowWrite:
+    """What `write_row` did: the row, the state it had (None when it was
+    created), and whether the state or the count changed value."""
+
+    row: RewardParticipantState
+    prior_state: str | None
+    state_changed: bool
+    count_changed: bool
+
+
+async def write_row(
+    db: AsyncSession,
+    *,
+    row: RewardParticipantState | None,
+    goal_id: str,
+    static_group_id: str,
+    user_id: str,
+    actor_user_id: str | None,
+    via: str,
+    now: str,
+    state: str | _Unset = UNSET,
+    token_count: int | None | _Unset = UNSET,
+    priority_rank: int | None | _Unset = UNSET,
+    notes: str | None | _Unset = UNSET,
+    source: str | _Unset = UNSET,
+    last_synced_at: str | None | _Unset = UNSET,
+    last_manual_override_at: str | None | _Unset = UNSET,
+) -> RowWrite:
+    """Create or update a member's farm row: the row's door (R-S1-7). It decides nothing.
+
+    `row` is the member's row for the goal, or None to create one for (goal,
+    static, user). Every value given is set as given, None included; an UNSET
+    one is left alone, and on create takes the column's default (`want`,
+    `manual`). `state_changed_at` is `now` when the state value changes or on
+    create; `token_count_updated_at` is `now` whenever a non-None count is
+    given, changed or not; `updated_at`, `updated_by_user_id` and `updated_via`
+    move on every write. `now` is the caller's server clock, `actor_user_id` is
+    None for a derived write (R-S1-8) and `via` is computed by the route.
+    Each caller keeps its own collision rule. The caller commits.
+    """
+    if not isinstance(state, _Unset):
+        _validated(state, PARTICIPANT_STATES, "state")
+    if not isinstance(source, _Unset):
+        _validated(source, PARTICIPANT_SOURCES, "source")
+    if row is not None and (row.goal_id, row.static_group_id, row.user_id) != (
+        goal_id,
+        static_group_id,
+        user_id,
+    ):
+        raise ValueError("the row given is not the (goal, static, user) row named")
+
+    prior_state = None if row is None else row.state
+    prior_count = None if row is None else row.token_count
+    count_given = not isinstance(token_count, _Unset)
+
+    if row is None:
+        row = RewardParticipantState(
+            id=str(uuid.uuid4()),
+            goal_id=goal_id,
+            user_id=user_id,
+            static_group_id=static_group_id,
+            state="want",
+            source="manual",
+            updated_at=now,
+        )
+        db.add(row)
+        state_changed = True
+    else:
+        state_changed = not isinstance(state, _Unset) and state != row.state
+
+    if not isinstance(state, _Unset):
+        row.state = state
+    if count_given:
+        row.token_count = token_count
+    if not isinstance(priority_rank, _Unset):
+        row.priority_rank = priority_rank
+    if not isinstance(notes, _Unset):
+        row.notes = notes
+    if not isinstance(source, _Unset):
+        row.source = source
+    if not isinstance(last_synced_at, _Unset):
+        row.last_synced_at = last_synced_at
+    if not isinstance(last_manual_override_at, _Unset):
+        row.last_manual_override_at = last_manual_override_at
+
+    if state_changed:
+        row.state_changed_at = now
+    if count_given and token_count is not None:
+        row.token_count_updated_at = now
+    row.updated_at = now
+    row.updated_by_user_id = actor_user_id
+    row.updated_via = via
+
+    await db.flush()
+    return RowWrite(
+        row=row,
+        prior_state=prior_state,
+        state_changed=state_changed,
+        count_changed=count_given and token_count != prior_count,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Merge: what a static sees for a row once its record is applied (R-S1-9)
+# ---------------------------------------------------------------------------
+
+_UN_HAVE = frozenset({"missing", "unknown"})
+
+
+@dataclass(frozen=True)
+class MergedParticipant:
+    """A farm row as the static reads it: `state`, `token_count` and `source`
+    are the merged values; the flags say which came from the record; `record`
+    is the record that was applied (None when there was none)."""
+
+    state: str
+    token_count: int | None
+    source: str
+    state_from_record: bool
+    count_from_record: bool
+    record: PlayerCollectionSnapshot | None = None
+
+
+def merge_participant(
+    row: RewardParticipantState, record: PlayerCollectionSnapshot | None
+) -> MergedParticipant:
+    """The pure merge (R-S1-9). With no record, the row as stored.
+
+    A row value is a correction when its writer is set and is not the member
+    (R-S1-8). `newer` means the record's `state_changed_at` is set and later
+    than the row's, or the row's is NULL. State: (1) a Pass that is not a
+    correction stays; (2) a newer record `have` wins; (3) a row Have that is not
+    a correction yields to a newer record `missing`/`unknown` as Want (Q3);
+    (4) otherwise the row's. Count: the record's when the row's is NULL, the
+    row's when the record's is NULL, else the later `token_count_updated_at`
+    (a NULL time loses; a tie goes to the record). `source` follows the state.
+    """
+    if record is None:
+        return MergedParticipant(row.state, row.token_count, row.source, False, False, None)
+
+    correction = row.updated_by_user_id is not None and row.updated_by_user_id != row.user_id
+    record_at = parse_ts(record.state_changed_at)
+    row_at = parse_ts(row.state_changed_at)
+    newer = record_at is not None and (row_at is None or record_at > row_at)
+
+    if row.state == "pass" and not correction:
+        state, state_from_record = row.state, False
+    elif record.ownership_state == "have" and newer:
+        state, state_from_record = "have", True
+    elif row.state == "have" and not correction and record.ownership_state in _UN_HAVE and newer:
+        state, state_from_record = "want", True
+    else:
+        state, state_from_record = row.state, False
+
+    if row.token_count is None:
+        token_count, count_from_record = record.token_count, record.token_count is not None
+    elif record.token_count is None:
+        token_count, count_from_record = row.token_count, False
+    else:
+        row_count_at = parse_ts(row.token_count_updated_at)
+        record_count_at = parse_ts(record.token_count_updated_at)
+        record_wins = row_count_at is None or (
+            record_count_at is not None and record_count_at >= row_count_at
+        )
+        token_count = record.token_count if record_wins else row.token_count
+        count_from_record = record_wins
+
+    source = row.source
+    if state_from_record and record.source in PARTICIPANT_SOURCES:
+        source = record.source
+    return MergedParticipant(
+        state, token_count, source, state_from_record, count_from_record, record
+    )
+
+
+async def merged_participants(
+    db: AsyncSession,
+    *,
+    static_group_id: str,
+    rows: Iterable[RewardParticipantState],
+    catalog_item_by_goal: Mapping[str, str | None],
+) -> dict[str, MergedParticipant]:
+    """Every row merged with its member's record in this static, by row id.
+
+    One chain resolution for the rows' members and one record SELECT for all
+    their goals' items, however many rows, members or goals. A row whose goal
+    has no catalog item is the row as stored; when no row has one, nothing is
+    issued.
+    """
+    rows = list(rows)
+    item_by_row = {row.id: catalog_item_by_goal.get(row.goal_id) for row in rows}
+    item_ids = {item_id for item_id in item_by_row.values() if item_id is not None}
+    records: dict[str, PlayerCollectionSnapshot | None] = {}
+    if item_ids:
+        pairs = {
+            (static_group_id, row.user_id) for row in rows if item_by_row[row.id] is not None
+        }
+        targets = await resolve_record_targets(db, pairs)
+        loaded = await load_records(db, targets.values(), item_ids)
+        for row in rows:
+            item_id = item_by_row[row.id]
+            if item_id is not None:
+                records[row.id] = loaded[targets[(static_group_id, row.user_id)]].get(item_id)
+    return {row.id: merge_participant(row, records.get(row.id)) for row in rows}

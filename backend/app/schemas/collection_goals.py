@@ -109,11 +109,28 @@ class ParticipantStateUpsert(BaseModel):
     notes: str | None = None
 
 
+class ParticipantRecordView(BaseModel):
+    """The member's character record behind a farm row (S2a-1, R-S1-9), as merged."""
+
+    character_id: str | None
+    ownership_state: str
+    token_count: int | None
+    source: str
+    updated_by_user_id: str | None = None
+    updated_via: str | None = None
+    state_changed_at: str | None = None
+    token_count_updated_at: str | None = None
+    last_synced_at: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class ParticipantStateResponse(BaseModel):
     id: str
     goal_id: str
     user_id: str
     static_group_id: str
+    # `state`, `token_count` and `source` carry the merged values (R-S1-9).
     state: str
     token_count: int | None
     priority_rank: int | None
@@ -126,6 +143,14 @@ class ParticipantStateResponse(BaseModel):
     display_name: str | None = None
     # The user's role in the static; None when they are no longer a member (R-P0-4).
     member_role: str | None = None
+    # The row's provenance and the merge (S2a-1, R-S1-9): additive and optional.
+    updated_by_user_id: str | None = None
+    updated_via: str | None = None
+    state_changed_at: str | None = None
+    token_count_updated_at: str | None = None
+    state_from_record: bool = False
+    count_from_record: bool = False
+    record: ParticipantRecordView | None = None
 
     model_config = {"from_attributes": True}
 

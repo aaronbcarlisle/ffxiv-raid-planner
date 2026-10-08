@@ -124,6 +124,14 @@ export const RELEASES: Release[] = [
         pr: 351,
         prTitle: 'feat(api): S2a-1a·2 — the Hub takes a character; adoption and unlink go through the record door',
       },
+      {
+        category: 'improvement',
+        title: 'Your mounts and totems follow your character',
+        description:
+          'Your mounts and totems now follow your character into every static you play it in.',
+        pr: 357,
+        prTitle: 'feat(api): S2a-1a·3 — farm rows read through the character record',
+      },
     ],
   },
   {
