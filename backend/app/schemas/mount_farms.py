@@ -82,7 +82,7 @@ class MemberProgressResponse(CamelModel):
     wants_mount: bool = True
     # Null when the caller may not see this member's count (R-S1-19): a viewer
     # sees no one else's, and a member whose Hub flag is set hides theirs.
-    totem_count: int | None = 0
+    totem_count: int | None = None
     notes: str | None = None
     updated_at: str | None = None
     ownership_source: str = "manual"
