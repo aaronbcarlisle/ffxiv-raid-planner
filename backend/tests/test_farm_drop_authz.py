@@ -2,8 +2,13 @@
 restore, and the participant self-upsert limits.
 
 Rulings R-P0-1 … R-P0-4 in design/redesign/plans/2026-09-30-p0-safety.md.
+
+S2a-1a·4 (R-S1-14): Undo's restore check is the row's `state_changed_at`, the
+record prior hands off between drops like the row prior, and the member's own
+Undo reverts their record. Ruling in design/redesign/plans/2026-10-01-s2a-1-character-records.md.
 """
 
+import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -14,10 +19,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
-from app.models import MemberRole, Membership, User
+from app.models import CollectionGoal, MemberRole, Membership, PlayerCollectionSnapshot, User
 from app.models.reward_drop_log import RewardDropLog
 from app.models.reward_participant_state import RewardParticipantState
-from tests.factories import create_membership, create_static_group, create_user
+from tests.factories import (
+    create_catalog_item,
+    create_collection_goal,
+    create_membership,
+    create_participant_state,
+    create_player_character,
+    create_player_profile,
+    create_static_group,
+    create_user,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -103,6 +117,74 @@ async def _add_participant(
     session.add(row)
     await session.flush()
     return row
+
+
+async def _tick() -> None:
+    """Cross a Windows clock tick so the next server write gets a later timestamp."""
+    await asyncio.sleep(0.02)
+
+
+_MOUNT_ID = 9101
+_TOKEN_ID = 9102
+_LONG_AGO = "2000-01-01T00:00:00+00:00"
+_BEFORE_THE_DROP = "2010-01-01T00:00:00+00:00"
+_SYNC_URL = "/api/plugin/collections/sync"
+
+
+async def _item_on_goal(session: AsyncSession, goal: dict, *, name: str = "Undo Mount"):
+    """Give the goal a catalog item the plugin can match by mount id and by token id."""
+    item = await create_catalog_item(session, name=name)
+    item.game_mount_id = _MOUNT_ID
+    item.token_item_id = _TOKEN_ID
+    stored = (
+        await session.execute(select(CollectionGoal).where(CollectionGoal.id == goal["id"]))
+    ).scalar_one()
+    stored.catalog_item_id = item.id
+    await session.flush()
+    return item
+
+
+async def _set_own_state(client: AsyncClient, group, goal: dict, user: User, state: str) -> dict:
+    resp = await client.patch(
+        _participants_url(group.id, goal["id"]), json={"state": state}, headers=_headers(user)
+    )
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+async def _set_state_for(
+    client: AsyncClient, group, goal: dict, actor: User, target: User, state: str
+) -> dict:
+    resp = await client.patch(
+        f"{_participants_url(group.id, goal['id'])}/{target.id}",
+        json={"state": state},
+        headers=_headers(actor),
+    )
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+async def _plugin_sync(
+    client: AsyncClient, user: User, *, mounts: list | None = None, currencies: list | None = None
+) -> dict:
+    """Sync as `user`'s plugin: mint a real xrp_ key and post the payload with it."""
+    minted = await client.post(
+        "/api/auth/api-keys", json={"name": "Undo key"}, headers=_headers(user)
+    )
+    assert minted.status_code == 201, minted.text
+    resp = await client.request(
+        "POST",
+        _SYNC_URL,
+        json={"mounts": mounts or [], "currencies": currencies or []},
+        headers={"Authorization": f"Bearer {minted.json()['key']}"},
+    )
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+async def _participant_of(client: AsyncClient, group, goal: dict, user: User, reader: User) -> dict:
+    rows = await _participants(client, group, goal, reader)
+    return next(p for p in rows if p["user_id"] == user.id)
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -426,24 +508,68 @@ async def test_drop_logged_in_pass_state_has_no_prior_and_delete_leaves_pass(
     assert await _state_of(async_client, group, goal, member, owner) == "pass"
 
 
-async def test_delete_skips_restore_when_synced_after_drop(
+async def test_delete_restores_after_a_token_sync(
     async_client, session, group, goal, participants, lead, member, owner
 ):
+    """R-S1-14 (Q2): a plugin token sync after the flip no longer blocks Undo."""
+    await _item_on_goal(session, goal)
     drop = (await _log(async_client, group, goal, lead, recipient_id=member.id)).json()
     assert drop["recipient_prior_state"] == "need"
-    participants["member"].last_synced_at = _later_than(drop["created_at"])
-    await session.flush()
+    await _tick()
+    synced = await _plugin_sync(
+        async_client, member, currencies=[{"itemId": _TOKEN_ID, "count": 40}]
+    )
+    assert synced["tokenCountsUpdated"] == 1
+    assert (await _participant_of(async_client, group, goal, member, owner))["token_count"] == 40
 
     assert (await _delete(async_client, group, goal["id"], drop["id"], lead)).status_code == 204
-    assert await _state_of(async_client, group, goal, member, owner) == "have"
+    restored = await _participant_of(async_client, group, goal, member, owner)
+    assert restored["state"] == "need"
+    assert restored["token_count"] == 40
 
 
-async def test_delete_skips_restore_when_manually_overridden_after_drop(
-    async_client, session, group, goal, participants, lead, member, owner
+# A state write after the flip, through a route, that leaves the row `have` with a
+# later `state_changed_at`: the member lowers their cell, then `raiser` raises it.
+
+
+async def _member_raises(async_client, session, group, goal, member, lead) -> None:
+    await _set_own_state(async_client, group, goal, member, "have")
+
+
+async def _plugin_raises(async_client, session, group, goal, member, lead) -> None:
+    synced = await _plugin_sync(
+        async_client, member, mounts=[{"mountId": _MOUNT_ID, "owned": True}]
+    )
+    assert synced["statesUpdated"] == 1
+
+
+async def _lead_raises(async_client, session, group, goal, member, lead) -> None:
+    await _set_state_for(async_client, group, goal, lead, member, "have")
+
+
+_LATER_STATE_WRITERS = [
+    pytest.param(_member_raises, id="member"),
+    pytest.param(_plugin_raises, id="plugin"),
+    pytest.param(_lead_raises, id="lead"),
+]
+
+
+async def _lower_then_raise(async_client, session, group, goal, member, lead, raiser) -> None:
+    await _tick()
+    await _set_own_state(async_client, group, goal, member, "need")
+    await _tick()
+    await raiser(async_client, session, group, goal, member, lead)
+
+
+@pytest.mark.parametrize("raiser", _LATER_STATE_WRITERS)
+async def test_delete_skips_restore_after_a_later_state_write(
+    async_client, session, group, goal, participants, lead, member, owner, raiser
 ):
+    await _item_on_goal(session, goal)
     drop = (await _log(async_client, group, goal, lead, recipient_id=member.id)).json()
-    participants["member"].last_manual_override_at = _later_than(drop["created_at"])
-    await session.flush()
+    assert drop["recipient_prior_state"] == "need"
+    await _lower_then_raise(async_client, session, group, goal, member, lead, raiser)
+    assert await _state_of(async_client, group, goal, member, owner) == "have"
 
     assert (await _delete(async_client, group, goal["id"], drop["id"], lead)).status_code == 204
     assert await _state_of(async_client, group, goal, member, owner) == "have"
@@ -470,13 +596,14 @@ async def test_restore_leaves_source_and_manual_override_untouched(
 
 
 async def _log_a_write_b(
-    async_client, session, group, goal, participants, lead, member, column: str
+    async_client, session, group, goal, participants, lead, member, raiser
 ) -> tuple[dict, dict]:
-    """A at t1 flips need→have; `column` is written at t1+1min; B at t1+2min has prior NULL."""
+    """A at t1 flips need→have; a state write through a route leaves the row `have`
+    with a later `state_changed_at`; B at t1+2min has prior NULL."""
+    await _item_on_goal(session, goal)
     a = (await _log(async_client, group, goal, lead, recipient_id=member.id)).json()
     assert a["recipient_prior_state"] == "need"
-    setattr(participants["member"], column, _later_than(a["created_at"], minutes=1))
-    await session.flush()
+    await _lower_then_raise(async_client, session, group, goal, member, lead, raiser)
     b = (await _log(async_client, group, goal, lead, recipient_id=member.id)).json()
     assert b["recipient_prior_state"] is None
     (await _drop_row(session, b["id"])).created_at = _later_than(a["created_at"], minutes=2)
@@ -484,15 +611,12 @@ async def _log_a_write_b(
     return a, b
 
 
-_STATE_WRITE_COLUMNS = ["last_synced_at", "last_manual_override_at"]
-
-
-@pytest.mark.parametrize("column", _STATE_WRITE_COLUMNS)
+@pytest.mark.parametrize("raiser", _LATER_STATE_WRITERS)
 async def test_state_write_between_drops_keeps_have_deleting_a_then_b(
-    async_client, session, group, goal, participants, lead, member, owner, column
+    async_client, session, group, goal, participants, lead, member, owner, raiser
 ):
     a, b = await _log_a_write_b(
-        async_client, session, group, goal, participants, lead, member, column
+        async_client, session, group, goal, participants, lead, member, raiser
     )
     assert (await _delete(async_client, group, goal["id"], a["id"], lead)).status_code == 204
     assert await _state_of(async_client, group, goal, member, owner) == "have"
@@ -500,12 +624,12 @@ async def test_state_write_between_drops_keeps_have_deleting_a_then_b(
     assert await _state_of(async_client, group, goal, member, owner) == "have"
 
 
-@pytest.mark.parametrize("column", _STATE_WRITE_COLUMNS)
+@pytest.mark.parametrize("raiser", _LATER_STATE_WRITERS)
 async def test_state_write_between_drops_keeps_have_deleting_b_then_a(
-    async_client, session, group, goal, participants, lead, member, owner, column
+    async_client, session, group, goal, participants, lead, member, owner, raiser
 ):
     a, b = await _log_a_write_b(
-        async_client, session, group, goal, participants, lead, member, column
+        async_client, session, group, goal, participants, lead, member, raiser
     )
     assert (await _delete(async_client, group, goal["id"], b["id"], lead)).status_code == 204
     assert await _state_of(async_client, group, goal, member, owner) == "have"
@@ -586,6 +710,323 @@ async def test_both_priors_deleting_b_alone_hands_its_later_prior_to_a(
     a_row = await _drop_row(session, a["id"])
     assert a_row.recipient_prior_state == "need"
     assert a_row.recipient_prior_state_at == t_b
+
+
+# ── R-S1-14: the member's own Undo reverts their record ──────────────────────
+# The member has a profile and a main, so the chain names the main's record in
+# every static; the goal names a catalog item, so an own drop raises it (D1).
+
+
+@pytest_asyncio.fixture
+async def recorded(session, goal, participants, member):
+    """member's profile, main and the goal's catalog item; no record yet."""
+    profile = await create_player_profile(session, member)
+    main = await create_player_character(session, profile, name="Member Main", is_main=True)
+    item = await _item_on_goal(session, goal)
+    return profile, main, item
+
+
+async def _put_record(
+    session: AsyncSession, profile, main, item, *, ownership: str, state_changed_at: str | None
+) -> PlayerCollectionSnapshot:
+    """A record written long ago by nobody in particular."""
+    record = PlayerCollectionSnapshot(
+        id=str(uuid.uuid4()),
+        profile_id=profile.id,
+        character_id=main.id,
+        catalog_item_id=item.id,
+        ownership_state=ownership,
+        source="manual",
+        confidence="medium",
+        updated_at=_LONG_AGO,
+        state_changed_at=state_changed_at,
+    )
+    session.add(record)
+    await session.flush()
+    return record
+
+
+async def _record(session: AsyncSession, item) -> PlayerCollectionSnapshot | None:
+    """The one record for `item`, read back from the database."""
+    result = await session.execute(
+        select(PlayerCollectionSnapshot)
+        .where(PlayerCollectionSnapshot.catalog_item_id == item.id)
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _record_prior(session: AsyncSession, drop_id: str) -> tuple:
+    drop = await _drop_row(session, drop_id)
+    return (
+        drop.recipient_record_prior_state,
+        drop.recipient_record_prior_at,
+        drop.recipient_record_prior_changed_at,
+    )
+
+
+async def _second_static(session: AsyncSession, owner: User, member: User, item):
+    """Another static of the owner's that member belongs to, farming the same item."""
+    group_b = await create_static_group(session, owner, name="Static B")
+    await create_membership(session, member, group_b, role=MemberRole.MEMBER)
+    goal_b = await create_collection_goal(session, group_b, owner, title="Farm Mount B")
+    goal_b.catalog_item_id = item.id
+    await session.flush()
+    return group_b, goal_b
+
+
+async def _row_in(
+    session: AsyncSession, goal_b, member: User, *, state: str, state_changed_at: str, own: bool
+) -> RewardParticipantState:
+    """member's row in the other static, stamped as given; `own` makes it the member's write."""
+    row = await create_participant_state(session, goal_b, member, state=state)
+    row.updated_at = state_changed_at
+    row.state_changed_at = state_changed_at
+    row.updated_by_user_id = member.id if own else None
+    await session.flush()
+    return row
+
+
+async def test_own_undo_reverts_the_record_and_its_clock(
+    async_client, session, group, goal, recorded, member, owner
+):
+    """The record goes back to its prior, stamped with the state clock it had before the drop."""
+    profile, main, item = recorded
+    await _put_record(session, profile, main, item, ownership="missing", state_changed_at=_LONG_AGO)
+    drop = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    raised = await _record(session, item)
+    assert raised.ownership_state == "have"
+    raised_at = raised.state_changed_at  # `_record` refreshes one instance: copy before the delete
+    assert await _record_prior(session, drop["id"]) == ("missing", raised_at, _LONG_AGO)
+    await _tick()
+
+    assert (await _delete(async_client, group, goal["id"], drop["id"], member)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "need"
+    record = await _record(session, item)
+    assert (record.ownership_state, record.state_changed_at) == ("missing", _LONG_AGO)
+    assert (record.updated_by_user_id, record.updated_via) == (member.id, "web")
+    assert record.updated_at not in (_LONG_AGO, raised_at)
+
+
+async def test_own_undo_reverts_to_unknown_when_the_drop_created_the_record(
+    async_client, session, group, goal, recorded, member, owner
+):
+    _, _, item = recorded
+    drop = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    raised = await _record(session, item)
+    assert await _record_prior(session, drop["id"]) == ("unknown", raised.state_changed_at, None)
+    await _tick()
+
+    assert (await _delete(async_client, group, goal["id"], drop["id"], member)).status_code == 204
+    record = await _record(session, item)
+    assert (record.ownership_state, record.state_changed_at) == ("unknown", None)
+
+
+async def test_leads_delete_of_a_members_own_drop_restores_the_row_and_leaves_the_record(
+    async_client, session, group, goal, recorded, lead, member, owner
+):
+    profile, main, item = recorded
+    await _put_record(session, profile, main, item, ownership="missing", state_changed_at=_LONG_AGO)
+    drop = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    raised = await _record(session, item)
+    raised_at, raised_updated_at = raised.state_changed_at, raised.updated_at
+    assert raised_at not in (None, _LONG_AGO)
+    await _tick()
+
+    assert (await _delete(async_client, group, goal["id"], drop["id"], lead)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "need"
+    record = await _record(session, item)
+    assert (record.ownership_state, record.state_changed_at) == ("have", raised_at)
+    assert (record.updated_at, record.updated_by_user_id) == (raised_updated_at, member.id)
+
+
+async def test_own_undo_leaves_the_record_the_plugin_re_raised(
+    async_client, session, group, goal, recorded, member, owner
+):
+    """Un-Have, then the plugin raises it again: the record's clock moved, so no revert."""
+    profile, main, item = recorded
+    await _put_record(session, profile, main, item, ownership="missing", state_changed_at=_LONG_AGO)
+    drop = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    await _tick()
+    await _set_own_state(async_client, group, goal, member, "need")
+    assert (await _record(session, item)).ownership_state == "missing"
+    await _tick()
+    synced = await _plugin_sync(async_client, member, mounts=[{"mountId": _MOUNT_ID, "owned": True}])
+    assert synced["statesUpdated"] == 1
+    assert (await _record(session, item)).state_changed_at == synced["syncedAt"]
+
+    assert (await _delete(async_client, group, goal["id"], drop["id"], member)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "have"
+    record = await _record(session, item)
+    assert (record.ownership_state, record.state_changed_at, record.source) == (
+        "have",
+        synced["syncedAt"],
+        "plugin",
+    )
+
+
+async def test_own_undo_leaves_the_record_the_hub_edited(
+    async_client, session, group, goal, recorded, member, owner
+):
+    """The drop created the record; the Hub then set it to missing: the row restores, the record stays."""
+    _, _, item = recorded
+    drop = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    assert (await _record_prior(session, drop["id"]))[0] == "unknown"
+    await _tick()
+    resp = await async_client.put(
+        f"/api/me/collection-snapshot/{item.id}",
+        json={"ownership_state": "missing"},
+        headers=_headers(member),
+    )
+    assert resp.status_code == 200, resp.text
+    t_edit = (await _record(session, item)).state_changed_at
+    assert t_edit is not None
+
+    assert (await _delete(async_client, group, goal["id"], drop["id"], member)).status_code == 204
+    assert await _state_of(async_client, group, goal, member, owner) == "need"
+    record = await _record(session, item)
+    assert (record.ownership_state, record.state_changed_at) == ("missing", t_edit)
+
+
+# Hand-off: the record prior moves between this goal's drops as the row prior does.
+
+
+@pytest_asyncio.fixture
+async def two_own_drops(async_client, session, group, goal, recorded, member) -> tuple[dict, dict]:
+    """A raises the record missing→have (and the row need→have); B lands on both."""
+    profile, main, item = recorded
+    await _put_record(session, profile, main, item, ownership="missing", state_changed_at=_LONG_AGO)
+    a = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    await _tick()
+    b = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    raised = await _record(session, item)
+    assert await _record_prior(session, a["id"]) == ("missing", raised.state_changed_at, _LONG_AGO)
+    assert await _record_prior(session, b["id"]) == (None, None, None)
+    await _tick()
+    return a, b
+
+
+async def test_record_prior_deleting_a_then_b_hands_off_and_reverts(
+    async_client, session, group, goal, recorded, two_own_drops, member, owner
+):
+    _, _, item = recorded
+    a, b = two_own_drops
+    a_prior = await _record_prior(session, a["id"])
+    assert (await _delete(async_client, group, goal["id"], a["id"], member)).status_code == 204
+    assert (await _record(session, item)).ownership_state == "have"
+    assert await _record_prior(session, b["id"]) == a_prior
+    assert (await _delete(async_client, group, goal["id"], b["id"], member)).status_code == 204
+    record = await _record(session, item)
+    assert (record.ownership_state, record.state_changed_at) == ("missing", _LONG_AGO)
+    assert await _state_of(async_client, group, goal, member, owner) == "need"
+
+
+async def test_record_prior_deleting_b_then_a_reverts(
+    async_client, session, group, goal, recorded, two_own_drops, member, owner
+):
+    _, _, item = recorded
+    a, b = two_own_drops
+    assert (await _delete(async_client, group, goal["id"], b["id"], member)).status_code == 204
+    assert (await _record(session, item)).ownership_state == "have"
+    assert (await _delete(async_client, group, goal["id"], a["id"], member)).status_code == 204
+    record = await _record(session, item)
+    assert (record.ownership_state, record.state_changed_at) == ("missing", _LONG_AGO)
+
+
+async def _raise_edit_raise(
+    async_client, session, group, goal, recorded, member
+) -> tuple[dict, dict, str]:
+    """A creates the record (prior `unknown`, no clock); the member un-Haves it at
+    t_edit; B raises it again (prior `missing`, changed at t_edit). The priors differ,
+    so a test can tell which one survived. Returns (a, b, t_edit)."""
+    _, _, item = recorded
+    a = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    await _tick()
+    await _set_own_state(async_client, group, goal, member, "need")
+    edited = await _record(session, item)
+    assert edited.ownership_state == "missing"
+    t_edit = edited.state_changed_at
+    await _tick()
+    b = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    raised = await _record(session, item)
+    a_state, a_at, a_changed_at = await _record_prior(session, a["id"])
+    assert (a_state, a_changed_at) == ("unknown", None)
+    assert await _record_prior(session, b["id"]) == ("missing", raised.state_changed_at, t_edit)
+    assert datetime.fromisoformat(raised.state_changed_at) > datetime.fromisoformat(a_at)
+    await _tick()
+    return a, b, t_edit
+
+
+async def test_both_record_priors_deleting_a_then_b_reverts_to_the_latest(
+    async_client, session, group, goal, recorded, member, owner
+):
+    _, _, item = recorded
+    a, b, t_edit = await _raise_edit_raise(async_client, session, group, goal, recorded, member)
+    b_prior = await _record_prior(session, b["id"])
+    assert (await _delete(async_client, group, goal["id"], a["id"], member)).status_code == 204
+    assert await _record_prior(session, b["id"]) == b_prior  # A's earlier prior is discarded
+    assert (await _delete(async_client, group, goal["id"], b["id"], member)).status_code == 204
+    record = await _record(session, item)
+    assert (record.ownership_state, record.state_changed_at) == ("missing", t_edit)
+
+
+async def test_both_record_priors_deleting_b_then_a_hands_the_latest_to_a(
+    async_client, session, group, goal, recorded, member, owner
+):
+    _, _, item = recorded
+    a, b, t_edit = await _raise_edit_raise(async_client, session, group, goal, recorded, member)
+    b_prior = await _record_prior(session, b["id"])
+    assert (await _delete(async_client, group, goal["id"], b["id"], member)).status_code == 204
+    assert await _record_prior(session, a["id"]) == b_prior
+    assert (await _record(session, item)).ownership_state == "have"
+    assert (await _delete(async_client, group, goal["id"], a["id"], member)).status_code == 204
+    record = await _record(session, item)
+    assert (record.ownership_state, record.state_changed_at) == ("missing", t_edit)
+
+
+# The other static reads the record through the merge (R-S1-9).
+
+
+async def test_the_other_statics_merged_state_follows_the_revert(
+    async_client, session, group, goal, recorded, member, owner
+):
+    profile, main, item = recorded
+    await _put_record(session, profile, main, item, ownership="missing", state_changed_at=_LONG_AGO)
+    group_b, goal_b = await _second_static(session, owner, member, item)
+    await _row_in(session, goal_b, member, state="need", state_changed_at=_LONG_AGO, own=False)
+    goal_b_ref = {"id": goal_b.id}
+
+    drop = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    seen = await _participant_of(async_client, group_b, goal_b_ref, member, owner)
+    assert (seen["state"], seen["state_from_record"]) == ("have", True)
+    await _tick()
+
+    assert (await _delete(async_client, group, goal["id"], drop["id"], member)).status_code == 204
+    seen = await _participant_of(async_client, group_b, goal_b_ref, member, owner)
+    assert (seen["state"], seen["state_from_record"]) == ("need", False)
+
+
+async def test_a_pre_drop_have_in_the_other_static_stands_after_the_undo(
+    async_client, session, group, goal, recorded, member, owner
+):
+    """vet M-10: the revert carries the record's old clock, so B's own Have from before
+    the drop is not a Have that yields to a newer un-Have."""
+    profile, main, item = recorded
+    await _put_record(session, profile, main, item, ownership="missing", state_changed_at=_LONG_AGO)
+    group_b, goal_b = await _second_static(session, owner, member, item)
+    await _row_in(session, goal_b, member, state="have", state_changed_at=_BEFORE_THE_DROP, own=True)
+    goal_b_ref = {"id": goal_b.id}
+
+    drop = (await _log(async_client, group, goal, member, recipient_id=member.id)).json()
+    seen = await _participant_of(async_client, group_b, goal_b_ref, member, owner)
+    assert (seen["state"], seen["state_from_record"]) == ("have", True)
+    await _tick()
+
+    assert (await _delete(async_client, group, goal["id"], drop["id"], member)).status_code == 204
+    record = await _record(session, item)
+    assert (record.ownership_state, record.state_changed_at) == ("missing", _LONG_AGO)
+    seen = await _participant_of(async_client, group_b, goal_b_ref, member, owner)
+    assert (seen["state"], seen["state_from_record"]) == ("have", False)
 
 
 # ── R-P0-3: participant self-upsert ──────────────────────────────────────────
