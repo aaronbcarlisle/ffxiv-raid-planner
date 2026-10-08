@@ -18,6 +18,10 @@ Collision rules:
   - Manual "Pass" (source=manual, state=pass) is never overwritten by plugin
   - Plugin only sets state to "have" when owned=True; never downgrades existing state
   - Token counts are always updated from plugin (no lock on token_count)
+
+The collection record (S2a-1): the user's main's record (`resolve_main_targets`),
+written through the record door in sync mode. The counters count farm rows only;
+record writes are not counted (R-S1-17).
 """
 
 import uuid
@@ -28,12 +32,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.collection_goal import CollectionGoal
 from ..models.collection_catalog_item import CollectionCatalogItem
-from ..models.player_collection_snapshot import PlayerCollectionSnapshot
-from ..models.player_profile import PlayerProfile
 from ..models.reward_participant_state import RewardParticipantState
 from ..models.membership import Membership, MemberRole
 from ..models.user import User
 from ..schemas.plugin_collections import CollectionSyncResult, PluginCollectionSyncPayload
+from .collection_records import RECORD_WRITE_SYNC, resolve_main_targets, write_record
 
 
 def _now() -> str:
@@ -45,7 +48,11 @@ async def sync_collection_states(
     session: AsyncSession,
     user: User,
     payload: PluginCollectionSyncPayload,
+    *,
+    actor_user_id: str,
+    via: str,
 ) -> CollectionSyncResult:
+    """Apply a plugin sync for `user`; `actor_user_id` and `via` stamp the record writes."""
     now = _now()
     result = CollectionSyncResult(synced_at=now)
 
@@ -142,8 +149,8 @@ async def sync_collection_states(
 
     # ── PlayerCollectionSnapshot sync ─────────────────────────────────────────
     # After updating goal states, also persist factual ownership to the player's
-    # profile snapshot so the suggestion engine can use it across all goals/statics.
-    await _sync_snapshots(session, user, payload, now)
+    # record so the suggestion engine can use it across all goals/statics.
+    await _sync_snapshots(session, user, payload, now, actor_user_id=actor_user_id, via=via)
 
     await session.commit()
     return result
@@ -154,21 +161,38 @@ async def _sync_snapshots(
     user: User,
     payload: PluginCollectionSyncPayload,
     now: str,
+    *,
+    actor_user_id: str,
+    via: str,
 ) -> None:
-    """Write PlayerCollectionSnapshot entries from plugin-reported facts.
+    """Write the user's main's record from plugin-reported facts (sync mode).
 
     Only writes "have" state for mounts confirmed via stable game_mount_id.
     Never writes intent or preference data.
     Never writes "missing" state — absence of evidence is not evidence of absence.
-    Updates token_count on existing snapshots when token data is present.
+    Sets token_count when token data is present.
+    A user with no profile gets no record (no profile is created).
     """
-    # Resolve to PlayerProfile (may not exist for users without a Hub profile)
-    profile_result = await session.execute(
-        select(PlayerProfile).where(PlayerProfile.user_id == user.id)
-    )
-    profile = profile_result.scalar_one_or_none()
-    if profile is None:
+    target = (await resolve_main_targets(session, [user.id]))[user.id]
+    if target.profile_id is None:
         return
+
+    async def write(
+        catalog_item_id: str, *, ownership: str | None, token_count: int | None
+    ) -> None:
+        await write_record(
+            session,
+            target,
+            catalog_item_id,
+            actor_user_id=actor_user_id,
+            via=via,
+            mode=RECORD_WRITE_SYNC,
+            now=now,
+            ownership=ownership,
+            token_count=token_count,
+            source="plugin",
+            confidence="high",
+        )
 
     # ── Mount ownership ───────────────────────────────────────────────────────
     for mount_item in payload.mounts:
@@ -182,15 +206,7 @@ async def _sync_snapshots(
             )
         )
         for catalog_item in id_result.scalars().all():
-            await _upsert_snapshot(
-                session,
-                profile_id=profile.id,
-                catalog_item_id=catalog_item.id,
-                ownership_state="have",
-                source="plugin",
-                confidence="high",
-                now=now,
-            )
+            await write(catalog_item.id, ownership="have", token_count=None)
 
     # ── Token counts ──────────────────────────────────────────────────────────
     for token_item in payload.currencies:
@@ -215,61 +231,8 @@ async def _sync_snapshots(
             catalog_items = list(name_result.scalars().all())
 
         for catalog_item in catalog_items:
-            await _upsert_snapshot(
-                session,
-                profile_id=profile.id,
-                catalog_item_id=catalog_item.id,
-                ownership_state=None,  # Don't change ownership — just update count
-                source="plugin",
-                confidence="high",
-                now=now,
-                token_count=token_item.count,
-            )
-
-
-async def _upsert_snapshot(
-    session: AsyncSession,
-    *,
-    profile_id: str,
-    catalog_item_id: str,
-    ownership_state: str | None,
-    source: str,
-    confidence: str,
-    now: str,
-    token_count: int | None = None,
-) -> None:
-    existing_result = await session.execute(
-        select(PlayerCollectionSnapshot).where(
-            PlayerCollectionSnapshot.profile_id == profile_id,
-            PlayerCollectionSnapshot.catalog_item_id == catalog_item_id,
-        )
-    )
-    existing = existing_result.scalar_one_or_none()
-
-    if existing is None:
-        snap = PlayerCollectionSnapshot(
-            id=str(uuid.uuid4()),
-            profile_id=profile_id,
-            catalog_item_id=catalog_item_id,
-            ownership_state=ownership_state or "unknown",
-            token_count=token_count,
-            source=source,
-            confidence=confidence,
-            last_synced_at=now,
-            updated_at=now,
-        )
-        session.add(snap)
-        return
-
-    # Only upgrade ownership, never downgrade (have stays have)
-    if ownership_state == "have" and existing.ownership_state != "have":
-        existing.ownership_state = "have"
-        existing.confidence = confidence
-    if token_count is not None:
-        existing.token_count = token_count
-    existing.source = source
-    existing.last_synced_at = now
-    existing.updated_at = now
+            # No ownership: a count never changes it.
+            await write(catalog_item.id, ownership=None, token_count=token_item.count)
 
 
 async def _upsert_state(

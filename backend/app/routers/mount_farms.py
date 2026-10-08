@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +25,7 @@ from ..services.player_reward_bridge_service import (
     write_through_bulk_from_mount_farm,
     _BulkUpdate,
 )
+from ..services.provenance import logged_via
 from ..schemas.mount_farms import (
     FarmScoreResponse,
     MemberProgressResponse,
@@ -331,9 +332,11 @@ async def get_mount_farm_progress(
 async def update_mount_farm_progress(
     group_id: str,
     data: MountFarmProgressUpdate,
+    request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> MemberProgressResponse:
+    via = logged_via(request)
     await get_static_group(db, group_id)
     membership = await require_membership(db, user.id, group_id)
 
@@ -423,14 +426,18 @@ async def update_mount_farm_progress(
         )
         await db.commit()
 
-    # Write-through: mirror signals into shared PlayerCollectionIntent/Snapshot
+    # Write-through: mirror signals into the shared intent, and into the record
+    # only when the caller edits their own progress (R-S1-10)
     await write_through_from_mount_farm(
         db,
+        group_id=group_id,
         user_id=target_user_id,
         trial_id=data.trial_id,
         wants_mount=data.wants_mount,
         has_mount=data.has_mount,
         totem_count=data.totem_count,
+        actor_user_id=user.id,
+        via=via,
     )
     await db.commit()
 
@@ -444,9 +451,11 @@ async def update_mount_farm_progress(
 async def bulk_update_mount_farm_progress(
     group_id: str,
     data: MountFarmProgressBulkUpdate,
+    request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> list[MemberProgressResponse]:
+    via = logged_via(request)
     await get_static_group(db, group_id)
     await require_membership(db, user.id, group_id, MemberRole.LEAD)
 
@@ -501,7 +510,8 @@ async def bulk_update_mount_farm_progress(
 
     await db.commit()
 
-    # Write-through: batch mirror all updates into shared PlayerCollectionIntent/Snapshot
+    # Write-through: batch mirror all updates into the shared intents, and the
+    # caller's own updates into their record (R-S1-10)
     await write_through_bulk_from_mount_farm(
         db,
         [
@@ -514,6 +524,9 @@ async def bulk_update_mount_farm_progress(
             )
             for update in data.updates
         ],
+        group_id=group_id,
+        actor_user_id=user.id,
+        via=via,
     )
     await db.commit()
 

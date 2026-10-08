@@ -43,10 +43,14 @@ from app.services.collection_suggestion_service import (
     dossier_farm_match,
 )
 from app.services.plugin_collection_sync_service import sync_collection_states
+from app.services.provenance import LOGGED_VIA_API_KEY
 from tests.factories import (
+    create_claimed_card,
     create_membership,
+    create_player_character,
     create_player_profile,
     create_static_group,
+    create_tier_snapshot,
     create_user,
 )
 
@@ -145,10 +149,12 @@ def _make_snapshot(
     confidence: str = "high",
     last_synced_at: str | None = None,
     token_count: int | None = None,
+    character_id: str | None = None,
 ) -> PlayerCollectionSnapshot:
     snap = PlayerCollectionSnapshot(
         id=str(uuid.uuid4()),
         profile_id=profile_id,
+        character_id=character_id,
         catalog_item_id=catalog_item_id,
         ownership_state=ownership_state,
         source=source,
@@ -211,7 +217,9 @@ async def test_plugin_sync_creates_snapshot(session: AsyncSession, owner: User, 
         mounts=[CollectionMountItem(mount_id=1234, owned=True)],
         currencies=[],
     )
-    await sync_collection_states(session, owner, payload)
+    await sync_collection_states(
+        session, owner, payload, actor_user_id=owner.id, via=LOGGED_VIA_API_KEY
+    )
     await session.commit()
 
     result = await session.execute(
@@ -236,7 +244,9 @@ async def test_plugin_sync_does_not_create_intent(session: AsyncSession, owner: 
         mounts=[CollectionMountItem(mount_id=9999, owned=True)],
         currencies=[],
     )
-    await sync_collection_states(session, owner, payload)
+    await sync_collection_states(
+        session, owner, payload, actor_user_id=owner.id, via=LOGGED_VIA_API_KEY
+    )
     await session.commit()
 
     intent_result = await session.execute(
@@ -256,7 +266,9 @@ async def test_plugin_sync_updates_token_count_on_snapshot(session: AsyncSession
         mounts=[],
         currencies=[CollectionTokenItem(item_id=555, token_name="Totem", count=42)],
     )
-    await sync_collection_states(session, owner, payload)
+    await sync_collection_states(
+        session, owner, payload, actor_user_id=owner.id, via=LOGGED_VIA_API_KEY
+    )
     await session.commit()
 
     result = await session.execute(
@@ -280,7 +292,9 @@ async def test_plugin_sync_no_snapshot_without_profile(session: AsyncSession, ow
         mounts=[CollectionMountItem(mount_id=7777, owned=True)],
         currencies=[],
     )
-    await sync_collection_states(session, owner, payload)
+    await sync_collection_states(
+        session, owner, payload, actor_user_id=owner.id, via=LOGGED_VIA_API_KEY
+    )
     await session.commit()
 
     result = await session.execute(select(PlayerCollectionSnapshot))
@@ -712,3 +726,79 @@ async def test_ultimate_cannot_buy_at_token_count_zero(
     assert len(suggestions) == 1
     member_entry = next(m for m in suggestions[0].members if m.user_id == member.id)
     assert member_entry.can_buy is False
+
+
+# ── Test: the record a member's suggestion reads (S2a-1, R-S1-5) ──────────────
+
+async def test_a_member_whose_card_names_the_alt_reads_the_alts_record(
+    session: AsyncSession, owner: User, member: User, member_profile: PlayerProfile, group,
+):
+    """The chain picks the card's alt in this static, not the main and not the newest row."""
+    main = await create_player_character(session, member_profile, name="Member Main", is_main=True)
+    alt = await create_player_character(session, member_profile, name="Member Alt", is_main=False)
+    tier = await create_tier_snapshot(session, group)
+    await create_claimed_card(session, group, member, alt, tier=tier)
+    catalog = _make_catalog(session, name="Alt Record Mount", token_cost=99)
+    _make_goal(session, group.id, catalog.id)
+    await session.flush()
+    # The alt's row first and the main's last: a profile-wide read keeps the last row it sees.
+    _make_snapshot(
+        session, member_profile.id, catalog.id,
+        ownership_state="missing", token_count=12, character_id=alt.id,
+    )
+    await session.flush()
+    _make_snapshot(
+        session, member_profile.id, catalog.id,
+        ownership_state="have", token_count=99, character_id=main.id,
+    )
+    await session.flush()
+
+    (suggestion,) = await compute_suggestions(session, group.id, owner)
+
+    entry = next(m for m in suggestion.members if m.user_id == member.id)
+    assert (entry.ownership_state, entry.token_count) == ("missing", 12)
+
+
+async def test_suggestions_issue_the_same_selects_for_two_and_six_members(
+    session: AsyncSession, engine, count_statements,
+):
+    """R-S1-5: every member's record resolves in one batch, so members add no SELECT."""
+    catalog = _make_catalog(session, name="Budget Mount")
+    await session.flush()
+
+    async def static_of(size: int, tag: str):
+        users = [await create_user(session, discord_username=f"{tag}{i}") for i in range(size)]
+        static = await create_static_group(session, users[0], name=tag)
+        tier = await create_tier_snapshot(session, static)
+        for index, user in enumerate(users):
+            if index:
+                await create_membership(session, user, static, role="member")
+            profile = await create_player_profile(session, user)
+            await create_player_character(session, profile, name=f"{tag} Main {index}")
+            alt = await create_player_character(
+                session, profile, name=f"{tag} Alt {index}", is_main=False
+            )
+            await create_claimed_card(session, static, user, alt, tier=tier)
+            _make_intent(session, profile.id, catalog.id)
+            _make_snapshot(session, profile.id, catalog.id, character_id=alt.id)
+        _make_goal(session, static.id, catalog.id)
+        await session.flush()
+        return static, users[0]
+
+    duo, duo_owner = await static_of(2, "duo")
+    sextet, sextet_owner = await static_of(6, "sextet")
+    await session.commit()
+
+    def is_select(sql: str) -> bool:
+        return sql.lstrip().upper().startswith("SELECT")
+
+    with count_statements(engine, match=is_select) as two:
+        small = await compute_suggestions(session, duo.id, duo_owner)
+    with count_statements(engine, match=is_select) as six:
+        large = await compute_suggestions(session, sextet.id, sextet_owner)
+
+    assert [len(s.members) for s in small] == [2]
+    assert [len(s.members) for s in large] == [6]
+    assert {m.ownership_state for m in large[0].members} == {"missing"}
+    assert two.n > 0
+    assert six.n == two.n

@@ -7,10 +7,11 @@ Covers:
   - wants_mount=True when existing intent has dossier_public visibility → preserves higher visibility
   - wants_mount=False → neutral, no intent written
   - has_mount=True → writes PlayerCollectionSnapshot (have, player_hub)
-  - has_mount=False → updates snapshot to missing (when not plugin-confirmed)
-  - has_mount=False → does NOT downgrade a plugin-confirmed 'have'
-  - totem_count → writes PlayerCollectionSnapshot.token_count (when not plugin)
-  - totem_count → does NOT overwrite plugin snapshot token_count
+  - has_mount=False → updates snapshot to missing
+  - has_mount=False → lowers a plugin-confirmed 'have' (Q1: the member's own edit is a person's)
+  - totem_count → writes PlayerCollectionSnapshot.token_count
+  - totem_count → is stored on a plugin record too (Q1)
+  - which record, and only for the member's own edit: test_record_provenance.py
   - No PlayerProfile → auto-creates a private profile, then writes intent
   - No CollectionCatalogItem for trial → silently skips
   - compute_suggestions uses written intent, legacy adapter not double-counted
@@ -303,10 +304,10 @@ async def test_has_mount_false_writes_missing_snapshot(
     assert snap.ownership_state == "missing"
 
 
-async def test_has_mount_false_does_not_downgrade_plugin_have(
+async def test_has_mount_false_lowers_a_plugin_have(
     async_client: AsyncClient, session: AsyncSession, user_profile, group, headers,
 ):
-    """PATCH has_mount=False must NOT downgrade a plugin-confirmed 'have'."""
+    """Q1: the member's own has_mount=False is a person's write, so it lowers a plugin 'have'."""
     catalog = _make_catalog(session)
     _make_snapshot(session, user_profile.id, catalog.id, ownership_state="have", source="plugin")
     await session.commit()
@@ -322,10 +323,11 @@ async def test_has_mount_false_does_not_downgrade_plugin_have(
         select(PlayerCollectionSnapshot).where(
             PlayerCollectionSnapshot.profile_id == user_profile.id,
             PlayerCollectionSnapshot.catalog_item_id == catalog.id,
-        )
+        ).execution_options(populate_existing=True)
     )
     snap = result.scalar_one()
-    assert snap.ownership_state == "have", "Plugin-confirmed 'have' must not be downgraded"
+    assert snap.ownership_state == "missing"
+    assert snap.source == "player_hub"
 
 
 async def test_totem_count_writes_snapshot_token_count(
@@ -353,10 +355,10 @@ async def test_totem_count_writes_snapshot_token_count(
     assert snap.token_count == 42
 
 
-async def test_totem_count_does_not_overwrite_plugin_snapshot(
+async def test_totem_count_is_stored_on_a_plugin_record(
     async_client: AsyncClient, session: AsyncSession, user_profile, group, headers,
 ):
-    """PATCH totem_count must NOT overwrite token_count on a plugin-owned snapshot."""
+    """Q1: the member's own totem_count is stored on a plugin record (the newest write wins)."""
     catalog = _make_catalog(session)
     _make_snapshot(session, user_profile.id, catalog.id, source="plugin", token_count=77)
     await session.commit()
@@ -372,10 +374,11 @@ async def test_totem_count_does_not_overwrite_plugin_snapshot(
         select(PlayerCollectionSnapshot).where(
             PlayerCollectionSnapshot.profile_id == user_profile.id,
             PlayerCollectionSnapshot.catalog_item_id == catalog.id,
-        )
+        ).execution_options(populate_existing=True)
     )
     snap = result.scalar_one()
-    assert snap.token_count == 77, "Plugin snapshot token_count must be preserved"
+    assert snap.token_count == 10
+    assert snap.ownership_state == "missing"  # a count-only write leaves the ownership alone
 
 
 # ── Tests: silent skip cases ──────────────────────────────────────────────────
