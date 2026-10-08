@@ -70,6 +70,8 @@ export const RELEASES: Release[] = [
         description:
           'A new read, GET /api/static-groups/{id}/collection-participants, returns the member statuses of every farm a static is working on in one request. It includes a carded member who has no status on a farm yet but whose collection already has the item or a totem count, and it says when a totem count was hidden rather than not set. Farm status responses now say that too. Nothing changes on screen yet.',
         internal: true,
+        pr: 366,
+        prTitle: 'feat(api): S2a-2·B1 — the Progress read API with count_hidden',
       },
     ],
     internal: true,
