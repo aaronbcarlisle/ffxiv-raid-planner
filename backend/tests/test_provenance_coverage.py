@@ -167,6 +167,7 @@ EXPECTED_DOOR_CALLERS = {
     (DOOR_MODULE, "_sync_row"),
     # `apply_sync` is itself a door entry point: its callers name the writer and channel.
     ("app/services/plugin_collection_sync_service.py", "sync_collection_states"),
+    ("app/routers/mount_farms.py", "plugin_sync_mount_farms"),
 }
 # (d) Door caller -> the route handlers whose @covers_record tests exercise it. The
 # record tests are labelled by route, because a route test is what reads the stored
@@ -194,6 +195,7 @@ DOOR_CALLER_ROUTES = {
     ("app/services/plugin_collection_sync_service.py", "sync_collection_states"): {
         "plugin_sync_collections"
     },
+    ("app/routers/mount_farms.py", "plugin_sync_mount_farms"): {"plugin_sync_mount_farms"},
 }
 
 # (d) The callers of the record's lifecycle functions (adopt, release, delete), each

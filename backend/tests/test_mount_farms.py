@@ -3,13 +3,21 @@
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
 from app.main import app
-from app.models import MemberRole, User
+from app.models import MemberRole, MountFarmProgress, User
 from app.routers.mount_farms import MOUNT_FARM_CATALOG
-from tests.factories import create_membership, create_static_group, create_user
+from tests.factories import (
+    create_catalog_item,
+    create_membership,
+    create_player_character,
+    create_player_profile,
+    create_static_group,
+    create_user,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -612,6 +620,94 @@ class TestPluginSync:
                 headers=auth_headers,
             )
             assert r.status_code == 200
+
+
+class TestPluginSyncRecordWrite:
+    """The sync writes the character record too (R-S1-18); the farm rows and the response stay."""
+
+    CLIENT_CLOCK = "2000-01-01T00:00:00+00:00"
+
+    async def test_farm_rows_and_response_keys_are_what_they_were(
+        self, client: AsyncClient, session: AsyncSession, test_user, test_group, auth_headers
+    ):
+        group2 = await create_static_group(session, test_user, name="Second Static")
+        profile = await create_player_profile(session, test_user)
+        await create_player_character(session, profile, name="Main Char", is_main=True)
+        item = await create_catalog_item(session, name="Zodiark Mount")
+        item.source_duty_key = TRIAL_ID_2
+        item.is_active = True
+        await session.commit()
+
+        response = await client.post(
+            "/api/plugin/mount-farms/sync",
+            json={
+                "characterName": "Main Char",
+                "mounts": [{"mountId": 282, "trialId": TRIAL_ID_2, "owned": True}],
+                "totems": [
+                    {"itemId": 44123, "trialId": "dt-valigarmanda", "count": 55},
+                    {"itemId": 44123, "trialId": "dt-zoraal-ja", "count": 0},
+                ],
+                "source": "plugin",
+                "syncedAt": self.CLIENT_CLOCK,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.text
+        assert response.json() == {
+            "mountsUpdated": 2,
+            "totemsUpdated": 2,
+            "mountsUnchanged": 0,
+            "totemsUnchanged": 2,
+            "unknownTrials": [],
+            "syncedAt": self.CLIENT_CLOCK,
+        }
+
+        result = await session.execute(
+            select(MountFarmProgress).execution_options(populate_existing=True)
+        )
+        rows = {
+            (row.static_group_id, row.trial_id): (
+                row.has_mount,
+                row.wants_mount,
+                row.totem_count,
+                row.ownership_source,
+                row.totem_source,
+                row.last_imported_at,
+                row.last_plugin_sync_at,
+                row.updated_at,
+                row.updated_by_id,
+            )
+            for row in result.scalars()
+        }
+        owned = (
+            True, False, 0, "plugin", "unknown",
+            self.CLIENT_CLOCK, self.CLIENT_CLOCK, self.CLIENT_CLOCK, test_user.id,
+        )
+        counted = (
+            False, True, 55, "unknown", "plugin",
+            self.CLIENT_CLOCK, self.CLIENT_CLOCK, self.CLIENT_CLOCK, test_user.id,
+        )
+        assert rows == {
+            (group.id, trial): expected
+            for group in (test_group, group2)
+            for trial, expected in ((TRIAL_ID_2, owned), (TRIAL_ID, counted))
+        }
+
+    async def test_sync_response_keys_without_a_static(self, client: AsyncClient, auth_headers):
+        response = await client.post(
+            "/api/plugin/mount-farms/sync",
+            json={"mounts": [{"mountId": 282, "owned": True}], "syncedAt": self.CLIENT_CLOCK},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json() == {
+            "mountsUpdated": 0,
+            "totemsUpdated": 0,
+            "mountsUnchanged": 0,
+            "totemsUnchanged": 0,
+            "unknownTrials": [],
+            "syncedAt": self.CLIENT_CLOCK,
+        }
 
 
 class TestBulkUpdate:

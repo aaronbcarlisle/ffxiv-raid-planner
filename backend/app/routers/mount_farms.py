@@ -19,6 +19,8 @@ from ..permissions import (
     get_user_membership,
     require_membership,
 )
+from ..models.collection_catalog_item import CollectionCatalogItem
+from ..services.collection_records import SyncChange, apply_sync
 from ..services.player_profile_service import get_or_create_profile
 from ..services.player_reward_bridge_service import (
     write_through_from_mount_farm,
@@ -809,12 +811,63 @@ async def _bridge_mount_farm_goals(
     await db.flush()
 
 
+async def _record_changes(db: AsyncSession, data: "PluginMountFarmSync") -> list[SyncChange]:
+    """The sync's facts as record changes, one per catalog mount of each reported trial.
+
+    A trial maps to catalog items the way `player_reward_bridge_service` does:
+    `source_duty_key`, category `mount`, active. An unowned mount is no news; a
+    totem count is written as reported, zero included.
+    """
+    owned_trials: list[str] = []
+    counted: list[tuple[str, int]] = []
+    for mount_item in data.mounts:
+        if not mount_item.owned:
+            continue
+        entry = _CATALOG_BY_TRIAL_ID.get(mount_item.trial_id) if mount_item.trial_id else None
+        entry = entry or _CATALOG_BY_MOUNT_ID.get(mount_item.mount_id)
+        if entry:
+            owned_trials.append(entry["trial_id"])
+    for totem_item in data.totems:
+        entry = _CATALOG_BY_TRIAL_ID.get(totem_item.trial_id) if totem_item.trial_id else None
+        entry = entry or _CATALOG_BY_TOTEM_ITEM_ID.get(totem_item.item_id)
+        if entry:
+            counted.append((entry["trial_id"], totem_item.count))
+    trial_ids = {*owned_trials, *(trial_id for trial_id, _ in counted)}
+    if not trial_ids:
+        return []
+
+    result = await db.execute(
+        select(CollectionCatalogItem).where(
+            CollectionCatalogItem.source_duty_key.in_(trial_ids),
+            CollectionCatalogItem.category == "mount",
+            CollectionCatalogItem.is_active.is_(True),
+        )
+    )
+    items_by_trial: dict[str, list[str]] = {}
+    for item in result.scalars():
+        items_by_trial.setdefault(item.source_duty_key, []).append(item.id)
+
+    changes = [
+        SyncChange(item_id, owned=True)
+        for trial_id in owned_trials
+        for item_id in items_by_trial.get(trial_id, [])
+    ]
+    # Counts last: a count is the newest write.
+    changes += [
+        SyncChange(item_id, token_count=count)
+        for trial_id, count in counted
+        for item_id in items_by_trial.get(trial_id, [])
+    ]
+    return changes
+
+
 @router.post(
     "/plugin/mount-farms/sync",
     response_model=PluginSyncResult,
 )
 async def plugin_sync_mount_farms(
     data: PluginMountFarmSync,
+    request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> PluginSyncResult:
@@ -824,6 +877,10 @@ async def plugin_sync_mount_farms(
     into mount_farm_progress for all static groups the user belongs to.
     Only the authenticated user's own progress is updated (never other members).
     Automation-first: plugin data overwrites unless a manual override is more recent.
+
+    The character record is written through `apply_sync` (R-S1-18): the matched
+    character's, else the main's. It writes no participant rows and is stamped
+    with the server clock; the client's `synced_at` stays the farm rows' clock.
     """
     now = data.synced_at or datetime.now(timezone.utc).isoformat()
     source = data.source or "plugin"
@@ -834,6 +891,19 @@ async def plugin_sync_mount_farms(
         await _bridge_mount_farm_goals(db, user, data, now)
     except Exception:
         logger.warning("mount_farm_goal_bridge_failed", user_id=user.id)
+
+    # The record too, static or not: records-only form (no statics, no row changes).
+    await apply_sync(
+        db,
+        user_id=user.id,
+        character_name=data.character_name,
+        character_world=data.character_world,
+        static_group_ids=(),
+        changes=await _record_changes(db, data),
+        actor_user_id=user.id,
+        via=logged_via(request),
+        now=datetime.now(timezone.utc).isoformat(),
+    )
 
     # Find all groups the user belongs to (non-viewer)
     memberships_result = await db.execute(
