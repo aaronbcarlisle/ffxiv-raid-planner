@@ -50,6 +50,7 @@ from ..services.collection_records import (
     merged_participants,
     parse_ts,
     resolve_record_targets,
+    unset_if_none,
     write_record,
     write_row,
 )
@@ -651,9 +652,9 @@ async def _write_own_state(
         via=via,
         now=now,
         state=body.state,
-        token_count=body.token_count if target is None and body.token_count is not None else UNSET,
-        priority_rank=body.priority_rank if can_rank and body.priority_rank is not None else UNSET,
-        notes=body.notes if body.notes is not None else UNSET,
+        token_count=unset_if_none(body.token_count) if target is None else UNSET,
+        priority_rank=unset_if_none(body.priority_rank) if can_rank else UNSET,
+        notes=unset_if_none(body.notes),
         source="manual",
         last_manual_override_at=now,
     )
@@ -798,9 +799,9 @@ async def upsert_participant_state_for_user(
             via=via,
             now=now,
             state=body.state,
-            token_count=body.token_count if body.token_count is not None else UNSET,
-            priority_rank=body.priority_rank if body.priority_rank is not None else UNSET,
-            notes=body.notes if body.notes is not None else UNSET,
+            token_count=unset_if_none(body.token_count),
+            priority_rank=unset_if_none(body.priority_rank),
+            notes=unset_if_none(body.notes),
             source="manual",
             last_manual_override_at=now,
         )
@@ -1048,6 +1049,7 @@ async def delete_drop(
     record_prior_state = drop.recipient_record_prior_state
     record_prior_at = drop.recipient_record_prior_at
     record_prior_changed_at = drop.recipient_record_prior_changed_at
+    via = logged_via(request)  # an unset channel raises before anything is deleted (R-PV-2)
     await session.delete(drop)
     await session.flush()
 
@@ -1091,7 +1093,6 @@ async def delete_drop(
                     record_outcome = "discarded"
         else:
             now = _now()
-            via = logged_via(request)
             if prior_state is not None:
                 # 2. This was their last drop: restore the state the flip replaced,
                 #    unless a state write moved the row's clock past that flip.

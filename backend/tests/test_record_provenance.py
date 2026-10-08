@@ -764,6 +764,30 @@ async def test_track_member_count_goes_to_the_record_on_the_api_key_channel_and_
     assert (row.state, row.token_count, row.priority_rank) == ("need", None, None)
 
 
+@covers_record("upsert_participant_state")
+async def test_track_member_count_on_a_goal_without_a_catalog_item_stays_on_the_row(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2
+):
+    """A profile but no catalog item means no record to hold the count: the row holds it."""
+    await _member_of(session, test_group, test_user_2, main_name="Plain Goal Main")
+    goal = await create_collection_goal(session, test_group, test_user, title="Plain Goal")
+    await session.commit()
+
+    response = await client.patch(
+        _participants_url(test_group, goal),
+        json={"state": "need", "token_count": 4},
+        headers=auth_headers_user2,
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["token_count"], body["count_from_record"]) == (4, False)
+
+    row = await _row(session, goal, test_user_2)
+    assert (row.token_count, row.updated_by_user_id, row.updated_via) == (4, test_user_2.id, "web")
+    assert row.token_count_updated_at is not None
+    assert await _all_records(session) == []
+
+
 @covers_record("upsert_participant_state_for_user")
 async def test_lead_route_for_a_member_writes_the_row_as_a_correction_and_no_record(
     client, session, test_user, test_user_2, test_group, auth_headers
