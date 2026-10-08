@@ -69,6 +69,8 @@ export const RELEASES: Release[] = [
         title: 'A farm-status undo route puts an edit back exactly',
         description:
           'A new route takes the undo token an edit returned and restores the member\'s status and collection record to what they held before, the writer and channel included, but only while nothing has changed them since; anything changed later is skipped and counted. The caller must be the token\'s owner and still hold the role the edit needed.',
+        pr: 369,
+        prTitle: 'feat(api): S2a-2·B3 — the undo route and the bulk Need',
         internal: true,
       },
       {
@@ -76,6 +78,8 @@ export const RELEASES: Release[] = [
         title: 'A lead can mark blank farm cells Need in one request',
         description:
           'A new lead-only route takes up to 200 blank cells and writes a Need row for each one whose goal isn\'t complete, whose member isn\'t a viewer, and whose collection record doesn\'t already say they have the item. Every other cell is skipped and counted, existing rows are never touched, and one undo token covers all the rows it created.',
+        pr: 369,
+        prTitle: 'feat(api): S2a-2·B3 — the undo route and the bulk Need',
         internal: true,
       },
     ],
