@@ -135,7 +135,7 @@ Proof, since the dialect script proves nothing here:
   - **Derived rows:** Track's seed copies the member's own signals, so its rows record `updated_by_user_id = NULL` and `updated_via = logged_via(request)`. NULL writer with a channel means "derived"; NULL with NULL means "predates S2a-1". Recording the lead would make every seeded Have a correction that a member's later un-Have can't reach (S2-10), and label every seeded cell "set by {lead}". The goal's `created_by_id` records who tracked it.
     - **Vetted:** the director agreed (plan-vet). **Recorded edge:** `updated_by_user_id` is `SET NULL` on user delete (Postgres), so a deleted lead's corrections then read as derived and yield to a newer un-Have. That's accepted: the corrections' author is gone.
   - **`source` keeps its three values** (delta (c)); the merge never emits another.
-- **R-S1-9 (the merge).** `merge_participant(row, record) -> MergedParticipant(state, token_count, source, state_from_record, count_from_record)`, a pure function, plus `merged_participants(db, *, static_group_id, rows)`, batched: one chain resolution and one record SELECT for all rows of all goals.
+- **R-S1-9 (the merge).** `merge_participant(row, record) -> MergedParticipant(state, token_count, source, state_from_record, count_from_record)`, a pure function, plus `merged_participants(db, *, static_group_id, rows)` (as built it also takes `catalog_item_by_goal`; see As built), batched: one chain resolution and one record SELECT for all rows of all goals.
   - **No record** (goal without `catalog_item_id`, no target, no record row): the row as stored.
   - **State.** `newer` = the record's `state_changed_at` is set and later than the row's (or the row's is NULL).
     1. A Pass that isn't a correction → Pass. This keeps a seeded `player_hub` Pass over a newer record Have, where V1 shows Have today. It is declared with (a) (vet I-3).
@@ -779,7 +779,25 @@ Extend `test_player_reward_bridge.py`, `test_plugin_collection_sync.py`, `test_s
   - **every V1 change the PR ships, with its render path** (vet I-3). PR 3: the un-Have from Need/Want. PR 5: the seeded `player_hub` Pass. PR 6: viewers' queue order and F1's legacy has-mount. Plus the spec's deltas;
   - the owner's answers to Q1–Q7. A PR that implements an answer the owner hasn't given yet stays draft.
 
+## As built (S2a-1a, 2026-10-07)
+
+S2a-1a is done: PRs 1–4 landed as eight PRs, #348 (·1), #349 (·1b), #351 (·2), #352 (·2b), #353 (·2c), #357 (·3), #358 (·3b), #359 (·4), released as 2.1.67 and merged bottom-first (R-S1-1). S2a-1b (PR 5 syncs, PR 6 counts and history) is not built.
+- **Estimates ran 1.7–2× and the cap split three PRs.** PR 1 came in at ~2,430 changed lines (est. ~1,410): it split into #348 (A1) and #349 (A2 + A3). PR 2 came in at ~2,880 (est. ~1,450): #351 (B1), #352 (B2), #353 (B3). PR 3 came in at ~2,260 (est. ~1,280): #357 (C1), #358 (C2 + C3). PR 4 came in at ~1,290 (est. ~1,060) and didn't split. PR 5 (~1,240) and PR 6 (~1,370) are estimated at that same ratio, so check each at Finish.
+- **`merged_participants` takes `catalog_item_by_goal`.** As built: `merged_participants(db, *, static_group_id, rows, catalog_item_by_goal: Mapping[str, str | None])`. The caller supplies each goal's `catalog_item_id`; the function resolves the chain once and issues one record SELECT, and none when no row's goal has an item. `MergedParticipant` also carries `record` (the record applied, or `None`), which feeds the response's `record` view.
+- **`_write_own_state` is the door caller for both PATCH routes.** `upsert_participant_state` and `upsert_participant_state_for_user` (a lead aimed at themselves) share it. `EXPECTED_DOOR_CALLERS` and `DOOR_CALLER_ROUTES` (`tests/test_provenance_coverage.py`) list `_write_own_state` once, with both routes. They also list the `write_row` callers `upsert_participant_state_for_user`, `create_goal_from_suggestion`, `_upsert_state` and `_update_token_count`, because `write_row` is in `DOOR_ENTRY_POINTS`.
+- **A token-only plugin sync restamps the row's writer as the member** (R-S1-7: one writer column per row). A lead's correction then reads "own" and the merge can flip. A known consequence, not a bug; S2a-2's labels must know it.
+- **Undo re-resolves the chain** rather than preferring the drop's stored `recipient_character_id` (R-S1-14). A card or main change between drop and Undo gives `skipped`, never the wrong record. S2a-1b or S2a-3a may prefer the stored id.
+- **Plugin-sync row stamps are route-tested.** The ledger parked this as untested, but it already is. The AST guard enforces the writer and channel keywords. `test_record_provenance.py::test_plugin_sync_rows_record_the_member_and_the_api_key_channel` reads the writer and channel of a created, a raised and a recounted `RewardParticipantState` row after a plugin sync. The record writes carry `@covers_record("plugin_sync_collections")`. Nothing carries to PR 5.
+- **Other disclosed residuals.**
+  - A lead-logged drop for the member inherits the member's own-drop record prior, and a lead's delete never reverts the record.
+  - A write that keeps the value moves neither clock, so Undo still reverts over it.
+  - Undo's restore survives a value-keeping manual edit, and an own Undo flips Profile ▸ Collections.
+  - (k) holds fully only for flips after the migration (the backfill).
+  - A manual un-Have over a plugin Have writes the record's source `manual`, so Profile ▸ Collections' count input unlocks until the next sync (PR 2 review I-1; its release line says so).
+
 ## Write-backs (once per stack, after its PRs merge)
+
+**Applied for S2a-1a (2026-10-07):** spec §6's S2a-1 row and status paragraph; §7's (a), (b), (i), (j) amendments, delta (k), and the rulings R-S1-8, -9, -10, -14, -19; `HOME_STRETCH.md` W3 S2a and the dated log; `PRODUCT_MODEL.md` §6's Stage 2 row. `backend/ARCHITECTURE.md:96` already says "per character" and isn't hedged, so it is unchanged. **S2a-1b's write-back** repeats this section for PRs 5–6 (the (i)/(j) shipped state, the sync-test addition, R-S1-19 as built).
 
 - **Spec §6's S2a-1 row:** the six-PR cut, with MountFarmProgress attribution in S2a-1b·2.
 - **Spec §7, as answered:**
