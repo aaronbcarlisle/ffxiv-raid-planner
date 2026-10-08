@@ -28,6 +28,7 @@ from app.models.collection_catalog_item import CollectionCatalogItem
 from app.models.collection_goal import CollectionGoal
 from app.models.player_collection_snapshot import PlayerCollectionSnapshot
 from app.models.reward_participant_state import RewardParticipantState
+from app.services.collection_records import merged_participants
 from app.services.plugin_collection_sync_service import sync_collection_states
 from app.services.provenance import LOGGED_VIA_API_KEY
 from app.schemas.plugin_collections import (
@@ -36,6 +37,7 @@ from app.schemas.plugin_collections import (
     PluginCollectionSyncPayload,
 )
 from tests.factories import (
+    create_claimed_card,
     create_membership,
     create_player_character,
     create_player_profile,
@@ -46,6 +48,8 @@ from tests.factories import (
 pytestmark = pytest.mark.asyncio
 
 _NOW = datetime.now(timezone.utc).isoformat()
+# A clock no sync can produce: what a row or record carried before the sync.
+_OLD = "2000-01-01T00:00:00+00:00"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -544,3 +548,317 @@ async def test_record_writes_are_not_counted(session: AsyncSession, member: User
         "have",
         30,
     )
+
+
+# ── 12. R-S1-17: one rule for rows and records (E2) ──────────────────────────
+
+
+async def _row_of(
+    session: AsyncSession, goal: CollectionGoal, user: User
+) -> RewardParticipantState | None:
+    """The member's row for the goal, read back from the database."""
+    result = await session.execute(
+        select(RewardParticipantState)
+        .where(
+            RewardParticipantState.goal_id == goal.id,
+            RewardParticipantState.user_id == user.id,
+        )
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _records(session: AsyncSession) -> list[PlayerCollectionSnapshot]:
+    """Every record, read back from the database."""
+    result = await session.execute(
+        select(PlayerCollectionSnapshot).execution_options(populate_existing=True)
+    )
+    return list(result.scalars().all())
+
+
+def _old_row(
+    session: AsyncSession,
+    *,
+    goal: CollectionGoal,
+    user: User,
+    state: str,
+    source: str = "manual",
+    writer: User | None = None,
+    token_count: int | None = None,
+) -> RewardParticipantState:
+    """A row written at `_OLD` by `writer` (None: a pre-S2a-1 row), with its clocks set."""
+    row = _state(
+        session,
+        goal_id=goal.id,
+        user_id=user.id,
+        group_id=goal.static_group_id,
+        state=state,
+        source=source,
+    )
+    row.token_count = token_count
+    row.updated_at = _OLD
+    row.state_changed_at = _OLD
+    row.token_count_updated_at = _OLD if token_count is not None else None
+    row.updated_by_user_id = None if writer is None else writer.id
+    row.updated_via = None if writer is None else "web"
+    return row
+
+
+def _old_record(
+    session: AsyncSession,
+    *,
+    profile,
+    character,
+    catalog,
+    ownership: str,
+    token_count: int | None = None,
+) -> PlayerCollectionSnapshot:
+    """A record written at `_OLD` by a person (manual, medium)."""
+    record = PlayerCollectionSnapshot(
+        id=str(uuid.uuid4()),
+        profile_id=profile.id,
+        character_id=character.id,
+        catalog_item_id=catalog.id,
+        ownership_state=ownership,
+        token_count=token_count,
+        source="manual",
+        confidence="medium",
+        updated_at=_OLD,
+        state_changed_at=_OLD,
+        token_count_updated_at=_OLD if token_count is not None else None,
+    )
+    session.add(record)
+    return record
+
+
+async def _mount_catalog(
+    session: AsyncSession, *, game_mount_id: int, token_item_id: int | None = None
+) -> CollectionCatalogItem:
+    catalog = _catalog_item(
+        session,
+        name=f"Rule Mount {game_mount_id}",
+        category="mount",
+        game_mount_id=game_mount_id,
+        token_item_id=token_item_id,
+    )
+    await session.flush()
+    return catalog
+
+
+async def _sync(session: AsyncSession, member: User, payload: PluginCollectionSyncPayload):
+    return await sync_collection_states(
+        session, member, payload, actor_user_id=member.id, via=LOGGED_VIA_API_KEY
+    )
+
+
+async def test_sync_never_changes_a_pass_row_a_seeded_player_hub_pass_included(
+    session: AsyncSession, member: User, group
+):
+    """Every Pass came from a person: the row is locked whatever its source; the record rises."""
+    profile = await create_player_profile(session, member)
+    main = await create_player_character(session, profile, name="Pass Main", is_main=True)
+    catalog = await _mount_catalog(session, game_mount_id=4601)
+    goal = _goal(session, group_id=group.id, catalog_item_id=catalog.id)
+    await session.flush()
+    _old_row(session, goal=goal, user=member, state="pass", source="player_hub")
+    await session.flush()
+
+    result = await _sync(
+        session,
+        member,
+        PluginCollectionSyncPayload(mounts=[CollectionMountItem(mount_id=4601, owned=True)]),
+    )
+
+    assert (result.skipped_locked, result.states_updated, result.states_unchanged) == (1, 0, 0)
+    row = await _row_of(session, goal, member)
+    assert (row.state, row.source, row.updated_at, row.updated_by_user_id, row.updated_via) == (
+        "pass",
+        "player_hub",
+        _OLD,
+        None,
+        None,
+    )
+    (record,) = await _records(session)
+    assert (record.character_id, record.ownership_state) == (main.id, "have")
+
+
+async def test_sync_re_raises_a_members_un_have(session: AsyncSession, member: User, group):
+    """The game is the truth for ownership: a person's un-Have, row and record, rises again."""
+    profile = await create_player_profile(session, member)
+    main = await create_player_character(session, profile, name="Unhave Main", is_main=True)
+    catalog = await _mount_catalog(session, game_mount_id=4602)
+    goal = _goal(session, group_id=group.id, catalog_item_id=catalog.id)
+    await session.flush()
+    _old_row(session, goal=goal, user=member, state="need", writer=member)
+    _old_record(session, profile=profile, character=main, catalog=catalog, ownership="missing")
+    await session.flush()
+
+    result = await _sync(
+        session,
+        member,
+        PluginCollectionSyncPayload(
+            character_name="Unhave Main", mounts=[CollectionMountItem(mount_id=4602, owned=True)]
+        ),
+    )
+
+    assert result.states_updated == 1
+    row = await _row_of(session, goal, member)
+    assert (row.state, row.source, row.state_changed_at) == ("have", "plugin", result.synced_at)
+    assert (row.updated_by_user_id, row.updated_via) == (member.id, "api_key")
+    (record,) = await _records(session)
+    assert (record.ownership_state, record.source, record.confidence) == ("have", "plugin", "high")
+    assert record.state_changed_at == result.synced_at
+    assert (record.updated_by_user_id, record.updated_via) == (member.id, "api_key")
+
+
+async def test_sync_count_is_the_newest_write_over_a_leads_older_count(
+    session: AsyncSession, member: User, owner: User, group
+):
+    profile = await create_player_profile(session, member)
+    main = await create_player_character(session, profile, name="Count Main", is_main=True)
+    catalog = await _mount_catalog(session, game_mount_id=4603, token_item_id=4604)
+    goal = _goal(session, group_id=group.id, catalog_item_id=catalog.id)
+    await session.flush()
+    _old_row(session, goal=goal, user=member, state="need", writer=owner, token_count=5)
+    _old_record(
+        session,
+        profile=profile,
+        character=main,
+        catalog=catalog,
+        ownership="unknown",
+        token_count=5,
+    )
+    await session.flush()
+
+    result = await _sync(
+        session,
+        member,
+        PluginCollectionSyncPayload(
+            character_name="Count Main", currencies=[CollectionTokenItem(item_id=4604, count=12)]
+        ),
+    )
+
+    assert (result.token_counts_updated, result.states_updated) == (1, 0)
+    row = await _row_of(session, goal, member)
+    assert (row.state, row.token_count, row.token_count_updated_at) == (
+        "need",
+        12,
+        result.synced_at,
+    )
+    (record,) = await _records(session)
+    assert (record.token_count, record.token_count_updated_at, record.ownership_state) == (
+        12,
+        result.synced_at,
+        "unknown",
+    )
+
+
+async def test_matched_sync_leaves_a_leads_correction_in_another_static_alone(
+    session: AsyncSession, member: User, owner: User, group
+):
+    """Criterion 6: rows go only where the chain is the matched character, so the static whose
+    card is the alt keeps the lead's correction and still reads it through its own chain."""
+    profile = await create_player_profile(session, member)
+    main = await create_player_character(session, profile, name="Sync Main", is_main=True)
+    alt = await create_player_character(session, profile, name="Sync Alt", is_main=False)
+    await create_claimed_card(session, group, member, main)
+    alt_static = await create_static_group(session, owner, name="Alt Static")
+    await create_membership(session, member, alt_static, role=MemberRole.MEMBER)
+    await create_claimed_card(session, alt_static, member, alt)
+    catalog = await _mount_catalog(session, game_mount_id=4605)
+    main_goal = _goal(session, group_id=group.id, catalog_item_id=catalog.id)
+    alt_goal = _goal(session, group_id=alt_static.id, catalog_item_id=catalog.id)
+    await session.flush()
+    _old_row(session, goal=main_goal, user=member, state="need", writer=owner)
+    _old_row(session, goal=alt_goal, user=member, state="need", writer=owner)
+    await session.flush()
+
+    result = await _sync(
+        session,
+        member,
+        PluginCollectionSyncPayload(
+            character_name="Sync Main", mounts=[CollectionMountItem(mount_id=4605, owned=True)]
+        ),
+    )
+
+    assert (result.states_updated, result.states_unchanged, result.skipped_locked) == (1, 0, 0)
+    raised = await _row_of(session, main_goal, member)
+    assert (raised.state, raised.updated_by_user_id) == ("have", member.id)
+    kept = await _row_of(session, alt_goal, member)
+    assert (kept.state, kept.updated_at, kept.updated_by_user_id, kept.updated_via) == (
+        "need",
+        _OLD,
+        owner.id,
+        "web",
+    )
+    (record,) = await _records(session)
+    assert (record.character_id, record.ownership_state) == (main.id, "have")
+    merged = await merged_participants(
+        session,
+        static_group_id=alt_static.id,
+        rows=[kept],
+        catalog_item_by_goal={alt_goal.id: catalog.id},
+    )
+    assert (merged[kept.id].state, merged[kept.id].state_from_record, merged[kept.id].record) == (
+        "need",
+        False,
+        None,
+    )
+
+
+async def test_matched_sync_counts_the_one_row_it_writes_and_not_the_record(
+    session: AsyncSession, member: User, group
+):
+    """vet M-6: the record and one static's row are written; `statesUpdated` reads 1."""
+    profile = await create_player_profile(session, member)
+    main = await create_player_character(session, profile, name="Counted Main", is_main=True)
+    await create_claimed_card(session, group, member, main)
+    catalog = await _mount_catalog(session, game_mount_id=4606)
+    goal = _goal(session, group_id=group.id, catalog_item_id=catalog.id)
+    await session.flush()
+
+    result = await _sync(
+        session,
+        member,
+        PluginCollectionSyncPayload(
+            character_name="Counted Main", mounts=[CollectionMountItem(mount_id=4606, owned=True)]
+        ),
+    )
+
+    assert (result.states_updated, result.states_unchanged, result.skipped_locked) == (1, 0, 0)
+    assert (await _row_of(session, goal, member)).state == "have"
+    (record,) = await _records(session)
+    assert (record.character_id, record.ownership_state) == (main.id, "have")
+
+
+async def test_a_record_only_change_counts_nothing(session: AsyncSession, member: User, group):
+    """vet M-6: the matched character is the alt, the only static's card is the main: the alt's
+    record is written, no row is, and every counter reads 0."""
+    profile = await create_player_profile(session, member)
+    main = await create_player_character(session, profile, name="Card Main", is_main=True)
+    alt = await create_player_character(session, profile, name="Synced Alt", is_main=False)
+    await create_claimed_card(session, group, member, main)
+    catalog = await _mount_catalog(session, game_mount_id=4607, token_item_id=4608)
+    goal = _goal(session, group_id=group.id, catalog_item_id=catalog.id)
+    await session.flush()
+
+    result = await _sync(
+        session,
+        member,
+        PluginCollectionSyncPayload(
+            character_name="Synced Alt",
+            mounts=[CollectionMountItem(mount_id=4607, owned=True)],
+            currencies=[CollectionTokenItem(item_id=4608, count=9)],
+        ),
+    )
+
+    counters = (
+        result.states_updated,
+        result.states_unchanged,
+        result.token_counts_updated,
+        result.skipped_locked,
+    )
+    assert counters == (0, 0, 0, 0)
+    assert await _row_of(session, goal, member) is None
+    (record,) = await _records(session)
+    assert (record.character_id, record.ownership_state, record.token_count) == (alt.id, "have", 9)

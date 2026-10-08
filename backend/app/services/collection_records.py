@@ -1,12 +1,13 @@
 """Collection records: which character a member's farm rows belong to (S2a-1, R-S1-5).
 
-Four sections. The "chain" section resolves, for (static, user) pairs, which
+Five sections. The "chain" section resolves, for (static, user) pairs, which
 character's record a member's farm rows read. The "door" section is where
 record writes enter and records are read. The "rows" section is the farm row's
-own door (`write_row`), and the "merge" section is what a static sees once a
-row and its member's record are put together (R-S1-9). Nothing here edits
-`provenance.py`: its R-PV-4 pick serves log rows and stays pinned by PROV-1's
-tests.
+own door (`write_row`), the "merge" section is what a static sees once a row
+and its member's record are put together (R-S1-9), and the "sync" section is
+what the plugin's syncs write, rows and record, under one rule (R-S1-17).
+Nothing here edits `provenance.py`: its R-PV-4 pick serves log rows and stays
+pinned by PROV-1's tests.
 """
 
 import uuid
@@ -834,3 +835,236 @@ async def merged_participants(
             if item_id is not None:
                 records[row.id] = loaded[targets[(static_group_id, row.user_id)]].get(item_id)
     return {row.id: merge_participant(row, records.get(row.id)) for row in rows}
+
+
+# ---------------------------------------------------------------------------
+# Sync: what the plugin's syncs write, rows and record, under one rule (R-S1-17)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SyncChange:
+    """One fact a sync reports about a catalog item, for the record: `owned` is
+    True when the game showed the item owned (False is no news: a sync never
+    lowers), `token_count` is the count seen (None is no news)."""
+
+    catalog_item_id: str
+    owned: bool = False
+    token_count: int | None = None
+
+
+@dataclass(frozen=True)
+class SyncRowChange:
+    """The same kind of fact, aimed at one farm goal's row for the member."""
+
+    goal_id: str
+    static_group_id: str
+    owned: bool = False
+    token_count: int | None = None
+
+
+@dataclass(frozen=True)
+class SyncOutcome:
+    """What `apply_sync` did: how the name matched, the target its record writes
+    went to (step `none`: no profile, no record), the statics whose rows it could
+    write, and the farm-row counters. Record writes are not counted (vet M-6)."""
+
+    reason: SyncMatchReason
+    record_target: RecordTarget
+    row_static_ids: frozenset[str]
+    rows_updated: int = 0
+    rows_unchanged: int = 0
+    rows_locked: int = 0
+    counts_updated: int = 0
+
+
+_ROW_UPDATED, _ROW_UNCHANGED, _ROW_LOCKED = "updated", "unchanged", "locked"
+
+
+async def _resolve_sync_target(
+    db: AsyncSession,
+    *,
+    user_id: str,
+    character_name: str | None,
+    character_world: str | None,
+    static_group_ids: Iterable[str],
+) -> tuple[SyncMatchReason, RecordTarget, frozenset[str]]:
+    """Where a sync's writes go: (match reason, the record's target, the statics that get rows).
+
+    Matched: the record is that character's (a `main` target when it is the
+    main, so it adopts the profile-level row as the chain would; otherwise its
+    own rows, as a card's character), and rows go only to the statics whose
+    chain names it. Unresolved (B6): the main's record, else the profile-level
+    row, else none, and rows in every static given.
+    """
+    profile_by_user, characters_by_profile = await _profiles_and_characters(db, {user_id})
+    profile_id = profile_by_user.get(user_id)
+    characters = characters_by_profile.get(profile_id, []) if profile_id else []
+    character, reason = match_sync_character(characters, character_name, character_world)
+    static_ids = frozenset(static_group_ids)
+    if character is None or profile_id is None:
+        return reason, _fallback_target(user_id, profile_id, characters), static_ids
+
+    main = main_character(characters)
+    step: RecordStep = "main" if main is not None and main.id == character.id else "card"
+    target = RecordTarget(user_id, profile_id, character.id, character.name, step)
+    chain = await resolve_record_targets(db, [(static_id, user_id) for static_id in static_ids])
+    row_static_ids = frozenset(
+        static_id for (static_id, _), named in chain.items() if named.character_id == character.id
+    )
+    return reason, target, row_static_ids
+
+
+async def _sync_row(
+    db: AsyncSession,
+    *,
+    row: RewardParticipantState | None,
+    change: SyncRowChange,
+    user_id: str,
+    actor_user_id: str,
+    via: str,
+    now: str,
+) -> tuple[RewardParticipantState | None, str | None, bool]:
+    """One sync fact on the member's row for a goal: (the row, what the ownership
+    did or None when none was reported, whether the count was written).
+
+    Ownership: a Pass is never changed, whatever its source (`locked`); a Have
+    the plugin already set only refreshes `last_synced_at` (`unchanged`);
+    anything else is raised to Have, as the plugin's (`updated`). Count: written
+    when it differs from the row's, a Pass row's included; a new row from a
+    count alone starts at the column's default state, as the plugin's.
+    """
+    ownership = None
+    count_written = False
+    if change.owned:
+        if row is not None and row.state == "pass":
+            ownership = _ROW_LOCKED
+        elif row is not None and row.state == "have" and row.source == "plugin":
+            # Not through write_row: last_synced_at is not a fact attribute, and routing
+            # it would bump updated_at (and the stamps) on every no-op sync.
+            row.last_synced_at = now
+            ownership = _ROW_UNCHANGED
+        else:
+            write = await write_row(
+                db,
+                row=row,
+                goal_id=change.goal_id,
+                static_group_id=change.static_group_id,
+                user_id=user_id,
+                actor_user_id=actor_user_id,
+                via=via,
+                now=now,
+                state="have",
+                source="plugin",
+                last_synced_at=now,
+            )
+            row, ownership = write.row, _ROW_UPDATED
+    if change.token_count is not None and (row is None or row.token_count != change.token_count):
+        write = await write_row(
+            db,
+            row=row,
+            goal_id=change.goal_id,
+            static_group_id=change.static_group_id,
+            user_id=user_id,
+            actor_user_id=actor_user_id,
+            via=via,
+            now=now,
+            token_count=change.token_count,
+            source="plugin" if row is None else UNSET,
+            last_synced_at=now,
+        )
+        row, count_written = write.row, True
+    return row, ownership, count_written
+
+
+async def apply_sync(
+    db: AsyncSession,
+    *,
+    user_id: str,
+    character_name: str | None,
+    character_world: str | None,
+    static_group_ids: Iterable[str],
+    changes: Sequence[SyncChange],
+    row_changes: Sequence[SyncRowChange] = (),
+    actor_user_id: str,
+    via: str,
+    now: str,
+) -> SyncOutcome:
+    """Apply a plugin sync's facts to the member's farm rows and their record (R-S1-17).
+
+    The sync names a character; `match_sync_character` picks it among the
+    member's own. Matched: the record is that character's, and `row_changes`
+    land only in the statics of `static_group_ids` whose chain names it, so a
+    static where the card is another character is untouched. Null, "Unknown",
+    unmatched or ambiguous: rows in every static given (B6), the record the
+    main's, else the profile-level row; no profile, no record. One rule for
+    rows and record: a sync only raises to Have, never changes a Pass (every
+    Pass came from a person: the plugin never writes one), and a count is the
+    newest write. The outcome counts rows only (vet M-6). `now` is the server
+    clock; the caller commits. With no `row_changes` (the mount-farm sync,
+    R-S1-18) only the record is written.
+    """
+    reason, target, row_static_ids = await _resolve_sync_target(
+        db,
+        user_id=user_id,
+        character_name=character_name,
+        character_world=character_world,
+        static_group_ids=static_group_ids,
+    )
+    counters = {_ROW_UPDATED: 0, _ROW_UNCHANGED: 0, _ROW_LOCKED: 0}
+    counts_updated = 0
+
+    reached = [change for change in row_changes if change.static_group_id in row_static_ids]
+    rows: dict[str, RewardParticipantState] = {}
+    if reached:
+        result = await db.execute(
+            select(RewardParticipantState).where(
+                RewardParticipantState.goal_id.in_({change.goal_id for change in reached}),
+                RewardParticipantState.user_id == user_id,
+            )
+        )
+        rows = {row.goal_id: row for row in result.scalars()}
+    for change in reached:
+        row, ownership, count_written = await _sync_row(
+            db,
+            row=rows.get(change.goal_id),
+            change=change,
+            user_id=user_id,
+            actor_user_id=actor_user_id,
+            via=via,
+            now=now,
+        )
+        if row is not None:
+            rows[change.goal_id] = row
+        if ownership is not None:
+            counters[ownership] += 1
+        if count_written:
+            counts_updated += 1
+
+    if target.profile_id is not None:
+        for change in changes:
+            if not change.owned and change.token_count is None:
+                continue
+            await write_record(
+                db,
+                target,
+                change.catalog_item_id,
+                actor_user_id=actor_user_id,
+                via=via,
+                mode=RECORD_WRITE_SYNC,
+                now=now,
+                ownership="have" if change.owned else None,
+                token_count=change.token_count,
+                source="plugin",
+                confidence="high",
+            )
+
+    return SyncOutcome(
+        reason=reason,
+        record_target=target,
+        row_static_ids=row_static_ids,
+        rows_updated=counters[_ROW_UPDATED],
+        rows_unchanged=counters[_ROW_UNCHANGED],
+        rows_locked=counters[_ROW_LOCKED],
+        counts_updated=counts_updated,
+    )

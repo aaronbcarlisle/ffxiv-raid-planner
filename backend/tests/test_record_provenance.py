@@ -16,6 +16,7 @@ import asyncio
 import uuid
 from collections.abc import Callable
 
+import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -548,6 +549,111 @@ async def test_plugin_sync_without_a_profile_writes_no_record(client, session, a
 
     assert await _all_records(session) == []
     assert (await session.execute(select(PlayerProfile))).scalars().all() == []
+
+
+async def _sync_statics(session: AsyncSession, test_user, test_user_2, *, card):
+    """test_user's statics for a sync: one with `card` on its roster, one with no card, and
+    one where test_user is a viewer. Returns them in that order."""
+    card_static = await create_static_group(session, test_user, name="Card Static")
+    await create_claimed_card(session, card_static, test_user, card)
+    no_card = await create_static_group(session, test_user, name="No Card Static")
+    viewed = await create_static_group(session, test_user_2, name="Viewed Static")
+    await create_membership(session, test_user, viewed, role=MemberRole.VIEWER)
+    return card_static, no_card, viewed
+
+
+@covers_record("plugin_sync_collections")
+async def test_plugin_sync_with_a_matched_name_writes_its_record_and_only_its_statics_rows(
+    client, session, test_user, test_user_2, test_group, auth_headers, world
+):
+    """R-S1-17: the matched main gets the record; rows go to the static whose card is the main
+    and to the static with no card (its chain falls to the main); the static whose card is
+    the alt is untouched."""
+    _, main, alt, _ = world
+    main_static, no_card, _ = await _sync_statics(session, test_user, test_user_2, card=main)
+    await create_claimed_card(session, test_group, test_user, alt)
+    item = await _farm_item(session, "Matched Mount", game_mount_id=4601, token_item_id=4602)
+    goals = {
+        static.id: await _tracked_goal(session, static, test_user, item)
+        for static in (main_static, no_card, test_group)
+    }
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "POST",
+        SYNC_URL,
+        json={
+            "characterName": "Main Char",
+            "mounts": [{"mountId": 4601, "owned": True}],
+            "currencies": [{"itemId": 4602, "count": 12}],
+        },
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["statesUpdated"], body["tokenCountsUpdated"], body["skippedLocked"]) == (2, 2, 0)
+
+    for static in (main_static, no_card):
+        row = await _row(session, goals[static.id], test_user)
+        assert (row.state, row.token_count, row.source) == ("have", 12, "plugin")
+        assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "api_key")
+    assert await _row(session, goals[test_group.id], test_user) is None
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.ownership_state, record.token_count) == (
+        main.id,
+        "have",
+        12,
+    )
+    assert (record.source, record.confidence) == ("plugin", "high")
+    assert (record.updated_by_user_id, record.updated_via) == (test_user.id, "api_key")
+
+
+@covers_record("plugin_sync_collections")
+@pytest.mark.parametrize(
+    "name",
+    [None, "Unknown", "Nobody Here", "Alt Char"],
+    ids=["null", "unknown", "unmatched", "ambiguous"],
+)
+async def test_plugin_sync_with_an_unresolved_name_writes_every_static_and_the_mains_record(
+    client, session, test_user, test_user_2, test_group, auth_headers, world, name
+):
+    """B6: rows in the static whose card is the alt and in the one with no card, none where
+    test_user is a viewer; the record is the main's. "Alt Char" is ambiguous: a twin on
+    another world, and no world is sent."""
+    profile, main, alt, _ = world
+    await create_player_character(session, profile, name="Alt Char", server="Ravana", is_main=False)
+    alt_static, no_card, viewed = await _sync_statics(session, test_user, test_user_2, card=alt)
+    item = await _farm_item(session, "Unresolved Mount", game_mount_id=4611)
+    goals = {
+        static.id: await _tracked_goal(
+            session, static, test_user_2 if static is viewed else test_user, item
+        )
+        for static in (alt_static, no_card, viewed)
+    }
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "POST",
+        SYNC_URL,
+        json={"characterName": name, "mounts": [{"mountId": 4611, "owned": True}]},
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["statesUpdated"] == 2
+
+    for static in (alt_static, no_card):
+        row = await _row(session, goals[static.id], test_user)
+        assert (row.state, row.updated_by_user_id, row.updated_via) == (
+            "have",
+            test_user.id,
+            "api_key",
+        )
+    assert await _row(session, goals[viewed.id], test_user) is None
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.ownership_state) == (main.id, "have")
+    assert (record.updated_by_user_id, record.updated_via) == (test_user.id, "api_key")
 
 
 # ---------------------------------------------------------------------------
