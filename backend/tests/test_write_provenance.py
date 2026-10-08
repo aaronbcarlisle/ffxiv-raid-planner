@@ -21,9 +21,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
-from app.models import LootLogEntry, MaterialLogEntry, MemberRole, PageLedgerEntry
+from app.models import (
+    LootLogEntry,
+    MaterialLogEntry,
+    MemberRole,
+    PageLedgerEntry,
+    PlayerCollectionSnapshot,
+)
 from app.models.reward_drop_log import RewardDropLog
 from tests.factories import (
+    create_catalog_item,
     create_collection_goal,
     create_loot_log_entry,
     create_material_log_entry,
@@ -941,3 +948,43 @@ async def test_drop_response_keys_unchanged(client, session, auth_headers, world
     )
     assert response.status_code == 201, response.text
     assert set(response.json()) == DROP_KEYS
+
+
+def _character_columns(row: RewardDropLog) -> tuple:
+    return (
+        row.recipient_character_id,
+        row.recipient_character_name,
+        row.recipient_character_source,
+        row.recipient_record_prior_state,
+        row.recipient_record_prior_at,
+        row.recipient_record_prior_changed_at,
+    )
+
+
+@covers("log_drop")
+async def test_drop_with_no_recipient_records_no_character(client, session, auth_headers, world):
+    goal, _lead = await _drop_world(session, world)
+    response = await client.post(_drops_url(world, goal), json={}, headers=auth_headers)
+    assert response.status_code == 201, response.text
+
+    row = await _stored(session, RewardDropLog, response.json()["id"])
+    assert _character_columns(row) == (None,) * 6
+
+
+@covers("log_drop")
+async def test_drop_for_a_member_with_no_profile_records_no_character_and_writes_no_record(
+    client, session, auth_headers_user2, world
+):
+    goal, _lead = await _drop_world(session, world)
+    goal.catalog_item_id = (await create_catalog_item(session, name="No Profile Mount")).id
+    await session.flush()
+    response = await client.post(
+        _drops_url(world, goal),
+        json={"recipient_user_id": world.member.id},
+        headers=auth_headers_user2,
+    )
+    assert response.status_code == 201, response.text
+
+    row = await _stored(session, RewardDropLog, response.json()["id"])
+    assert _character_columns(row) == (None,) * 6
+    assert (await session.execute(select(PlayerCollectionSnapshot))).scalars().all() == []

@@ -13,7 +13,7 @@ import uuid
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, TypeVar
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -298,6 +298,13 @@ class _Unset:
 
 
 UNSET = _Unset()
+
+_T = TypeVar("_T")
+
+
+def unset_if_none(value: _T) -> _T | _Unset:
+    """`value`, or UNSET for None: a PATCH body field of None means "unchanged"."""
+    return UNSET if value is None else value
 
 
 def _validated(value: str | None, allowed: frozenset[str], what: str) -> None:
@@ -651,6 +658,10 @@ async def write_row(
             state="want",
             source="manual",
             updated_at=now,
+            updated_by_user_id=actor_user_id,
+            updated_via=via,
+            state_changed_at=now,
+            token_count_updated_at=None,  # set below once a count is given
         )
         db.add(row)
         state_changed = True
@@ -722,7 +733,10 @@ def merge_participant(
     a correction yields to a newer record `missing`/`unknown` as Want (Q3);
     (4) otherwise the row's. Count: the record's when the row's is NULL, the
     row's when the record's is NULL, else the later `token_count_updated_at`
-    (a NULL time loses; a tie goes to the record). `source` follows the state.
+    (a NULL time loses; a tie goes to the record). `source` follows the state; the
+    record's source is used only when it is in `PARTICIPANT_SOURCES`, and the
+    check exists for off-vocabulary legacy data alone (the record's writers
+    validate its source).
     """
     if record is None:
         return MergedParticipant(row.state, row.token_count, row.source, False, False, None)

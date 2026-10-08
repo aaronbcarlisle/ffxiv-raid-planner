@@ -50,10 +50,11 @@ from ..services.collection_records import (
     merged_participants,
     parse_ts,
     resolve_record_targets,
+    unset_if_none,
     write_record,
     write_row,
 )
-from ..services.provenance import logged_via, request_api_key_id
+from ..services.provenance import CHARACTER_SOURCE_DEFAULT, logged_via, request_api_key_id
 
 router = APIRouter(prefix="/api", tags=["collection-goals"])
 logger = get_logger(__name__)
@@ -651,9 +652,9 @@ async def _write_own_state(
         via=via,
         now=now,
         state=body.state,
-        token_count=body.token_count if target is None and body.token_count is not None else UNSET,
-        priority_rank=body.priority_rank if can_rank and body.priority_rank is not None else UNSET,
-        notes=body.notes if body.notes is not None else UNSET,
+        token_count=unset_if_none(body.token_count) if target is None else UNSET,
+        priority_rank=unset_if_none(body.priority_rank) if can_rank else UNSET,
+        notes=unset_if_none(body.notes),
         source="manual",
         last_manual_override_at=now,
     )
@@ -798,9 +799,9 @@ async def upsert_participant_state_for_user(
             via=via,
             now=now,
             state=body.state,
-            token_count=body.token_count if body.token_count is not None else UNSET,
-            priority_rank=body.priority_rank if body.priority_rank is not None else UNSET,
-            notes=body.notes if body.notes is not None else UNSET,
+            token_count=unset_if_none(body.token_count),
+            priority_rank=unset_if_none(body.priority_rank),
+            notes=unset_if_none(body.notes),
             source="manual",
             last_manual_override_at=now,
         )
@@ -843,7 +844,7 @@ async def log_drop(
 ) -> RewardDropResponse:
     await get_static_group(session, group_id)
     membership = await require_membership(session, current_user.id, group_id)
-    await _get_goal(session, group_id, goal_id, for_update=True)
+    goal = await _get_goal(session, group_id, goal_id, for_update=True)
 
     # R-P0-1: checked in this order, before any write. The recipient's membership is
     # checked last so a member can't probe who belongs to the static.
@@ -865,7 +866,45 @@ async def log_drop(
     # it (R-P0-2).
     recipient_prior_state: str | None = None
     recipient_prior_state_at: str | None = None
+    # The recipient's character in this static, and what the record was before an
+    # own drop raised it (R-S1-13), for Undo to read.
+    character_id: str | None = None
+    character_name: str | None = None
+    character_source: str | None = None
+    record_prior_state: str | None = None
+    record_prior_at: str | None = None
+    record_prior_changed_at: str | None = None
     if recipient_id:
+        target = (await resolve_record_targets(session, [(group_id, recipient_id)]))[
+            (group_id, recipient_id)
+        ]
+        if target.character_id is not None:
+            character_id = target.character_id
+            character_name = target.character_name
+            character_source = CHARACTER_SOURCE_DEFAULT
+
+        catalog_item_id = goal.catalog_item_id
+        if recipient_id == current_user.id and target.profile_id is not None and catalog_item_id:
+            record = (await load_records(session, [target], [catalog_item_id]))[target].get(
+                catalog_item_id
+            )
+            if record is None or record.ownership_state != "have":
+                record_prior_state = "unknown" if record is None else record.ownership_state
+                record_prior_changed_at = None if record is None else record.state_changed_at
+                record_prior_at = now
+                await write_record(
+                    session,
+                    target,
+                    catalog_item_id,
+                    actor_user_id=current_user.id,
+                    via=via,
+                    mode=RECORD_WRITE_PERSON,
+                    now=now,
+                    ownership="have",
+                    source="manual",
+                    confidence="medium",
+                )
+
         p_result = await session.execute(
             select(RewardParticipantState).where(
                 RewardParticipantState.goal_id == goal_id,
@@ -899,6 +938,12 @@ async def log_drop(
         notes=body.notes,
         recipient_prior_state=recipient_prior_state,
         recipient_prior_state_at=recipient_prior_state_at,
+        recipient_character_id=character_id,
+        recipient_character_name=character_name,
+        recipient_character_source=character_source,
+        recipient_record_prior_state=record_prior_state,
+        recipient_record_prior_at=record_prior_at,
+        recipient_record_prior_changed_at=record_prior_changed_at,
         logged_via=via,
         api_key_id=request_api_key_id(request),
         created_at=now,
@@ -962,8 +1007,16 @@ async def delete_drop(
     state, with the timestamp of the flip that recorded it, hands off to the
     earliest remaining drop unless that drop already holds a later flip's prior
     (then this one is discarded), so the latest flip's prior always survives.
-    Only the last drop to go restores it, unless the plugin or a manual edit set
-    the state after that flip.
+    Only the last drop to go restores it, unless a state write moved the row's
+    `state_changed_at` past that flip (R-S1-14): a plugin token sync, or a
+    manual edit that keeps the state, no longer blocks it.
+
+    The record prior an own drop stored (R-S1-13) hands off the same way, timed
+    by `recipient_record_prior_at`. When the last drop goes, the record reverts
+    to that prior only for the recipient's own Undo (a lead's delete is this
+    static's correction), and only while the record still says `have` with the
+    `state_changed_at` the drop gave it; the revert restores the record's
+    earlier `state_changed_at` (vet M-10), so it reads as no new un-Have.
 
     The goal row is locked before the drop is read, so concurrent deletes (and a
     log) on one goal serialize: the second sees the first's hand-off committed.
@@ -973,7 +1026,7 @@ async def delete_drop(
     if membership.role == MemberRole.VIEWER:
         raise PermissionDenied("Viewers cannot delete drops")
 
-    await _get_goal(session, group_id, goal_id, for_update=True)
+    goal = await _get_goal(session, group_id, goal_id, for_update=True)
     result = await session.execute(
         select(RewardDropLog).where(
             RewardDropLog.id == drop_id,
@@ -992,10 +1045,16 @@ async def delete_drop(
     # The flip's own timestamp, carried through hand-offs; a row logged before the
     # column existed falls back to its created_at.
     prior_at = drop.recipient_prior_state_at or drop.created_at
+    # The record prior (R-S1-13): all three travel together, timed by prior_at.
+    record_prior_state = drop.recipient_record_prior_state
+    record_prior_at = drop.recipient_record_prior_at
+    record_prior_changed_at = drop.recipient_record_prior_changed_at
+    via = logged_via(request)  # an unset channel raises before anything is deleted (R-PV-2)
     await session.delete(drop)
     await session.flush()
 
     outcome = "no_change"
+    record_outcome = "no_change"
     if recipient_id is not None:
         remaining_result = await session.execute(
             select(RewardDropLog)
@@ -1012,8 +1071,8 @@ async def delete_drop(
             #    remaining drop when that drop has none or an earlier one; when it
             #    already holds a later flip's prior, that one wins and this one is
             #    discarded. The latest flip's prior survives in any delete order.
+            earliest = remaining[0]
             if prior_state is not None:
-                earliest = remaining[0]
                 earliest_at = earliest.recipient_prior_state_at or earliest.created_at
                 if earliest.recipient_prior_state is None or _is_after(prior_at, earliest_at):
                     earliest.recipient_prior_state = prior_state
@@ -1021,34 +1080,88 @@ async def delete_drop(
                     outcome = "handed_off"
                 else:
                     outcome = "discarded"
-        elif prior_state is not None:
-            # 2. This was their last drop: restore the state the flip replaced, unless
-            #    the plugin or a manual edit set the state after that flip.
-            p_result = await session.execute(
-                select(RewardParticipantState).where(
-                    RewardParticipantState.goal_id == goal_id,
-                    RewardParticipantState.user_id == recipient_id,
-                )
-            )
-            participant = p_result.scalar_one_or_none()
-            if participant and participant.state == "have":
-                if _is_after(participant.last_synced_at, prior_at) or _is_after(
-                    participant.last_manual_override_at, prior_at
+            # The record prior hands off by the same rule (R-S1-14).
+            if record_prior_state is not None:
+                if earliest.recipient_record_prior_state is None or _is_after(
+                    record_prior_at, earliest.recipient_record_prior_at
                 ):
-                    outcome = "skipped"
+                    earliest.recipient_record_prior_state = record_prior_state
+                    earliest.recipient_record_prior_at = record_prior_at
+                    earliest.recipient_record_prior_changed_at = record_prior_changed_at
+                    record_outcome = "handed_off"
                 else:
-                    await write_row(
-                        session,
-                        row=participant,
-                        goal_id=goal_id,
-                        static_group_id=group_id,
-                        user_id=recipient_id,
-                        actor_user_id=current_user.id,
-                        via=logged_via(request),
-                        now=_now(),
-                        state=prior_state,
+                    record_outcome = "discarded"
+        else:
+            now = _now()
+            if prior_state is not None:
+                # 2. This was their last drop: restore the state the flip replaced,
+                #    unless a state write moved the row's clock past that flip.
+                p_result = await session.execute(
+                    select(RewardParticipantState).where(
+                        RewardParticipantState.goal_id == goal_id,
+                        RewardParticipantState.user_id == recipient_id,
                     )
-                    outcome = "restored"
+                )
+                participant = p_result.scalar_one_or_none()
+                if participant and participant.state == "have":
+                    if _is_after(participant.state_changed_at, prior_at):
+                        outcome = "skipped"
+                    else:
+                        await write_row(
+                            session,
+                            row=participant,
+                            goal_id=goal_id,
+                            static_group_id=group_id,
+                            user_id=recipient_id,
+                            actor_user_id=current_user.id,
+                            via=via,
+                            now=now,
+                            state=prior_state,
+                        )
+                        outcome = "restored"
+            if record_prior_state is not None and current_user.id == recipient_id:
+                # 3. The recipient's own Undo of their last drop reverts the record the
+                #    drop raised (R-S1-14): their record in this static goes back to the
+                #    prior, stamped with its earlier state_changed_at (vet M-10), while
+                #    it still says `have` with the state_changed_at the drop gave it
+                #    (compared parsed). A lead's delete leaves it: that is this
+                #    static's correction.
+                catalog_item_id = goal.catalog_item_id
+                target = None
+                record = None
+                if catalog_item_id is not None:
+                    target = (await resolve_record_targets(session, [(group_id, recipient_id)]))[
+                        (group_id, recipient_id)
+                    ]
+                    if target.profile_id is not None:
+                        record = (await load_records(session, [target], [catalog_item_id]))[
+                            target
+                        ].get(catalog_item_id)
+                record_at = None if record is None else _parse_ts(record.state_changed_at)
+                if record is None:
+                    # No catalog item, no profile, or no record row: nothing to revert.
+                    record_outcome = "none"
+                elif (
+                    record.ownership_state == "have"
+                    and record_at is not None
+                    and record_at == _parse_ts(record_prior_at)
+                ):
+                    await write_record(
+                        session,
+                        target,
+                        catalog_item_id,
+                        actor_user_id=current_user.id,
+                        via=via,
+                        mode=RECORD_WRITE_PERSON,
+                        now=now,
+                        ownership=record_prior_state,
+                        source="manual",
+                        confidence="medium",
+                        restore_state_changed_at=record_prior_changed_at,
+                    )
+                    record_outcome = "reverted"
+                else:
+                    record_outcome = "skipped"
 
     await session.commit()
     logger.info(
@@ -1059,4 +1172,5 @@ async def delete_drop(
         recipient=recipient_id,
         prior_state=prior_state,
         outcome=outcome,
+        record_outcome=record_outcome,
     )

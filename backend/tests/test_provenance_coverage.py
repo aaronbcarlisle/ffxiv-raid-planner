@@ -21,7 +21,10 @@ the record's writers are the one door (`write_record`), the in-place writes
 (e) and the stamps (f) stay inside the door, every caller of the door (g)
 names its writer and channel and has a route test in
 tests/test_record_provenance.py (`RECORD_COVERED`, vet I-2). PR 4 adds
-`RewardParticipantState` and the drop's keywords.
+`RewardParticipantState` (the farm row, written through `write_row`) and the
+drop's keywords, widens the tracked attributes by the row's `state`,
+`token_count` and `priority_rank`, and registers the callers of the record's
+lifecycle functions (adopt, release, delete) under (d).
 """
 
 import ast
@@ -44,9 +47,13 @@ PROVENANCE_MODELS = {
     "PageLedgerEntry": "page_ledger_entries",
     "RewardDropLog": "reward_drop_log",
     "PlayerCollectionSnapshot": "player_collection_snapshots",
+    "RewardParticipantState": "reward_participant_states",
 }
 TIER_MODELS = {"LootLogEntry", "MaterialLogEntry", "PageLedgerEntry"}
 RECORD_MODELS = {"PlayerCollectionSnapshot"}
+ROW_MODELS = {"RewardParticipantState"}
+# Models whose channel column is `updated_via` (the others carry `logged_via`).
+STAMPED_MODELS = RECORD_MODELS | ROW_MODELS
 
 CHANNEL_KEYWORDS = {"logged_via", "api_key_id"}
 TIER_KEYWORDS = {
@@ -62,19 +69,33 @@ RECORD_KEYWORDS = {
     "token_count_updated_at",
     "character_id",
 }
+# The farm row carries the record's stamps, without a character.
+ROW_KEYWORDS = RECORD_KEYWORDS - {"character_id"}
+# The drop's character and the record it raised (B11, vet M-10).
+DROP_KEYWORDS = {
+    "recipient_character_id",
+    "recipient_character_name",
+    "recipient_character_source",
+    "recipient_record_prior_state",
+    "recipient_record_prior_at",
+    "recipient_record_prior_changed_at",
+}
+
+
+def _required_keywords(model: str) -> set[str]:
+    if model in RECORD_MODELS:
+        return RECORD_KEYWORDS
+    if model in ROW_MODELS:
+        return ROW_KEYWORDS
+    keywords = CHANNEL_KEYWORDS | (TIER_KEYWORDS if model in TIER_MODELS else set())
+    return keywords | (DROP_KEYWORDS if model == "RewardDropLog" else set())
+
 
 # model -> the keywords every constructor call passes explicitly (b).
-REQUIRED_KEYWORDS = {
-    model: (
-        RECORD_KEYWORDS
-        if model in RECORD_MODELS
-        else CHANNEL_KEYWORDS | (TIER_KEYWORDS if model in TIER_MODELS else set())
-    )
-    for model in PROVENANCE_MODELS
-}
+REQUIRED_KEYWORDS = {model: _required_keywords(model) for model in PROVENANCE_MODELS}
 # model -> the keyword that carries the channel, never the constant None.
 VIA_KEYWORD = {
-    model: "updated_via" if model in RECORD_MODELS else "logged_via" for model in PROVENANCE_MODELS
+    model: "updated_via" if model in STAMPED_MODELS else "logged_via" for model in PROVENANCE_MODELS
 }
 
 DOOR_MODULE = "app/services/collection_records.py"
@@ -87,10 +108,11 @@ EXPECTED_SITES = {
     ("app/routers/loot_tracking.py", "create_material_log_entry"),
     ("app/routers/collection_goals.py", "log_drop"),
     (DOOR_MODULE, "write_record"),
+    (DOOR_MODULE, "write_row"),
 }
 
-# (e) The record's attributes no other row code assigns. PR 4 (D3) adds the farm
-# row's `state`, `token_count` and `priority_rank` once every row write is routed.
+# (e) The record's attributes and the farm row's fact columns. Every write of
+# `state`, `token_count` and `priority_rank` is routed through `write_row` (C1-D2).
 TRACKED = {
     "ownership_state",
     "character_id",
@@ -98,6 +120,9 @@ TRACKED = {
     "updated_via",
     "state_changed_at",
     "token_count_updated_at",
+    "state",
+    "token_count",
+    "priority_rank",
 }
 # Every function of DOOR_MODULE that assigns a TRACKED attribute, and no other.
 # `write_row` is the farm row's door (R-S1-7): its stamp columns share the
@@ -120,8 +145,9 @@ DYNAMIC_SETATTR_OK = {
     ("app/routers/split_clear.py", "upsert_split_clear_assignment"): "SplitClear fields",
 }
 
-# (g) Entry points of the door: each call names its writer and channel.
-DOOR_ENTRY_POINTS = {"write_record"}
+# (g) Entry points of the doors, the record's and the farm row's: each call names its
+# writer and channel.
+DOOR_ENTRY_POINTS = {"write_record", "write_row"}
 # The only callers that may pass `actor_user_id=None` (R-S1-8).
 DERIVED_CALLERS = {("app/routers/collection_goals.py", "create_goal_from_suggestion")}
 # The (module, function) pairs that call a door entry point.
@@ -130,6 +156,13 @@ EXPECTED_DOOR_CALLERS = {
     ("app/services/player_reward_bridge_service.py", "_write_own_records"),
     ("app/services/plugin_collection_sync_service.py", "_write_sync_record"),
     ("app/routers/collection_goals.py", "_write_own_state"),
+    ("app/routers/collection_goals.py", "log_drop"),
+    ("app/routers/collection_goals.py", "delete_drop"),
+    # The row door's callers (`write_row`).
+    ("app/routers/collection_goals.py", "create_goal_from_suggestion"),
+    ("app/routers/collection_goals.py", "upsert_participant_state_for_user"),
+    ("app/services/plugin_collection_sync_service.py", "_upsert_state"),
+    ("app/services/plugin_collection_sync_service.py", "_update_token_count"),
 }
 # (d) Door caller -> the route handlers whose @covers_record tests exercise it. The
 # record tests are labelled by route, because a route test is what reads the stored
@@ -147,6 +180,43 @@ DOOR_CALLER_ROUTES = {
         "upsert_participant_state",
         "upsert_participant_state_for_user",
     },
+    ("app/routers/collection_goals.py", "log_drop"): {"log_drop"},
+    ("app/routers/collection_goals.py", "delete_drop"): {"delete_drop"},
+    ("app/routers/collection_goals.py", "create_goal_from_suggestion"): {
+        "create_goal_from_suggestion"
+    },
+    ("app/routers/collection_goals.py", "upsert_participant_state_for_user"): {
+        "upsert_participant_state_for_user"
+    },
+    ("app/services/plugin_collection_sync_service.py", "_upsert_state"): {
+        "plugin_sync_collections"
+    },
+    ("app/services/plugin_collection_sync_service.py", "_update_token_count"): {
+        "plugin_sync_collections"
+    },
+}
+
+# (d) The callers of the record's lifecycle functions (adopt, release, delete), each
+# with the test in tests/test_collections_center.py that drives it through its route.
+# A caller that releases a character's rows also deletes its records explicitly.
+LIFECYCLE_FUNCTIONS = {
+    "adopt_profile_rows",
+    "release_last_character_rows",
+    "delete_character_records",
+}
+LIFECYCLE_CALLERS = {
+    ("app/routers/player.py", "link_character"): (
+        {"adopt_profile_rows"},
+        "test_link_character_adopts_the_profile_level_rows",
+    ),
+    ("app/routers/player.py", "_get_or_provision_plugin_character"): (
+        {"adopt_profile_rows"},
+        "test_plugin_provisioning_adopts_the_profile_level_rows",
+    ),
+    ("app/routers/player.py", "unlink_character"): (
+        {"release_last_character_rows", "delete_character_records"},
+        "test_unlinking_an_alt_deletes_its_rows_and_keeps_the_mains",
+    ),
 }
 
 # Handlers that build no row but can move one to another card (R-PV-7). PV-2 also
@@ -168,6 +238,14 @@ RAW_UPDATE = re.compile(
     r"\bupdate\s+(?:or\s+\w+\s+)?"
     r"(?:" + _SQL_IDENT + r"\s*\.\s*)?"
     r"""["`\[]?(?:""" + "|".join(PROVENANCE_MODELS.values()) + r")\b",
+    re.IGNORECASE,
+)
+# Deleting is refused for the record's table only: the row's and the logs' own delete
+# routes remove rows by `db.delete(row)` or by a cascade.
+RAW_DELETE = re.compile(
+    r"\bdelete\s+from\s+"
+    r"(?:" + _SQL_IDENT + r"\s*\.\s*)?"
+    r"""["`\[]?(?:""" + "|".join(PROVENANCE_MODELS[m] for m in sorted(RECORD_MODELS)) + r")\b",
     re.IGNORECASE,
 )
 
@@ -340,6 +418,8 @@ def _write_problems(module: str, tree: ast.Module) -> list[str]:
                 problems.append(f"{where}: raw INSERT INTO a provenance table")
             if RAW_UPDATE.search(node.value):
                 problems.append(f"{where}: raw UPDATE of a provenance table")
+            if RAW_DELETE.search(node.value):
+                problems.append(f"{where}: raw DELETE FROM the collection record's table")
     return problems
 
 
@@ -386,6 +466,17 @@ WRITE_FORMS = {
     "attribute delete": "sa.delete(PlayerCollectionSnapshot)",
     "delete(record model.__table__)": "delete(PlayerCollectionSnapshot.__table__)",
     "model.__table__.delete()": "PlayerCollectionSnapshot.__table__.delete()",
+    "update(row model)": "update(RewardParticipantState).values(state='have')",
+    "row model.__table__.update()": "RewardParticipantState.__table__.update()",
+    "raw UPDATE of the row table": 'text("UPDATE reward_participant_states SET state = \'have\'")',
+    "raw INSERT into the row table": (
+        'text("INSERT INTO reward_participant_states (id) VALUES (1)")'
+    ),
+    "raw DELETE FROM the record table": 'text("DELETE FROM player_collection_snapshots")',
+    "lowercase schema-qualified raw DELETE": (
+        'text("delete from public.player_collection_snapshots where x = 1")'
+    ),
+    "quoted raw DELETE": 'text(\'DELETE FROM "player_collection_snapshots" WHERE x = 1\')',
 }
 
 # Writes to other tables, which (c) must let through.
@@ -407,6 +498,12 @@ OTHER_TABLE_WRITES = {
         'text("UPDATE player_collection_snapshots_archive SET x = 1")'
     ),
     "prose that says update": 'text("update the player_collection_snapshots later")',
+    "raw DELETE FROM another table": 'text("DELETE FROM other_table")',
+    "raw DELETE FROM a table that only starts like the record's": (
+        'text("DELETE FROM player_collection_snapshots_archive")'
+    ),
+    "raw DELETE FROM a farm-row table": 'text("DELETE FROM reward_participant_states WHERE x = 1")',
+    "delete(row model)": "delete(RewardParticipantState).where(x)",
 }
 
 
@@ -449,6 +546,55 @@ def test_b_lets_a_complete_record_constructor_through():
     assert not _record_call(_RECORD_KEYWORDS_PASSED)
 
 
+def _model_call(model: str, keywords: str) -> list[str]:
+    call = ast.parse(f"{model}(id=1, {keywords})").body[0].value
+    return _keyword_problems("snippet.py", model, "fn", call)
+
+
+_ROW_KEYWORDS_PASSED = (
+    "updated_by_user_id=a, updated_via=v, state_changed_at=s, token_count_updated_at=t"
+)
+_DROP_KEYWORDS_PASSED = (
+    "logged_via=v, api_key_id=k, recipient_character_id=c, recipient_character_name=n, "
+    "recipient_character_source=s, recipient_record_prior_state=p, "
+    "recipient_record_prior_at=pa, recipient_record_prior_changed_at=pc"
+)
+
+
+def test_b_asks_the_row_for_the_stamps_but_not_a_character():
+    assert not _model_call("RewardParticipantState", _ROW_KEYWORDS_PASSED)
+    problems = _model_call("RewardParticipantState", "state='want'")
+    assert any("missing updated_by_user_id=" in p for p in problems)
+    assert any("missing updated_via=" in p for p in problems)
+    assert not any("character_id" in p for p in problems)
+
+
+def test_b_refuses_a_row_updated_via_of_none():
+    problems = _model_call(
+        "RewardParticipantState", _ROW_KEYWORDS_PASSED.replace("updated_via=v", "updated_via=None")
+    )
+    assert any("updated_via is the constant None" in p for p in problems)
+
+
+def test_b_lets_a_complete_drop_constructor_through():
+    assert not _model_call("RewardDropLog", _DROP_KEYWORDS_PASSED)
+
+
+@pytest.mark.parametrize("keyword", sorted(DROP_KEYWORDS))
+def test_b_refuses_a_drop_constructor_without_a_drop_keyword(keyword):
+    passed = _DROP_KEYWORDS_PASSED.split(", ")
+    kept = ", ".join(p for p in passed if not p.startswith(f"{keyword}="))
+    assert any(f"missing {keyword}=" in p for p in _model_call("RewardDropLog", kept))
+
+
+def test_b_does_not_ask_the_tier_logs_for_the_drops_keywords():
+    passed = (
+        "logged_via=v, api_key_id=k, recipient_user_id=u, recipient_character_registration_id=r, "
+        "recipient_character_name=n, recipient_character_source=s"
+    )
+    assert not _model_call("LootLogEntry", passed)
+
+
 # ---------------------------------------------------------------------------
 # (e) one door for in-place writes
 # ---------------------------------------------------------------------------
@@ -481,12 +627,16 @@ def _attribute_writes(tree: ast.AST) -> list[tuple[str, int, str, str]]:
     """(function, line, base, attribute) of every attribute assignment and constant `setattr`.
 
     Assignment targets are an `=`, an augmented or annotated assignment, a `for` (or
-    `async for`, or comprehension) target and a `with ... as` target.
+    `async for`, or comprehension) target, a `with ... as` target, and a `del` (which
+    removes a column's value as surely as an assignment changes it), as is a constant
+    `delattr`.
     """
     writes = []
     for fn, node in _nodes_with_function(tree):
         targets: list[ast.AST] = []
         if isinstance(node, ast.Assign):
+            targets = list(node.targets)
+        elif isinstance(node, ast.Delete):
             targets = list(node.targets)
         elif isinstance(node, (ast.AugAssign, ast.For, ast.AsyncFor, ast.comprehension)):
             targets = [node.target]
@@ -499,7 +649,7 @@ def _attribute_writes(tree: ast.AST) -> list[tuple[str, int, str, str]]:
                 writes.append((fn, getattr(node, "lineno", target.lineno), base, attr))
         if (
             isinstance(node, ast.Call)
-            and _callee_name(node) == "setattr"
+            and _callee_name(node) in ("setattr", "delattr")
             and len(node.args) >= 2
             and isinstance(node.args[1], ast.Constant)
             and isinstance(node.args[1].value, str)
@@ -526,7 +676,7 @@ def _in_place_problems(module: str, tree: ast.Module) -> list[str]:
         name = _callee_name(node)
         if name == "set_attribute":
             problems.append(f"{where}: set_attribute() writes an attribute out of sight")
-        elif name == "setattr" and len(node.args) >= 2:
+        elif name in ("setattr", "delattr") and len(node.args) >= 2:
             key = node.args[1]
             if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
                 if (module, fn) not in DYNAMIC_SETATTR_OK:
@@ -631,6 +781,21 @@ IN_PLACE_FORMS = {
     "dynamic setattr in an unlisted function": _fn("setattr(row, name, v)"),
     "set_attribute": _fn('set_attribute(row, "state", v)'),
     "qualified set_attribute": _fn('attributes.set_attribute(row, "state", v)'),
+    # The farm row's fact columns are tracked too (vet I-2).
+    "row state assign": _fn('row.state = "have"'),
+    "row state tuple target": _fn('row.state, b = "have", 1'),
+    "row state nested tuple target": _fn('(a, (row.state, b)) = (1, ("have", 2))'),
+    "row state constant setattr": _fn('setattr(row, "state", v)'),
+    "row state AugAssign": _fn('row.state += "x"'),
+    "row token_count assign": _fn("snapshot.token_count = 1"),
+    "row token_count AnnAssign": _fn("snapshot.token_count: int = 1"),
+    "row priority_rank assign": _fn("row.priority_rank = None"),
+    "row priority_rank tuple target": _fn("a.priority_rank, row.token_count = 1, 2"),
+    "del of a tracked attribute": _fn("del row.ownership_state"),
+    "del of a farm-row attribute": _fn("del row.token_count"),
+    "del in a tuple": _fn("del row.state, b.priority_rank"),
+    "constant delattr": _fn('delattr(row, "state_changed_at")'),
+    "dynamic delattr in an unlisted function": _fn("delattr(row, name)"),
 }
 # What (e) must let through.
 IN_PLACE_OK = {
@@ -642,6 +807,12 @@ IN_PLACE_OK = {
     "a for target of an untracked attribute": _fn("for row.title in v:\n        pass"),
     "a with target that is a plain name": _fn("with v as ownership_state:\n        pass"),
     "a constructor keyword": _fn("return Row(ownership_state=v)"),
+    "a constructor keyword of a farm-row name": _fn("return Row(state=v, token_count=1)"),
+    "a read of a farm-row name": _fn("return row.state, row.token_count, row.priority_rank"),
+    "a del of an untracked attribute": _fn("del row.title"),
+    "a del of a plain name": _fn("del state"),
+    "a del of a subscript": _fn("del row[0]"),
+    "an untracked constant delattr": _fn('delattr(row, "title")'),
 }
 
 
@@ -831,3 +1002,76 @@ def test_d_every_site_has_a_covering_route_test():
 def test_d_the_route_map_names_exactly_the_door_callers():
     assert set(DOOR_CALLER_ROUTES) == EXPECTED_DOOR_CALLERS
     assert all(DOOR_CALLER_ROUTES.values()), "a door caller with no route"
+
+
+# ---------------------------------------------------------------------------
+# (d) the record's lifecycle callers
+# ---------------------------------------------------------------------------
+
+
+def _lifecycle_calls(tree: ast.Module) -> dict[str, set[str]]:
+    """function -> the lifecycle functions it calls, by plain or method-style name."""
+    found: dict[str, set[str]] = {}
+    for fn, node in _nodes_with_function(tree):
+        name = _callee_name(node) if isinstance(node, ast.Call) else None
+        if name in LIFECYCLE_FUNCTIONS:
+            found.setdefault(fn, set()).add(name)
+    return found
+
+
+def _lifecycle_problems(callers: dict[tuple[str, str], set[str]]) -> list[str]:
+    """A function that releases a character's rows also deletes its records explicitly."""
+    return [
+        f"{module} {fn}: releases rows without delete_character_records"
+        for (module, fn), called in sorted(callers.items())
+        if "release_last_character_rows" in called and "delete_character_records" not in called
+    ]
+
+
+def _keyed(module: str, source: str) -> dict[tuple[str, str], set[str]]:
+    return {(module, fn): called for fn, called in _lifecycle_calls(ast.parse(source)).items()}
+
+
+def test_d_the_lifecycle_callers_are_the_expected_set():
+    found = {
+        (module, fn): called
+        for module, tree in _modules()
+        if module != DOOR_MODULE
+        for fn, called in _lifecycle_calls(tree).items()
+    }
+    expected = {key: called for key, (called, _test) in LIFECYCLE_CALLERS.items()}
+    assert found == expected, (
+        f"new lifecycle callers: {sorted(set(found) - set(expected))}; "
+        f"vanished: {sorted(set(expected) - set(found))}; "
+        f"changed calls: {sorted(k for k in set(found) & set(expected) if found[k] != expected[k])}"
+    )
+    assert not _lifecycle_problems(found)
+
+
+def test_d_each_lifecycle_caller_has_its_route_test():
+    path = BACKEND / "tests" / "test_collections_center.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    defined = {n.name for n in ast.walk(tree) if isinstance(n, ast.AsyncFunctionDef)}
+    missing = sorted(t for _called, t in LIFECYCLE_CALLERS.values() if t not in defined)
+    assert not missing, f"no route test in tests/test_collections_center.py: {missing}"
+
+
+def test_d_refuses_a_release_without_the_explicit_delete():
+    source = "async def new_unlink(db):\n    await release_last_character_rows(db)\n"
+    assert _lifecycle_problems(_keyed("app/routers/x.py", source))
+
+
+def test_d_lets_a_release_with_its_delete_through():
+    source = (
+        "async def unlink(db):\n"
+        "    await release_last_character_rows(db)\n"
+        "    await delete_character_records(db)\n"
+    )
+    assert not _lifecycle_problems(_keyed("app/routers/x.py", source))
+
+
+def test_d_sees_a_lifecycle_call_as_a_method():
+    source = "def new_path(svc):\n    svc.adopt_profile_rows(1)\n"
+    assert _keyed("app/routers/x.py", source) == {
+        ("app/routers/x.py", "new_path"): {"adopt_profile_rows"}
+    }

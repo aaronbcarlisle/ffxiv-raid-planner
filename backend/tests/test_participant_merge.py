@@ -38,8 +38,6 @@ from tests.factories import (
     create_user,
 )
 
-pytestmark = pytest.mark.asyncio
-
 BASE = datetime(2026, 1, 1, tzinfo=timezone.utc)
 USER = "user-1"
 LEAD = "lead-1"

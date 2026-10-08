@@ -147,6 +147,22 @@ export const RELEASES: Release[] = [
         pr: 358,
         prTitle: 'feat(api): S2a-1a·3b — farm row writes go through the row door; a member\'s own status and count',
       },
+      {
+        category: 'fix',
+        title: 'Removing a farm drop restores your earlier status',
+        description:
+          'Removing a farm drop now restores the member\'s earlier status even after a plugin sync.',
+        pr: 359,
+        prTitle: 'feat(api): S2a-1a·4 — drops record the character; Undo restores after a sync',
+      },
+      {
+        category: 'improvement',
+        title: 'Farm drops record the recipient\'s character',
+        description: 'Farm drops record the recipient\'s character.',
+        pr: 359,
+        prTitle: 'feat(api): S2a-1a·4 — drops record the character; Undo restores after a sync',
+        internal: true,
+      },
     ],
   },
   {

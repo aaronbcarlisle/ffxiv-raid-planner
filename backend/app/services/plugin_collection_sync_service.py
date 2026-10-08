@@ -153,7 +153,13 @@ async def sync_collection_states(
 
             for goal in matched_goals:
                 updated = await _update_token_count(
-                    session, goal, user.id, token_item.count, now, actor_user_id=actor_user_id, via=via
+                    session,
+                    goal,
+                    user.id,
+                    token_item.count,
+                    now,
+                    actor_user_id=actor_user_id,
+                    via=via,
                 )
                 if updated:
                     result.token_counts_updated += 1
@@ -317,7 +323,9 @@ async def _upsert_state(
     if existing.state == "pass" and existing.source == "manual":
         return False, True
 
-    # Already confirmed from plugin — just refresh timestamp
+    # Already confirmed from plugin — just refresh timestamp. Written directly, not
+    # through write_row: last_synced_at is not a fact attribute, and routing it would
+    # bump updated_at (and the stamps) on every no-op sync.
     if existing.state == new_state and existing.source == "plugin":
         existing.last_synced_at = now
         return False, False
