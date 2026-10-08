@@ -73,6 +73,15 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(api): S2a-1a·1 — collection records get a character; partial unique indexes, writer and change-time columns, the drop\'s character',
         internal: true,
       },
+      {
+        category: 'improvement',
+        title: 'Collection records resolve to the right character',
+        description:
+          'The server can now work out which of your characters a static\'s collection progress belongs to: the character on your card in that static, else your main, else your profile. It also has one write path for your collection that records who changed what and when. Nothing changes on screen yet.',
+        pr: 349,
+        prTitle: 'feat(api): S2a-1a·1b — the record chain and the record door (collection_records service)',
+        internal: true,
+      },
     ],
     internal: true,
   },
