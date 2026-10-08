@@ -70,6 +70,8 @@ export const RELEASES: Release[] = [
         description:
           'Both farm-status writes now return an encrypted, ten-minute undo token that carries what the member\'s status and collection record held before the edit, who wrote them included, so a coming undo route can put them back exactly. A member\'s hidden totem count stays hidden inside it, and a token failure never fails a saved edit. Nothing changes on screen yet.',
         internal: true,
+        pr: 368,
+        prTitle: 'feat(api): S2a-2·B2 — undo tokens and the door\'s restores',
       },
     ],
     internal: true,
