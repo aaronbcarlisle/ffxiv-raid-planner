@@ -3,13 +3,21 @@
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
 from app.main import app
-from app.models import MemberRole, User
+from app.models import MemberRole, MountFarmProgress, User
 from app.routers.mount_farms import MOUNT_FARM_CATALOG
-from tests.factories import create_membership, create_static_group, create_user
+from tests.factories import (
+    create_catalog_item,
+    create_membership,
+    create_player_character,
+    create_player_profile,
+    create_static_group,
+    create_user,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -612,6 +620,155 @@ class TestPluginSync:
                 headers=auth_headers,
             )
             assert r.status_code == 200
+
+
+class TestPluginSyncRecordWrite:
+    """The sync writes the character record too (R-S1-18); the farm rows and the response stay."""
+
+    CLIENT_CLOCK = "2000-01-01T00:00:00+00:00"
+
+    async def test_farm_rows_and_response_keys_are_what_they_were(
+        self, client: AsyncClient, session: AsyncSession, test_user, test_group, auth_headers
+    ):
+        group2 = await create_static_group(session, test_user, name="Second Static")
+        profile = await create_player_profile(session, test_user)
+        await create_player_character(session, profile, name="Main Char", is_main=True)
+        item = await create_catalog_item(session, name="Zodiark Mount")
+        item.source_duty_key = TRIAL_ID_2
+        item.is_active = True
+        await session.commit()
+
+        response = await client.post(
+            "/api/plugin/mount-farms/sync",
+            json={
+                "characterName": "Main Char",
+                "mounts": [{"mountId": 282, "trialId": TRIAL_ID_2, "owned": True}],
+                "totems": [
+                    {"itemId": 44123, "trialId": "dt-valigarmanda", "count": 55},
+                    {"itemId": 44123, "trialId": "dt-zoraal-ja", "count": 0},
+                ],
+                "source": "plugin",
+                "syncedAt": self.CLIENT_CLOCK,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.text
+        assert response.json() == {
+            "mountsUpdated": 2,
+            "totemsUpdated": 2,
+            "mountsUnchanged": 0,
+            "totemsUnchanged": 2,
+            "unknownTrials": [],
+            "syncedAt": self.CLIENT_CLOCK,
+        }
+
+        result = await session.execute(
+            select(MountFarmProgress).execution_options(populate_existing=True)
+        )
+        rows = {
+            (row.static_group_id, row.trial_id): (
+                row.has_mount,
+                row.wants_mount,
+                row.totem_count,
+                row.ownership_source,
+                row.totem_source,
+                row.last_imported_at,
+                row.last_plugin_sync_at,
+                row.updated_at,
+                row.updated_by_id,
+            )
+            for row in result.scalars()
+        }
+        owned = (
+            True, False, 0, "plugin", "unknown",
+            self.CLIENT_CLOCK, self.CLIENT_CLOCK, self.CLIENT_CLOCK, test_user.id,
+        )
+        counted = (
+            False, True, 55, "unknown", "plugin",
+            self.CLIENT_CLOCK, self.CLIENT_CLOCK, self.CLIENT_CLOCK, test_user.id,
+        )
+        assert rows == {
+            (group.id, trial): expected
+            for group in (test_group, group2)
+            for trial, expected in ((TRIAL_ID_2, owned), (TRIAL_ID, counted))
+        }
+
+    async def test_sync_response_keys_without_a_static(self, client: AsyncClient, auth_headers):
+        response = await client.post(
+            "/api/plugin/mount-farms/sync",
+            json={"mounts": [{"mountId": 282, "owned": True}], "syncedAt": self.CLIENT_CLOCK},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json() == {
+            "mountsUpdated": 0,
+            "totemsUpdated": 0,
+            "mountsUnchanged": 0,
+            "totemsUnchanged": 0,
+            "unknownTrials": [],
+            "syncedAt": self.CLIENT_CLOCK,
+        }
+
+    @staticmethod
+    async def _flush_a_unique_violation(db: AsyncSession, user: User) -> None:
+        """A real flush failure: a second user row with the caller's unique discord_id."""
+        db.add(User(id="dup-user-id", discord_id=user.discord_id, discord_username="dup"))
+        await db.flush()
+
+    async def _assert_owned_farm_rows_survive(
+        self, client: AsyncClient, session: AsyncSession, test_user, test_group, auth_headers
+    ) -> None:
+        group_id = test_group.id  # read before the rollback below expires it
+        response = await client.post(
+            "/api/plugin/mount-farms/sync",
+            json={
+                "mounts": [{"mountId": 330, "trialId": TRIAL_ID, "owned": True}],
+                "totems": [],
+                "source": "plugin",
+                "syncedAt": self.CLIENT_CLOCK,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["mountsUpdated"] == 1
+
+        # Committed, not merely pending: drop anything uncommitted, then re-read.
+        await session.rollback()
+        result = await session.execute(
+            select(MountFarmProgress)
+            .where(
+                MountFarmProgress.static_group_id == group_id,
+                MountFarmProgress.trial_id == TRIAL_ID,
+            )
+            .execution_options(populate_existing=True)
+        )
+        row = result.scalar_one()
+        assert row.has_mount is True
+        assert row.ownership_source == "plugin"
+
+    async def test_a_record_write_failure_does_not_lose_the_farm_rows(
+        self, client: AsyncClient, session: AsyncSession, test_user, test_group, auth_headers,
+        monkeypatch,
+    ):
+        async def failing_apply_sync(db, **_kwargs):
+            await self._flush_a_unique_violation(db, test_user)
+
+        monkeypatch.setattr("app.routers.mount_farms.apply_sync", failing_apply_sync)
+        await self._assert_owned_farm_rows_survive(
+            client, session, test_user, test_group, auth_headers
+        )
+
+    async def test_a_goal_bridge_failure_does_not_lose_the_farm_rows(
+        self, client: AsyncClient, session: AsyncSession, test_user, test_group, auth_headers,
+        monkeypatch,
+    ):
+        async def failing_bridge(db, user, _data, _now):
+            await self._flush_a_unique_violation(db, user)
+
+        monkeypatch.setattr("app.routers.mount_farms._bridge_mount_farm_goals", failing_bridge)
+        await self._assert_owned_farm_rows_survive(
+            client, session, test_user, test_group, auth_headers
+        )
 
 
 class TestBulkUpdate:

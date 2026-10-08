@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.67';
+export const CURRENT_VERSION = '2.1.68';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.68',
+    date: '2026-10-08T00:00:00Z',
+    title: 'Plugin syncs follow your character',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Plugin syncs follow your character',
+        description:
+          'When the plugin\'s character name matches one of your characters, a sync updates only the statics where you play that character. A sync never changes a mount marked as Pass. Otherwise a sync updates every static as before, and your main character\'s collection takes the result.',
+        pr: 361,
+        prTitle: 'feat(api): S2a-1b·1 — plugin syncs match your character and write through one service',
+      },
+    ],
+  },
   {
     version: '2.1.67',
     date: '2026-10-08T00:00:00Z',

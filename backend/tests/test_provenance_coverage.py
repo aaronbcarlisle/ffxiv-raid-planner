@@ -24,7 +24,9 @@ tests/test_record_provenance.py (`RECORD_COVERED`, vet I-2). PR 4 adds
 `RewardParticipantState` (the farm row, written through `write_row`) and the
 drop's keywords, widens the tracked attributes by the row's `state`,
 `token_count` and `priority_rank`, and registers the callers of the record's
-lifecycle functions (adopt, release, delete) under (d).
+lifecycle functions (adopt, release, delete) under (d). PR 5 (E2) moves the
+plugin sync's row and record writes into the door module's `apply_sync`, so
+its callers of both doors live there.
 """
 
 import ast
@@ -147,22 +149,25 @@ DYNAMIC_SETATTR_OK = {
 
 # (g) Entry points of the doors, the record's and the farm row's: each call names its
 # writer and channel.
-DOOR_ENTRY_POINTS = {"write_record", "write_row"}
+DOOR_ENTRY_POINTS = {"write_record", "write_row", "apply_sync"}
 # The only callers that may pass `actor_user_id=None` (R-S1-8).
 DERIVED_CALLERS = {("app/routers/collection_goals.py", "create_goal_from_suggestion")}
 # The (module, function) pairs that call a door entry point.
 EXPECTED_DOOR_CALLERS = {
     ("app/routers/player_collection.py", "upsert_snapshot"),
     ("app/services/player_reward_bridge_service.py", "_write_own_records"),
-    ("app/services/plugin_collection_sync_service.py", "_write_sync_record"),
     ("app/routers/collection_goals.py", "_write_own_state"),
     ("app/routers/collection_goals.py", "log_drop"),
     ("app/routers/collection_goals.py", "delete_drop"),
     # The row door's callers (`write_row`).
     ("app/routers/collection_goals.py", "create_goal_from_suggestion"),
     ("app/routers/collection_goals.py", "upsert_participant_state_for_user"),
-    ("app/services/plugin_collection_sync_service.py", "_upsert_state"),
-    ("app/services/plugin_collection_sync_service.py", "_update_token_count"),
+    # The plugin syncs (R-S1-17): `apply_sync` writes the record, `_sync_row` the rows.
+    (DOOR_MODULE, "apply_sync"),
+    (DOOR_MODULE, "_sync_row"),
+    # `apply_sync` is itself a door entry point: its callers name the writer and channel.
+    ("app/services/plugin_collection_sync_service.py", "sync_collection_states"),
+    ("app/routers/mount_farms.py", "plugin_sync_mount_farms"),
 }
 # (d) Door caller -> the route handlers whose @covers_record tests exercise it. The
 # record tests are labelled by route, because a route test is what reads the stored
@@ -172,9 +177,6 @@ DOOR_CALLER_ROUTES = {
     ("app/services/player_reward_bridge_service.py", "_write_own_records"): {
         "update_mount_farm_progress",
         "bulk_update_mount_farm_progress",
-    },
-    ("app/services/plugin_collection_sync_service.py", "_write_sync_record"): {
-        "plugin_sync_collections"
     },
     ("app/routers/collection_goals.py", "_write_own_state"): {
         "upsert_participant_state",
@@ -188,12 +190,12 @@ DOOR_CALLER_ROUTES = {
     ("app/routers/collection_goals.py", "upsert_participant_state_for_user"): {
         "upsert_participant_state_for_user"
     },
-    ("app/services/plugin_collection_sync_service.py", "_upsert_state"): {
+    (DOOR_MODULE, "apply_sync"): {"plugin_sync_collections"},
+    (DOOR_MODULE, "_sync_row"): {"plugin_sync_collections"},
+    ("app/services/plugin_collection_sync_service.py", "sync_collection_states"): {
         "plugin_sync_collections"
     },
-    ("app/services/plugin_collection_sync_service.py", "_update_token_count"): {
-        "plugin_sync_collections"
-    },
+    ("app/routers/mount_farms.py", "plugin_sync_mount_farms"): {"plugin_sync_mount_farms"},
 }
 
 # (d) The callers of the record's lifecycle functions (adopt, release, delete), each

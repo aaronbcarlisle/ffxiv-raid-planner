@@ -15,7 +15,9 @@ every recorded name resolves on this module. B2 and B3 only append: a name to
 import asyncio
 import uuid
 from collections.abc import Callable
+from datetime import datetime, timezone
 
+import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -52,6 +54,7 @@ RECORD_HANDLERS = (
     "update_mount_farm_progress",
     "bulk_update_mount_farm_progress",
     "plugin_sync_collections",
+    "plugin_sync_mount_farms",
     "upsert_participant_state",
     "upsert_participant_state_for_user",
     "log_drop",
@@ -548,6 +551,301 @@ async def test_plugin_sync_without_a_profile_writes_no_record(client, session, a
 
     assert await _all_records(session) == []
     assert (await session.execute(select(PlayerProfile))).scalars().all() == []
+
+
+async def _sync_statics(session: AsyncSession, test_user, test_user_2, *, card):
+    """test_user's statics for a sync: one with `card` on its roster, one with no card, and
+    one where test_user is a viewer. Returns them in that order."""
+    card_static = await create_static_group(session, test_user, name="Card Static")
+    await create_claimed_card(session, card_static, test_user, card)
+    no_card = await create_static_group(session, test_user, name="No Card Static")
+    viewed = await create_static_group(session, test_user_2, name="Viewed Static")
+    await create_membership(session, test_user, viewed, role=MemberRole.VIEWER)
+    return card_static, no_card, viewed
+
+
+@covers_record("plugin_sync_collections")
+async def test_plugin_sync_with_a_matched_name_writes_its_record_and_only_its_statics_rows(
+    client, session, test_user, test_user_2, test_group, auth_headers, world
+):
+    """R-S1-17: the matched main gets the record; rows go to the static whose card is the main
+    and to the static with no card (its chain falls to the main); the static whose card is
+    the alt is untouched."""
+    _, main, alt, _ = world
+    main_static, no_card, _ = await _sync_statics(session, test_user, test_user_2, card=main)
+    await create_claimed_card(session, test_group, test_user, alt)
+    item = await _farm_item(session, "Matched Mount", game_mount_id=4601, token_item_id=4602)
+    goals = {
+        static.id: await _tracked_goal(session, static, test_user, item)
+        for static in (main_static, no_card, test_group)
+    }
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "POST",
+        SYNC_URL,
+        json={
+            "characterName": "Main Char",
+            "mounts": [{"mountId": 4601, "owned": True}],
+            "currencies": [{"itemId": 4602, "count": 12}],
+        },
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["statesUpdated"], body["tokenCountsUpdated"], body["skippedLocked"]) == (2, 2, 0)
+
+    for static in (main_static, no_card):
+        row = await _row(session, goals[static.id], test_user)
+        assert (row.state, row.token_count, row.source) == ("have", 12, "plugin")
+        assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "api_key")
+    assert await _row(session, goals[test_group.id], test_user) is None
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.ownership_state, record.token_count) == (
+        main.id,
+        "have",
+        12,
+    )
+    assert (record.source, record.confidence) == ("plugin", "high")
+    assert (record.updated_by_user_id, record.updated_via) == (test_user.id, "api_key")
+
+
+@covers_record("plugin_sync_collections")
+@pytest.mark.parametrize(
+    "name",
+    [None, "Unknown", "Nobody Here", "Alt Char"],
+    ids=["null", "unknown", "unmatched", "ambiguous"],
+)
+async def test_plugin_sync_with_an_unresolved_name_writes_every_static_and_the_mains_record(
+    client, session, test_user, test_user_2, test_group, auth_headers, world, name
+):
+    """B6: rows in the static whose card is the alt and in the one with no card, none where
+    test_user is a viewer; the record is the main's. "Alt Char" is ambiguous: a twin on
+    another world, and no world is sent."""
+    profile, main, alt, _ = world
+    await create_player_character(session, profile, name="Alt Char", server="Ravana", is_main=False)
+    alt_static, no_card, viewed = await _sync_statics(session, test_user, test_user_2, card=alt)
+    item = await _farm_item(session, "Unresolved Mount", game_mount_id=4611)
+    goals = {
+        static.id: await _tracked_goal(
+            session, static, test_user_2 if static is viewed else test_user, item
+        )
+        for static in (alt_static, no_card, viewed)
+    }
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "POST",
+        SYNC_URL,
+        json={"characterName": name, "mounts": [{"mountId": 4611, "owned": True}]},
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["statesUpdated"] == 2
+
+    for static in (alt_static, no_card):
+        row = await _row(session, goals[static.id], test_user)
+        assert (row.state, row.updated_by_user_id, row.updated_via) == (
+            "have",
+            test_user.id,
+            "api_key",
+        )
+    assert await _row(session, goals[viewed.id], test_user) is None
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.ownership_state) == (main.id, "have")
+    assert (record.updated_by_user_id, record.updated_via) == (test_user.id, "api_key")
+
+
+# ---------------------------------------------------------------------------
+# plugin_sync_mount_farms (the plugin's mount-farm sync)
+# ---------------------------------------------------------------------------
+
+FARM_SYNC_URL = "/api/plugin/mount-farms/sync"
+ZODIARK_TRIAL = "ew-zodiark"  # in the router's curated catalog: mount 282, totem item 36810
+
+
+async def _zodiark_item(session: AsyncSession) -> CollectionCatalogItem:
+    """The catalog mount the bridge finds from the Zodiark trial."""
+    item = await create_catalog_item(session, name="Zodiark Mount")
+    item.source_duty_key = ZODIARK_TRIAL
+    item.is_active = True
+    await session.flush()
+    return item
+
+
+async def _key_post(client: AsyncClient, headers: dict[str, str], body: dict):
+    raw_key = await _mint_key(client, headers)
+    return await client.request(
+        "POST", FARM_SYNC_URL, json=body, headers={"Authorization": f"Bearer {raw_key}"}
+    )
+
+
+@covers_record("plugin_sync_mount_farms")
+async def test_farm_sync_with_a_matched_name_raises_that_characters_record(
+    client, session, test_user, auth_headers, world
+):
+    """The alt is named, so the alt's record is raised and counted: not the main's."""
+    _, main, alt, _ = world
+    item = await _zodiark_item(session)
+    await session.commit()
+    before = datetime.now(timezone.utc)
+
+    response = await _key_post(
+        client,
+        auth_headers,
+        {
+            "characterName": "Alt Char",
+            "mounts": [{"mountId": 999999, "trialId": ZODIARK_TRIAL, "owned": True}],
+            "totems": [{"itemId": 36810, "count": 40}],
+            "syncedAt": CLIENT_CLOCK,
+        },
+    )
+    assert response.status_code == 200, response.text
+
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.catalog_item_id) == (alt.id, item.id)
+    assert (record.ownership_state, record.token_count) == ("have", 40)
+    assert (record.source, record.confidence) == ("plugin", "high")
+    assert (record.updated_by_user_id, record.updated_via) == (test_user.id, "api_key")
+    assert record.character_id != main.id
+    assert before <= datetime.fromisoformat(record.last_synced_at) <= datetime.now(timezone.utc)
+
+
+@covers_record("plugin_sync_mount_farms")
+async def test_farm_sync_count_is_the_newest_write_and_keeps_the_ownership(
+    client, session, test_user, auth_headers, world
+):
+    profile, main, _, _ = world
+    item = await _zodiark_item(session)
+    await _put_record(session, profile, main, item, ownership="have", token_count=40)
+    await session.commit()
+
+    response = await _key_post(
+        client, auth_headers, {"totems": [{"itemId": 36810, "count": 5}]}
+    )
+    assert response.status_code == 200, response.text
+
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.ownership_state, record.token_count) == (main.id, "have", 5)
+    assert (record.updated_by_user_id, record.updated_via) == (test_user.id, "api_key")
+
+
+@covers_record("plugin_sync_mount_farms")
+@pytest.mark.parametrize(
+    "name",
+    [None, "Unknown", "Nobody Here", "Alt Char"],
+    ids=["null", "unknown", "unmatched", "ambiguous"],
+)
+async def test_farm_sync_with_an_unresolved_name_writes_the_mains_record(
+    client, session, test_user, auth_headers, world, name
+):
+    """"Alt Char" is ambiguous: a twin on another world, and no world is sent."""
+    profile, main, _, _ = world
+    await create_player_character(session, profile, name="Alt Char", server="Ravana", is_main=False)
+    item = await _zodiark_item(session)
+    await session.commit()
+
+    response = await _key_post(
+        client,
+        auth_headers,
+        {"characterName": name, "mounts": [{"mountId": 282, "owned": True}]},
+    )
+    assert response.status_code == 200, response.text
+
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.catalog_item_id, record.ownership_state) == (
+        main.id,
+        item.id,
+        "have",
+    )
+
+
+@covers_record("plugin_sync_mount_farms")
+async def test_farm_sync_stamps_the_record_with_the_server_clock_and_writes_no_participant_rows(
+    client, session, test_user, test_group, auth_headers, world
+):
+    """The client's syncedAt stays the farm row's clock and the response's; the record gets
+    the server's. A goal tracking the mount gets no participant row (the merge reads the record)."""
+    _, main, _, _ = world
+    item = await _zodiark_item(session)
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await session.commit()
+
+    response = await _key_post(
+        client,
+        auth_headers,
+        {
+            "mounts": [{"mountId": 282, "owned": True}],
+            "totems": [{"itemId": 36810, "count": 7}],
+            "syncedAt": CLIENT_CLOCK,
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["syncedAt"] == CLIENT_CLOCK
+
+    progress = (
+        await session.execute(
+            select(MountFarmProgress)
+            .where(MountFarmProgress.user_id == test_user.id)
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one()
+    assert (progress.last_imported_at, progress.updated_at) == (CLIENT_CLOCK, CLIENT_CLOCK)
+    (record,) = await _all_records(session)
+    assert record.character_id == main.id
+    assert record.last_synced_at != CLIENT_CLOCK
+    assert record.updated_at != CLIENT_CLOCK
+    assert await _row(session, goal, test_user) is None
+
+
+@covers_record("plugin_sync_mount_farms")
+async def test_farm_sync_with_no_static_still_writes_the_record_on_the_web_channel(
+    client, session, test_user, auth_headers, world
+):
+    _, main, _, _ = world
+    await _zodiark_item(session)
+    await session.commit()
+
+    response = await client.post(
+        FARM_SYNC_URL, json={"mounts": [{"mountId": 282, "owned": True}]}, headers=auth_headers
+    )
+    assert response.status_code == 200, response.text
+
+    (record,) = await _all_records(session)
+    assert record.character_id == main.id
+    assert (record.updated_by_user_id, record.updated_via) == (test_user.id, "web")
+
+
+@covers_record("plugin_sync_mount_farms")
+async def test_farm_sync_news_of_nothing_writes_no_record(
+    client, session, auth_headers, world
+):
+    """Unowned, unknown to the catalog, or not a catalog item of the trial: nothing to write."""
+    item = await _zodiark_item(session)
+    other = await create_catalog_item(session, name="Orchestrion Roll", category="orchestrion")
+    other.source_duty_key = ZODIARK_TRIAL
+    other.is_active = True
+    inactive = await create_catalog_item(session, name="Retired Mount")
+    inactive.source_duty_key = ZODIARK_TRIAL
+    inactive.is_active = False
+    await session.commit()
+
+    response = await _key_post(
+        client,
+        auth_headers,
+        {"mounts": [{"mountId": 282, "owned": False}, {"mountId": 999999, "owned": True}]},
+    )
+    assert response.status_code == 200, response.text
+    assert await _all_records(session) == []
+
+    response = await _key_post(
+        client, auth_headers, {"mounts": [{"mountId": 282, "owned": True}]}
+    )
+    assert response.status_code == 200, response.text
+    (record,) = await _all_records(session)
+    assert record.catalog_item_id == item.id
 
 
 # ---------------------------------------------------------------------------
