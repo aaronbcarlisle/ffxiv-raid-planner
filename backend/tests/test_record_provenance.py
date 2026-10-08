@@ -56,6 +56,7 @@ RECORD_HANDLERS = (
     "upsert_participant_state_for_user",
     "log_drop",
     "delete_drop",
+    "create_goal_from_suggestion",
 )
 
 # handler name -> the test functions decorated with @covers_record(handler)
@@ -788,6 +789,33 @@ async def test_track_member_count_on_a_goal_without_a_catalog_item_stays_on_the_
     assert await _all_records(session) == []
 
 
+@covers_record("create_goal_from_suggestion")
+async def test_seeded_rows_copy_the_members_record_with_no_writer_and_the_web_channel(
+    client, session, test_user, test_user_2, test_group, auth_headers
+):
+    """R-S1-8: the seed is a derived write: the row names no writer, only the channel."""
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Seed Main")
+    item = await create_catalog_item(session, name="Seed Mount")
+    await _put_record(session, profile, main, item, ownership="have")
+    await session.commit()
+
+    response = await client.post(
+        f"/api/static-groups/{test_group.id}/collection-goals/from-suggestion",
+        json={"catalog_item_id": item.id},
+        headers=auth_headers,
+    )
+    assert response.status_code == 201, response.text
+
+    goal_id = response.json()["id"]
+    result = await session.execute(
+        select(RewardParticipantState)
+        .where(RewardParticipantState.goal_id == goal_id)
+        .execution_options(populate_existing=True)
+    )
+    row = next(r for r in result.scalars().all() if r.user_id == test_user_2.id)
+    assert (row.state, row.updated_by_user_id, row.updated_via) == ("have", None, "web")
+
+
 @covers_record("upsert_participant_state_for_user")
 async def test_lead_route_for_a_member_writes_the_row_as_a_correction_and_no_record(
     client, session, test_user, test_user_2, test_group, auth_headers
@@ -1244,7 +1272,7 @@ async def test_own_undo_reverts_the_record_as_the_member_with_its_old_clock(
 
 
 @covers_record("delete_drop")
-async def test_leads_delete_of_a_members_own_drop_restores_the_row_and_leaves_the_record(
+async def test_leads_delete_restores_the_members_row_and_keeps_the_record_record_provenance(
     client, session, test_user, test_user_2, test_group, auth_headers, auth_headers_user2
 ):
     """The owner deletes the member's own drop: this static's row is restored as the
