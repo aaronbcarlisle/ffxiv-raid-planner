@@ -139,11 +139,22 @@ async def _static(session: AsyncSession, name: str = "Static"):
     return await create_static_group(session, owner, name=name)
 
 
-async def _card(session: AsyncSession, group, user, *, is_active: bool = True):
-    """A claimed card for `user` in a tier of `group`, with no registration."""
-    tier = await create_tier_snapshot(session, group, is_active=is_active)
+async def _card(
+    session: AsyncSession,
+    group,
+    user,
+    *,
+    tier=None,
+    is_active: bool = True,
+    created_at: str | None = None,
+):
+    """A claimed card for `user` in `tier` (else a new tier of `group`), with no registration."""
+    if tier is None:
+        tier = await create_tier_snapshot(session, group, is_active=is_active)
     card = await create_snapshot_player(session, tier, name=user.discord_username)
     card.user_id = user.id
+    if created_at is not None:
+        card.created_at = created_at
     await session.flush()
     return card
 
@@ -333,6 +344,108 @@ async def test_a_card_in_an_inactive_tier_is_not_a_card(session, engine, migrati
     assert (result.card, result.main) == (0, 1)
 
 
+async def test_the_newest_active_tier_holds_the_card(session, engine, migration):
+    user, profile, main, alt = await _member(session, "tiers")
+    group = await _static(session)
+    old_tier = await create_tier_snapshot(session, group, tier_id="aac-light-heavyweight")
+    old_tier.created_at = _T0
+    new_tier = await create_tier_snapshot(session, group, tier_id="aac-heavyweight")
+    new_tier.created_at = _T1
+    # The old tier's card is the newer card, so only the tier's age can pick the main.
+    new_card = await _card(session, group, user, tier=new_tier, created_at=_T0)
+    old_card = await _card(session, group, user, tier=old_tier, created_at=_T1)
+    await create_static_character_registration(
+        session, group, old_card, player_character=alt, is_primary_for_static=True
+    )
+    await create_static_character_registration(
+        session, group, new_card, player_character=main, is_primary_for_static=True
+    )
+    item = await _mount(session, "ex-tiers")
+    await _mfp(session, group=group, user=user, trial="ex-tiers", has_mount=True)
+    await session.commit()
+
+    result = await _run(engine, migration._backfill_mfp_records)
+
+    assert set(await _records(engine)) == {(main.id, item.id)}
+    assert (result.card, result.main) == (1, 0)
+
+
+async def test_the_newest_card_in_a_tier_is_the_card(session, engine, migration):
+    user, profile, main, alt = await _member(session, "cards")
+    group = await _static(session)
+    tier = await create_tier_snapshot(session, group)
+    # The newer card is inserted first, so insertion order alone cannot pick it.
+    newer = await _card(session, group, user, tier=tier, created_at=_T1)
+    older = await _card(session, group, user, tier=tier, created_at=_T0)
+    await create_static_character_registration(
+        session, group, older, player_character=alt, is_primary_for_static=True
+    )
+    await create_static_character_registration(
+        session, group, newer, player_character=main, is_primary_for_static=True
+    )
+    item = await _mount(session, "ex-cards")
+    await _mfp(session, group=group, user=user, trial="ex-cards", has_mount=True)
+    await session.commit()
+
+    result = await _run(engine, migration._backfill_mfp_records)
+
+    assert set(await _records(engine)) == {(main.id, item.id)}
+    assert (result.card, result.main) == (1, 0)
+
+
+async def test_an_ambiguous_manual_match_falls_through_to_the_main(session, engine, migration):
+    user = await create_user(session, discord_username="twins")
+    profile = await create_player_profile(session, user)
+    # The alt is inserted first: taking the first match would pick it; the main rule
+    # (is_main) picks the main.
+    await _character(session, "twin-alt", profile.id, name="Twin Name", is_main=False,
+                     created_at=_T1)
+    main = await _character(session, "twin-main", profile.id, name="Twin Name", is_main=True,
+                            created_at=_T0)
+    group = await _static(session)
+    card = await _card(session, group, user)
+    await create_static_character_registration(
+        session, group, card, manual_character_name="twin name", manual_world="tonberry",
+        is_primary_for_static=True,
+    )
+    item = await _mount(session, "ex-twins")
+    await _mfp(session, group=group, user=user, trial="ex-twins", has_mount=True)
+    await session.commit()
+
+    result = await _run(engine, migration._backfill_mfp_records)
+
+    assert set(await _records(engine)) == {(main.id, item.id)}
+    assert (result.card, result.main) == (0, 1)
+
+
+async def test_card_and_main_rows_converge_on_one_record_and_adopt(session, engine, migration):
+    user, profile, main, _ = await _member(session, "conv", alt=False)
+    first = await _static(session, "first")
+    second = await _static(session, "second")
+    # `first`: the card names the main itself (step card); `second`: no card (step main).
+    await create_claimed_card(session, first, user, main)
+    item = await _mount(session, "ex-conv")
+    await _record(session, profile.id, item.id, character_id=None, ownership_state="missing")
+    await _mfp(session, group=first, user=user, trial="ex-conv", has_mount=True, totem_count=2,
+               updated_at=_T0)
+    await _mfp(session, group=second, user=user, trial="ex-conv", has_mount=True, totem_count=3,
+               updated_at=_T1)
+    await session.commit()
+
+    result = await _run(engine, migration._backfill_mfp_records)
+
+    records = await _records(engine)
+    assert set(records) == {(main.id, item.id)}
+    record = records[(main.id, item.id)]
+    assert record["ownership_state"] == "have"
+    assert (record["token_count"], record["token_count_updated_at"]) == (3, _T1)
+    assert (result.card, result.main) == (1, 1)
+    assert (result.created, result.updated) == (0, 1)
+    assert result.turned_have == sorted(
+        [(first.id, user.id, item.id), (second.id, user.id, item.id)]
+    )
+
+
 async def test_no_card_falls_back_to_the_main(session, engine, migration):
     user, profile, main, alt = await _member(session, "n")
     group = await _static(session)
@@ -490,7 +603,51 @@ async def test_has_mount_false_is_no_news_about_ownership(session, engine, migra
     assert result.turned_have == []
 
 
+async def test_rows_that_say_nothing_write_no_record(session, engine, migration):
+    user, profile, main, alt = await _member(session, "quiet")
+    group = await _static(session)
+    await _mount(session, "ex-quiet")
+    # The plugin's "not owned" row: False, 0, totem_source unknown, a fresh sync time.
+    await _mfp(session, group=group, user=user, trial="ex-quiet", has_mount=False, totem_count=0,
+               totem_source="unknown", last_plugin_sync_at=_T1)
+    await session.commit()
+
+    result = await _run(engine, migration._backfill_mfp_records)
+
+    assert await _records(engine) == {}
+    assert (result.main, result.no_news, result.created, result.updated) == (1, 1, 0, 0)
+
+
 # ── Existing records ─────────────────────────────────────────────────────────
+
+
+async def test_a_zero_count_is_no_news(session, engine, migration):
+    # Review I-1: the legacy writers leave 0 for "no count", and last_plugin_sync_at
+    # moves on every no-op sync, so a dated 0 must not beat a real count in the merge.
+    user, profile, main, alt = await _member(session, "zero")
+    group = await _static(session)
+    await create_claimed_card(session, group, user, alt)
+    held = await _mount(session, "ex-zero-held")
+    missing = await _mount(session, "ex-zero-missing")
+    await _record(session, profile.id, held.id, character_id=alt.id, token_count=5,
+                  token_count_updated_at=_OLD)
+    await _record(session, profile.id, missing.id, character_id=alt.id, ownership_state="missing",
+                  token_count=5, token_count_updated_at=_OLD)
+    for trial in ("ex-zero-held", "ex-zero-missing"):
+        await _mfp(session, group=group, user=user, trial=trial, has_mount=True, totem_count=0,
+                   totem_source="unknown", last_plugin_sync_at=_T1, updated_at=_T1)
+    await session.commit()
+
+    result = await _run(engine, migration._backfill_mfp_records)
+
+    records = await _records(engine)
+    untouched = records[(alt.id, held.id)]
+    assert (untouched["token_count"], untouched["token_count_updated_at"]) == (5, _OLD)
+    assert untouched["updated_at"] == _OLD
+    raised = records[(alt.id, missing.id)]
+    assert raised["ownership_state"] == "have"
+    assert (raised["token_count"], raised["token_count_updated_at"]) == (5, _OLD)
+    assert (result.created, result.updated) == (0, 1)
 
 
 async def test_an_existing_have_is_kept(session, engine, migration):
@@ -654,12 +811,12 @@ async def test_backfill_is_idempotent(session, engine, migration):
 
     first_run = await _run(engine, migration._backfill_mfp_records)
     # Created: the alt's item 0 (card in `first`), the main's item 0 (no card in
-    # `second`), the alt's item 1, the bare profile's item 0. Updated: item 2 raised;
-    # item 3 keeps its newer count and its Have.
-    assert (first_run.created, first_run.updated) == (4, 1)
-    assert first_run.skipped_no_item == 1
+    # `second`, count 5), the bare profile's item 0. Item 1 (False, 0) says nothing and
+    # gets no record. Updated: item 2 raised; item 3 keeps its newer count and its Have.
+    assert (first_run.created, first_run.updated) == (3, 1)
+    assert (first_run.skipped_no_item, first_run.no_news) == (1, 1)
     rows = await _all_rows(engine)
-    assert len(rows) == 6
+    assert len(rows) == 5
     assert bare_profile.id in {row[1] for row in rows}
 
     second_run = await _run(engine, migration._backfill_mfp_records)

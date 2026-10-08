@@ -33,9 +33,13 @@ revision, in SQL and Python, importing nothing from app (vet M-9):
     sync's unowned is: it never lowers and never creates a 'missing'. Every
     legacy row starts at False with a live updated_at, and a 'missing' stamped
     with it would demote a farm row's Have to Want in the merge;
-  - the count is the most recent row's totem_count (zero included, as the
-    sync writes it); an existing count with a later or equal time is kept and
-    a NULL time loses, as in the merge;
+  - a count is news only when totem_count > 0 (review I-1): the legacy writers
+    leave 0 for "no count" (the plugin creates an owned row at 0/'unknown', a
+    manual PUT defaults to 0) and last_plugin_sync_at moves on every no-op
+    sync, so a dated 0 would beat a real farm-row count in the merge. The
+    count is the most recent such row's; an existing count with a later or
+    equal time is kept and a NULL time loses, as in the merge. A group with no
+    has_mount row and no count writes nothing;
   - timestamps come from the rows, never the migration's clock (vet M-9):
     a row's time is the latest of last_plugin_sync_at, last_manual_override_at,
     last_imported_at and updated_at by parsed value, stored as written;
@@ -260,6 +264,11 @@ def _row_time(row) -> str | None:
     )
 
 
+def _has_count(row) -> bool:
+    """Whether a legacy row carries a count: 0 is the writers' "no count" (review I-1)."""
+    return row.totem_count is not None and row.totem_count > 0
+
+
 def _source_for(legacy_source: str | None) -> tuple[str, str]:
     """(source, confidence) a record takes from a legacy row's own source column."""
     if _normalized(legacy_source) == "plugin":
@@ -284,9 +293,11 @@ def _count_wins(record, count_at: str | None) -> bool:
 
 @dataclass
 class MfpBackfill:
-    """What the backfill did. `turned_have` lists (static_group_id, user_id,
-    catalog_item_id) for every legacy has_mount row whose record became 'have'
-    here: the members whose V1 panels turn Have (vet I-3)."""
+    """What the backfill did. `no_news` counts attributed rows that say nothing
+    (has_mount False, no count above 0). `turned_have` lists (static_group_id,
+    user_id, catalog_item_id) for every legacy has_mount row whose record became
+    'have' here: the members whose V1 panels turn Have (vet I-3); the upgrade
+    logs its length only."""
 
     rows: int = 0
     card: int = 0
@@ -294,6 +305,7 @@ class MfpBackfill:
     profile: int = 0
     skipped_no_profile: int = 0
     skipped_no_item: int = 0
+    no_news: int = 0
     created: int = 0
     updated: int = 0
     turned_have: list[tuple[str, str, str]] = field(default_factory=list)
@@ -364,6 +376,8 @@ def _backfill_mfp_records(conn) -> MfpBackfill:
             result.skipped_no_item += 1
             continue
         setattr(result, target.step, getattr(result, target.step) + 1)
+        if not bool(row.has_mount) and not _has_count(row):
+            result.no_news += 1
         for item_id in item_ids:
             key = (target.character_id, target.profile_id, item_id)
             groups[key].append(row)
@@ -374,12 +388,18 @@ def _backfill_mfp_records(conn) -> MfpBackfill:
     updates: list[dict] = []
     for (character_id, profile_id, item_id), rows in groups.items():
         have_rows = [row for row in rows if bool(row.has_mount)]
+        count_rows = [row for row in rows if _has_count(row)]
+        said = have_rows + count_rows
+        if not said:
+            continue  # the rows say nothing: no record (review I-1)
         state_at = _latest(*(_row_time(row) for row in have_rows))
         state_row = next((r for r in have_rows if _row_time(r) == state_at), None)
-        count_row = max(rows, key=lambda r: (_parse_ts(_row_time(r)) or _EARLIEST))
-        count = count_row.totem_count
-        count_at = _row_time(count_row) if count is not None else None
-        group_at = _latest(*(_row_time(row) for row in rows))
+        count_row = None
+        if count_rows:
+            count_row = max(count_rows, key=lambda r: (_parse_ts(_row_time(r)) or _EARLIEST))
+        count = count_row.totem_count if count_row is not None else None
+        count_at = _row_time(count_row) if count_row is not None else None
+        group_at = _latest(*(_row_time(row) for row in said))
 
         record = None
         adopted = False
@@ -405,7 +425,7 @@ def _backfill_mfp_records(conn) -> MfpBackfill:
                     "token_count": count,
                     "source": source,
                     "confidence": confidence,
-                    "updated_at": group_at or rows[0].updated_at,
+                    "updated_at": group_at or said[0].updated_at,
                     "state_changed_at": state_at if have_rows else None,
                     "token_count_updated_at": count_at,
                 }
@@ -476,16 +496,12 @@ def upgrade() -> None:
     result = _backfill_mfp_records(bind)
     log.info(
         "%s: mount_farm_progress rows %d: to a card character %d, to a main %d,"
-        " to a profile-level row %d, skipped (no profile) %d, skipped (no catalog mount) %d;"
-        " records created %d, updated %d",
+        " to a profile-level row %d, skipped (no profile) %d, skipped (no catalog mount) %d,"
+        " saying nothing %d; records created %d, updated %d; V1 panels turn Have for %d"
+        " (static, user, item)",
         revision, result.rows, result.card, result.main, result.profile,
-        result.skipped_no_profile, result.skipped_no_item, result.created, result.updated,
-    )
-    log.info(
-        "%s: V1 panels turn Have for %d (static, user, item): %s",
-        revision,
-        len(result.turned_have),
-        "; ".join(f"{s} {u} {i}" for s, u, i in result.turned_have) or "none",
+        result.skipped_no_profile, result.skipped_no_item, result.no_news,
+        result.created, result.updated, len(result.turned_have),
     )
 
 
