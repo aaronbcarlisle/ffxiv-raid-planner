@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.66';
+export const CURRENT_VERSION = '2.1.67';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -62,7 +62,7 @@ export const RELEASES: Release[] = [
   {
     version: '2.1.67',
     date: '2026-10-08T00:00:00Z',
-    title: 'Collection records can be kept per character',
+    title: 'Your collection is kept per character',
     items: [
       {
         category: 'improvement',
@@ -82,8 +82,31 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(api): S2a-1a·1b — the record chain and the record door (collection_records service)',
         internal: true,
       },
+      {
+        category: 'improvement',
+        title: 'Your collection follows your character',
+        description:
+          'Your collection is now kept per character; Profile ▸ Collections shows your main.',
+        pr: 351,
+        prTitle: 'feat(api): S2a-1a·2 — the Hub takes a character; adoption and unlink go through the record door',
+      },
+      {
+        category: 'improvement',
+        title: 'Marking a plugin mount as missing now sticks',
+        description:
+          'Marking a plugin-synced mount as missing in Profile ▸ Collections now sticks until your next plugin sync, in your statics too. Once marked missing, the row is yours until your next sync, so its count input unlocks too.',
+        pr: 351,
+        prTitle: 'feat(api): S2a-1a·2 — the Hub takes a character; adoption and unlink go through the record door',
+      },
+      {
+        category: 'improvement',
+        title: 'Removing a character removes its collection',
+        description:
+          'Removing a character from your profile permanently removes its collection; removing your last character keeps it on your profile. Changing your main changes which collection Profile ▸ Collections shows.',
+        pr: 351,
+        prTitle: 'feat(api): S2a-1a·2 — the Hub takes a character; adoption and unlink go through the record door',
+      },
     ],
-    internal: true,
   },
   {
     version: '2.1.66',

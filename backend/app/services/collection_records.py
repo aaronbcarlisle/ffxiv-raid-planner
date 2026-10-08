@@ -33,6 +33,7 @@ from app.models.player_collection_snapshot import (
 # ---------------------------------------------------------------------------
 
 RecordStep = Literal["card", "main", "profile", "none"]
+_RECORD_STEPS = frozenset({"card", "main", "profile", "none"})
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,16 @@ class RecordTarget:
     character_id: str | None
     character_name: str | None
     step: RecordStep
+
+    def __post_init__(self) -> None:
+        if self.step not in _RECORD_STEPS:
+            raise ValueError(f"step must be one of {sorted(_RECORD_STEPS)}, got {self.step!r}")
+        if (self.profile_id is None) != (self.step == "none"):
+            raise ValueError("a record target has no profile if and only if its step is 'none'")
+        if (self.character_id is None) != (self.step in ("profile", "none")):
+            raise ValueError(
+                "a record target has no character if and only if its step is 'profile' or 'none'"
+            )
 
 
 def main_character(characters: Sequence[PlayerCharacter]) -> PlayerCharacter | None:
@@ -263,11 +274,12 @@ UNSET = _Unset()
 
 
 def _validated(value: str | None, allowed: frozenset[str], what: str) -> None:
-    if value is not None and value not in allowed:
+    """Raise ValueError unless `value` is one of `allowed`; None is refused too."""
+    if value not in allowed:
         raise ValueError(f"{what} must be one of {sorted(allowed)}, got {value!r}")
 
 
-async def _find_record(
+async def _find_or_adopt_record(
     db: AsyncSession, target: RecordTarget, catalog_item_id: str
 ) -> PlayerCollectionSnapshot | None:
     """The record a write to `target` lands on, adopting the profile's row for a main.
@@ -340,14 +352,15 @@ async def write_record(
     """
     if mode not in _RECORD_WRITE_MODES:
         raise ValueError(f"mode must be one of {sorted(_RECORD_WRITE_MODES)}, got {mode!r}")
-    _validated(ownership, SNAPSHOT_OWNERSHIP_STATES, "ownership")
+    if ownership is not None:  # optional: a count-only write names none
+        _validated(ownership, SNAPSHOT_OWNERSHIP_STATES, "ownership")
     _validated(source, SNAPSHOT_SOURCES, "source")
     _validated(confidence, SNAPSHOT_CONFIDENCES, "confidence")
     if target.profile_id is None:
         raise ValueError("a record target needs a profile")
     sync_mode = mode == RECORD_WRITE_SYNC
 
-    record = await _find_record(db, target, catalog_item_id)
+    record = await _find_or_adopt_record(db, target, catalog_item_id)
     prior_ownership = None if record is None else record.ownership_state
     prior_count = None if record is None else record.token_count
 
@@ -405,6 +418,79 @@ async def write_record(
         state_changed=state_changed,
         count_changed=token_count is not None and token_count != prior_count,
     )
+
+
+async def adopt_profile_rows(db: AsyncSession, *, profile_id: str, character_id: str) -> int:
+    """Give a profile's first character its profile-level rows (R-S1-6). Returns the rows moved.
+
+    Both creation paths call this when the profile had no character. An item
+    the character already holds a row for is skipped, so the move can never hit
+    `uq_pcs_character_item`. The caller flushes the new character first and commits.
+    """
+    snapshot = PlayerCollectionSnapshot
+    held = select(snapshot.catalog_item_id).where(snapshot.character_id == character_id)
+    result = await db.execute(
+        select(snapshot).where(
+            snapshot.profile_id == profile_id,
+            snapshot.character_id.is_(None),
+            snapshot.catalog_item_id.not_in(held),
+        )
+    )
+    rows = list(result.scalars())
+    for row in rows:
+        row.character_id = character_id
+    await db.flush()
+    return len(rows)
+
+
+async def release_last_character_rows(
+    db: AsyncSession, *, profile_id: str, character_id: str
+) -> int:
+    """Turn a profile's last character's rows profile-level, so a relink keeps them (R-S1-6).
+
+    A stray profile-level row for the same item is deleted first (the character's
+    row wins) and that delete is flushed before the release, because a flush
+    runs UPDATEs ahead of DELETEs and the release would otherwise hit
+    `uq_pcs_profile_item_no_character`. Returns the rows released.
+    """
+    snapshot = PlayerCollectionSnapshot
+    own = list(
+        (await db.execute(select(snapshot).where(snapshot.character_id == character_id))).scalars()
+    )
+    if not own:
+        return 0
+    strays = await db.execute(
+        select(snapshot).where(
+            snapshot.profile_id == profile_id,
+            snapshot.character_id.is_(None),
+            snapshot.catalog_item_id.in_([row.catalog_item_id for row in own]),
+        )
+    )
+    for stray in strays.scalars():
+        await db.delete(stray)
+    await db.flush()
+    for row in own:
+        row.character_id = None
+    await db.flush()
+    return len(own)
+
+
+async def delete_character_records(db: AsyncSession, *, character_id: str) -> int:
+    """Delete one character's rows explicitly (R-S1-6, vet I-1). Returns the rows deleted.
+
+    The FK's CASCADE only acts on Postgres: SQLite runs without foreign keys
+    here, so the unlink path calls this before it deletes the character.
+    """
+    result = await db.execute(
+        select(PlayerCollectionSnapshot).where(
+            PlayerCollectionSnapshot.character_id == character_id
+        )
+    )
+    rows = list(result.scalars())
+    for row in rows:
+        await db.delete(row)
+    await db.flush()
+    return len(rows)
 
 
 async def load_records(

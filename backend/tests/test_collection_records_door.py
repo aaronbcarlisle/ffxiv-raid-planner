@@ -17,7 +17,10 @@ from app.services.collection_records import (
     RECORD_WRITE_PERSON,
     RECORD_WRITE_SYNC,
     RecordTarget,
+    adopt_profile_rows,
+    delete_character_records,
     load_records,
+    release_last_character_rows,
     write_record,
 )
 from tests.factories import (
@@ -124,6 +127,23 @@ class TestPersonMode:
         assert result.record.ownership_state == "have"
         assert result.prior_ownership == "have"
         assert result.state_changed is False
+
+    async def test_have_over_a_plugin_have_relabels_it_manual_medium(
+        self, session, test_user, world
+    ):
+        """M5 (controller ruling): the person's unchanged Have takes the row.
+
+        Today's Hub does this on every `have` write, plugin rows included
+        (routers/player_collection.py), so V1 Profile > Collections is unchanged.
+        """
+        profile, main, _, item = world
+        await seed(session, profile, item, character=main, ownership="have", source="plugin")
+
+        result = await person(session, target_of(test_user, profile, main), item, ownership="have")
+
+        assert result.state_changed is False
+        assert result.record.source == "manual"
+        assert result.record.confidence == "medium"
 
     async def test_missing_over_a_plugin_have_lowers_it(self, session, test_user, world):
         profile, main, _, item = world
@@ -334,6 +354,22 @@ class TestEveryWrite:
             )
         with pytest.raises(ValueError):
             await person(session, target, item, ownership="owned")
+        assert await count_rows(session) == 0
+
+    @pytest.mark.parametrize("field", ["source", "confidence"])
+    async def test_a_missing_source_or_confidence_is_refused_before_any_write(
+        self, session, test_user, world, field
+    ):
+        """M7: None is a ValueError here, not an IntegrityError at flush."""
+        profile, main, _, item = world
+        kwargs = {"source": "manual", "confidence": "medium", field: None}
+
+        with pytest.raises(ValueError):
+            await write_record(
+                session, target_of(test_user, profile, main), item.id,
+                actor_user_id=test_user.id, via="web", mode=RECORD_WRITE_PERSON,
+                now=T1, ownership="have", **kwargs,
+            )
         assert await count_rows(session) == 0
 
     async def test_a_target_with_no_profile_is_refused(self, session, test_user, world):
@@ -553,3 +589,123 @@ class TestLoadRecords:
 
         assert counts.n == 0
         assert list(empty.values()) == [{}]
+
+
+async def rows_by_item(session, profile) -> dict[str, list[PlayerCollectionSnapshot]]:
+    result = await session.execute(
+        select(PlayerCollectionSnapshot)
+        .where(PlayerCollectionSnapshot.profile_id == profile.id)
+        .execution_options(populate_existing=True)
+    )
+    by_item: dict[str, list[PlayerCollectionSnapshot]] = {}
+    for row in result.scalars():
+        by_item.setdefault(row.catalog_item_id, []).append(row)
+    return by_item
+
+
+def test_the_read_modify_helper_carries_its_mutating_name():
+    """M6: the helper adopts a row as well as finding one, and B3's guard names it."""
+    from app.services import collection_records
+
+    assert callable(collection_records._find_or_adopt_record)
+    assert not hasattr(collection_records, "_find_record")
+
+
+class TestAdoptProfileRows:
+    async def test_every_profile_level_row_takes_the_character(self, session, test_user):
+        profile = await create_player_profile(session, test_user)
+        first = await create_player_character(session, profile, name="First", is_main=True)
+        a = await create_catalog_item(session, name="A")
+        b = await create_catalog_item(session, name="B")
+        await seed(session, profile, a, ownership="have")
+        await seed(session, profile, b, ownership="missing")
+
+        adopted = await adopt_profile_rows(session, profile_id=profile.id, character_id=first.id)
+
+        assert adopted == 2
+        by_item = await rows_by_item(session, profile)
+        assert [r.character_id for r in by_item[a.id]] == [first.id]
+        assert [r.character_id for r in by_item[b.id]] == [first.id]
+
+    async def test_another_profiles_rows_are_left_alone(self, session, test_user, test_user_2):
+        mine = await create_player_profile(session, test_user)
+        theirs = await create_player_profile(session, test_user_2)
+        first = await create_player_character(session, mine, name="First", is_main=True)
+        item = await create_catalog_item(session, name="A")
+        other = await seed(session, theirs, item, ownership="have")
+
+        assert await adopt_profile_rows(session, profile_id=mine.id, character_id=first.id) == 0
+        assert other.character_id is None
+
+    async def test_an_item_the_character_already_holds_is_skipped_not_collided(
+        self, session, test_user
+    ):
+        profile = await create_player_profile(session, test_user)
+        first = await create_player_character(session, profile, name="First", is_main=True)
+        item = await create_catalog_item(session, name="A")
+        own = await seed(session, profile, item, character=first, ownership="have")
+        stray = await seed(session, profile, item, ownership="missing")
+
+        adopted = await adopt_profile_rows(session, profile_id=profile.id, character_id=first.id)
+
+        assert adopted == 0
+        assert own.character_id == first.id
+        assert stray.character_id is None
+
+
+class TestReleaseLastCharacterRows:
+    async def test_the_characters_rows_become_profile_level(self, session, test_user):
+        profile = await create_player_profile(session, test_user)
+        last = await create_player_character(session, profile, name="Last", is_main=True)
+        a = await create_catalog_item(session, name="A")
+        b = await create_catalog_item(session, name="B")
+        await seed(session, profile, a, character=last, ownership="have")
+        await seed(session, profile, b, character=last, ownership="missing")
+
+        released = await release_last_character_rows(
+            session, profile_id=profile.id, character_id=last.id
+        )
+
+        assert released == 2
+        by_item = await rows_by_item(session, profile)
+        assert [r.character_id for r in by_item[a.id]] == [None]
+        assert [r.character_id for r in by_item[b.id]] == [None]
+
+    async def test_a_stray_profile_level_row_is_deleted_and_the_characters_wins(
+        self, session, test_user
+    ):
+        profile = await create_player_profile(session, test_user)
+        last = await create_player_character(session, profile, name="Last", is_main=True)
+        item = await create_catalog_item(session, name="A")
+        await seed(session, profile, item, character=last, ownership="have")
+        await seed(session, profile, item, ownership="missing")
+
+        await release_last_character_rows(session, profile_id=profile.id, character_id=last.id)
+        await session.commit()  # the partial index would refuse a second profile-level row
+
+        rows = (await rows_by_item(session, profile))[item.id]
+        assert len(rows) == 1
+        assert rows[0].character_id is None
+        assert rows[0].ownership_state == "have"
+
+
+class TestDeleteCharacterRecords:
+    async def test_only_that_characters_rows_go(self, session, test_user, world):
+        profile, main, alt, item = world
+        other = await create_catalog_item(session, name="Mount B")
+        await seed(session, profile, item, character=alt, ownership="have")
+        await seed(session, profile, other, character=alt, ownership="have")
+        kept_main = await seed(session, profile, item, character=main, ownership="missing")
+        kept_profile = await seed(session, profile, other, ownership="have")
+
+        deleted = await delete_character_records(session, character_id=alt.id)
+
+        assert deleted == 2
+        by_item = await rows_by_item(session, profile)
+        survivors = {row.id for rows in by_item.values() for row in rows}
+        assert survivors == {kept_main.id, kept_profile.id}
+
+    async def test_a_character_with_no_rows_deletes_nothing(self, session, test_user, world):
+        _, _, alt, _ = world
+
+        assert await delete_character_records(session, character_id=alt.id) == 0
