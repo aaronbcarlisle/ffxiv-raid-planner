@@ -74,6 +74,22 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'improvement',
+        title: 'Viewers see farm statuses without totem counts or queue order',
+        description:
+          'Viewers of a static now see who has a mount, who wants it and how many members could buy it, but not each member\'s totem count or the order of the queue. Members still see every count.',
+        pr: 363,
+        prTitle: 'feat(api): S2a-1b·2b — every count-carrying read hides counts from viewers and flagged members',
+      },
+      {
+        category: 'improvement',
+        title: 'Totem activity on Home now respects who may see totem counts',
+        description:
+          'The totem activity on Home no longer shows a count that its reader may not see.',
+        pr: 363,
+        prTitle: 'feat(api): S2a-1b·2b — every count-carrying read hides counts from viewers and flagged members',
+      },
+      {
+        category: 'improvement',
         title: 'You can hide your totem counts from other members',
         description:
           'PUT /api/player/profile now accepts hideCollectionCounts, which hides your totem counts from the other members of your statics, leads and owners included. You always see your own. There is no setting for it on screen yet.',

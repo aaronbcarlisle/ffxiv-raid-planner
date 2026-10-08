@@ -20,7 +20,7 @@ from ..permissions import (
     require_membership,
 )
 from ..models.collection_catalog_item import CollectionCatalogItem
-from ..services.collection_records import SyncChange, apply_sync
+from ..services.collection_records import SyncChange, apply_sync, count_visibility
 from ..services.player_profile_service import get_or_create_profile
 from ..services.player_reward_bridge_service import (
     write_through_from_mount_farm,
@@ -214,11 +214,49 @@ async def _get_group_members(
     return list(result.all())
 
 
+async def _count_views(
+    db: AsyncSession,
+    *,
+    group_id: str,
+    caller_id: str,
+    caller_role: str,
+    user_ids: list[str],
+) -> tuple[set[str], set[str]]:
+    """(whose totem counts the caller sees, whose count the per-farm aggregates use).
+
+    The aggregates (`members_can_buy`, `members_close_to_target`) leave out a
+    flagged member's count as unknown for everyone, viewers included (Q7, owner
+    2026-10-01); the caller's own count is their own to see. The first set is
+    the display gate (`count_visibility`), the second is that gate for a
+    non-viewer, so a viewer still gets the aggregates.
+    """
+    shown = await count_visibility(
+        db,
+        static_group_id=group_id,
+        viewer_user_id=caller_id,
+        viewer_role=caller_role,
+        user_ids=user_ids,
+    )
+    if caller_role != MemberRole.VIEWER.value:
+        return shown, shown
+    counted = await count_visibility(
+        db,
+        static_group_id=group_id,
+        viewer_user_id=caller_id,
+        viewer_role=MemberRole.MEMBER.value,
+        user_ids=user_ids,
+    )
+    return shown, counted
+
+
 def _build_member_progress(
     user: User,
     progress: MountFarmProgress | None,
     trial_id: str,
+    *,
+    show_count: bool,
 ) -> MemberProgressResponse:
+    """The member's row; `show_count=False` leaves `totem_count` null (R-S1-19)."""
     if progress:
         return MemberProgressResponse(
             user_id=user.id,
@@ -228,7 +266,7 @@ def _build_member_progress(
             trial_id=trial_id,
             has_mount=progress.has_mount,
             wants_mount=progress.wants_mount,
-            totem_count=progress.totem_count,
+            totem_count=progress.totem_count if show_count else None,
             notes=progress.notes,
             updated_at=progress.updated_at,
             ownership_source=progress.ownership_source,
@@ -243,6 +281,7 @@ def _build_member_progress(
         discord_username=user.discord_username,
         discord_avatar=user.discord_avatar if hasattr(user, "discord_avatar") else None,
         trial_id=trial_id,
+        totem_count=0 if show_count else None,
     )
 
 
@@ -260,9 +299,16 @@ async def get_mount_farm_progress(
     db: AsyncSession = Depends(get_session),
 ) -> MountFarmResponse:
     await get_static_group(db, group_id)
-    await require_membership(db, user.id, group_id)
+    caller = await require_membership(db, user.id, group_id)
 
     members = await _get_group_members(db, group_id)
+    shown, counted = await _count_views(
+        db,
+        group_id=group_id,
+        caller_id=user.id,
+        caller_role=caller.role,
+        user_ids=[member_user.id for _, member_user in members],
+    )
 
     progress_query = select(MountFarmProgress).where(
         MountFarmProgress.static_group_id == group_id
@@ -300,7 +346,9 @@ async def get_mount_farm_progress(
 
         for membership, member_user in members:
             progress = progress_map.get((member_user.id, trial_id))
-            mp = _build_member_progress(member_user, progress, trial_id)
+            mp = _build_member_progress(
+                member_user, progress, trial_id, show_count=member_user.id in shown
+            )
             member_progress_list.append(mp)
 
             if mp.has_mount:
@@ -309,7 +357,9 @@ async def get_mount_farm_progress(
                 members_missing += 1
                 if mp.wants_mount:
                     members_wanting += 1
-                if exchange_cost > 0 and mp.totem_count >= exchange_cost:
+                # A count the aggregates may not use is unknown, not zero.
+                totems = progress.totem_count if progress else 0
+                if member_user.id in counted and exchange_cost > 0 and totems >= exchange_cost:
                     members_can_buy += 1
 
         trials.append(
@@ -443,7 +493,16 @@ async def update_mount_farm_progress(
     )
     await db.commit()
 
-    return _build_member_progress(target_user, progress, data.trial_id)
+    shown = await count_visibility(
+        db,
+        static_group_id=group_id,
+        viewer_user_id=user.id,
+        viewer_role=membership.role,
+        user_ids=[target_user_id],
+    )
+    return _build_member_progress(
+        target_user, progress, data.trial_id, show_count=target_user_id in shown
+    )
 
 
 @router.put(
@@ -459,7 +518,7 @@ async def bulk_update_mount_farm_progress(
 ) -> list[MemberProgressResponse]:
     via = logged_via(request)
     await get_static_group(db, group_id)
-    await require_membership(db, user.id, group_id, MemberRole.LEAD)
+    caller = await require_membership(db, user.id, group_id, MemberRole.LEAD)
 
     now = datetime.now(timezone.utc).isoformat()
     responses: list[MemberProgressResponse] = []
@@ -532,6 +591,13 @@ async def bulk_update_mount_farm_progress(
     )
     await db.commit()
 
+    shown = await count_visibility(
+        db,
+        static_group_id=group_id,
+        viewer_user_id=user.id,
+        viewer_role=caller.role,
+        user_ids=[update.user_id or user.id for update in data.updates],
+    )
     for update in data.updates:
         target_user_id = update.user_id or user.id
         result = await db.execute(
@@ -546,7 +612,11 @@ async def bulk_update_mount_farm_progress(
         progress = result.scalar_one_or_none()
         user_result = await db.execute(select(User).where(User.id == target_user_id))
         target_user = user_result.scalar_one()
-        responses.append(_build_member_progress(target_user, progress, update.trial_id))
+        responses.append(
+            _build_member_progress(
+                target_user, progress, update.trial_id, show_count=target_user_id in shown
+            )
+        )
 
     return responses
 
@@ -604,12 +674,20 @@ async def get_farm_recommendations(
     db: AsyncSession = Depends(get_session),
 ) -> list[FarmScoreResponse]:
     await get_static_group(db, group_id)
-    await require_membership(db, user.id, group_id)
+    caller = await require_membership(db, user.id, group_id)
 
     members = await _get_group_members(db, group_id)
     total_members = len(members)
     if total_members == 0:
         return []
+    # Per-farm aggregates only: a flagged member's count is unknown (R-S1-19).
+    _, counted = await _count_views(
+        db,
+        group_id=group_id,
+        caller_id=user.id,
+        caller_role=caller.role,
+        user_ids=[member_user.id for _, member_user in members],
+    )
 
     progress_query = select(MountFarmProgress).where(
         MountFarmProgress.static_group_id == group_id
@@ -643,7 +721,9 @@ async def get_farm_recommendations(
             if p:
                 if p.wants_mount:
                     members_wanting += 1
-                if exchange_cost > 0 and p.totem_count >= exchange_cost:
+                if member_user.id not in counted:
+                    pass  # unknown: neither can buy nor close
+                elif exchange_cost > 0 and p.totem_count >= exchange_cost:
                     members_can_buy += 1
                 elif exchange_cost > 0 and p.totem_count >= exchange_cost * TOTEM_CLOSE_THRESHOLD:
                     members_close += 1

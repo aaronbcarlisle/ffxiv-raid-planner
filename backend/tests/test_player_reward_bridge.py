@@ -465,7 +465,7 @@ async def test_suggestion_uses_written_intent_not_legacy_fallback(
     _make_intent(session, user_profile.id, catalog.id, intent="hunting", visibility="static_only")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, user)
+    suggestions = await compute_suggestions(session, group.id, user, viewer_role="owner")
     assert len(suggestions) == 1
     member_entry = next(m for m in suggestions[0].members if m.user_id == user.id)
 
@@ -485,7 +485,7 @@ async def test_static_suggestions_use_static_only_written_intent(
     _make_intent(session, user_profile.id, catalog.id, intent="hunting", visibility="static_only")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, user)
+    suggestions = await compute_suggestions(session, group.id, user, viewer_role="owner")
     assert len(suggestions) == 1
     assert suggestions[0].catalog_item_id == catalog.id
 
@@ -501,7 +501,7 @@ async def test_private_written_intent_does_not_appear_in_suggestions(
     _make_intent(session, user_profile.id, catalog.id, intent="hunting", visibility="private")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, user)
+    suggestions = await compute_suggestions(session, group.id, user, viewer_role="owner")
     # Private intent should not produce a suggestion for the static
     assert len(suggestions) == 0
 
@@ -532,6 +532,6 @@ async def test_non_mount_catalog_item_intent_works_without_mfp(
     _make_intent(session, user_profile.id, music_catalog.id, intent="hunting", visibility="static_only")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, user)
+    suggestions = await compute_suggestions(session, group.id, user, viewer_role="owner")
     assert any(s.catalog_item_id == music_catalog.id for s in suggestions), \
         "Music intent via PlayerCollectionIntent must appear in suggestions even without MFP"

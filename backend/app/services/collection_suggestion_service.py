@@ -32,7 +32,7 @@ from ..models.player_profile import PlayerProfile
 from ..models.reward_participant_state import RewardParticipantState
 from ..models.user import User
 from ..schemas.player_collection import MemberSuggestionEntry, StaticCollectionSuggestion
-from .collection_records import load_records, resolve_record_targets
+from .collection_records import count_visibility, load_records, resolve_record_targets
 from .legacy_mount_farm_bridge import LegacyFarmSignal, get_legacy_farm_signals
 
 # ── Scoring weights ────────────────────────────────────────────────────────────
@@ -74,8 +74,12 @@ def _score_member(
     participant: RewardParticipantState | None,
     legacy: LegacyFarmSignal | None,
     token_cost: int | None,
+    count_known: bool = True,
 ) -> tuple[float, list[str]]:
     """Return (score_delta, reasons[]) for one member against one catalog item.
+
+    `count_known=False` is a count the caller may not see (R-S1-19): it scores
+    as unknown, so no can-buy credit is given and no "Can buy" reason is added.
 
     Priority order for authority:
       intent > legacy wants_mount (intent is explicit; legacy is implicit static-scoped)
@@ -131,7 +135,7 @@ def _score_member(
             reasons.append("Manual")
 
         # Can-buy from snapshot token_count (plugin is most authoritative)
-        if token_cost and snapshot.token_count is not None:
+        if count_known and token_cost and snapshot.token_count is not None:
             if snapshot.token_count >= token_cost:
                 score += w["can_buy_soon"]
                 reasons.append("Can buy")
@@ -151,7 +155,7 @@ def _score_member(
 
         # Can-buy from legacy totem_count
         eff_cost = legacy.totem_cost or token_cost
-        if eff_cost and legacy.totem_count > 0:
+        if count_known and eff_cost and legacy.totem_count > 0:
             if legacy.totem_count >= eff_cost:
                 score += w["can_buy_soon"]
                 reasons.append("Can buy (legacy)")
@@ -175,7 +179,7 @@ def _score_member(
             score += w["fresh_sync"]
         score += w["manual_only"]
 
-        if token_cost and participant.token_count is not None:
+        if count_known and token_cost and participant.token_count is not None:
             if participant.token_count >= token_cost:
                 score += w["can_buy_soon"]
                 reasons.append("Can buy")
@@ -192,6 +196,7 @@ async def compute_suggestions(
     static_group_id: str,
     requesting_user: User,
     *,
+    viewer_role: str,
     only_active: bool = True,
 ) -> list[StaticCollectionSuggestion]:
     """
@@ -202,10 +207,17 @@ async def compute_suggestions(
     referenced by active CollectionGoals. This means suggestions appear even when
     no CollectionGoal has been manually created yet.
 
-    Visibility contract:
-      - Only static_only and dossier_public intents are read.
-      - private intents are never accessed.
-      - token_count included only when intent visibility is static_only/dossier_public.
+    Visibility contract (B1, R-S1-19):
+      - Only static_only and dossier_public intents are read; private intents
+        are never accessed.
+      - Members see every member's states and counts. Viewers see states only:
+        no member's `token_count`, and no `can_buy` (the caller's own aside).
+      - A member's Hub flag (`hide_collection_counts`) hides their count from
+        every other member, leads and owners included.
+      - A count the caller may not see is withheld (`token_count` null,
+        `can_buy` false) and scores as unknown: it earns no can-buy credit.
+      - `viewer_role` is the caller's role as the response path resolves it (an
+        admin acts as the owner); the flag is per user, not per static.
 
     Returns a list sorted by descending suggested_farm_score.
     """
@@ -219,6 +231,15 @@ async def compute_suggestions(
     member_user_ids = [r[0] for r in member_result.all()]
     if not member_user_ids:
         return []
+
+    # ── Whose counts the caller may see ────────────────────────────────────────
+    visible_counts = await count_visibility(
+        session,
+        static_group_id=static_group_id,
+        viewer_user_id=requesting_user.id,
+        viewer_role=viewer_role,
+        user_ids=member_user_ids,
+    )
 
     # ── User display names ─────────────────────────────────────────────────────
     users_result = await session.execute(
@@ -336,6 +357,7 @@ async def compute_suggestions(
             participant = participant_map.get((goal.id, user_id)) if goal else None
             legacy = legacy_signal_map.get((user_id, item_id))
             user = user_map.get(user_id)
+            count_known = user_id in visible_counts
 
             member_score, reasons = _score_member(
                 snapshot=snapshot,
@@ -343,6 +365,7 @@ async def compute_suggestions(
                 participant=participant,
                 legacy=legacy,
                 token_cost=token_cost,
+                count_known=count_known,
             )
             item_score += member_score
 
@@ -374,6 +397,10 @@ async def compute_suggestions(
                 confidence = "low"
                 can_buy = False
                 display_intent = intent.intent if intent else None
+
+            if not count_known:
+                token_count = None
+                can_buy = False
 
             member_entries.append(MemberSuggestionEntry(
                 user_id=user_id,

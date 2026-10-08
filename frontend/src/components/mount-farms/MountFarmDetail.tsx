@@ -119,7 +119,7 @@ export function MountFarmDetail({
               const canEdit = canManage || member.userId === currentUserId;
               const isCurrentUser = member.userId === currentUserId;
               const exchangeCost = trial.exchangeCost ?? trial.totemTarget;
-              const canBuyMount = !member.hasMount && exchangeCost > 0 && member.totemCount >= exchangeCost;
+              const canBuyMount = !member.hasMount && exchangeCost > 0 && (member.totemCount ?? 0) >= exchangeCost;
 
               return (
                 <MemberRow
@@ -161,7 +161,7 @@ function MemberRow({
   member, trial, canEdit, isCurrentUser, canBuyMount, hasTotemTracking, isSaving,
   onToggleMount, onToggleWants, onTotemChange,
 }: MemberRowProps) {
-  const displayTotem = member.totemCount;
+  const displayTotem = member.totemCount ?? 0;
   const rewardNoun = getRewardNoun(trial);
 
   // Determine the "effective source" to show one badge

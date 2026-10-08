@@ -110,7 +110,7 @@ export function deriveActivityItems(
             actorUserId: null,
             actorDisplayName: null,
           });
-        } else if (mp.totemCount > 0 && totemPlugin) {
+        } else if ((mp.totemCount ?? 0) > 0 && totemPlugin) {
           flat.push({
             key: `${trial.trialId}-${mp.userId}-currency`,
             createdAt: mp.updatedAt,
@@ -139,7 +139,7 @@ export function deriveActivityItems(
           actorUserId: mp.userId,
           actorDisplayName: mp.displayName,
         });
-      } else if (mp.totemCount > 0) {
+      } else if ((mp.totemCount ?? 0) > 0) {
         flat.push({
           key: `${trial.trialId}-${mp.userId}-currency`,
           createdAt: mp.updatedAt,

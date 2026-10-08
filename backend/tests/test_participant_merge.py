@@ -794,10 +794,11 @@ async def _static_of(session, *, members: int, goals: int, tag: str):
     return static, users[0], made
 
 
-async def test_list_participants_issues_the_same_selects_for_one_and_six_members(
+async def test_list_participants_issues_the_same_selects_for_two_and_six_members(
     async_client: AsyncClient, session, engine, count_statements
 ):
-    solo, solo_owner, (solo_goal,) = await _static_of(session, members=1, goals=1, tag="solo")
+    # Two members, not one: the count gate skips its SELECT when only the caller is read.
+    solo, solo_owner, (solo_goal,) = await _static_of(session, members=2, goals=1, tag="solo")
     sextet, sextet_owner, (sextet_goal,) = await _static_of(
         session, members=6, goals=1, tag="sextet"
     )
@@ -808,7 +809,7 @@ async def test_list_participants_issues_the_same_selects_for_one_and_six_members
     with count_statements(engine, match=_is_select) as six:
         large = await _participants(async_client, sextet, sextet_goal, sextet_owner)
 
-    assert len(small) == 1 and len(large) == 6
+    assert len(small) == 2 and len(large) == 6
     assert {p["state"] for p in large} == {"have"}
     assert one.n > 0
     assert six.n == one.n

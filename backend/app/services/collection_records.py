@@ -1097,8 +1097,9 @@ async def count_visibility(
     unknown one, sees no one else's (default deny). Any other role
     sees everyone's except members whose `hide_collection_counts` flag is set,
     and that holds for leads and owners too. An admin acts as owner (pass the
-    role `get_user_role_for_response` gives), so a flagged count is hidden from
-    admins as well. A user with no profile has no flag. The flag is the user's
+    role `require_membership(...).role` gives: the virtual owner membership an
+    admin gets even with a real viewer membership), so a flagged count is hidden
+    from admins as well. A user with no profile has no flag. The flag is the user's
     own, not per static; `static_group_id` is part of the gate's signature so
     callers pass the static they are reading for. One SELECT, none for a
     viewer or when only the caller is asked about.

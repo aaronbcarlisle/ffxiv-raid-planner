@@ -163,7 +163,7 @@ async def test_legacy_wants_mount_surfaces_suggestion(
     _make_farm_progress(session, group.id, member.id, "bridge-test-ex-1", wants_mount=True)
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
 
     assert len(suggestions) == 1
     s = suggestions[0]
@@ -196,7 +196,7 @@ async def test_legacy_has_mount_shows_as_owned(
     _make_intent(session, owner_profile.id, catalog.id, intent="hunting", visibility="static_only")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     assert len(suggestions) == 1
     s = suggestions[0]
 
@@ -229,7 +229,7 @@ async def test_legacy_wants_false_is_neutral(
     _make_intent(session, owner_profile.id, catalog.id, intent="hunting", visibility="static_only")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     s = next(sug for sug in suggestions if sug.catalog_item_id == catalog.id)
     member_entry = next(m for m in s.members if m.user_id == member.id)
     # No pass penalty: reason should NOT contain "Pass (legacy)"
@@ -257,7 +257,7 @@ async def test_legacy_totem_count_triggers_can_buy(
     )
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     s = next(sug for sug in suggestions if sug.catalog_item_id == catalog.id)
     member_entry = next(m for m in s.members if m.user_id == member.id)
     assert member_entry.can_buy is True
@@ -342,7 +342,7 @@ async def test_explicit_intent_takes_priority_over_legacy(
     )
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     s = next(sug for sug in suggestions if sug.catalog_item_id == catalog.id)
     member_entry = next(m for m in s.members if m.user_id == member.id)
 

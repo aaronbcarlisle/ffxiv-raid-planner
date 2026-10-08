@@ -44,6 +44,7 @@ from ..services.collection_records import (
     RECORD_WRITE_PERSON,
     UNSET,
     MergedParticipant,
+    count_visibility,
     is_after,
     load_records,
     merge_participant,
@@ -86,13 +87,15 @@ async def _member_role(session: AsyncSession, group_id: str, user_id: str) -> st
     return result.scalar_one_or_none()
 
 
-def _record_view(record: PlayerCollectionSnapshot | None) -> ParticipantRecordView | None:
+def _record_view(
+    record: PlayerCollectionSnapshot | None, *, show_count: bool
+) -> ParticipantRecordView | None:
     if record is None:
         return None
     return ParticipantRecordView(
         character_id=record.character_id,
         ownership_state=record.ownership_state,
-        token_count=record.token_count,
+        token_count=record.token_count if show_count else None,
         source=record.source,
         updated_by_user_id=record.updated_by_user_id,
         updated_via=record.updated_via,
@@ -108,16 +111,23 @@ def _participant_to_response(
     display_name: str | None,
     member_role: str | None,
     merged: MergedParticipant,
+    show_count: bool,
+    show_rank: bool,
 ) -> ParticipantStateResponse:
-    """The row as the static sees it: `state`, `token_count` and `source` are merged (R-S1-9)."""
+    """The row as the static sees it: `state`, `token_count` and `source` are merged (R-S1-9).
+
+    `show_count=False` leaves `token_count` (and the record's) null, and
+    `show_rank=False` leaves `priority_rank` null: a viewer has no queue order
+    (R-S1-19, S2-7).
+    """
     return ParticipantStateResponse(
         id=p.id,
         goal_id=p.goal_id,
         user_id=p.user_id,
         static_group_id=p.static_group_id,
         state=merged.state,
-        token_count=merged.token_count,
-        priority_rank=p.priority_rank,
+        token_count=merged.token_count if show_count else None,
+        priority_rank=p.priority_rank if show_rank else None,
         source=merged.source,
         last_synced_at=p.last_synced_at,
         last_manual_override_at=p.last_manual_override_at,
@@ -131,7 +141,7 @@ def _participant_to_response(
         token_count_updated_at=p.token_count_updated_at,
         state_from_record=merged.state_from_record,
         count_from_record=merged.count_from_record,
-        record=_record_view(merged.record),
+        record=_record_view(merged.record, show_count=show_count),
     )
 
 
@@ -552,7 +562,7 @@ async def list_participants(
     current_user: User = Depends(get_current_user),
 ) -> list[ParticipantStateResponse]:
     await get_static_group(session, group_id)
-    await require_membership(session, current_user.id, group_id)
+    caller = await require_membership(session, current_user.id, group_id)
     goal = await _get_goal(session, group_id, goal_id)
 
     result = await session.execute(
@@ -575,9 +585,24 @@ async def list_participants(
         rows=[p for p, _, _ in rows],
         catalog_item_by_goal={goal.id: goal.catalog_item_id},
     )
+    # Counts follow the gate (a viewer sees only their own; a Hub flag hides a
+    # member's from everyone, leads included); a viewer has no queue order.
+    shown = await count_visibility(
+        session,
+        static_group_id=group_id,
+        viewer_user_id=current_user.id,
+        viewer_role=caller.role,
+        user_ids=[p.user_id for p, _, _ in rows],
+    )
+    show_rank = caller.role != MemberRole.VIEWER.value
     return [
         _participant_to_response(
-            p, display_name=display_name, member_role=member_role, merged=merged[p.id]
+            p,
+            display_name=display_name,
+            member_role=member_role,
+            merged=merged[p.id],
+            show_count=p.user_id in shown,
+            show_rank=show_rank,
         )
         for p, display_name, member_role in rows
     ]
@@ -720,11 +745,14 @@ async def upsert_participant_state(
         catalog_item_by_goal={goal_id: catalog_item_id},
     )
 
+    # The caller's own cell: their count is theirs to see (a viewer never gets here).
     return _participant_to_response(
         participant,
         display_name=user.display_name if user else None,
         member_role=member_role,
         merged=merged[participant.id],
+        show_count=True,
+        show_rank=True,
     )
 
 
@@ -748,7 +776,7 @@ async def upsert_participant_state_for_user(
     lead follows the self rules and writes their own record (R-S1-10).
     """
     await get_static_group(session, group_id)
-    await require_can_manage_members(session, current_user.id, group_id)
+    caller = await require_can_manage_members(session, current_user.id, group_id)
     goal = await _get_goal(session, group_id, goal_id)
     catalog_item_id = goal.catalog_item_id
 
@@ -819,11 +847,21 @@ async def upsert_participant_state_for_user(
         catalog_item_by_goal={goal_id: catalog_item_id},
     )
 
+    # A lead's correction does not reveal a flagged member's count back to them.
+    shown = await count_visibility(
+        session,
+        static_group_id=group_id,
+        viewer_user_id=current_user.id,
+        viewer_role=caller.role,
+        user_ids=[target_user_id],
+    )
     return _participant_to_response(
         participant,
         display_name=user.display_name if user else None,
         member_role=target_membership.role,
         merged=merged[participant.id],
+        show_count=target_user_id in shown,
+        show_rank=True,  # a lead or owner has a queue order
     )
 
 
