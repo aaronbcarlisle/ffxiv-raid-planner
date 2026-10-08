@@ -53,7 +53,7 @@ from ..services.collection_records import (
     write_record,
     write_row,
 )
-from ..services.provenance import logged_via, request_api_key_id
+from ..services.provenance import CHARACTER_SOURCE_DEFAULT, logged_via, request_api_key_id
 
 router = APIRouter(prefix="/api", tags=["collection-goals"])
 logger = get_logger(__name__)
@@ -843,7 +843,7 @@ async def log_drop(
 ) -> RewardDropResponse:
     await get_static_group(session, group_id)
     membership = await require_membership(session, current_user.id, group_id)
-    await _get_goal(session, group_id, goal_id, for_update=True)
+    goal = await _get_goal(session, group_id, goal_id, for_update=True)
 
     # R-P0-1: checked in this order, before any write. The recipient's membership is
     # checked last so a member can't probe who belongs to the static.
@@ -865,7 +865,45 @@ async def log_drop(
     # it (R-P0-2).
     recipient_prior_state: str | None = None
     recipient_prior_state_at: str | None = None
+    # The recipient's character in this static, and what the record was before an
+    # own drop raised it (R-S1-13), for Undo to read.
+    character_id: str | None = None
+    character_name: str | None = None
+    character_source: str | None = None
+    record_prior_state: str | None = None
+    record_prior_at: str | None = None
+    record_prior_changed_at: str | None = None
     if recipient_id:
+        target = (await resolve_record_targets(session, [(group_id, recipient_id)]))[
+            (group_id, recipient_id)
+        ]
+        if target.character_id is not None:
+            character_id = target.character_id
+            character_name = target.character_name
+            character_source = CHARACTER_SOURCE_DEFAULT
+
+        catalog_item_id = goal.catalog_item_id
+        if recipient_id == current_user.id and target.profile_id is not None and catalog_item_id:
+            record = (await load_records(session, [target], [catalog_item_id]))[target].get(
+                catalog_item_id
+            )
+            if record is None or record.ownership_state != "have":
+                record_prior_state = "unknown" if record is None else record.ownership_state
+                record_prior_changed_at = None if record is None else record.state_changed_at
+                record_prior_at = now
+                await write_record(
+                    session,
+                    target,
+                    catalog_item_id,
+                    actor_user_id=current_user.id,
+                    via=via,
+                    mode=RECORD_WRITE_PERSON,
+                    now=now,
+                    ownership="have",
+                    source="manual",
+                    confidence="medium",
+                )
+
         p_result = await session.execute(
             select(RewardParticipantState).where(
                 RewardParticipantState.goal_id == goal_id,
@@ -899,6 +937,12 @@ async def log_drop(
         notes=body.notes,
         recipient_prior_state=recipient_prior_state,
         recipient_prior_state_at=recipient_prior_state_at,
+        recipient_character_id=character_id,
+        recipient_character_name=character_name,
+        recipient_character_source=character_source,
+        recipient_record_prior_state=record_prior_state,
+        recipient_record_prior_at=record_prior_at,
+        recipient_record_prior_changed_at=record_prior_changed_at,
         logged_via=via,
         api_key_id=request_api_key_id(request),
         created_at=now,

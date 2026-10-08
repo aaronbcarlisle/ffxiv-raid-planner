@@ -54,6 +54,7 @@ RECORD_HANDLERS = (
     "plugin_sync_collections",
     "upsert_participant_state",
     "upsert_participant_state_for_user",
+    "log_drop",
 )
 
 # handler name -> the test functions decorated with @covers_record(handler)
@@ -1006,3 +1007,159 @@ async def test_drop_delete_restore_records_the_deleter_and_moves_the_state_clock
     assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "web")
     assert row.state_changed_at == row.updated_at
     assert row.state_changed_at != flip_clock
+
+
+# ---------------------------------------------------------------------------
+# log_drop (D1): the drop's character and the member's own-drop record write (R-S1-13)
+# ---------------------------------------------------------------------------
+
+
+async def _stored_drop(session: AsyncSession, drop: dict) -> RewardDropLog:
+    result = await session.execute(
+        select(RewardDropLog)
+        .where(RewardDropLog.id == drop["id"])
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one()
+
+
+def _prior_triple(drop: RewardDropLog) -> tuple[str | None, str | None, str | None]:
+    return (
+        drop.recipient_record_prior_state,
+        drop.recipient_record_prior_at,
+        drop.recipient_record_prior_changed_at,
+    )
+
+
+@covers_record("log_drop")
+async def test_own_drop_raises_the_record_and_stores_the_three_priors(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2
+):
+    """The record `missing` -> `have`; prior_at is the record's new clock, changed_at its old one."""
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Dropped Main")
+    item = await create_catalog_item(session, name="Own Drop Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _put_record(session, profile, main, item, ownership="missing", source="manual")
+    await session.commit()
+
+    drop = await _log_drop_for(client, test_group, goal, test_user_2, auth_headers_user2)
+
+    stored = await _stored_drop(session, drop)
+    assert (
+        stored.recipient_character_id,
+        stored.recipient_character_name,
+        stored.recipient_character_source,
+    ) == (main.id, "Dropped Main", "default")
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.ownership_state) == (main.id, "have")
+    assert (record.source, record.confidence) == ("manual", "medium")
+    assert (record.updated_by_user_id, record.updated_via) == (test_user_2.id, "web")
+    assert record.state_changed_at not in (None, CLIENT_CLOCK)
+    assert _prior_triple(stored) == ("missing", record.state_changed_at, CLIENT_CLOCK)
+    assert record.state_changed_at == record.updated_at
+
+
+@covers_record("log_drop")
+async def test_own_drop_with_no_record_creates_one_and_the_prior_is_unknown(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2
+):
+    _, main = await _member_of(session, test_group, test_user_2, main_name="Fresh Main")
+    item = await create_catalog_item(session, name="Fresh Drop Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await session.commit()
+
+    drop = await _log_drop_for(client, test_group, goal, test_user_2, auth_headers_user2)
+
+    stored = await _stored_drop(session, drop)
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.ownership_state) == (main.id, "have")
+    assert _prior_triple(stored) == ("unknown", record.state_changed_at, None)
+    assert record.state_changed_at is not None
+
+
+@covers_record("log_drop")
+async def test_own_drop_over_a_record_that_is_already_have_stores_no_prior(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2
+):
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Have Main")
+    item = await create_catalog_item(session, name="Already Had Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _put_record(session, profile, main, item, ownership="have")
+    await session.commit()
+
+    drop = await _log_drop_for(client, test_group, goal, test_user_2, auth_headers_user2)
+
+    stored = await _stored_drop(session, drop)
+    assert stored.recipient_character_id == main.id  # the character is recorded all the same
+    assert _prior_triple(stored) == (None, None, None)
+    (record,) = await _all_records(session)
+    assert (record.ownership_state, record.updated_at, record.updated_by_user_id) == (
+        "have",
+        CLIENT_CLOCK,
+        None,
+    )
+
+
+@covers_record("log_drop")
+async def test_leads_own_drop_writes_their_record(
+    client, session, test_user, test_group, auth_headers, world
+):
+    """Q2: a lead's own drop is the member's own drop."""
+    _, main, _, item = world
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await session.commit()
+
+    drop = await _log_drop_for(client, test_group, goal, test_user, auth_headers)
+
+    stored = await _stored_drop(session, drop)
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.ownership_state) == (main.id, "have")
+    assert (record.updated_by_user_id, record.updated_via) == (test_user.id, "web")
+    assert stored.recipient_character_id == main.id
+    assert _prior_triple(stored) == ("unknown", record.state_changed_at, None)
+
+
+@covers_record("log_drop")
+async def test_leads_drop_for_a_member_records_the_character_and_leaves_the_record_alone(
+    client, session, test_user, test_user_2, test_group, auth_headers
+):
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Corrected Main")
+    item = await create_catalog_item(session, name="Corrected Drop Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _put_record(session, profile, main, item, ownership="missing")
+    await _row_with_history(session, goal, test_user_2, state="need")
+    await session.commit()
+
+    drop = await _log_drop_for(client, test_group, goal, test_user_2, auth_headers)
+
+    stored = await _stored_drop(session, drop)
+    assert (stored.recipient_character_id, stored.recipient_character_source) == (
+        main.id,
+        "default",
+    )
+    assert _prior_triple(stored) == (None, None, None)
+    (record,) = await _all_records(session)
+    assert (record.ownership_state, record.updated_at, record.updated_by_user_id) == (
+        "missing",
+        CLIENT_CLOCK,
+        None,
+    )
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.updated_by_user_id) == ("have", test_user.id)
+    assert stored.recipient_prior_state == "need"
+
+
+@covers_record("log_drop")
+async def test_own_drop_on_a_goal_without_a_catalog_item_records_the_character_only(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2
+):
+    _, main = await _member_of(session, test_group, test_user_2, main_name="Plain Main")
+    goal = await create_collection_goal(session, test_group, test_user, title="No Catalog")
+    await session.commit()
+
+    drop = await _log_drop_for(client, test_group, goal, test_user_2, auth_headers_user2)
+
+    stored = await _stored_drop(session, drop)
+    assert stored.recipient_character_id == main.id
+    assert _prior_triple(stored) == (None, None, None)
+    assert await _all_records(session) == []
