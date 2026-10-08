@@ -313,7 +313,7 @@ async def test_hunting_intent_raises_score(
     _make_intent(session, member_profile.id, catalog.id, intent="hunting", visibility="static_only")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     assert len(suggestions) == 1
     s = suggestions[0]
 
@@ -335,7 +335,7 @@ async def test_pass_intent_removes_positive_signal(
     _make_intent(session, member_profile.id, catalog.id, intent="pass", visibility="static_only")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     assert len(suggestions) == 1
     member_entry = next(m for m in suggestions[0].members if m.user_id == member.id)
     assert "Pass" in member_entry.reasons
@@ -351,7 +351,7 @@ async def test_can_buy_detected_from_token_count(
     _make_snapshot(session, member_profile.id, catalog.id, ownership_state="missing", token_count=99)
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     member_entry = next(m for m in suggestions[0].members if m.user_id == member.id)
     assert member_entry.can_buy is True
     assert "Can buy" in member_entry.reasons
@@ -367,7 +367,7 @@ async def test_stale_sync_lowers_score(
     _make_snapshot(session, member_profile.id, catalog.id, ownership_state="missing", last_synced_at=_STALE)
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     member_entry = next(m for m in suggestions[0].members if m.user_id == member.id)
     assert "Stale sync" in member_entry.reasons or "Unknown ownership" not in member_entry.reasons
 
@@ -382,7 +382,7 @@ async def test_private_intent_not_used_in_suggestions(
     _make_intent(session, member_profile.id, catalog.id, intent="hunting", visibility="private")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     member_entry = next(m for m in suggestions[0].members if m.user_id == member.id)
     # intent field must be None because private intents are excluded
     assert member_entry.intent is None
@@ -413,7 +413,7 @@ async def test_manual_fallback_when_no_snapshot(
     session.add(rps)
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     member_entry = next(m for m in suggestions[0].members if m.user_id == member.id)
     assert member_entry.ownership_state == "missing"
     assert "Need (manual)" in member_entry.reasons or "manual" in str(member_entry.reasons).lower()
@@ -631,7 +631,7 @@ async def test_suggestions_appear_without_static_goals(
     _make_intent(session, member_profile.id, catalog.id, intent="hunting", visibility="static_only")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
 
     assert len(suggestions) == 1
     s = suggestions[0]
@@ -657,7 +657,7 @@ async def test_suggestions_no_results_with_only_private_intent(
     _make_intent(session, member_profile.id, catalog.id, intent="hunting", visibility="private")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     assert len(suggestions) == 0
 
 
@@ -677,7 +677,7 @@ async def test_suggestion_schema_includes_catalog_fields(
     _make_intent(session, member_profile.id, catalog.id, intent="hunting", visibility="static_only")
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     assert len(suggestions) == 1
     s = suggestions[0]
     assert s.catalog_item_category == "mount"
@@ -701,7 +701,7 @@ async def test_ultimate_can_buy_at_token_count_one(
     _make_snapshot(session, member_profile.id, catalog.id, ownership_state="missing", token_count=1)
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     assert len(suggestions) == 1
     member_entry = next(m for m in suggestions[0].members if m.user_id == member.id)
     assert member_entry.can_buy is True
@@ -722,7 +722,7 @@ async def test_ultimate_cannot_buy_at_token_count_zero(
     _make_snapshot(session, member_profile.id, catalog.id, ownership_state="missing", token_count=0)
     await session.flush()
 
-    suggestions = await compute_suggestions(session, group.id, owner)
+    suggestions = await compute_suggestions(session, group.id, owner, viewer_role="owner")
     assert len(suggestions) == 1
     member_entry = next(m for m in suggestions[0].members if m.user_id == member.id)
     assert member_entry.can_buy is False
@@ -753,7 +753,7 @@ async def test_a_member_whose_card_names_the_alt_reads_the_alts_record(
     )
     await session.flush()
 
-    (suggestion,) = await compute_suggestions(session, group.id, owner)
+    (suggestion,) = await compute_suggestions(session, group.id, owner, viewer_role="owner")
 
     entry = next(m for m in suggestion.members if m.user_id == member.id)
     assert (entry.ownership_state, entry.token_count) == ("missing", 12)
@@ -793,9 +793,9 @@ async def test_suggestions_issue_the_same_selects_for_two_and_six_members(
         return sql.lstrip().upper().startswith("SELECT")
 
     with count_statements(engine, match=is_select) as two:
-        small = await compute_suggestions(session, duo.id, duo_owner)
+        small = await compute_suggestions(session, duo.id, duo_owner, viewer_role="owner")
     with count_statements(engine, match=is_select) as six:
-        large = await compute_suggestions(session, sextet.id, sextet_owner)
+        large = await compute_suggestions(session, sextet.id, sextet_owner, viewer_role="owner")
 
     assert [len(s.members) for s in small] == [2]
     assert [len(s.members) for s in large] == [6]

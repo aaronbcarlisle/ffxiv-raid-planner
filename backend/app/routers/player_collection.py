@@ -201,10 +201,11 @@ async def get_collection_suggestions(
 
     Only aggregated data is returned. Intent visibility is enforced: only
     static_only and dossier_public intents from group members are included.
-    Private intents are never exposed here.
+    Private intents are never exposed here. Token counts follow the count gate
+    (R-S1-19): a viewer sees states only, and a member's Hub flag hides theirs.
     """
-    await require_membership(session, user.id, group_id, min_role=MemberRole.VIEWER)
-    return await compute_suggestions(session, group_id, user)
+    membership = await require_membership(session, user.id, group_id, min_role=MemberRole.VIEWER)
+    return await compute_suggestions(session, group_id, user, viewer_role=membership.role)
 
 
 # ── Dossier public hunting list ────────────────────────────────────────────────
