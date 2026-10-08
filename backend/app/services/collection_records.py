@@ -143,6 +143,35 @@ def _resolve_registration(
     return matches[0] if len(matches) == 1 else None
 
 
+SyncMatchReason = Literal["matched", "null", "unknown", "unmatched", "ambiguous"]
+
+
+def match_sync_character(
+    characters: Sequence[PlayerCharacter], name: str | None, world: str | None
+) -> tuple[PlayerCharacter | None, SyncMatchReason]:
+    """The character a plugin sync names, among the profile's `characters` (R-S1-17).
+
+    Pure: the caller loads the characters. Names compare `.lower().strip()`; an
+    empty name is `null` and `"unknown"` in any case is `unknown` (both: no
+    name to match). The world narrows the name's matches only when it is sent
+    and non-empty. One left is `matched`, none `unmatched`, several `ambiguous`.
+    """
+    wanted_name = _normalized(name)
+    if not wanted_name:
+        return None, "null"
+    if wanted_name == "unknown":
+        return None, "unknown"
+    matches = [c for c in characters if _normalized(c.name) == wanted_name]
+    wanted_world = _normalized(world)
+    if wanted_world:
+        matches = [c for c in matches if _normalized(c.server) == wanted_world]
+    if not matches:
+        return None, "unmatched"
+    if len(matches) > 1:
+        return None, "ambiguous"
+    return matches[0], "matched"
+
+
 async def _profiles_and_characters(
     db: AsyncSession, user_ids: set[str]
 ) -> tuple[dict[str, str], dict[str, list[PlayerCharacter]]]:
