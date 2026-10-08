@@ -20,6 +20,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
+    MemberRole,
     PlayerCharacter,
     PlayerCollectionSnapshot,
     PlayerProfile,
@@ -1068,3 +1069,51 @@ async def apply_sync(
         rows_locked=counters[_ROW_LOCKED],
         counts_updated=counts_updated,
     )
+
+
+# ---------------------------------------------------------------------------
+# Counts: whose token counts a caller may see (R-S1-19)
+# ---------------------------------------------------------------------------
+
+
+# Roles that may see other members' counts; anything else (viewer, no role, an
+# unknown string) sees only its own (default deny).
+_COUNT_READER_ROLES = frozenset(
+    {MemberRole.OWNER.value, MemberRole.LEAD.value, MemberRole.MEMBER.value}
+)
+
+
+async def count_visibility(
+    db: AsyncSession,
+    *,
+    static_group_id: str,
+    viewer_user_id: str,
+    viewer_role: str | None,
+    user_ids: Iterable[str],
+) -> set[str]:
+    """The subset of `user_ids` whose token counts the caller may see (R-S1-19).
+
+    A caller always sees their own. A viewer, or a caller with no role or an
+    unknown one, sees no one else's (default deny). Any other role
+    sees everyone's except members whose `hide_collection_counts` flag is set,
+    and that holds for leads and owners too. An admin acts as owner (pass the
+    role `get_user_role_for_response` gives), so a flagged count is hidden from
+    admins as well. A user with no profile has no flag. The flag is the user's
+    own, not per static; `static_group_id` is part of the gate's signature so
+    callers pass the static they are reading for. One SELECT, none for a
+    viewer or when only the caller is asked about.
+    """
+    wanted = set(user_ids)
+    own = {viewer_user_id} & wanted
+    if viewer_role not in _COUNT_READER_ROLES:
+        return own
+    others = wanted - own
+    if not others:
+        return own
+    result = await db.execute(
+        select(PlayerProfile.user_id).where(
+            PlayerProfile.user_id.in_(others),
+            PlayerProfile.hide_collection_counts.is_(True),
+        )
+    )
+    return own | (others - set(result.scalars()))

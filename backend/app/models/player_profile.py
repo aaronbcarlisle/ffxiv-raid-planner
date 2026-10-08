@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy import Boolean, ForeignKey, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -50,6 +50,13 @@ class PlayerProfile(Base):
 
     # Optional short bio / notes
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Hide this member's token counts from everyone but themselves (S2a-1,
+    # R-S1-19). The server default matches the o8p9q0r1s2t3 migration, so the
+    # dev-SQLite column sync adds it NOT NULL DEFAULT false as well.
+    hide_collection_counts: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false(),
+    )
 
     # Timestamps
     created_at: Mapped[str] = mapped_column(
