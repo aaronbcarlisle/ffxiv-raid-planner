@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.65';
+export const CURRENT_VERSION = '2.1.66';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,38 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.66',
+    date: '2026-10-07T20:00:00Z',
+    title: 'Deleting a farm asks first',
+    items: [
+      {
+        category: 'fix',
+        title: 'Deleting a farm asks for confirmation',
+        description:
+          'In Settings → Goals & Farms → Farms, the trash button now opens a "Delete Farm" confirmation that names the farm, instead of deleting it on one click. Keyboard users can see the button when it has focus, and screen readers announce which farm it deletes.',
+        pr: 355,
+        prTitle: 'fix(ui): W0 DEL-1 — the farm delete asks first; the V2 session modal shows what Discord will do',
+      },
+      {
+        category: 'fix',
+        title: 'Easier-to-read label in the Discord Delivery block',
+        description:
+          'The "Per-event controls" label in the session form\'s Discord Delivery block is no longer smaller than the rest of the form text.',
+        pr: 355,
+        prTitle: 'fix(ui): W0 DEL-1 — the farm delete asks first; the V2 session modal shows what Discord will do',
+      },
+      {
+        category: 'improvement',
+        title: 'V2 preview: the session form shows what Discord will do',
+        description:
+          'V2 preview: creating or editing a session now shows the same Discord Delivery block as the classic Schedule, so leads can see whether the session will mirror to Discord Events and which reminders will send, or what to connect first.',
+        pr: 355,
+        prTitle: 'fix(ui): W0 DEL-1 — the farm delete asks first; the V2 session modal shows what Discord will do',
+        internal: true,
+      },
+    ],
+  },
   {
     version: '2.1.65',
     date: '2026-10-01T21:10:03Z',
