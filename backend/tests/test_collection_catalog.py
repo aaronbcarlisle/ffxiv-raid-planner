@@ -365,10 +365,13 @@ async def token_goal_id(async_client: AsyncClient, group, owner_headers) -> str:
     return create_resp.json()["id"]
 
 
-async def test_member_token_count_is_not_stored_via_self_upsert(
+async def test_member_token_count_is_stored_via_self_upsert(
     async_client: AsyncClient, group, token_goal_id, owner_headers, member_headers, member
 ):
-    """R-P0-3: a member's self-upsert ignores token_count; the plugin sync is their token path."""
+    """S2a-1 delta (h): a member's self-upsert stores token_count (R-P0-3 dropped it).
+
+    The member has no profile here, so the row holds the count.
+    """
     await async_client.patch(
         f"/api/static-groups/{group.id}/collection-goals/{token_goal_id}/participants",
         json={"state": "need", "token_count": 99},
@@ -380,7 +383,7 @@ async def test_member_token_count_is_not_stored_via_self_upsert(
     )).json()
     p = next(p for p in participants if p["user_id"] == member.id)
     assert p["state"] == "need"
-    assert p["token_count"] is None
+    assert p["token_count"] == 99
 
 
 async def test_lead_token_count_at_threshold_is_stored(

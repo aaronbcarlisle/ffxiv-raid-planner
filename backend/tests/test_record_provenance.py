@@ -12,6 +12,7 @@ every recorded name resolves on this module. B2 and B3 only append: a name to
 `RECORD_HANDLERS` and decorated tests below.
 """
 
+import asyncio
 import uuid
 from collections.abc import Callable
 
@@ -28,13 +29,18 @@ from app.models import (
     PlayerCollectionIntent,
     PlayerCollectionSnapshot,
     PlayerProfile,
+    RewardDropLog,
+    RewardParticipantState,
 )
 from tests.factories import (
     create_catalog_item,
     create_claimed_card,
+    create_collection_goal,
     create_membership,
+    create_participant_state,
     create_player_character,
     create_player_profile,
+    create_static_group,
 )
 
 # ---------------------------------------------------------------------------
@@ -46,6 +52,8 @@ RECORD_HANDLERS = (
     "update_mount_farm_progress",
     "bulk_update_mount_farm_progress",
     "plugin_sync_collections",
+    "upsert_participant_state",
+    "upsert_participant_state_for_user",
 )
 
 # handler name -> the test functions decorated with @covers_record(handler)
@@ -537,3 +545,464 @@ async def test_plugin_sync_without_a_profile_writes_no_record(client, session, a
 
     assert await _all_records(session) == []
     assert (await session.execute(select(PlayerProfile))).scalars().all() == []
+
+
+# ---------------------------------------------------------------------------
+# upsert_participant_state and upsert_participant_state_for_user (Track's PATCH routes)
+# ---------------------------------------------------------------------------
+
+
+def _participants_url(group, goal, target_user=None) -> str:
+    url = f"/api/static-groups/{group.id}/collection-goals/{goal.id}/participants"
+    return url if target_user is None else f"{url}/{target_user.id}"
+
+
+async def _tracked_goal(
+    session: AsyncSession, group, creator, item, *, title: str = "Tracked Mount"
+):
+    """A farm goal of `group` that names the catalog item."""
+    goal = await create_collection_goal(session, group, creator, title=title)
+    goal.catalog_item_id = item.id
+    await session.flush()
+    return goal
+
+
+async def _put_record(
+    session: AsyncSession,
+    profile,
+    character,
+    item,
+    *,
+    ownership: str,
+    token_count: int | None = None,
+    source: str = "plugin",
+) -> PlayerCollectionSnapshot:
+    """A record written long ago by nobody in particular (a pre-S2a-1 plugin sync)."""
+    record = PlayerCollectionSnapshot(
+        id=str(uuid.uuid4()),
+        profile_id=profile.id,
+        character_id=None if character is None else character.id,
+        catalog_item_id=item.id,
+        ownership_state=ownership,
+        token_count=token_count,
+        source=source,
+        confidence="high",
+        updated_at=CLIENT_CLOCK,
+        state_changed_at=CLIENT_CLOCK,
+        token_count_updated_at=CLIENT_CLOCK if token_count is not None else None,
+    )
+    session.add(record)
+    await session.flush()
+    return record
+
+
+async def _row(session: AsyncSession, goal, user) -> RewardParticipantState | None:
+    result = await session.execute(
+        select(RewardParticipantState)
+        .where(
+            RewardParticipantState.goal_id == goal.id,
+            RewardParticipantState.user_id == user.id,
+        )
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
+@covers_record("upsert_participant_state")
+async def test_track_have_raises_the_members_record_and_writes_the_row_with_one_clock(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2
+):
+    """R-S1-10: Have goes to the character the chain names, and the row and record share `now`."""
+    _, main = await _member_of(session, test_group, test_user_2, main_name="Track Main")
+    item = await create_catalog_item(session, name="Track Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await session.commit()
+
+    response = await client.patch(
+        _participants_url(test_group, goal), json={"state": "have"}, headers=auth_headers_user2
+    )
+    assert response.status_code == 200, response.text
+
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.catalog_item_id, record.ownership_state) == (
+        main.id,
+        item.id,
+        "have",
+    )
+    assert (record.source, record.confidence) == ("manual", "medium")
+    assert (record.updated_by_user_id, record.updated_via) == (test_user_2.id, "web")
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.source) == ("have", "manual")
+    assert (row.updated_by_user_id, row.updated_via) == (test_user_2.id, "web")
+    assert record.state_changed_at is not None
+    assert record.state_changed_at == row.state_changed_at == record.updated_at == row.updated_at
+
+
+@covers_record("upsert_participant_state")
+async def test_track_need_over_a_record_have_un_haves_it_and_the_other_static_reads_want(
+    client, session, test_user, test_user_2, test_group, auth_headers, auth_headers_user2
+):
+    """Q6, Q3: V1's "My status" Need un-Haves the record; a Have row elsewhere yields to Want."""
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Unhave Main")
+    other = await create_static_group(session, test_user, name="Second Static")
+    await create_membership(session, test_user_2, other, role=MemberRole.MEMBER)
+    item = await create_catalog_item(session, name="Unhave Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    other_goal = await _tracked_goal(session, other, test_user, item, title="Elsewhere")
+    await _put_record(session, profile, main, item, ownership="have", source="plugin")
+    other_row = await create_participant_state(session, other_goal, test_user_2, state="have")
+    other_row.source = "plugin"
+    other_row.state_changed_at = CLIENT_CLOCK
+    await session.commit()
+
+    before = await client.get(_participants_url(other, other_goal), headers=auth_headers)
+    assert [p["state"] for p in before.json() if p["user_id"] == test_user_2.id] == ["have"]
+
+    response = await client.patch(
+        _participants_url(test_group, goal), json={"state": "need"}, headers=auth_headers_user2
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["state"] == "need"
+
+    (record,) = await _all_records(session)
+    assert record.ownership_state == "missing"
+    assert (record.updated_by_user_id, record.updated_via) == (test_user_2.id, "web")
+    assert record.state_changed_at == (await _row(session, goal, test_user_2)).state_changed_at
+
+    after = await client.get(_participants_url(other, other_goal), headers=auth_headers)
+    elsewhere = next(p for p in after.json() if p["user_id"] == test_user_2.id)
+    assert (elsewhere["state"], elsewhere["state_from_record"]) == ("want", True)
+
+
+@covers_record("upsert_participant_state")
+async def test_track_pass_leaves_the_record_untouched(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2
+):
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Pass Main")
+    item = await create_catalog_item(session, name="Pass Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _put_record(session, profile, main, item, ownership="have")
+    await session.commit()
+
+    response = await client.patch(
+        _participants_url(test_group, goal), json={"state": "pass"}, headers=auth_headers_user2
+    )
+    assert response.status_code == 200, response.text
+
+    (record,) = await _all_records(session)
+    assert (record.ownership_state, record.source, record.updated_at, record.state_changed_at) == (
+        "have",
+        "plugin",
+        CLIENT_CLOCK,
+        CLIENT_CLOCK,
+    )
+    assert (record.updated_by_user_id, record.updated_via) == (None, None)
+    assert (await _row(session, goal, test_user_2)).state == "pass"
+
+
+@covers_record("upsert_participant_state")
+async def test_track_have_over_a_record_that_already_has_it_writes_nothing_to_the_record(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2
+):
+    """The plugin's Have keeps its source and writer when the member only agrees with it."""
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Agree Main")
+    item = await create_catalog_item(session, name="Agree Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _put_record(session, profile, main, item, ownership="have")
+    await session.commit()
+
+    response = await client.patch(
+        _participants_url(test_group, goal), json={"state": "have"}, headers=auth_headers_user2
+    )
+    assert response.status_code == 200, response.text
+
+    (record,) = await _all_records(session)
+    assert (record.source, record.updated_at, record.updated_by_user_id) == (
+        "plugin",
+        CLIENT_CLOCK,
+        None,
+    )
+    assert (await _row(session, goal, test_user_2)).state == "have"
+
+
+@covers_record("upsert_participant_state")
+async def test_track_member_count_goes_to_the_record_on_the_api_key_channel_and_rank_is_dropped(
+    client, session, test_user, test_user_2, test_group, auth_headers_user2
+):
+    """Delta (h): a member's count is stored, on the record; `priority_rank` stays a lead's."""
+    _, main = await _member_of(session, test_group, test_user_2, main_name="Count Main")
+    item = await create_catalog_item(session, name="Count Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers_user2)
+
+    response = await client.request(
+        "PATCH",
+        _participants_url(test_group, goal),
+        json={"state": "need", "token_count": 7, "priority_rank": 1},
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["token_count"], body["count_from_record"], body["priority_rank"]) == (
+        7,
+        True,
+        None,
+    )
+
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.token_count, record.ownership_state) == (
+        main.id,
+        7,
+        "unknown",
+    )
+    assert record.token_count_updated_at is not None and record.state_changed_at is None
+    assert (record.updated_by_user_id, record.updated_via) == (test_user_2.id, "api_key")
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.token_count, row.priority_rank) == ("need", None, None)
+
+
+@covers_record("upsert_participant_state_for_user")
+async def test_lead_route_for_a_member_writes_the_row_as_a_correction_and_no_record(
+    client, session, test_user, test_user_2, test_group, auth_headers
+):
+    """R-S1-10: a lead's edit for another member is the row alone, writer = the lead."""
+    profile, main = await _member_of(session, test_group, test_user_2, main_name="Corrected Main")
+    item = await create_catalog_item(session, name="Corrected Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _put_record(session, profile, main, item, ownership="have")
+    await session.commit()
+
+    response = await client.patch(
+        _participants_url(test_group, goal, test_user_2),
+        json={"state": "need", "token_count": 9, "priority_rank": 2},
+        headers=auth_headers,
+    )
+    assert response.status_code == 200, response.text
+
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.token_count, row.priority_rank) == ("need", 9, 2)
+    assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "web")
+    (record,) = await _all_records(session)
+    assert (record.ownership_state, record.token_count, record.updated_at) == (
+        "have",
+        None,
+        CLIENT_CLOCK,
+    )
+    assert (record.updated_by_user_id, record.updated_via) == (None, None)
+
+
+@covers_record("upsert_participant_state_for_user")
+async def test_lead_route_aimed_at_the_lead_follows_the_self_rules(
+    client, session, test_user, test_group, auth_headers, world
+):
+    """R-S1-10: a lead editing their own cell writes their record, and may set a rank."""
+    _, main, _, item = world
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await session.commit()
+
+    response = await client.patch(
+        _participants_url(test_group, goal, test_user),
+        json={"state": "have", "token_count": 4, "priority_rank": 1},
+        headers=auth_headers,
+    )
+    assert response.status_code == 200, response.text
+
+    (record,) = await _all_records(session)
+    assert (record.character_id, record.ownership_state, record.token_count) == (
+        main.id,
+        "have",
+        4,
+    )
+    assert (record.updated_by_user_id, record.updated_via) == (test_user.id, "web")
+    row = await _row(session, goal, test_user)
+    assert (row.state, row.token_count, row.priority_rank) == ("have", None, 1)
+    assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "web")
+    assert row.state_changed_at == record.state_changed_at
+
+
+# ---------------------------------------------------------------------------
+# The remaining row writers (C3): the plugin sync's rows, log_drop's flip, delete_drop's restore.
+# These reach `write_row`, not the record door, so they carry no @covers_record.
+# ---------------------------------------------------------------------------
+
+
+async def _row_with_history(
+    session: AsyncSession, goal, user, *, state: str, token_count: int | None = None
+) -> RewardParticipantState:
+    """A member's row written long ago by nobody in particular (pre-S2a-1 stamps)."""
+    row = await create_participant_state(session, goal, user, state=state)
+    row.token_count = token_count
+    row.updated_at = CLIENT_CLOCK
+    row.state_changed_at = CLIENT_CLOCK
+    row.token_count_updated_at = CLIENT_CLOCK if token_count is not None else None
+    await session.flush()
+    return row
+
+
+async def test_plugin_sync_rows_record_the_member_and_the_api_key_channel(
+    client, session, test_user, test_group, auth_headers
+):
+    """A created Have row, a raised row and a recounted row all name the member and the channel."""
+    new_item = await _farm_item(session, "New Row Mount", game_mount_id=4501)
+    raise_item = await _farm_item(session, "Raised Row Mount", game_mount_id=4502)
+    count_item = await _farm_item(session, "Counted Row Mount", token_item_id=4503)
+    new_goal = await _tracked_goal(session, test_group, test_user, new_item, title="New")
+    raise_goal = await _tracked_goal(session, test_group, test_user, raise_item, title="Raise")
+    count_goal = await _tracked_goal(session, test_group, test_user, count_item, title="Count")
+    await _row_with_history(session, raise_goal, test_user, state="need")
+    await _row_with_history(session, count_goal, test_user, state="need", token_count=3)
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "POST",
+        SYNC_URL,
+        json={
+            "mounts": [{"mountId": 4501, "owned": True}, {"mountId": 4502, "owned": True}],
+            "currencies": [{"itemId": 4503, "count": 40}],
+            "syncedAt": CLIENT_CLOCK,
+        },
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["statesUpdated"], body["tokenCountsUpdated"], body["skippedLocked"]) == (2, 1, 0)
+    server_clock = body["syncedAt"]
+    assert server_clock != CLIENT_CLOCK
+
+    created = await _row(session, new_goal, test_user)
+    assert (created.state, created.source) == ("have", "plugin")
+    assert created.last_synced_at == server_clock
+    assert created.state_changed_at == created.updated_at == server_clock
+    raised = await _row(session, raise_goal, test_user)
+    assert (raised.state, raised.source) == ("have", "plugin")
+    assert raised.state_changed_at == server_clock
+    counted = await _row(session, count_goal, test_user)
+    assert (counted.state, counted.token_count, counted.state_changed_at) == (
+        "need",
+        40,
+        CLIENT_CLOCK,
+    )
+    assert counted.token_count_updated_at == counted.updated_at == server_clock
+    for row in (created, raised, counted):
+        assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "api_key")
+
+
+async def test_plugin_sync_that_changes_nothing_leaves_a_row_unstamped_by_state(
+    client, session, test_user, test_group, auth_headers
+):
+    """An unchanged count writes nothing; a Have the plugin already set keeps its state clock."""
+    have_item = await _farm_item(session, "Settled Mount", game_mount_id=4511)
+    count_item = await _farm_item(session, "Settled Count", token_item_id=4512)
+    have_goal = await _tracked_goal(session, test_group, test_user, have_item, title="Settled")
+    count_goal = await _tracked_goal(session, test_group, test_user, count_item, title="Same")
+    have_row = await _row_with_history(session, have_goal, test_user, state="have")
+    have_row.source = "plugin"
+    await _row_with_history(session, count_goal, test_user, state="need", token_count=40)
+    await session.commit()
+    raw_key = await _mint_key(client, auth_headers)
+
+    response = await client.request(
+        "POST",
+        SYNC_URL,
+        json={
+            "mounts": [{"mountId": 4511, "owned": True}],
+            "currencies": [{"itemId": 4512, "count": 40}],
+        },
+        headers={"Authorization": f"Bearer {raw_key}"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["statesUpdated"], body["statesUnchanged"], body["tokenCountsUpdated"]) == (0, 1, 0)
+
+    settled = await _row(session, have_goal, test_user)
+    assert settled.state_changed_at == CLIENT_CLOCK
+    same = await _row(session, count_goal, test_user)
+    assert (same.updated_at, same.updated_by_user_id) == (CLIENT_CLOCK, None)
+    assert same.updated_via is None
+
+
+async def _log_drop_for(client, group, goal, recipient, headers):
+    response = await client.post(
+        f"/api/static-groups/{group.id}/collection-goals/{goal.id}/drops",
+        json={"recipient_user_id": recipient.id},
+        headers=headers,
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+async def test_drop_flip_records_the_logger_and_moves_the_state_clock(
+    client, session, test_user, test_user_2, test_group, auth_headers
+):
+    """A lead logs a drop for a member: the flipped row names the lead (a correction)."""
+    await _member_of(session, test_group, test_user_2, main_name="Dropped Main")
+    item = await create_catalog_item(session, name="Dropped Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _row_with_history(session, goal, test_user_2, state="need")
+    await session.commit()
+
+    drop = await _log_drop_for(client, test_group, goal, test_user_2, auth_headers)
+
+    row = await _row(session, goal, test_user_2)
+    assert row.state == "have"
+    assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "web")
+    assert row.state_changed_at != CLIENT_CLOCK
+    stored = (
+        await session.execute(
+            select(RewardDropLog)
+            .where(RewardDropLog.id == drop["id"])
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one()
+    assert row.state_changed_at == row.updated_at == stored.recipient_prior_state_at
+
+
+async def test_drop_that_flips_nothing_leaves_the_row_alone(
+    client, session, test_user, test_user_2, test_group, auth_headers
+):
+    await _member_of(session, test_group, test_user_2, main_name="Pass Dropped Main")
+    item = await create_catalog_item(session, name="Pass Dropped Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _row_with_history(session, goal, test_user_2, state="pass")
+    await session.commit()
+
+    await _log_drop_for(client, test_group, goal, test_user_2, auth_headers)
+
+    row = await _row(session, goal, test_user_2)
+    assert (row.state, row.updated_at, row.updated_by_user_id, row.updated_via) == (
+        "pass",
+        CLIENT_CLOCK,
+        None,
+        None,
+    )
+
+
+async def test_drop_delete_restore_records_the_deleter_and_moves_the_state_clock(
+    client, session, test_user, test_user_2, test_group, auth_headers, auth_headers_user2
+):
+    """The member logs their own drop (writer = member); the owner deletes it (writer = owner)."""
+    await _member_of(session, test_group, test_user_2, main_name="Restored Main")
+    item = await create_catalog_item(session, name="Restored Mount")
+    goal = await _tracked_goal(session, test_group, test_user, item)
+    await _row_with_history(session, goal, test_user_2, state="need")
+    await session.commit()
+
+    drop = await _log_drop_for(client, test_group, goal, test_user_2, auth_headers_user2)
+    flipped = await _row(session, goal, test_user_2)
+    assert (flipped.state, flipped.updated_by_user_id) == ("have", test_user_2.id)
+    flip_clock = flipped.state_changed_at
+    await asyncio.sleep(0.02)  # cross a Windows clock tick
+
+    response = await client.delete(
+        f"/api/static-groups/{test_group.id}/collection-goals/{goal.id}/drops/{drop['id']}",
+        headers=auth_headers,
+    )
+    assert response.status_code == 204, response.text
+
+    row = await _row(session, goal, test_user_2)
+    assert row.state == "need"
+    assert (row.updated_by_user_id, row.updated_via) == (test_user.id, "web")
+    assert row.state_changed_at == row.updated_at
+    assert row.state_changed_at != flip_clock

@@ -41,6 +41,8 @@ from ..schemas.collection_goals import (
     RewardDropResponse,
 )
 from ..services.collection_records import (
+    RECORD_WRITE_PERSON,
+    UNSET,
     MergedParticipant,
     is_after,
     load_records,
@@ -48,6 +50,8 @@ from ..services.collection_records import (
     merged_participants,
     parse_ts,
     resolve_record_targets,
+    write_record,
+    write_row,
 )
 from ..services.provenance import logged_via, request_api_key_id
 
@@ -314,16 +318,19 @@ _VALID_CONTENT_TYPES = {
 async def create_goal_from_suggestion(
     group_id: str,
     body: CollectionGoalFromSuggestion,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> CollectionGoalResponse:
     """Create a CollectionGoal from a suggestion and pre-seed participant states.
 
     Participant states are derived from (in priority order):
-      PlayerCollectionSnapshot (plugin ownership) > PlayerCollectionIntent
-      (static_only/dossier_public only — never private) > MountFarmProgress legacy data.
+      the member's collection record in this static (plugin ownership) >
+      PlayerCollectionIntent (static_only/dossier_public only — never private) >
+      MountFarmProgress legacy data.
 
-    Members with no signal default to state="want".
+    Members with no signal get no row (R-S1-12, B5). Seeded rows are derived
+    (R-S1-8): no writer, the request's channel.
     Existing RewardParticipantState rows are not overwritten.
     """
     from ..models.mount_farm_progress import MountFarmProgress
@@ -341,6 +348,7 @@ async def create_goal_from_suggestion(
         raise NotFound(f"Catalog item {body.catalog_item_id} not found")
 
     now = _now()
+    via = logged_via(request)
 
     # ── Create goal ─────────────────────────────────────────────────────────
     goal_type = _CATALOG_CATEGORY_TO_GOAL_TYPE.get(catalog_item.category or "", "custom_reward")
@@ -448,23 +456,25 @@ async def create_goal_from_suggestion(
             token_count = snapshot.token_count
             source = "plugin"
         else:
-            state = "want"  # optimistic default — all members start as wanting
-            token_count = None
-            source = "manual"
+            continue  # no signal, no row: the member starts blank (R-S1-12, B5)
 
-        participant = RewardParticipantState(
-            id=str(uuid.uuid4()),
+        # A derived row (R-S1-8): it copies the member's own signals, so it has no
+        # writer, only the channel; the lead who tracked the goal is `created_by_id`.
+        written = await write_row(
+            session,
+            row=None,
             goal_id=goal.id,
-            user_id=user_id,
             static_group_id=group_id,
+            user_id=user_id,
+            actor_user_id=None,
+            via=via,
+            now=now,
             state=state,
             token_count=token_count,
             source=source,
-            updated_at=now,
         )
-        session.add(participant)
         # The response's summary counts what the static will see (R-S1-9).
-        _tally(summary, merge_participant(participant, snapshot).state)
+        _tally(summary, merge_participant(written.row, snapshot).state)
 
     await session.commit()
     await session.refresh(goal)
@@ -572,6 +582,84 @@ async def list_participants(
     ]
 
 
+async def _write_own_state(
+    session: AsyncSession,
+    *,
+    group_id: str,
+    goal: CollectionGoal,
+    row: RewardParticipantState | None,
+    user_id: str,
+    body: ParticipantStateUpsert,
+    can_rank: bool,
+    via: str,
+    now: str,
+) -> RewardParticipantState:
+    """A member's own cell: the row, and the record of their character in this static (R-S1-10).
+
+    The record is the character the chain names, and only for a goal with a
+    catalog item. `have` raises it; `need`/`want` over a record `have` lowers it
+    to `missing` (Q6); `pass` leaves its ownership alone; a record that already
+    says `have` is not written for a `have` (its source and writer stay). A
+    count from anyone goes to the record, else (no profile, or no catalog item)
+    to the row; `None` means unchanged. `priority_rank` is a lead's. One `now`
+    stamps the row and the record. The caller commits.
+    """
+    target = None
+    record = None
+    catalog_item_id = goal.catalog_item_id
+    if catalog_item_id is not None:
+        resolved = (await resolve_record_targets(session, [(group_id, user_id)]))[
+            (group_id, user_id)
+        ]
+        if resolved.profile_id is not None:
+            target = resolved
+            record = (await load_records(session, [target], [catalog_item_id]))[target].get(
+                catalog_item_id
+            )
+
+    ownership = None
+    if body.state == "have":
+        if record is None or record.ownership_state != "have":
+            ownership = "have"
+    elif body.state in ("need", "want") and record is not None and record.ownership_state == "have":
+        ownership = "missing"
+
+    if target is not None and catalog_item_id is not None and (
+        ownership is not None or body.token_count is not None
+    ):
+        await write_record(
+            session,
+            target,
+            catalog_item_id,
+            actor_user_id=user_id,
+            via=via,
+            mode=RECORD_WRITE_PERSON,
+            now=now,
+            ownership=ownership,
+            token_count=body.token_count,
+            source="manual",
+            confidence="medium",
+        )
+
+    write = await write_row(
+        session,
+        row=row,
+        goal_id=goal.id,
+        static_group_id=group_id,
+        user_id=user_id,
+        actor_user_id=user_id,
+        via=via,
+        now=now,
+        state=body.state,
+        token_count=body.token_count if target is None and body.token_count is not None else UNSET,
+        priority_rank=body.priority_rank if can_rank and body.priority_rank is not None else UNSET,
+        notes=body.notes if body.notes is not None else UNSET,
+        source="manual",
+        last_manual_override_at=now,
+    )
+    return write.row
+
+
 @router.patch(
     "/static-groups/{group_id}/collection-goals/{goal_id}/participants",
     response_model=ParticipantStateResponse,
@@ -580,13 +668,15 @@ async def upsert_participant_state(
     group_id: str,
     goal_id: str,
     body: ParticipantStateUpsert,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> ParticipantStateResponse:
     """Members and above update their own state; viewers are refused (R-P0-3).
 
-    Only leads and owners set token_count / priority_rank by hand: a member's
-    values are ignored, not refused (the plugin sync is their token path).
+    Anyone's `token_count` is stored (S2a-1 delta (h)), on their character's
+    record where there is one; `priority_rank` stays a lead's, and a member's
+    is ignored, not refused.
     """
     await get_static_group(session, group_id)
     membership = await require_membership(session, current_user.id, group_id)
@@ -596,8 +686,6 @@ async def upsert_participant_state(
     if membership.role == MemberRole.VIEWER:
         raise PermissionDenied("Viewers cannot track farms")
     can_rank = membership.role_level >= _LEAD_LEVEL
-    token_count = body.token_count if can_rank else None
-    priority_rank = body.priority_rank if can_rank else None
 
     now = _now()
     result = await session.execute(
@@ -606,34 +694,17 @@ async def upsert_participant_state(
             RewardParticipantState.user_id == current_user.id,
         )
     )
-    participant = result.scalar_one_or_none()
-
-    if participant is None:
-        participant = RewardParticipantState(
-            id=str(uuid.uuid4()),
-            goal_id=goal_id,
-            user_id=current_user.id,
-            static_group_id=group_id,
-            state=body.state,
-            token_count=token_count,
-            priority_rank=priority_rank,
-            source="manual",
-            notes=body.notes,
-            last_manual_override_at=now,
-            updated_at=now,
-        )
-        session.add(participant)
-    else:
-        participant.state = body.state
-        if token_count is not None:
-            participant.token_count = token_count
-        if priority_rank is not None:
-            participant.priority_rank = priority_rank
-        if body.notes is not None:
-            participant.notes = body.notes
-        participant.source = "manual"
-        participant.last_manual_override_at = now
-        participant.updated_at = now
+    participant = await _write_own_state(
+        session,
+        group_id=group_id,
+        goal=goal,
+        row=result.scalar_one_or_none(),
+        user_id=current_user.id,
+        body=body,
+        can_rank=can_rank,
+        via=logged_via(request),
+        now=now,
+    )
 
     await session.commit()
     await session.refresh(participant)
@@ -665,10 +736,16 @@ async def upsert_participant_state_for_user(
     goal_id: str,
     target_user_id: str,
     body: ParticipantStateUpsert,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> ParticipantStateResponse:
-    """Lead/owner can set participant state for any member."""
+    """Lead/owner can set participant state for any member.
+
+    For another member this is a correction: the row only, with the lead as
+    its writer, and the member's record is untouched. Aimed at themselves, the
+    lead follows the self rules and writes their own record (R-S1-10).
+    """
     await get_static_group(session, group_id)
     await require_can_manage_members(session, current_user.id, group_id)
     goal = await _get_goal(session, group_id, goal_id)
@@ -689,40 +766,45 @@ async def upsert_participant_state_for_user(
         raise HTTPException(status_code=400, detail="Viewers can't be tracked")
 
     now = _now()
+    via = logged_via(request)
     result = await session.execute(
         select(RewardParticipantState).where(
             RewardParticipantState.goal_id == goal_id,
             RewardParticipantState.user_id == target_user_id,
         )
     )
-    participant = result.scalar_one_or_none()
+    row = result.scalar_one_or_none()
 
-    if participant is None:
-        participant = RewardParticipantState(
-            id=str(uuid.uuid4()),
-            goal_id=goal_id,
+    if target_user_id == current_user.id:
+        participant = await _write_own_state(
+            session,
+            group_id=group_id,
+            goal=goal,
+            row=row,
             user_id=target_user_id,
-            static_group_id=group_id,
-            state=body.state,
-            token_count=body.token_count,
-            priority_rank=body.priority_rank,
-            source="manual",
-            notes=body.notes,
-            last_manual_override_at=now,
-            updated_at=now,
+            body=body,
+            can_rank=True,
+            via=via,
+            now=now,
         )
-        session.add(participant)
     else:
-        participant.state = body.state
-        if body.token_count is not None:
-            participant.token_count = body.token_count
-        if body.priority_rank is not None:
-            participant.priority_rank = body.priority_rank
-        if body.notes is not None:
-            participant.notes = body.notes
-        participant.source = "manual"
-        participant.last_manual_override_at = now
-        participant.updated_at = now
+        write = await write_row(
+            session,
+            row=row,
+            goal_id=goal_id,
+            static_group_id=group_id,
+            user_id=target_user_id,
+            actor_user_id=current_user.id,
+            via=via,
+            now=now,
+            state=body.state,
+            token_count=body.token_count if body.token_count is not None else UNSET,
+            priority_rank=body.priority_rank if body.priority_rank is not None else UNSET,
+            notes=body.notes if body.notes is not None else UNSET,
+            source="manual",
+            last_manual_override_at=now,
+        )
+        participant = write.row
 
     await session.commit()
     await session.refresh(participant)
@@ -776,6 +858,7 @@ async def log_drop(
             raise HTTPException(status_code=400, detail="Recipient must be a member of this static")
 
     now = _now()
+    via = logged_via(request)
 
     # If the recipient is identified, auto-advance their state to "have" if currently
     # need/want, and remember the state it replaced, and when, so a delete can restore
@@ -793,8 +876,17 @@ async def log_drop(
         if participant and participant.state in ("need", "want"):
             recipient_prior_state = participant.state
             recipient_prior_state_at = now
-            participant.state = "have"
-            participant.updated_at = now
+            await write_row(
+                session,
+                row=participant,
+                goal_id=goal_id,
+                static_group_id=group_id,
+                user_id=recipient_id,
+                actor_user_id=current_user.id,
+                via=via,
+                now=now,
+                state="have",
+            )
 
     drop = RewardDropLog(
         id=str(uuid.uuid4()),
@@ -807,7 +899,7 @@ async def log_drop(
         notes=body.notes,
         recipient_prior_state=recipient_prior_state,
         recipient_prior_state_at=recipient_prior_state_at,
-        logged_via=logged_via(request),
+        logged_via=via,
         api_key_id=request_api_key_id(request),
         created_at=now,
     )
@@ -860,6 +952,7 @@ async def delete_drop(
     group_id: str,
     goal_id: str,
     drop_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> None:
@@ -944,8 +1037,17 @@ async def delete_drop(
                 ):
                     outcome = "skipped"
                 else:
-                    participant.state = prior_state
-                    participant.updated_at = _now()
+                    await write_row(
+                        session,
+                        row=participant,
+                        goal_id=goal_id,
+                        static_group_id=group_id,
+                        user_id=recipient_id,
+                        actor_user_id=current_user.id,
+                        via=logged_via(request),
+                        now=_now(),
+                        state=prior_state,
+                    )
                     outcome = "restored"
 
     await session.commit()

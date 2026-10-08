@@ -132,6 +132,21 @@ export const RELEASES: Release[] = [
         pr: 357,
         prTitle: 'feat(api): S2a-1a·3 — farm rows read through the character record',
       },
+      {
+        category: 'improvement',
+        title: 'Newly tracked farms start blank',
+        description:
+          'Newly tracked farms no longer mark everyone as Want; members without a signal start blank.',
+        pr: 358,
+        prTitle: 'feat(api): S2a-1a·3b — farm row writes go through the row door; a member\'s own status and count',
+      },
+      {
+        category: 'improvement',
+        title: 'Members can set their own totem counts',
+        description: 'Members can set their own totem counts.',
+        pr: 358,
+        prTitle: 'feat(api): S2a-1a·3b — farm row writes go through the row door; a member\'s own status and count',
+      },
     ],
   },
   {

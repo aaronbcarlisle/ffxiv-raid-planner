@@ -240,7 +240,7 @@ async def test_private_intent_is_not_used(
     async_client: AsyncClient, session: AsyncSession,
     owner: User, member: User, owner_profile, member_profile, group, owner_headers,
 ):
-    """Private intent must NOT influence participant state — member defaults to 'want'."""
+    """Private intent must NOT influence participant state: no signal, so no row (B5)."""
     catalog = _make_catalog(session, name="Private Pass Mount")
     # This private pass intent should be ignored
     _make_intent(session, member_profile.id, catalog.id, intent="pass", visibility="private")
@@ -253,9 +253,9 @@ async def test_private_intent_is_not_used(
     )
     assert resp.status_code == 201
     summary = resp.json()["participant_summary"]
-    # Member's private pass is ignored → defaults to "want"
+    # Member's private pass is ignored → no signal → no row (B5)
     assert summary["passing"] == 0
-    assert summary["want"] >= 1
+    assert summary["total"] == 0
 
 
 async def test_legacy_wants_mount_preloads_want(
@@ -300,11 +300,11 @@ async def test_legacy_has_mount_preloads_have(
     assert summary["have"] == 1
 
 
-async def test_members_without_signal_default_to_want(
+async def test_members_without_signal_start_blank(
     async_client: AsyncClient, session: AsyncSession,
     owner: User, member: User, owner_profile, member_profile, group, owner_headers,
 ):
-    """Members with no snapshot, intent, or legacy data default to state='want'."""
+    """R-S1-12 (B5): a member with no record, intent or legacy signal gets no row."""
     catalog = _make_catalog(session, name="No Signal Mount")
     await session.commit()
 
@@ -315,10 +315,89 @@ async def test_members_without_signal_default_to_want(
     )
     assert resp.status_code == 201
     summary = resp.json()["participant_summary"]
-    # Both owner + member default to want (2 members)
-    assert summary["want"] == 2
-    assert summary["have"] == 0
-    assert summary["passing"] == 0
+    assert (summary["want"], summary["have"], summary["passing"], summary["total"]) == (0, 0, 0, 0)
+    rows = await session.execute(
+        select(RewardParticipantState).where(RewardParticipantState.goal_id == resp.json()["id"])
+    )
+    assert rows.scalars().all() == []
+
+
+async def test_a_mix_of_signal_and_no_signal_counts_only_the_rows_created(
+    async_client: AsyncClient, session: AsyncSession,
+    owner: User, member: User, owner_profile, member_profile, group, owner_headers,
+):
+    catalog = _make_catalog(session, name="One Signal Mount")
+    _make_intent(session, member_profile.id, catalog.id, intent="hunting", visibility="static_only")
+    await session.commit()
+
+    resp = await async_client.post(
+        f"/api/static-groups/{group.id}/collection-goals/from-suggestion",
+        json={"catalog_item_id": catalog.id},
+        headers=owner_headers,
+    )
+    assert resp.status_code == 201
+    summary = resp.json()["participant_summary"]
+    assert (summary["want"], summary["total"]) == (1, 1)
+    rows = await session.execute(
+        select(RewardParticipantState).where(RewardParticipantState.goal_id == resp.json()["id"])
+    )
+    assert [row.user_id for row in rows.scalars().all()] == [member.id]
+
+
+async def test_seeded_rows_are_derived_with_no_writer_and_the_web_channel(
+    async_client: AsyncClient, session: AsyncSession,
+    owner: User, member: User, owner_profile, member_profile, group, owner_headers,
+):
+    """R-S1-8 / R-S1-12: the seed copies signals: no writer, the channel, and `now`."""
+    have_catalog = _make_catalog(session, name="Seeded Have Mount")
+    _make_snapshot(
+        session, member_profile.id, have_catalog.id, ownership_state="have", token_count=5
+    )
+    await session.commit()
+
+    resp = await async_client.post(
+        f"/api/static-groups/{group.id}/collection-goals/from-suggestion",
+        json={"catalog_item_id": have_catalog.id},
+        headers=owner_headers,
+    )
+    assert resp.status_code == 201
+    rows = await session.execute(
+        select(RewardParticipantState)
+        .where(RewardParticipantState.goal_id == resp.json()["id"])
+        .execution_options(populate_existing=True)
+    )
+    (row,) = rows.scalars().all()
+    assert (row.user_id, row.state, row.token_count, row.source) == (member.id, "have", 5, "plugin")
+    assert (row.updated_by_user_id, row.updated_via) == (None, "web")
+    assert row.state_changed_at == row.updated_at == row.token_count_updated_at
+
+
+async def test_a_seeded_row_with_no_count_leaves_the_count_time_empty(
+    async_client: AsyncClient, session: AsyncSession,
+    owner: User, member: User, owner_profile, member_profile, group, owner_headers,
+):
+    catalog = _make_catalog(session, name="Seeded Pass Mount")
+    _make_intent(session, member_profile.id, catalog.id, intent="pass", visibility="static_only")
+    await session.commit()
+
+    resp = await async_client.post(
+        f"/api/static-groups/{group.id}/collection-goals/from-suggestion",
+        json={"catalog_item_id": catalog.id},
+        headers=owner_headers,
+    )
+    assert resp.status_code == 201
+    rows = await session.execute(
+        select(RewardParticipantState)
+        .where(RewardParticipantState.goal_id == resp.json()["id"])
+        .execution_options(populate_existing=True)
+    )
+    (row,) = rows.scalars().all()
+    assert (row.state, row.token_count, row.token_count_updated_at) == ("pass", None, None)
+    assert (row.state_changed_at, row.updated_by_user_id, row.updated_via) == (
+        row.updated_at,
+        None,
+        "web",
+    )
 
 
 async def test_member_cannot_create_goal_from_suggestion(
