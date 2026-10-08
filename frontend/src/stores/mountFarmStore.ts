@@ -11,7 +11,7 @@ export interface MemberProgress {
   trialId: string;
   hasMount: boolean;
   wantsMount: boolean;
-  totemCount: number;
+  totemCount: number | null;
   notes: string | null;
   updatedAt: string | null;
   ownershipSource: DataSource;
@@ -155,7 +155,7 @@ export const useMountFarmStore = create<MountFarmState>((set, get) => ({
             } else {
               missing++;
               if (mp.wantsMount) wanting++;
-              if (mp.totemCount >= 99) canBuy++;
+              if ((mp.totemCount ?? 0) >= 99) canBuy++;
             }
           }
 
@@ -177,7 +177,7 @@ export const useMountFarmStore = create<MountFarmState>((set, get) => ({
             membersComplete: response.hasMount ? 1 : 0,
             membersMissing: response.hasMount ? 0 : 1,
             membersWanting: !response.hasMount && response.wantsMount ? 1 : 0,
-            membersCanBuy: !response.hasMount && response.totemCount >= 99 ? 1 : 0,
+            membersCanBuy: !response.hasMount && (response.totemCount ?? 0) >= 99 ? 1 : 0,
             memberProgress: [response],
           });
         }

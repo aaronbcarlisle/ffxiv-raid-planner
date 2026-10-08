@@ -121,7 +121,7 @@ class TestCountVisibility:
         admin = await create_user(session, discord_id="1004", discord_username="a")
         admin.is_admin = True
         await session.flush()
-        # An admin who is not a member acts with the owner role (get_user_role_for_response).
+        # An admin acts with the owner role `require_membership(...).role` gives.
         assert await self._visible(session, group, admin.id, "owner", [target.id]) == set()
 
     @pytest.mark.parametrize("hidden", [False, True])
@@ -624,10 +624,10 @@ class TestExceptions:
             )
             assert response.status_code == 200, response.text
             entry = next(e for e in response.json() if e["catalog_item_id"] == w.catalog.id)
-            assert entry["token_count"] is None or entry["token_count"] != (
-                GOAL_COUNTS["shown" if who == "hidden" else "hidden"]
-            )
-            assert entry["token_count"] in (None, GOAL_COUNTS[who])
+            # Their own count, flag or not, and never the other member's.
+            other = "shown" if who == "hidden" else "hidden"
+            assert entry["token_count"] == GOAL_COUNTS[who]
+            assert entry["token_count"] != GOAL_COUNTS[other]
 
     async def test_the_hub_farm_suggestions_return_only_the_callers_own_progress(
         self, async_client, session

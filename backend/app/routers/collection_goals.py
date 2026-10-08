@@ -88,7 +88,7 @@ async def _member_role(session: AsyncSession, group_id: str, user_id: str) -> st
 
 
 def _record_view(
-    record: PlayerCollectionSnapshot | None, *, show_count: bool = True
+    record: PlayerCollectionSnapshot | None, *, show_count: bool
 ) -> ParticipantRecordView | None:
     if record is None:
         return None
@@ -111,8 +111,8 @@ def _participant_to_response(
     display_name: str | None,
     member_role: str | None,
     merged: MergedParticipant,
-    show_count: bool = True,
-    show_rank: bool = True,
+    show_count: bool,
+    show_rank: bool,
 ) -> ParticipantStateResponse:
     """The row as the static sees it: `state`, `token_count` and `source` are merged (R-S1-9).
 
@@ -751,6 +751,8 @@ async def upsert_participant_state(
         display_name=user.display_name if user else None,
         member_role=member_role,
         merged=merged[participant.id],
+        show_count=True,
+        show_rank=True,
     )
 
 
@@ -859,6 +861,7 @@ async def upsert_participant_state_for_user(
         member_role=target_membership.role,
         merged=merged[participant.id],
         show_count=target_user_id in shown,
+        show_rank=True,  # a lead or owner has a queue order
     )
 
 

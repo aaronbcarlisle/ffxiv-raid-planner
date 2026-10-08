@@ -794,7 +794,7 @@ async def _static_of(session, *, members: int, goals: int, tag: str):
     return static, users[0], made
 
 
-async def test_list_participants_issues_the_same_selects_for_one_and_six_members(
+async def test_list_participants_issues_the_same_selects_for_two_and_six_members(
     async_client: AsyncClient, session, engine, count_statements
 ):
     # Two members, not one: the count gate skips its SELECT when only the caller is read.

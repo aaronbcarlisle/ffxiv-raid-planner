@@ -254,7 +254,7 @@ def _build_member_progress(
     progress: MountFarmProgress | None,
     trial_id: str,
     *,
-    show_count: bool = True,
+    show_count: bool,
 ) -> MemberProgressResponse:
     """The member's row; `show_count=False` leaves `totem_count` null (R-S1-19)."""
     if progress:

@@ -114,7 +114,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
             lastPluginSync = mp.lastPluginSyncAt;
           }
           if (mp.ownershipSource === 'plugin' && mp.hasMount) mountsDetected++;
-          if (mp.totemSource === 'plugin' && mp.totemCount > 0) totemTrialIds.add(mp.trialId);
+          if (mp.totemSource === 'plugin' && (mp.totemCount ?? 0) > 0) totemTrialIds.add(mp.trialId);
         }
         if (mp.ownershipSource === 'manual' || mp.totemSource === 'manual') {
           hasManualData = true;
@@ -140,7 +140,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
           if (mp.wantsMount) wanted++;
           const trialInfo = getTrialById(mp.trialId);
           const exchangeCost = trialInfo ? (trialInfo.exchangeCost ?? trialInfo.totemTarget) : 0;
-          if (exchangeCost > 0 && mp.totemCount >= exchangeCost) canBuy++;
+          if (exchangeCost > 0 && (mp.totemCount ?? 0) >= exchangeCost) canBuy++;
         }
       }
     }
@@ -559,7 +559,7 @@ function RecentActivity({ data }: { data: MountFarmData }) {
         let action = '';
         if (mp.hasMount) {
           action = `obtained ${trialInfo ? getRewardLabel(trialInfo) : trialLabel}`;
-        } else if (mp.totemCount > 0) {
+        } else if ((mp.totemCount ?? 0) > 0) {
           action = `updated ${trialLabel} currency to ${mp.totemCount}`;
         } else if (!mp.wantsMount) {
           action = `skipped ${trialLabel}`;
