@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.70',
+    date: '2026-10-08T00:00:00Z',
+    title: 'Undo tokens for farm-status edits',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Every farm-status edit returns an undo token',
+        description:
+          'Both farm-status writes now return an encrypted, ten-minute undo token that carries what the member\'s status and collection record held before the edit, who wrote them included, so a coming undo route can put them back exactly. A member\'s hidden totem count stays hidden inside it, and a token failure never fails a saved edit. Nothing changes on screen yet.',
+        internal: true,
+        pr: 368,
+        prTitle: 'feat(api): S2a-2·B2 — undo tokens and the door\'s restores',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.69',
     date: '2026-10-08T00:00:00Z',
     title: 'Every farm\'s statuses in one read',
