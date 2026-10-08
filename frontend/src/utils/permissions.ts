@@ -199,6 +199,16 @@ export function canClaimPlayer(
   return { allowed: false, reason: 'Viewers cannot claim cards. Ask for Member access.' };
 }
 
+/**
+ * Whether a role is a raid membership — owner, lead or member — as opposed to
+ * a viewer (share-code, read-only) or no role at all (a signed-in non-member).
+ * Admin access arrives as `'owner'`, so no admin arg is needed. The server
+ * refuses a claim from anyone else (ROLE-1, R-R1-6).
+ */
+export function isRaidMember(userRole: MemberRole | null | undefined): boolean {
+  return userRole === 'owner' || userRole === 'lead' || userRole === 'member';
+}
+
 // ==================== Roster-Level Permissions ====================
 
 /**

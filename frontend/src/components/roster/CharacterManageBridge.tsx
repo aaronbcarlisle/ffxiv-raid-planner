@@ -55,6 +55,14 @@ export const CharacterManageBridge: React.FC<CharacterManageBridgeProps> = ({
   const syncRoster = syncPlayers ?? players;
   const syncPlayer = syncPlayerId ? syncRoster.find(p => p.id === syncPlayerId) ?? null : null;
   const linkedCount = syncRoster.filter(p => p.lodestoneId).length;
+  // Gated per player, exactly as legacy gated R-041: a member can sync their
+  // own claimed card without roster-level manage rights.
+  const canSyncRow = (player: SnapshotPlayer) =>
+    canEditPlayer(userRole, player, currentUserId ?? undefined, isAdminAccess).allowed;
+  // ROLE-1 (R-R1-8): the entry never names an action the user can't take.
+  // `canEdit` covers the registry panel (a manager with an empty roster can
+  // still add characters); the rows cover a member's own card.
+  const canEditAny = canEdit || syncRoster.some(canSyncRow);
 
   // Derived, not stored: if the target leaves the roster mid-flow (a poll, or
   // someone removes them) the sync modal unmounts on its own, and the user falls
@@ -78,10 +86,16 @@ export const CharacterManageBridge: React.FC<CharacterManageBridgeProps> = ({
     setIsOpen(true);
   }
 
+  // ROLE-1 (R-R1-8): a guest's list request 401s, so there is no entry without
+  // a signed-in user. Viewer-role members and signed-in non-members may read
+  // the list (`static_characters.py`), and V1 shows it to every role, so they
+  // keep the read-only modal under the "Characters" label.
+  if (!currentUserId) return null;
+
   return (
     <>
       <Button variant="ghost" size="sm" onClick={() => setIsOpen(true)}>
-        Manage characters
+        {canEditAny ? 'Manage characters' : 'Characters'}
       </Button>
       <Modal
         isOpen={charactersOpen}
@@ -96,7 +110,7 @@ export const CharacterManageBridge: React.FC<CharacterManageBridgeProps> = ({
           <section className="mb-5">
             <div className="flex items-baseline justify-between mb-1">
               <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-                Lodestone sync
+                {canEditAny ? 'Lodestone sync' : 'Linked characters'}
               </h3>
               <p className="text-xs text-text-muted">
                 {linkedCount}/{syncRoster.length} linked
@@ -104,9 +118,6 @@ export const CharacterManageBridge: React.FC<CharacterManageBridgeProps> = ({
             </div>
             <ul className="space-y-1">
               {syncRoster.map(player => {
-                // Gated per player, exactly as legacy gated R-041: a member can
-                // sync their own claimed card without roster-level manage rights.
-                const permission = canEditPlayer(userRole, player, currentUserId ?? undefined, isAdminAccess);
                 const label = player.lodestoneId ? 'Re-sync Lodestone' : 'Lodestone Sync';
                 const displayName = player.name || '—';
                 const identity = player.lodestoneId
@@ -120,27 +131,23 @@ export const CharacterManageBridge: React.FC<CharacterManageBridgeProps> = ({
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-text-primary truncate">{displayName}</p>
-                      {/* A disabled Button is pointer-events-none, so a native
-                          `title` can never fire — the reason has to be on screen,
-                          and it wraps rather than truncating: a reason cut to
-                          "Members can only edit their own cl…" explains nothing. */}
-                      {permission.allowed ? (
-                        <p className="text-xs text-text-muted truncate">{identity}</p>
-                      ) : (
-                        <p className="text-xs text-text-muted">{permission.reason}</p>
-                      )}
+                      <p className="text-xs text-text-muted truncate">{identity}</p>
                     </div>
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="secondary"
-                      disabled={!permission.allowed}
-                      aria-label={`${label} for ${displayName}`}
-                      onClick={() => openSync(player.id)}
-                    >
-                      <Globe className="h-3.5 w-3.5" />
-                      {label}
-                    </Button>
+                    {/* ROLE-1 (R-R1-8): a row the user can't edit shows its
+                        identity line and no control — not a disabled button
+                        with its reason spelled out beside it. */}
+                    {canSyncRow(player) && (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="secondary"
+                        aria-label={`${label} for ${displayName}`}
+                        onClick={() => openSync(player.id)}
+                      >
+                        <Globe className="h-3.5 w-3.5" />
+                        {label}
+                      </Button>
+                    )}
                   </li>
                 );
               })}

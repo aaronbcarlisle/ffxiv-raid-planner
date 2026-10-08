@@ -140,7 +140,9 @@ vi.mock('../components/history/HistoryView', () => ({
 }));
 // Tracking's panels: stubbed so the member case needs no network.
 vi.mock('../components/static-group/ObjectiveGoalsPanel', () => ({
-  ObjectiveGoalsPanel: () => <div data-testid="objective-goals-panel" />,
+  ObjectiveGoalsPanel: ({ canManage }: { canManage: boolean }) => (
+    <div data-testid="objective-goals-panel" data-can-manage={String(canManage)} />
+  ),
 }));
 vi.mock('../components/collections/CollectionsHub', () => ({
   CollectionsHub: () => <div data-testid="collections-hub" />,
@@ -215,5 +217,39 @@ describe('GroupViewContent — Tracking is members-only (GUEST-2)', () => {
     renderGoals();
     expect(screen.queryByTestId('members-only-card')).toBeNull();
     expect(screen.getByTestId('objective-goals-panel')).toBeInTheDocument();
+  });
+});
+
+// ROLE-1 review (Copilot): the legacy Goals path must pass isAdminAccess, so an
+// admin viewing a static as a plain member keeps the catalog's Track (CatalogBrowse
+// now follows canManage). GoalsPage hands the SAME canManage to the objectives
+// panel (default sub-tab) and CollectionsHub, so the panel stub observes it.
+describe('GroupViewContent — Tracking canManage honours admin access (ROLE-1)', () => {
+  beforeEach(() => {
+    mockPageMode = 'goals';
+    mockUserRole = 'member';
+    mockIsAdmin = false;
+    mockAdminMode = false;
+  });
+  afterEach(() => {
+    mockPageMode = 'gear';
+    mockUserRole = 'member';
+    mockIsAdmin = false;
+    mockAdminMode = false;
+  });
+
+  const canManageOnHub = () => {
+    render(<MemoryRouter><GroupViewContent actions={actions} /></MemoryRouter>);
+    return screen.getByTestId('objective-goals-panel').getAttribute('data-can-manage');
+  };
+
+  it('admin access with static role member: GoalsPage gets canManage true', () => {
+    mockIsAdmin = true;
+    mockAdminMode = true;
+    expect(canManageOnHub()).toBe('true');
+  });
+
+  it('(pin) a plain member: GoalsPage gets canManage false', () => {
+    expect(canManageOnHub()).toBe('false');
   });
 });
