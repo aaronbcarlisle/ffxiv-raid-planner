@@ -12,6 +12,7 @@ import { SessionCard } from './SessionCard';
 import { CreateSessionModal } from './CreateSessionModal';
 import { AvailabilityGrid } from './AvailabilityGrid';
 import { ScheduleIntegrationsPanel } from './ScheduleIntegrationsPanel';
+import { useDiscordDeliverySummary } from './discordDeliverySummary';
 import type { DiscordMirrorStatus, ScheduleSession, ScheduleSessionCreate, RsvpStatus, MemberRole, Membership } from '../../types';
 import { buildScheduleDraftFromContent, type ScheduleContentDraftRequest } from './sessionDrafts';
 
@@ -145,27 +146,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     () => members.filter((member) => member.role !== 'viewer').length,
     [members]
   );
-  const discordDeliverySummary = useMemo(() => {
-    const reminderLabels = [
-      settings?.enable24hReminder ? '24 hrs before' : '',
-      settings?.enable12hReminder ? '12 hrs before' : '',
-      settings?.enable6hReminder ? '6 hrs before' : '',
-      settings?.enable1hReminder ? '1 hr before' : '',
-      settings?.enable15mReminder ? '15 min before' : '',
-      settings?.enableAtStartReminder ? 'At start' : '',
-      settings?.enableMissingRsvpReminder ? 'Missing RSVP' : '',
-    ].filter(Boolean);
-    const rolePreview = settings?.mentionTarget === 'role' && settings.mentionRoleId
-      ? `<@&${settings.mentionRoleId}>`
-      : null;
-    return {
-      serverLabel: settings?.discordGuildName ?? (settings?.discordGuildId ? `Guild ${settings.discordGuildId}` : 'Discord'),
-      mirrorEnabled: settings?.discordLinkStatus === 'connected' || Boolean(settings?.discordBotConfigured && settings?.discordGuildId),
-      remindersEnabled: Boolean(settings?.webhookConfigured && reminderLabels.length > 0),
-      reminderLabels,
-      pingLabel: settings?.mentionTarget === 'here' ? '@here' : rolePreview ?? 'No ping',
-    };
-  }, [settings]);
+  const discordDeliverySummary = useDiscordDeliverySummary(settings);
   const sessionDeliveryStatus = useMemo(() => {
     const reminders = discordDeliverySummary.remindersEnabled
       ? discordDeliverySummary.reminderLabels
