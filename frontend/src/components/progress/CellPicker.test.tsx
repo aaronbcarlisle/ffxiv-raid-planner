@@ -69,6 +69,25 @@ function seed(rows: ParticipantStateEntry[]) {
   useCollectionGoalStore.setState({ participants: { wings: rows }, recordOnly: {} });
 }
 
+/**
+ * Gives the popover content the app's enter and exit animations (`animate-in`, then
+ * `data-[state=closed]:animate-out`): Radix Presence sees the animation name change when the
+ * state flips to closed and keeps the content mounted until `animationend`, so a blur can
+ * still reach the count field. jsdom reports no animation, which would unmount it at once.
+ * The stub goes on `globalThis` (the bare global Radix reads; the file's `afterEach` unstubs it).
+ */
+function withExitAnimation() {
+  const original = globalThis.getComputedStyle;
+  vi.stubGlobal('getComputedStyle', (el: Element, pseudo?: string | null) => {
+    const styles = original(el, pseudo ?? undefined);
+    if (!(el instanceof HTMLElement) || el.getAttribute('role') !== 'dialog') return styles;
+    return new Proxy(styles, {
+      get: (target, prop) =>
+        prop === 'animationName' ? (el.getAttribute('data-state') === 'closed' ? 'picker-exit' : 'picker-enter') : Reflect.get(target, prop),
+    });
+  });
+}
+
 const trigger = () => screen.getByRole('button', { name: /change your status$/ });
 const group = () => screen.getByRole('group', { name: 'Status' });
 const option = (name: string) => within(group()).getByRole('button', { name });
@@ -334,9 +353,11 @@ describe('CellPicker: the count', () => {
     await waitFor(() => expect(toasts()[0]?.message).toBe('Totems saved'));
   });
 
-  it('keeps focus in the field on a pointer press on a status button, so that pick carries the typed count as one write', async () => {
+  it('keeps focus in the field on a pointer press on a status button, so that pick carries the typed count as one write, and a blur of the still-mounted field sends nothing more (review I-1)', async () => {
+    withExitAnimation();
     seed([row('wings', 'u1', { state: 'need', tokenCount: 62 })]);
-    vi.mocked(api.patch).mockResolvedValue(written({ state: 'want', token_count: 70 }));
+    let resolve: (value: unknown) => void = () => {};
+    vi.mocked(api.patch).mockReturnValue(new Promise((r) => { resolve = r; }));
     render(<Harness />);
     open();
     const input = count();
@@ -351,19 +372,31 @@ describe('CellPicker: the count', () => {
 
     expect(api.patch).toHaveBeenCalledTimes(1);
     expect(api.patch).toHaveBeenCalledWith('/api/static-groups/g1/collection-goals/wings/participants', { state: 'want', token_count: 70 });
-    await waitFor(() => expect(toasts()[0]?.message).toBe('Want saved'));
+    // The popover is closing (exit animation), the field is still mounted and focused, and the
+    // PATCH has not resolved: a focus move now must not write {need, 70} on top.
+    expect(input).toBeInTheDocument();
+    fireEvent.blur(input);
+    expect(api.patch).toHaveBeenCalledTimes(1);
+
+    // Saves run in order, so a stale second write would only leave once the first resolved.
+    await act(async () => resolve(written({ state: 'want', token_count: 70 })));
+    await waitFor(() => expect(toasts().map((t) => t.message)).toEqual(['Want saved']));
+    expect(api.patch).toHaveBeenCalledTimes(1);
   });
 
-  it('commits a whole number: a typed 62.5 is sent as 62 (review M6)', async () => {
+  it('commits a whole number on Enter too: a typed 62.5 is sent as 62 and the field then shows 62 (review M6, M-d, live)', async () => {
     seed([row('wings', 'u1', { state: 'need', tokenCount: 30 })]);
     vi.mocked(api.patch).mockResolvedValue(written({ state: 'need', token_count: 62 }));
     render(<Harness />);
     open();
 
     fireEvent.change(count(), { target: { value: '62.5' } });
+    // Constraint validation (type=number, step 1) would otherwise block the browser's implicit submission.
+    expect(count().closest('form')).toHaveProperty('noValidate', true);
     fireEvent.submit(count());
 
     expect(api.patch).toHaveBeenCalledWith('/api/static-groups/g1/collection-goals/wings/participants', { state: 'need', token_count: 62 });
+    expect(count()).toHaveValue(62);
   });
 
   it('keeps focus in the count field when the cell\'s state changes while the picker is open (review M2)', () => {

@@ -43,7 +43,11 @@ interface ProgressCellProps {
 export function ProgressCell({ cell, goal, provenance, grid, edit }: ProgressCellProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   // What Radix last asked for; shown only while the cell has provenance and the picker is shut.
+  // Radix never asks to close a tooltip whose controlled value is already false, so a wish the
+  // cell could not show (no provenance yet) would latch; the pointer leaving or focus leaving
+  // the cell forgets it, as the Tooltip would have closed.
   const [tipWanted, setTipWanted] = useState(false);
+  const forgetTip = () => setTipWanted(false);
   const text = cellText(cell, goal);
   const origin = cellProvenance(cell, provenance);
   const name = cellAccessibleName(cell, goal);
@@ -78,7 +82,14 @@ export function ProgressCell({ cell, goal, provenance, grid, edit }: ProgressCel
       }
     >
       {write !== undefined ? (
-        <td role="gridcell" aria-label={name} data-testid="progress-cell" className="whitespace-nowrap px-0 py-0.5 text-sm">
+        <td
+          role="gridcell"
+          aria-label={name}
+          data-testid="progress-cell"
+          className="whitespace-nowrap px-0 py-0.5 text-sm"
+          onPointerLeave={forgetTip}
+          onBlur={forgetTip}
+        >
           <CellPicker
             cell={cell}
             goal={goal}
@@ -103,6 +114,11 @@ export function ProgressCell({ cell, goal, provenance, grid, edit }: ProgressCel
           data-testid="progress-cell"
           className="whitespace-nowrap px-3 py-2 text-sm focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
           {...grid}
+          onPointerLeave={forgetTip}
+          onBlur={(event) => {
+            grid?.onBlur(event);
+            forgetTip();
+          }}
         >
           {content}
         </td>

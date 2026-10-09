@@ -16,9 +16,10 @@
  * what keeps a portalled popover's keys and focus (which React bubbles through the
  * Popover root, the control's sibling) away from the grid.
  *
- * Focus survives a row move: a pick that changes a row's Need count re-sorts it, React
- * moves the `<tr>`, and the browser's focus fixup drops focus to `<body>` without a blur.
- * While focus is known to be on a cell, a layout effect puts it back on the stop.
+ * Focus survives a re-sort (a pick that changes a row's Need count moves its `<tr>`): the
+ * DOM's focus fixup drops focus to `<body>` on the move, and React DOM puts it back on the
+ * moved element in the same commit. When the focused row is gone instead, nothing can:
+ * while focus is known to be on a cell, a layout effect moves it to the stop.
  */
 import { useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 
@@ -79,7 +80,10 @@ export function useMatrixKeyboard(rowIds: readonly string[], colKeys: readonly s
       ? { rowId: rowIds[0], colKey: colKeys[0] }
       : null;
 
-  // After a render that moved the focused cell's row, focus has fallen to <body>: put it back.
+  // React DOM refocuses an element it moved in the same commit (restoreSelection, before any
+  // layout effect), so a row that re-sorts keeps focus by itself. This covers the row that is
+  // gone instead (finished or deleted elsewhere, then refetched): focus has fallen to <body>
+  // with no blur, and the fallback stop takes it.
   useLayoutEffect(() => {
     if (!focusWithin.current || stop === null) return;
     const el = cellEls.current.get(keyOf(stop.rowId, stop.colKey));

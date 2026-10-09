@@ -11,10 +11,15 @@
  * whole number on Enter (the form's submit) or whenever focus leaves the field, Tab
  * included, with the cell's current state, and on nothing else: Escape closes without a
  * commit of its own (Chrome fires no blur for a field it removes, so Escape discards a
- * typed count there). A pointer press on a status button keeps focus in the field, so
- * that pick carries the typed count as one write. Nothing is optimistic: the cell shows
- * the store's row, so a failed save leaves it as it was. Every save toasts "{Word} saved"
- * with Undo while the server returned a token; Undo posts it back and refetches.
+ * typed count there). Clicking away saves: the press outside starts the close, and the
+ * popover's exit animation keeps the field mounted while that press then moves focus
+ * and blurs it (verified live; without the animation the field would be gone first). A
+ * pointer press on a status button keeps focus in the field, so that pick carries the
+ * typed count as one write, and the count is marked sent so the field's later blur
+ * (still mounted through the exit animation) cannot send it again with the old state.
+ * Nothing is optimistic: the cell shows the store's row, so a failed save leaves it as it
+ * was. Every save toasts "{Word} saved" with Undo while the server returned a token; Undo
+ * posts it back and refetches.
  *
  * `write.targetUserId` sends the write through the lead route: the viewed user under
  * View As (R-S2-10), and a lead's correction from S2a-2·F6 on.
@@ -152,14 +157,21 @@ export function CellPicker({ cell, goal, write, label, grid, onOpenChange, child
   };
 
   const pick = (option: Option) => {
+    const count = pendingCount();
+    if (count !== undefined) {
+      sentRef.current = count;
+      setDraft(count);
+    }
     changeOpen(false);
-    save(option.state, pendingCount(), `${option.word} saved`);
+    save(option.state, count, `${option.word} saved`);
   };
 
   const commitCount = () => {
     const count = pendingCount();
     if (state === null || count === undefined) return;
     sentRef.current = count;
+    // The field shows what was sent (a typed 62.5 went as 62).
+    setDraft(count);
     save(state, count, `${tokenLabel} saved`);
   };
 
@@ -197,6 +209,8 @@ export function CellPicker({ cell, goal, write, label, grid, onOpenChange, child
         {showCount && (
           <form
             className="mt-2"
+            // Enter must reach onSubmit with "62.5" too (type=number, step 1 would block it); the commit truncates.
+            noValidate
             onSubmit={(event) => {
               event.preventDefault();
               commitCount();
