@@ -75,7 +75,7 @@ describe('keyboardShortcutGroups — V2_SHORTCUT_GROUPS (R-D14-A/H)', () => {
       '` → Home (Static)',
       '1 → Schedule (Static)',
       '2 → Roster (Static)',
-      '3 → Tracking (Static)',
+      '3 → Progress (Static)',
       '4 → Loot (Static)',
     ]));
     expect(byTitle.get('Player Hub')).toEqual([

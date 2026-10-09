@@ -385,6 +385,29 @@ export function groupPlayersByLightParty(players: SnapshotPlayer[], separateSubs
   };
 }
 
+/** One labelled party section of the Board (R-S2-6, vet M-6). */
+export interface BoardSection {
+  label: 'Light Party 1' | 'Light Party 2' | 'Unassigned' | 'Substitutes';
+  players: SnapshotPlayer[];
+}
+
+/**
+ * The Board's sections: configured players only, grouped Light Party 1 · Light Party 2 ·
+ * Unassigned · Substitutes with empty sections dropped. Input order is kept inside each
+ * section, so pass an already-sorted roster. GearBoard renders its dividers from this;
+ * the Progress tab flattens it for its column order.
+ */
+export function boardSections(sortedPlayers: SnapshotPlayer[]): BoardSection[] {
+  const grouped = groupPlayersByLightParty(sortedPlayers.filter((p) => p.configured), true);
+  const sections: BoardSection[] = [
+    { label: 'Light Party 1', players: grouped.group1 },
+    { label: 'Light Party 2', players: grouped.group2 },
+    { label: 'Unassigned', players: grouped.unassigned },
+    { label: 'Substitutes', players: grouped.substitutes },
+  ];
+  return sections.filter((s) => s.players.length > 0);
+}
+
 /**
  * Get which group (1 or 2) a position belongs to
  */

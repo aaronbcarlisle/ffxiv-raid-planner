@@ -148,7 +148,7 @@ export const V2_SHORTCUT_GROUPS: ShortcutGroup[] = [
       { key: '`', description: 'Home (Static)' },
       { key: '1', description: 'Schedule (Static)' },
       { key: '2', description: 'Roster (Static)' },
-      { key: '3', description: 'Tracking (Static)' },
+      { key: '3', description: 'Progress (Static)' },
       { key: '4', description: 'Loot (Static)' },
       COMMAND_PALETTE_SHORTCUT,
       MY_STATICS,
