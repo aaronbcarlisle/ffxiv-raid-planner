@@ -68,13 +68,17 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Progress links open Goals & Farms in the classic view',
         description:
-          'Progress links open Goals & Farms in the classic view. Progress is the new view\'s name for the tab, so a link to it from there no longer drops you on the tab you last had open.',
+          'Progress links open Goals & Farms in the classic view. Progress is the new UI\'s name for the tab, so a link to it from there no longer drops you on the tab you last had open.',
+        pr: 370,
+        prTitle: 'feat(v2): S2a-2·F1 — the Progress tab',
       },
       {
         category: 'feature',
         title: 'V2 preview: Progress is the fifth tab',
         description:
           'V2 preview: the tab bar gains Progress after Schedule. It opens on the tier row, with the raid week and an Open board link. Every Goals & Farms link, key 3, the command palette\'s "Go to Progress" and the phone bar\'s Goals open it, and its address reads ?tab=progress.',
+        pr: 370,
+        prTitle: 'feat(v2): S2a-2·F1 — the Progress tab',
         internal: true,
       },
     ],
