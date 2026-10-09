@@ -191,6 +191,70 @@ describe('buildColumns', () => {
     ]);
     expect(columns.slice(-2)).toEqual(trailing);
     expect(trailing.every((c) => c.player === null)).toBe(true);
+    expect(trailing.map((c) => c.kind === 'notOnRoster' && c.reason)).toEqual(['notOnRoster', 'notOnRoster']);
+  });
+
+  it('labels a member whose claimed card is not set up "unconfigured", not "Not on the roster" (TF5 ruling 1)', () => {
+    const roster = [
+      ...ROSTER,
+      player('draft', { name: 'Draft', configured: false, userId: 'u-draft', sortOrder: 11 }),
+    ];
+    const rows = {
+      g1: [
+        entry('g1', 'u-draft', { displayName: 'Dru', memberRole: 'member' }),
+        entry('g1', 'u-away', { displayName: 'Abe', memberRole: 'member' }),
+        entry('g1', 'u-zed', { displayName: 'Zed', memberRole: 'member' }),
+      ],
+    };
+    const columns = buildColumns(roster, 'standard', data([goal('g1')], rows));
+    const trailing = columns.filter((c) => c.kind === 'notOnRoster');
+    // Same trailing position and name order for both reasons; the card is not placed as a column.
+    expect(columns.slice(-3)).toEqual(trailing);
+    expect(trailing.map((c) => [c.name, c.kind === 'notOnRoster' && c.reason])).toEqual([
+      ['Abe', 'notOnRoster'],
+      ['Dru', 'unconfigured'],
+      ['Zed', 'notOnRoster'],
+    ]);
+    expect(columns.some((c) => c.player?.id === 'draft')).toBe(false);
+    // Still counted in neither n nor m.
+    const cells = columns.map((col) => cellFor(col, { participants: rows.g1 }, LEAD));
+    expect(haveTally(cells)).toEqual({ n: 0, m: 9, everyone: false });
+  });
+
+  it('takes the display name from a later row when the first row had none', () => {
+    const goals = [goal('g1'), goal('g2')];
+    const columns = buildColumns(
+      ROSTER,
+      'standard',
+      data(goals, {
+        g1: [entry('g1', 'u-late', { displayName: null })],
+        g2: [entry('g2', 'u-late', { displayName: 'Late' })],
+      }),
+    );
+    expect(columns.at(-1)).toMatchObject({ kind: 'notOnRoster', userId: 'u-late', name: 'Late' });
+  });
+
+  it('names a row-holder with no display name on any row "Unknown"', () => {
+    const columns = buildColumns(
+      ROSTER,
+      'standard',
+      data([goal('g1')], { g1: [entry('g1', 'u-anon', { displayName: null })] }),
+    );
+    expect(columns.at(-1)).toMatchObject({ kind: 'notOnRoster', userId: 'u-anon', name: 'Unknown' });
+  });
+
+  it('orders two row-holders with the same name by user id', () => {
+    const columns = buildColumns(
+      ROSTER,
+      'standard',
+      data([goal('g1')], {
+        g1: [
+          entry('g1', 'u-2', { displayName: 'Sam' }),
+          entry('g1', 'u-1', { displayName: 'sam' }),
+        ],
+      }),
+    );
+    expect(columns.slice(-2).map((c) => c.userId)).toEqual(['u-1', 'u-2']);
   });
 
   it('gives no column to a row-holder whose memberRole is null or viewer', () => {
@@ -321,6 +385,18 @@ describe('cellFor', () => {
     expect(cell).toMatchObject({ own: true, countHidden: true, count: null });
   });
 
+  it('keeps countHidden false on a blank cell a viewer reads (TF5 ruling 5)', () => {
+    const viewer: ProgressReader = { currentUserId: 'u-viewer', userRole: 'viewer' };
+    expect(cellFor(caster, { participants: [entry('g1', 'u-h1')] }, viewer)).toMatchObject({
+      state: null,
+      countHidden: false,
+      count: null,
+    });
+    // A record-only cell whose state is null is blank too.
+    const blankRecord = cellFor(caster, { recordOnly: [recordOnly('u-c1', { state: null, tokenCount: 4, countHidden: true })] }, viewer);
+    expect(blankRecord).toMatchObject({ state: null, countHidden: false });
+  });
+
   it('has no cell on an unclaimed column', () => {
     const cell = cellFor(columnOf(columns, 't2'), { participants: [entry('g1', 'u-t1')] }, LEAD);
     expect(cell).toMatchObject({ state: null, count: null, own: false, entry: null });
@@ -364,7 +440,7 @@ describe('haveTally', () => {
     expect(tally).toEqual({ n: 2, m: 2, everyone: true });
   });
 
-  it('counts blank, Need and Want in m but not in n', () => {
+  it('counts a Want and a blank in m but not in n, beside a Have', () => {
     const tally = tallyOf([entry('g1', 'u-a', { state: 'have' }), entry('g1', 'u-b', { state: 'want' })]);
     expect(tally).toEqual({ n: 1, m: 3, everyone: false });
   });
@@ -427,6 +503,16 @@ describe('splitFarmRows and compareFarmRows', () => {
       {},
     );
     expect(active.map((r) => r.goal.title)).toEqual(['alpha', 'Beta', 'charlie']);
+  });
+
+  it('breaks equal Need and Want by title at base sensitivity, then by id', () => {
+    // Default collation would order these alpha, Alpha, álpha; at base sensitivity
+    // they tie, so the id decides.
+    const { active } = split(
+      [goal('g3', { title: 'alpha' }), goal('g1', { title: 'Alpha' }), goal('g2', { title: 'álpha' })],
+      {},
+    );
+    expect(active.map((r) => r.goal.id)).toEqual(['g1', 'g2', 'g3']);
   });
 
   it('counts only claimed columns toward the order', () => {

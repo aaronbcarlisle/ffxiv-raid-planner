@@ -4,8 +4,8 @@
  * The re-homed gearsheet: party-grouped rows × 11 slot columns + a BiS summary
  * column, and the bird's-eye gear-*editing* surface. Reuses the same store
  * derivations legacy GroupViewContent feeds the gear table (`boardSections`, over
- * `groupPlayersByLightParty`,
- * `bisSlotTotals` for the no-BiS gate, `calculateAverageItemLevel`); the summary
+ * `groupPlayersByLightParty`, `bisSlotTotals` for the no-BiS gate,
+ * `calculateAverageItemLevel`); the summary
  * column prints RosterCard's own fraction (`playerBisProgress`, R-E2-F). Clicking a
  * cell cycles obtained state through the shared gear state machine
  * (`getNextGearState` → `computeGearSlotUpdate`) and persists via the per-player

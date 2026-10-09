@@ -226,4 +226,66 @@ describe('collectionGoalStore.fetchProgress (R-S2-13)', () => {
 
     expect(useCollectionGoalStore.getState().participants.c).toEqual([cachedRow('c')]);
   });
+
+  it('merges a goal_id fetch into the cache without replacing other goals (TF5 ruling 4)', async () => {
+    useCollectionGoalStore.setState({
+      participants: { active: [cachedRow('active')] },
+      recordOnly: { active: [] },
+    });
+    vi.mocked(api.get).mockResolvedValue([{ goal_id: 'done', participants: [apiRow('done', 'u1')], record_only: [] }]);
+
+    await useCollectionGoalStore.getState().fetchProgress('group-1', ['done']);
+
+    const s = useCollectionGoalStore.getState();
+    expect(s.participants.active).toEqual([cachedRow('active')]);
+    expect(s.participants.done.map((p) => p.userId)).toEqual(['u1']);
+  });
+});
+
+describe('collectionGoalStore.fetchProgress loading and error (TF5 ruling 3)', () => {
+  afterEach(() => {
+    useCollectionGoalStore.setState({ participants: {}, recordOnly: {}, progressLoading: false, progressError: null });
+    vi.clearAllMocks();
+  });
+
+  it('is loading while the request is pending and settles false on success', async () => {
+    let resolve: (v: unknown[]) => void = () => {};
+    vi.mocked(api.get).mockReturnValue(new Promise((r) => { resolve = r as (v: unknown[]) => void; }));
+
+    const pending = useCollectionGoalStore.getState().fetchProgress('group-1');
+    expect(useCollectionGoalStore.getState().progressLoading).toBe(true);
+    expect(useCollectionGoalStore.getState().progressError).toBeNull();
+
+    resolve([]);
+    await pending;
+    expect(useCollectionGoalStore.getState().progressLoading).toBe(false);
+    expect(useCollectionGoalStore.getState().progressError).toBeNull();
+  });
+
+  it('records the failure message, settles false, and clears the error when the next call starts', async () => {
+    vi.mocked(api.get).mockRejectedValueOnce(new Error('boom'));
+    await useCollectionGoalStore.getState().fetchProgress('group-1');
+    expect(useCollectionGoalStore.getState().progressLoading).toBe(false);
+    expect(useCollectionGoalStore.getState().progressError).toBe('boom');
+
+    vi.mocked(api.get).mockResolvedValue([]);
+    const retry = useCollectionGoalStore.getState().fetchProgress('group-1');
+    expect(useCollectionGoalStore.getState().progressError).toBeNull();
+    await retry;
+    expect(useCollectionGoalStore.getState().progressError).toBeNull();
+  });
+
+  it('stays loading until the last of two overlapping calls settles', async () => {
+    const resolvers: Array<(v: unknown[]) => void> = [];
+    vi.mocked(api.get).mockImplementation(() => new Promise((r) => { resolvers.push(r as (v: unknown[]) => void); }));
+
+    const first = useCollectionGoalStore.getState().fetchProgress('group-1');
+    const second = useCollectionGoalStore.getState().fetchProgress('group-1', ['a']);
+    resolvers[0]([]);
+    await first;
+    expect(useCollectionGoalStore.getState().progressLoading).toBe(true);
+    resolvers[1]([]);
+    await second;
+    expect(useCollectionGoalStore.getState().progressLoading).toBe(false);
+  });
 });

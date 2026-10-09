@@ -1,20 +1,38 @@
 /**
- * ProgressPage — the V2 Progress tab (S2a-2). This task ships the header, the
- * tier row and the members-only card for outsiders; the farm rows follow.
+ * ProgressPage — the V2 Progress tab (S2a-2). The header, the tier row, the farm
+ * matrix (F3, read-only) and the members-only card for outsiders.
  *
- * `canManage`, `currentUserId` and `isViewingAs` are part of the slot contract
- * (R-S2-4) and are consumed by the farm rows and their menus in later tasks.
+ * `canManage` decides whether the status column reads "Everyone has it"; the
+ * remaining `isViewingAs` is part of the slot contract (R-S2-4) and is consumed by
+ * the cell controls in later tasks.
+ *
+ * Data: the page fetches the static's goals on mount and the cells of every active
+ * goal (`fetchProgress`) whenever the SET of active goal ids changes, keyed on the
+ * sorted ids joined into one string, never an array identity (R-S2-17, the churn
+ * `NewShell.tsx` documents). Finished goals fetch on their first expand, at most 50
+ * ids per request (the route 422s above that).
  *
  * R-S2-19: a viewer with no role (guest or outsider) sees the tier row and the
  * members-only card in place of the matrix, and no `collection-` request fires.
  */
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Target } from 'lucide-react';
 import { MembersOnlyCard } from '../auth';
 import { PageHeader } from '../layout/PageHeader';
+import { Button } from '../primitives/Button';
+import { useRosterSortPreset } from '../roster/useRosterSortPreset';
 import { getTierById } from '../../gamedata';
+import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
-import type { MemberRole, PageMode, StaticGroup, TierSnapshot } from '../../types';
+import type { MemberRole, PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
+import { buildColumns, splitFarmRows } from '../../utils/progressModel';
+import { ProgressMatrix } from './ProgressMatrix';
 import { TierRow } from './TierRow';
+
+/** The route 422s above this many `goal_id` params. */
+const FINISHED_GOALS_PER_REQUEST = 50;
+
+const NO_PLAYERS: SnapshotPlayer[] = [];
 
 interface ProgressPageProps {
   group: StaticGroup;
@@ -27,7 +45,7 @@ interface ProgressPageProps {
   onNavigate: (tab: PageMode, extra?: Record<string, string>) => void;
 }
 
-export function ProgressPage({ group, tier, userRole, onNavigate }: ProgressPageProps) {
+export function ProgressPage({ group, tier, canManage, userRole, currentUserId, onNavigate }: ProgressPageProps) {
   // The shared week clock (Home/Schedule precedent). The store holds a number
   // from the first render, so "known" means a server response has written it for
   // THIS tier (RosterCard's `clockResolved`).
@@ -38,6 +56,90 @@ export function ProgressPage({ group, tier, userRole, onNavigate }: ProgressPage
   const week = clockResolved && Number.isFinite(storeWeek) ? storeWeek : null;
 
   const tierName = tier ? (getTierById(tier.tierId)?.name ?? tier.tierId) : null;
+  const isMember = userRole != null;
+
+  // ── Data ──
+  const goals = useCollectionGoalStore((s) => s.goals);
+  const loadedGroupId = useCollectionGoalStore((s) => s.loadedGroupId);
+  const goalsError = useCollectionGoalStore((s) => s.error);
+  const participants = useCollectionGoalStore((s) => s.participants);
+  const recordOnly = useCollectionGoalStore((s) => s.recordOnly);
+  const progressLoading = useCollectionGoalStore((s) => s.progressLoading);
+  const progressError = useCollectionGoalStore((s) => s.progressError);
+
+  const groupGoals = useMemo(() => goals.filter((g) => g.staticGroupId === group.id), [goals, group.id]);
+  const activeGoals = useMemo(() => groupGoals.filter((g) => g.status !== 'complete'), [groupGoals]);
+  // The refetch key: the same set of active goals is the same string, whatever the array identity.
+  const activeKey = useMemo(
+    () =>
+      activeGoals
+        .map((g) => g.id)
+        .sort()
+        .join(','),
+    [activeGoals],
+  );
+  const goalsReady = loadedGroupId === group.id;
+
+  // Retry bumps this, so both effects run again.
+  const [attempt, setAttempt] = useState(0);
+  const fetchKey = `${group.id}|${activeKey}|${attempt}`;
+  const [settledKey, setSettledKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isMember) return;
+    void useCollectionGoalStore.getState().fetchGoals(group.id);
+  }, [isMember, group.id, attempt]);
+
+  useEffect(() => {
+    if (!isMember || !goalsReady || activeKey === '') return;
+    let cancelled = false;
+    void useCollectionGoalStore
+      .getState()
+      .fetchProgress(group.id)
+      .then(() => {
+        if (!cancelled) setSettledKey(fetchKey);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isMember, goalsReady, activeKey, group.id, fetchKey]);
+
+  // A goals failure never reaches `goalsReady`, so it would read as loading forever.
+  const goalsFailed = isMember && !goalsReady && goalsError !== null;
+  const loading = isMember && !goalsFailed && (!goalsReady || (activeKey !== '' && settledKey !== fetchKey));
+  const error = !isMember || loading ? null : goalsFailed ? goalsError : progressError;
+
+  // ── Finished: fetch the finished goals' cells on the first expand ──
+  const [finishedLoading, setFinishedLoading] = useState(false);
+  const finishedIds = useMemo(
+    () => groupGoals.filter((g) => g.status === 'complete').map((g) => g.id),
+    [groupGoals],
+  );
+  const expandFinished = useCallback(() => {
+    const chunks: string[][] = [];
+    for (let i = 0; i < finishedIds.length; i += FINISHED_GOALS_PER_REQUEST) {
+      chunks.push(finishedIds.slice(i, i + FINISHED_GOALS_PER_REQUEST));
+    }
+    setFinishedLoading(true);
+    void Promise.all(chunks.map((ids) => useCollectionGoalStore.getState().fetchProgress(group.id, ids))).then(() =>
+      setFinishedLoading(false),
+    );
+  }, [finishedIds, group.id]);
+
+  // ── The matrix ──
+  // The roster sort preset, hydrated read-only: this page never persists a choice.
+  const [preset, setPreset] = useState<SortPreset>('standard');
+  useRosterSortPreset({ tierId: tier?.tierId, urlSort: null, applyPreset: setPreset });
+
+  const players = tier?.players ?? NO_PLAYERS;
+  const { columns, active, finished } = useMemo(() => {
+    // Columns come from the ACTIVE goals only: Finished never adds or shifts one.
+    const columns = buildColumns(players, preset, { goals: activeGoals, participants, recordOnly });
+    const rows = splitFarmRows({ goals: groupGoals, participants, recordOnly }, columns, { currentUserId, userRole });
+    return { columns, ...rows };
+  }, [players, preset, activeGoals, groupGoals, participants, recordOnly, currentUserId, userRole]);
+
+  const retry = () => setAttempt((n) => n + 1);
 
   return (
     <div data-testid="progress-screen">
@@ -54,7 +156,34 @@ export function ProgressPage({ group, tier, userRole, onNavigate }: ProgressPage
             onOpenBoard={() => onNavigate('roster', { rview: 'board' })}
           />
         )}
-        {userRole == null && <MembersOnlyCard staticName={group.name} subject="Farms" />}
+        {!isMember && <MembersOnlyCard staticName={group.name} subject="Farms" />}
+        {loading && (
+          <p role="status" data-testid="progress-loading" className="px-1 text-sm text-text-secondary">
+            Loading farms…
+          </p>
+        )}
+        {error !== null && (
+          <div
+            role="alert"
+            data-testid="progress-error"
+            className="flex flex-wrap items-center gap-3 rounded-lg border border-status-error/30 bg-status-error/10 px-4 py-3 text-sm text-text-primary"
+          >
+            <span>{`Couldn't load farms: ${error}`}</span>
+            <Button variant="secondary" size="sm" loading={progressLoading} onClick={retry}>
+              Retry
+            </Button>
+          </div>
+        )}
+        {isMember && !loading && error === null && groupGoals.length > 0 && (
+          <ProgressMatrix
+            columns={columns}
+            active={active}
+            finished={finished}
+            canManage={canManage}
+            finishedLoading={finishedLoading}
+            onExpandFinished={expandFinished}
+          />
+        )}
       </div>
     </div>
   );
