@@ -27,8 +27,8 @@
  * schedule (vet F7b), so only the absence of "Add session" is asserted there.
  */
 
-import { test, expect, type Page } from '@playwright/test';
-import { API_BASE, DEV_SHARE_CODE, loginAsMember, loginAsOwner, pinShell } from './helpers/auth';
+import { test, expect, type Browser, type Page } from '@playwright/test';
+import { API_BASE, DEV_SHARE_CODE, freshContext, loginAsMember, loginAsOwner, ownerApiContext, pinShell } from './helpers/auth';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -105,6 +105,32 @@ const rosterReady = (p: Page) => p.getByTestId('roster-card-header');
 const logReady = (p: Page) => p.getByRole('group', { name: 'Loot view' });
 const farmsReady = (p: Page) => p.getByRole('button', { name: 'Browse Catalog' });
 const progressReady = (p: Page) => p.getByTestId('progress-tier-row');
+
+/**
+ * Run `body` with one active farm on DEVTST, so Progress has a row: "Edit statuses" renders only
+ * beside an active row, so without one the absence for a member (and the presence for the owner)
+ * would hold vacuously. The farm is created and deleted through the owner's API in its own context.
+ */
+async function withActiveFarm(browser: Browser, body: () => Promise<void>): Promise<void> {
+  const context = await freshContext(browser);
+  const page = await context.newPage();
+  await loginAsOwner(page);
+  const { groupId, csrfToken } = await ownerApiContext(page);
+  const headers = { 'X-CSRF-Token': csrfToken };
+  const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals`, {
+    headers,
+    data: { goal_type: 'custom_reward', title: 'E2E Progress Gating', status: 'farming' },
+  });
+  if (!res.ok()) throw new Error(`seeding the gating farm returned ${res.status()}`);
+  const id = ((await res.json()) as { id: string }).id;
+  try {
+    await body();
+  } finally {
+    const del = await page.request.delete(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${id}`, { headers });
+    await context.close();
+    if (!del.ok() && del.status() !== 404) throw new Error(`deleting the gating farm returned ${del.status()}`);
+  }
+}
 
 async function openRoster(page: Page, density: 'compact' | 'expanded' | 'board'): Promise<void> {
   await openV2(page, density === 'board' ? 'tab=roster&rview=board' : 'tab=roster', density === 'board'
@@ -312,6 +338,17 @@ test.describe('Member (DevMember), V2', () => {
       await openV2(page, 'tab=progress', progressReady);
       await expectNoDisabledOutside(page, []);
     });
+
+    test('member: no "Edit statuses" beside an active row (hidden, not disabled)', async ({ page, browser }) => {
+      await withActiveFarm(browser, async () => {
+        await openV2(page, 'tab=progress', progressReady);
+        // Non-vacuous: the farm's row is on screen, so the toolbar would be there for a lead.
+        await expect(page.getByTestId('progress-farm-row').filter({ hasText: 'E2E Progress Gating' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Edit statuses' })).toHaveCount(0);
+        await expect(page.getByTestId('progress-toolbar')).toHaveCount(0);
+        await expectNoDisabledOutside(page, []);
+      });
+    });
   });
 });
 
@@ -346,6 +383,13 @@ test.describe('Owner pin (DevOwner), V2', () => {
     await openV2(page, 'tab=overview', homeReady);
     await expect(page.getByRole('button', { name: "Log this week's loot" })).toBeVisible();
     await expect(page.getByRole('button', { name: 'View loot priority' })).toHaveCount(0);
+  });
+
+  test('Progress: "Edit statuses" enabled, so the member check above is not vacuous', async ({ page, browser }) => {
+    await withActiveFarm(browser, async () => {
+      await openV2(page, 'tab=progress', progressReady);
+      await expect(page.getByRole('button', { name: 'Edit statuses' })).toBeEnabled();
+    });
   });
 });
 

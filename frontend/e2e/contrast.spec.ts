@@ -151,7 +151,7 @@
  */
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
-import { FRONTEND_BASE, loginAsOwner, DEV_SHARE_CODE } from './helpers/auth'
+import { API_BASE, FRONTEND_BASE, loginAsOwner, ownerApiContext, DEV_SHARE_CODE } from './helpers/auth'
 
 const THEMES = ['dark', 'light'] as const
 
@@ -331,5 +331,70 @@ for (const theme of THEMES) {
 
     const schedule = await new AxeBuilder({ page }).include('[data-testid="schedule-screen"]').withRules(['color-contrast']).analyze()
     expect(schedule.violations, JSON.stringify(schedule.violations, null, 2)).toEqual([])
+  })
+}
+
+// ── Risk view: v2 Progress, scoped to the progress region ─────────────────────
+// Scope Axe to [data-testid="progress-screen"]. A scan of an empty Progress would
+// prove little, so the test tracks two farms through the owner's API (prefix
+// "E2E Progress", deleted in `finally`): a token mount the owner needs with a
+// count, and a custom farm the owner wants. Both legs are scanned: the matrix at
+// rest, and Edit statuses (the "Set status" prompts on the blank cells of a
+// lead's mode, the muted text-xs on a bordered ghost button).
+//
+// EXCLUDED: the column header names set in text-role-{role}. Light-theme healer
+// (#1a8a4a on white) measures 4.39:1, just under AA. That is token debt in the
+// shared role tokens, which render in both shells; the same exclusion is in
+// progress.spec.ts's axe tests. Every other node is scanned.
+for (const theme of THEMES) {
+  test(`v2 progress has zero contrast violations (${theme})`, async ({ page }) => {
+    await forceTheme(page, theme)
+    await loginAsOwner(page)
+    const { groupId, csrfToken } = await ownerApiContext(page)
+    const headers = { 'X-CSRF-Token': csrfToken }
+    const created: string[] = []
+    try {
+      for (const [data, own] of [
+        [{ goal_type: 'mount', title: 'E2E Progress Contrast Mount', status: 'scheduled', token_name: 'Tokens', token_cost: 99 }, { state: 'need', token_count: 62 }],
+        [{ goal_type: 'custom_reward', title: 'E2E Progress Contrast Custom', status: 'farming' }, { state: 'want' }],
+      ] as const) {
+        const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals`, { headers, data })
+        expect(res.ok(), `seeding ${data.title}`).toBe(true)
+        const id = ((await res.json()) as { id: string }).id
+        created.push(id)
+        const set = await page.request.patch(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${id}/participants`, { headers, data: own })
+        expect(set.ok(), `the owner's status on ${data.title}`).toBe(true)
+      }
+
+      await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=progress`)
+      const progress = page.locator('[data-testid="progress-screen"]')
+      await progress.waitFor({ timeout: 15_000 })
+      await expect(page.locator(`[data-goal-id="${created[0]}"]`)).toBeVisible()
+      await page.waitForLoadState('networkidle')
+      // Settle CSS transitions (Button uses `transition-all duration-fast` = 150ms).
+      await page.waitForTimeout(300)
+
+      const scan = () =>
+        new AxeBuilder({ page })
+          .include('[data-testid="progress-screen"]')
+          .exclude('[data-testid="progress-column"] [class*="text-role-"]')
+          .withRules(['color-contrast'])
+          .analyze()
+
+      const atRest = await scan()
+      expect(atRest.violations, JSON.stringify(atRest.violations, null, 2)).toEqual([])
+
+      // Edit statuses: a lead's mode shows "Set status" on every blank claimed cell.
+      await page.getByRole('button', { name: 'Edit statuses' }).click()
+      await expect(page.getByRole('button', { name: 'Done' })).toBeVisible()
+      await expect(page.getByText('Set status').first()).toBeVisible()
+      await page.waitForTimeout(300)
+      const editing = await scan()
+      expect(editing.violations, JSON.stringify(editing.violations, null, 2)).toEqual([])
+    } finally {
+      for (const id of created) {
+        await page.request.delete(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${id}`, { headers })
+      }
+    }
   })
 }

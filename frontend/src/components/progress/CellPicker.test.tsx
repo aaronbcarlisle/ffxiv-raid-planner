@@ -124,6 +124,14 @@ describe('CellPicker: the popover', () => {
     expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false']);
   });
 
+  it('names the dialog after the cell\'s member and farm (axe aria-dialog-name)', () => {
+    seed([row('wings', 'u1', { state: 'want', tokenCount: 30 })]);
+    render(<Harness />);
+    open();
+
+    expect(screen.getByRole('dialog', { name: 'Status for Aya, Wings of Resolve' })).toBeTruthy();
+  });
+
   it('adds a "Totems" NumberInput (min 0) prefilled with the cell\'s count on a token farm', () => {
     seed([row('wings', 'u1', { state: 'need', tokenCount: 62 })]);
     render(<Harness />);

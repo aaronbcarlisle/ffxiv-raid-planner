@@ -11,8 +11,9 @@
  * Tab stop (`useMatrixKeyboard`), and each cell says where its value came from on hover
  * and focus. The Finished rows are outside that grid (their cells are not focus targets).
  *
- * S2a-2·F5 (R-S2-10): with an `edit` context the reader's own cells on the active rows
- * are pickers; the picker's Button is then that cell's stop. Everything else is read-only.
+ * S2a-2·F5 (R-S2-10): the active cells `editFor` resolves a write target for (the reader's
+ * own; every claimed cell in a lead's Edit statuses, S2a-2·F6) are pickers, and the
+ * picker's Button is then that cell's stop. Everything else is read-only.
  */
 import { useMemo } from 'react';
 import { VisuallyHidden } from '../primitives/VisuallyHidden';
@@ -20,7 +21,7 @@ import { JobIcon } from '../ui/JobIcon';
 import { Tag } from '../ui/Tag';
 import { getValidRole } from '../../gamedata';
 import type { FarmRow as FarmRowModel, ProgressColumn } from '../../utils/progressModel';
-import type { CellWriteTarget } from './CellPicker';
+import type { CellWriteResolver } from './editStatuses';
 import { FarmRow } from './FarmRow';
 import { FinishedFarms } from './FinishedFarms';
 import type { ProvenanceContext } from './progressProvenance';
@@ -82,8 +83,8 @@ interface ProgressMatrixProps {
    * page adds below the members (TF7 ruling 8).
    */
   memberNames?: ReadonlyMap<string, string>;
-  /** How the reader's own cells write (R-S2-10); absent when they edit nothing (a viewer). */
-  edit?: CellWriteTarget;
+  /** Where each active cell writes (R-S2-10), undefined for a read-only one; absent when nothing is editable (a viewer). */
+  editFor?: CellWriteResolver;
   /** The finished goals' cells are being fetched. */
   finishedLoading: boolean;
   /** Fetching the finished goals' cells failed. */
@@ -99,7 +100,7 @@ export function ProgressMatrix({
   canManage,
   currentUserId,
   memberNames,
-  edit,
+  editFor,
   finishedLoading,
   finishedError = null,
   onExpandFinished,
@@ -149,7 +150,7 @@ export function ProgressMatrix({
         </thead>
         <tbody>
           {active.map((row) => (
-            <FarmRow key={row.goal.id} row={row} canManage={canManage} provenance={provenance} keyboard={keyboard} edit={edit} />
+            <FarmRow key={row.goal.id} row={row} canManage={canManage} provenance={provenance} keyboard={keyboard} editFor={editFor} />
           ))}
         </tbody>
         <FinishedFarms
