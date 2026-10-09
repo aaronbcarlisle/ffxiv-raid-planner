@@ -11,6 +11,7 @@ import type { SnapshotPlayer } from '../../types';
 import {
   buildColumns,
   splitFarmRows,
+  type ProgressCell as ProgressCellModel,
   type ProgressData,
   type ProgressReader,
 } from '../../utils/progressModel';
@@ -48,9 +49,12 @@ interface RenderOptions {
   finishedLoading?: boolean;
   finishedError?: string | null;
   onExpandFinished?: () => void;
-  /** How the reader's own cells write (F5); absent = read-only, as a viewer sees it. */
+  /** How the reader's own cells write (F5), resolved for own cells only; absent = read-only, as a viewer sees it. */
   edit?: CellWriteTarget;
 }
+
+/** F5's own-cell rule as a resolver (the page's `cellWriteTarget` is tested in its own file). */
+const ownCellsOnly = (target: CellWriteTarget) => (cell: ProgressCellModel) => (cell.own ? target : undefined);
 
 function matrixElement(o: RenderOptions, onExpandFinished: () => void) {
   const goals = o.goals ?? [goal('wings', { title: 'Wings of Resolve' })];
@@ -68,7 +72,7 @@ function matrixElement(o: RenderOptions, onExpandFinished: () => void) {
         canManage={o.canManage ?? true}
         currentUserId={(o.reader ?? LEAD).currentUserId}
         memberNames={o.memberNames}
-        edit={o.edit}
+        editFor={o.edit ? ownCellsOnly(o.edit) : undefined}
         finishedLoading={o.finishedLoading ?? false}
         finishedError={o.finishedError ?? null}
         onExpandFinished={onExpandFinished}

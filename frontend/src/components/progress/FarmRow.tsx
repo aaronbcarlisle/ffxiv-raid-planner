@@ -1,13 +1,13 @@
 /**
  * FarmRow — one farm of the Progress matrix (R-S2-7): "{title} · {type}" with its
  * type icon, a "Wanted" / "Scheduled" tag when it isn't Farming (Q-3), the status
- * column ("{n} of {m} have it"), then one cell per column. From S2a-2·F5 the reader's
- * own cell on an active row is a picker (`edit`); S2a-3a adds the row menu and "Mark
- * finished".
+ * column ("{n} of {m} have it"), then one cell per column. From S2a-2·F5 a cell that
+ * `editFor` gives a target is a picker (the reader's own; every claimed cell in a lead's
+ * Edit statuses from F6); S2a-3a adds the row menu and "Mark finished".
  */
 import { Tag } from '../ui/Tag';
 import { GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from '../../utils/goalTypeMeta';
-import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
+import type { FarmRow as FarmRowModel, ProgressCell as ProgressCellModel } from '../../utils/progressModel';
 import type { CellWriteTarget } from './CellPicker';
 import { ProgressCell } from './ProgressCell';
 import type { ProvenanceContext } from './progressProvenance';
@@ -21,8 +21,8 @@ interface FarmRowProps {
   provenance: ProvenanceContext;
   /** The matrix's roving grid; absent for rows outside it (Finished), whose cells are not tab stops. */
   keyboard?: MatrixKeyboard;
-  /** How the reader's own cell writes (R-S2-10); absent for read-only rows (Finished) and readers (a viewer). */
-  edit?: CellWriteTarget;
+  /** Where each cell writes (R-S2-10); absent for read-only rows (Finished). */
+  editFor?: (cell: ProgressCellModel) => CellWriteTarget | undefined;
 }
 
 function statusText(tally: FarmRowModel['tally'], canManage: boolean): string {
@@ -31,7 +31,7 @@ function statusText(tally: FarmRowModel['tally'], canManage: boolean): string {
   return `${tally.n} of ${tally.m} have it`;
 }
 
-export function FarmRow({ row, canManage, provenance, keyboard, edit }: FarmRowProps) {
+export function FarmRow({ row, canManage, provenance, keyboard, editFor }: FarmRowProps) {
   const { goal } = row;
   const TypeIcon = GOAL_TYPE_ICONS[goal.goalType];
   const stateTag = goal.status === 'wanted' ? 'Wanted' : goal.status === 'scheduled' ? 'Scheduled' : null;
@@ -56,7 +56,7 @@ export function FarmRow({ row, canManage, provenance, keyboard, edit }: FarmRowP
           goal={goal}
           provenance={provenance}
           grid={keyboard?.cellProps(goal.id, cell.column.key)}
-          edit={edit}
+          editFor={editFor}
         />
       ))}
     </tr>

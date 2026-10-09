@@ -240,6 +240,12 @@ export interface CellWrite {
   tokenCount?: number;
 }
 
+/** One cell the bulk Need names (S2a-2·F6, R-S2-12). */
+export interface MarkNeedCell {
+  goalId: string;
+  userId: string;
+}
+
 export interface RewardDropCreate {
   recipientUserId?: string | null;
   quantity?: number;
@@ -321,6 +327,16 @@ interface ApiUndoResult {
   restored: number;
   skipped: number;
 }
+
+/** The bulk Need's response (R-S2-12): the rows created, how many cells were skipped, and one token for the lot. */
+interface ApiMarkNeedResult {
+  created: ApiParticipant[];
+  skipped: number;
+  undo_token: string | null;
+}
+
+/** The mark-need route takes at most this many cells per request. */
+const MARK_NEED_MAX_CELLS = 200;
 
 interface ApiParticipantRecord {
   character_id: string | null;
@@ -551,6 +567,14 @@ interface CollectionGoalStore {
   setCell: (groupId: string, goalId: string, write: CellWrite) => Promise<{ entry: ParticipantStateEntry; undoToken: string | null }>;
   /** Puts a write back by its token (R-S2-11), then refetches the active cells. Errors propagate. */
   undoCells: (groupId: string, token: string) => Promise<{ restored: number; skipped: number }>;
+  /**
+   * Marks every given blank cell Need (R-S2-12), in requests of at most 200 cells one after
+   * another, then refetches the active cells once. Resolves with how many rows the server
+   * created and skipped, and one undo token per request that minted one. A failed request
+   * throws at once (the later cells are not sent); the refetch still runs when an earlier
+   * request had succeeded.
+   */
+  markNeed: (groupId: string, cells: readonly MarkNeedCell[]) => Promise<{ created: number; skipped: number; undoTokens: string[] }>;
 
   fetchDrops: (groupId: string, goalId: string) => Promise<void>;
   logDrop: (groupId: string, goalId: string, data: RewardDropCreate) => Promise<RewardDrop>;
@@ -764,6 +788,30 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
     );
     await get().fetchProgress(groupId);
     return { restored: result.restored, skipped: result.skipped };
+  },
+
+  markNeed: async (groupId, cells) => {
+    let created = 0;
+    let skipped = 0;
+    const undoTokens: string[] = [];
+    let succeeded = 0;
+    try {
+      for (let i = 0; i < cells.length; i += MARK_NEED_MAX_CELLS) {
+        const chunk = cells.slice(i, i + MARK_NEED_MAX_CELLS);
+        const result = await api.post<ApiMarkNeedResult>(
+          `/api/static-groups/${groupId}/collection-participants/mark-need`,
+          { cells: chunk.map((c) => ({ goal_id: c.goalId, user_id: c.userId })) },
+        );
+        succeeded += 1;
+        created += result.created.length;
+        skipped += result.skipped;
+        if (result.undo_token) undoTokens.push(result.undo_token);
+      }
+    } finally {
+      // The rows a successful request created are on the server whether or not a later one failed.
+      if (succeeded > 0) await get().fetchProgress(groupId);
+    }
+    return { created, skipped, undoTokens };
   },
 
   fetchDrops: async (groupId, goalId) => {
