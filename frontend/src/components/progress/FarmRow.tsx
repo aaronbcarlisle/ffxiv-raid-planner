@@ -7,8 +7,8 @@
  */
 import { Tag } from '../ui/Tag';
 import { GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from '../../utils/goalTypeMeta';
-import type { FarmRow as FarmRowModel, ProgressCell as ProgressCellModel } from '../../utils/progressModel';
-import type { CellWriteTarget } from './CellPicker';
+import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
+import type { CellWriteResolver } from './editStatuses';
 import { ProgressCell } from './ProgressCell';
 import type { ProvenanceContext } from './progressProvenance';
 import type { MatrixKeyboard } from './useMatrixKeyboard';
@@ -22,7 +22,7 @@ interface FarmRowProps {
   /** The matrix's roving grid; absent for rows outside it (Finished), whose cells are not tab stops. */
   keyboard?: MatrixKeyboard;
   /** Where each cell writes (R-S2-10); absent for read-only rows (Finished). */
-  editFor?: (cell: ProgressCellModel) => CellWriteTarget | undefined;
+  editFor?: CellWriteResolver;
 }
 
 function statusText(tally: FarmRowModel['tally'], canManage: boolean): string {

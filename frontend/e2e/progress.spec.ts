@@ -530,6 +530,8 @@ test.describe.serial('Progress: Edit statuses', () => {
 
     await page.getByRole('button', { name: 'Mark everyone without a status as Need' }).click();
     await expect(page.getByText(`Marked ${blanks} ${blanks === 1 ? 'cell' : 'cells'} Need`)).toBeVisible();
+    // The trigger was disabled while it ran, which drops focus to the body: it lands on Done.
+    await expect(page.getByRole('button', { name: 'Done' })).toBeFocused();
     for (const column of CLAIMED) {
       await expect(cellOf(page, blank.id, column)).toHaveAttribute('aria-label', `${column}, ${blank.title}, Need`);
     }

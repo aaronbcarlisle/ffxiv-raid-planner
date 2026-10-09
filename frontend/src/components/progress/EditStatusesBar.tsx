@@ -12,14 +12,17 @@
  *
  * Entering the mode unmounts "Edit statuses", so focus would fall to the body: a click
  * here moves it to Done, and Done moves it back to "Edit statuses". A mode the page
- * changes by itself (the reader lost the role) moves nothing.
+ * changes by itself (the reader lost the role) moves nothing. The bulk button is disabled
+ * while it runs (`loading`), which drops the browser's focus to the body, and it may stay
+ * disabled after (no blank cell left): once a run ends, focus that was lost that way lands
+ * on Done. Focus the reader moved elsewhere meanwhile is left alone.
  */
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from '../primitives/Button';
 import { wasToastedByApi } from '../../services/api';
 import { useCollectionGoalStore, type MarkNeedCell } from '../../stores/collectionGoalStore';
 import { toast } from '../../stores/toastStore';
-import { undoWithToasts } from './undoToasts';
+import { messageOf, undoWithToasts } from './undoToasts';
 
 interface EditStatusesBarProps {
   groupId: string;
@@ -30,13 +33,12 @@ interface EditStatusesBarProps {
   blankCells: readonly MarkNeedCell[];
 }
 
-const messageOf = (err: unknown) => (err instanceof Error ? err.message : 'something went wrong');
-
 export function EditStatusesBar({ groupId, editing, onEdit, onDone, blankCells }: EditStatusesBarProps) {
   const [marking, setMarking] = useState(false);
   const helpId = useId();
   const editRef = useRef<HTMLButtonElement>(null);
   const doneRef = useRef<HTMLButtonElement>(null);
+  const bulkRef = useRef<HTMLButtonElement>(null);
   // Set by a click here and consumed once the mode has changed.
   const moveFocus = useRef(false);
   const markNeed = useCollectionGoalStore((s) => s.markNeed);
@@ -81,6 +83,11 @@ export function EditStatusesBar({ groupId, editing, onEdit, onDone, blankCells }
       if (!wasToastedByApi(err)) toast.error(`Couldn't mark cells: ${messageOf(err)}`);
     } finally {
       setMarking(false);
+      // The disabled trigger lost the focus it held (to the body in a browser; jsdom leaves it
+      // on the button): Done takes it. Focus the reader moved elsewhere meanwhile stays.
+      const doc = doneRef.current?.ownerDocument;
+      const active = doc?.activeElement ?? null;
+      if (doc && (active === null || active === doc.body || active === bulkRef.current)) doneRef.current?.focus();
     }
   };
 
@@ -90,6 +97,7 @@ export function EditStatusesBar({ groupId, editing, onEdit, onDone, blankCells }
       {editing ? (
         <>
           <Button
+            ref={bulkRef}
             variant="primary"
             size="sm"
             loading={marking}

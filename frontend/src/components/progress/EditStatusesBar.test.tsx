@@ -115,6 +115,37 @@ describe('EditStatusesBar bulk Need (R-S2-12, R-S2-11)', () => {
     expect(toasts().map((t) => [t.type, t.message, t.action?.label])).toEqual([['success', 'Marked 2 cells Need', 'Undo']]);
   });
 
+  it('lands focus on Done once a run ends, since the trigger was disabled meanwhile, and keeps it there when the trigger stays disabled', async () => {
+    const pending = deferred<{ created: number; skipped: number; undoTokens: string[] }>();
+    markNeed.mockReturnValue(pending.promise);
+    const { rerender } = renderBar({ editing: true });
+    act(() => bulk().focus());
+    fireEvent.click(bulk());
+    await waitFor(() => expect(bulk()).toBeDisabled());
+
+    await act(async () => pending.resolve({ created: 2, skipped: 0, undoTokens: ['tok-1'] }));
+    expect(screen.getByRole('button', { name: 'Done' })).toHaveFocus();
+
+    // The refetch filled every cell: the trigger is disabled for good, and Done still holds focus.
+    rerender({ blankCells: [] });
+    expect(bulk()).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Done' })).toHaveFocus();
+  });
+
+  it('leaves focus the reader moved elsewhere during a run alone', async () => {
+    const pending = deferred<{ created: number; skipped: number; undoTokens: string[] }>();
+    markNeed.mockReturnValue(pending.promise);
+    renderBar({ editing: true });
+    const elsewhere = document.createElement('button');
+    document.body.appendChild(elsewhere);
+    fireEvent.click(bulk());
+    act(() => elsewhere.focus());
+
+    await act(async () => pending.resolve({ created: 2, skipped: 0, undoTokens: [] }));
+    expect(elsewhere).toHaveFocus();
+    elsewhere.remove();
+  });
+
   it('says "Marked 1 cell Need" for one, and plain success with no Undo when no token came back', async () => {
     markNeed.mockResolvedValue({ created: 1, skipped: 3, undoTokens: [] });
     renderBar({ editing: true });

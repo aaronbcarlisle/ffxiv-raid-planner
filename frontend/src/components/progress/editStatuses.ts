@@ -13,10 +13,15 @@ export interface EditContext {
   /** The effective user and role (View As aware, as NewShell passes them). */
   currentUserId: string | null;
   userRole: MemberRole | null | undefined;
+  /** NewShell's `canManage` (owner, lead or admin access, R-S2-4): without it the mode grants nothing. */
+  canManage: boolean;
   isViewingAs: boolean;
   /** Edit statuses is on: a lead corrects any claimed cell (R-S2-10). */
   editing: boolean;
 }
+
+/** Where a cell writes, or undefined for one this reader may not write; the matrix passes it down to each cell. */
+export type CellWriteResolver = (cell: ProgressCell) => CellWriteTarget | undefined;
 
 /**
  * Where a cell on an ACTIVE row writes, or undefined when this reader may not write it.
@@ -24,14 +29,14 @@ export interface EditContext {
  * - A member (any role but viewer) writes their own cell wherever it appears, Not on the
  *   roster included: the self route, or under View As the lead route aimed at the viewed
  *   user, so the admin's own row is never written by mistake.
- * - In Edit statuses, every claimed column's cell writes through the lead route aimed at
- *   that member (a correction). Others' Not-on-the-roster cells and unclaimed cells stay
- *   read-only ("every claimed cell", S2-7).
+ * - In Edit statuses, a reader who may manage writes every claimed column's cell through
+ *   the lead route aimed at that member (a correction). Others' Not-on-the-roster cells
+ *   and unclaimed cells stay read-only ("every claimed cell", S2-7).
  */
 export function cellWriteTarget(cell: ProgressCell, ctx: EditContext): CellWriteTarget | undefined {
   if (ctx.userRole == null || ctx.userRole === 'viewer' || ctx.currentUserId === null) return undefined;
   if (cell.own) return ctx.isViewingAs ? { groupId: ctx.groupId, targetUserId: ctx.currentUserId } : { groupId: ctx.groupId };
-  if (ctx.editing && cell.column.kind === 'claimed') return { groupId: ctx.groupId, targetUserId: cell.column.userId };
+  if (ctx.editing && ctx.canManage && cell.column.kind === 'claimed') return { groupId: ctx.groupId, targetUserId: cell.column.userId };
   return undefined;
 }
 
