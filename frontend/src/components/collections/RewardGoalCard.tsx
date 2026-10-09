@@ -1,34 +1,9 @@
-import { Trophy, Music, Package, Star, ChevronRight, ClipboardCopy, Plus, Coins } from 'lucide-react';
+import { ChevronRight, ClipboardCopy, Plus, Coins } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
 import { Tooltip } from '../primitives/Tooltip';
-import type { CollectionGoal, CollectionGoalType, CollectionPriorityMode, ParticipantStateEntry } from '../../stores/collectionGoalStore';
-
-const GOAL_TYPE_LABELS: Record<CollectionGoalType, string> = {
-  mount: 'Mount',
-  token: 'Token',
-  minion: 'Minion',
-  orchestrion: 'Music',
-  glam: 'Glamour',
-  custom_reward: 'Custom',
-  weapon: 'Weapon',
-  weapon_coffer: 'Weapon Coffer',
-  title: 'Title',
-  clear_count: 'Clear Count',
-};
-
-const GOAL_TYPE_ICONS: Record<CollectionGoalType, React.ReactNode> = {
-  mount: <Trophy size={16} />,
-  token: <Star size={16} />,
-  minion: <Star size={16} />,
-  orchestrion: <Music size={16} />,
-  glam: <Star size={16} />,
-  custom_reward: <Package size={16} />,
-  weapon: <Star size={16} />,
-  weapon_coffer: <Package size={16} />,
-  title: <Star size={16} />,
-  clear_count: <Star size={16} />,
-};
+import type { CollectionGoal, CollectionPriorityMode, ParticipantStateEntry } from '../../stores/collectionGoalStore';
+import { GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from '../../utils/goalTypeMeta';
 
 const PRIORITY_MODE_LABELS: Record<CollectionPriorityMode, string> = {
   everyone_gets_one: 'Everyone gets one',
@@ -57,6 +32,7 @@ interface RewardGoalCardProps {
 }
 
 export function RewardGoalCard({ goal, participants, onView, onLogDrop, onCopyPlan, canManage: _canManage, isViewer }: RewardGoalCardProps) {
+  const TypeIcon = GOAL_TYPE_ICONS[goal.goalType];
   const summary = goal.participantSummary;
   const needCount = summary?.need ?? 0;
   const wantCount = summary?.want ?? 0;
@@ -75,7 +51,7 @@ export function RewardGoalCard({ goal, participants, onView, onLogDrop, onCopyPl
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
-          {GOAL_TYPE_ICONS[goal.goalType]}
+          <TypeIcon size={16} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -86,7 +62,7 @@ export function RewardGoalCard({ goal, participants, onView, onLogDrop, onCopyPl
           </div>
           <div className="flex items-center gap-2 mt-0.5 text-xs text-text-secondary flex-wrap">
             <span className="flex items-center gap-1">
-              {GOAL_TYPE_ICONS[goal.goalType]}
+              <TypeIcon size={16} />
               {GOAL_TYPE_LABELS[goal.goalType]}
             </span>
             {goal.contentType && (
