@@ -53,7 +53,7 @@ export default defineConfig([
         { type: 'person',   pattern: 'src/components/(profile|auth|dashboard)/**' },
         { type: 'ring0',    pattern: 'src/components/(roster|player|bis|loot|priority|weapon-priority|history|wizard|team|static-group|group|home)/**' },
         { type: 'ring1',    pattern: 'src/components/(schedule|split-clear|finder|recruit)/**' },
-        { type: 'ring3',    pattern: 'src/components/(mount-farms|collections)/**' },
+        { type: 'ring3',    pattern: 'src/components/(mount-farms|collections|progress)/**' },
         { type: 'admin',    pattern: 'src/components/admin/**' },
         { type: 'settings', pattern: 'src/components/settings/**' }, // mixed, person-primary; separate so its debt is visible
         { type: 'store',    pattern: 'src/stores/**', mode: 'file' },
@@ -249,9 +249,10 @@ export default defineConfig([
     },
   },
   // RH1 Recruiting home (RH1b/RH1c): zero color/type debt as of this slice —
-  // lock it at error so it cannot regress (whole-branch review M7).
+  // lock it at error so it cannot regress (whole-branch review M7). The V2
+  // Progress tab (S2a-2, R-S2-5) starts debt-free under the same lock.
   {
-    files: ['src/components/recruit/**/*.{ts,tsx}'],
+    files: ['src/components/recruit/**/*.{ts,tsx}', 'src/components/progress/**/*.{ts,tsx}'],
     ignores: ['**/*.test.{ts,tsx}'],
     rules: {
       'design-system/no-arbitrary-color': 'error',

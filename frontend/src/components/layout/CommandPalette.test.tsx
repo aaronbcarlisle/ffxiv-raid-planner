@@ -396,17 +396,23 @@ describe('CommandPalette', () => {
     });
   });
 
-  it('renders the three slotless tab entries: Tracking, Plugin, More', () => {
+  it('renders "Go to Progress" and no "Go to Tracking" (S2a-2, spec S2-14)', () => {
     renderPalette();
-    expect(screen.getByText('Go to Tracking')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Go to Progress' })).toBeInTheDocument();
+    expect(screen.queryByText('Go to Tracking')).toBeNull();
+  });
+
+  it('renders the two slotless tab entries: Plugin, More', () => {
+    renderPalette();
     expect(screen.getByText('Go to Plugin')).toBeInTheDocument();
     expect(screen.getByText('Go to More')).toBeInTheDocument();
   });
 
-  it('calls setPageMode("goals") and onClose when "Go to Tracking" is clicked', () => {
+  it('calls setPageMode("goals") and onClose when "Go to Progress" is clicked', () => {
     const onClose = vi.fn();
     renderPalette(true, onClose);
-    fireEvent.click(screen.getByText('Go to Tracking'));
+    fireEvent.click(screen.getByText('Go to Progress'));
+    expect(mockSetPageMode).toHaveBeenCalledTimes(1);
     expect(mockSetPageMode).toHaveBeenCalledWith('goals');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
