@@ -7,10 +7,14 @@
  *
  * The stop is DERIVED at render, as `GearBoard` does: the last focused cell while it
  * still exists, else the first cell. Focus moves through a ref map, never a document
- * query. Focus is read from `onFocus` (React's bubbles), so an editing control placed
- * inside a gridcell later (S2a-2·F5) makes its cell the stop without any change here;
- * the keys are read on the cell too, and a handler that has already handled a key
- * (`defaultPrevented`) is left alone.
+ * query. A handler that has already handled a key (`defaultPrevented`) is left alone.
+ *
+ * The props go on the cell's focus element: the `<td>` itself, or, when the cell holds a
+ * single control (S2a-2·F5's own-cell picker), that control, as the WAI-ARIA grid puts a
+ * cell's focus on its one widget. The `<td>` around a control takes no tabIndex, so the
+ * grid keeps exactly one stop. Putting the props on the control, not the `<td>`, is also
+ * what keeps a portalled popover's keys and focus (which React bubbles through the
+ * Popover root, the control's sibling) away from the grid.
  */
 import { useRef, useState, type KeyboardEvent } from 'react';
 
@@ -20,10 +24,10 @@ interface CellKey {
 }
 
 export interface MatrixCellProps {
-  ref: (el: HTMLTableCellElement | null) => void;
+  ref: (el: HTMLElement | null) => void;
   tabIndex: 0 | -1;
   onFocus: () => void;
-  onKeyDown: (event: KeyboardEvent<HTMLTableCellElement>) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
 }
 
 const SEP = '\u001f';
@@ -53,11 +57,11 @@ const NAV_KEYS: ReadonlySet<string> = new Set(['ArrowRight', 'ArrowLeft', 'Arrow
 
 /**
  * `rowIds` are the grid's rows top to bottom and `colKeys` its columns left to right.
- * Spread `cellProps(rowId, colKey)` onto each gridcell `<td>`.
+ * Spread `cellProps(rowId, colKey)` onto each cell's focus element (see above).
  */
 export function useMatrixKeyboard(rowIds: readonly string[], colKeys: readonly string[]) {
   const [active, setActive] = useState<CellKey | null>(null);
-  const cellEls = useRef(new Map<string, HTMLTableCellElement>());
+  const cellEls = useRef(new Map<string, HTMLElement>());
 
   const stillThere = active !== null && rowIds.includes(active.rowId) && colKeys.includes(active.colKey);
   const stop: CellKey | null = stillThere

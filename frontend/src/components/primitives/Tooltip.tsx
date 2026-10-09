@@ -30,9 +30,12 @@ interface TooltipProps {
   /** Explicitly disable the tooltip */
   disabled?: boolean;
   /**
-   * Close as soon as the pointer leaves the trigger, and let the pointer pass through the
-   * content, so a tooltip never covers (or keeps open over) the neighbour below it. Off by
-   * default: other tooltips can be hovered so their content can be read or selected.
+   * Radix's `disableHoverableContent` on the Root: the tooltip closes the moment the
+   * pointer leaves its trigger, instead of staying open while the pointer crosses to the
+   * content, so it never holds open over the neighbour below it. The content also gets
+   * `pointer-events-none`, which only keeps it from catching the pointer on the way; the
+   * Root prop is what does the closing. Off by default: other tooltips keep hoverable
+   * content so it can be read or selected.
    */
   disableHoverableContent?: boolean;
 }

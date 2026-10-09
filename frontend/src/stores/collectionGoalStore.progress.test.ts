@@ -320,3 +320,110 @@ describe('collectionGoalStore.fetchProgress per-call result (TF6 ruling 3c)', ()
     expect(useCollectionGoalStore.getState().progressError).toBe('boom');
   });
 });
+
+// ── setCell and undoCells (S2a-2·F5 Task TF7; R-S2-10, R-S2-11) ─────────────
+
+const recordOnlyCell = (userId: string) => ({
+  userId,
+  displayName: userId,
+  memberRole: 'member',
+  state: 'have' as const,
+  tokenCount: null,
+  countHidden: false,
+  record: {
+    characterId: 'c1', ownershipState: 'have', tokenCount: null, source: 'plugin', updatedByUserId: null,
+    updatedVia: 'api_key', stateChangedAt: null, tokenCountUpdatedAt: null, lastSyncedAt: null,
+  },
+});
+
+describe('collectionGoalStore.setCell (R-S2-10)', () => {
+  const setCell = (...args: Parameters<ReturnType<typeof useCollectionGoalStore.getState>['setCell']>) =>
+    useCollectionGoalStore.getState().setCell(...args);
+
+  afterEach(() => {
+    useCollectionGoalStore.setState({ participants: {}, recordOnly: {}, goals: [] });
+    vi.clearAllMocks();
+  });
+
+  it('writes the caller\'s own cell through the self route with state and token_count only', async () => {
+    vi.mocked(api.patch).mockResolvedValue({ ...apiRow('a', 'u1', { state: 'need', token_count: 62 }), undo_token: 'tok-1' });
+
+    const result = await setCell('group-1', 'a', { state: 'need', tokenCount: 62 });
+
+    expect(api.patch).toHaveBeenCalledWith('/api/static-groups/group-1/collection-goals/a/participants', { state: 'need', token_count: 62 });
+    expect(result.undoToken).toBe('tok-1');
+    expect(result.entry).toMatchObject({ userId: 'u1', state: 'need', tokenCount: 62 });
+  });
+
+  it('writes another member\'s cell through the lead route, with null for a count left alone', async () => {
+    vi.mocked(api.patch).mockResolvedValue({ ...apiRow('a', 'u2'), undo_token: 'tok-2' });
+
+    await setCell('group-1', 'a', { targetUserId: 'u2', state: 'need' });
+
+    expect(api.patch).toHaveBeenCalledWith('/api/static-groups/group-1/collection-goals/a/participants/u2', { state: 'need', token_count: null });
+  });
+
+  it('replaces the member\'s row, drops their record-only cell, keeps everyone else, and refetches no goals', async () => {
+    useCollectionGoalStore.setState({
+      participants: { a: [cachedRow('a'), { ...cachedRow('a'), id: 'a-u1', userId: 'u1', state: 'want' }] },
+      recordOnly: { a: [recordOnlyCell('u1'), recordOnlyCell('u3')] },
+    });
+    vi.mocked(api.patch).mockResolvedValue({ ...apiRow('a', 'u1', { state: 'have' }), undo_token: null });
+
+    const result = await setCell('group-1', 'a', { state: 'have' });
+
+    const s = useCollectionGoalStore.getState();
+    expect(s.participants.a.map((p) => [p.userId, p.state])).toEqual([['u-cached', 'have'], ['u1', 'have']]);
+    expect(s.recordOnly.a.map((c) => c.userId)).toEqual(['u3']);
+    expect(result.undoToken).toBeNull();
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
+  it('appends the row of a member who had none, and leaves another goal\'s record-only cells alone', async () => {
+    useCollectionGoalStore.setState({ participants: { a: [cachedRow('a')] }, recordOnly: { b: [recordOnlyCell('u1')] } });
+    vi.mocked(api.patch).mockResolvedValue({ ...apiRow('a', 'u1', { state: 'pass' }) });
+
+    await setCell('group-1', 'a', { state: 'pass' });
+
+    const s = useCollectionGoalStore.getState();
+    expect(s.participants.a.map((p) => p.userId)).toEqual(['u-cached', 'u1']);
+    expect(s.recordOnly.b.map((c) => c.userId)).toEqual(['u1']);
+  });
+
+  it('propagates a failed write and leaves the rows as they were', async () => {
+    useCollectionGoalStore.setState({ participants: { a: [cachedRow('a')] } });
+    vi.mocked(api.patch).mockRejectedValue(new Error('boom'));
+
+    await expect(setCell('group-1', 'a', { state: 'need' })).rejects.toThrow('boom');
+
+    expect(useCollectionGoalStore.getState().participants.a).toEqual([cachedRow('a')]);
+  });
+});
+
+describe('collectionGoalStore.undoCells (R-S2-11)', () => {
+  afterEach(() => {
+    useCollectionGoalStore.setState({ participants: {}, recordOnly: {}, progressLoading: false, progressError: null });
+    vi.clearAllMocks();
+  });
+
+  it('posts the token, then refetches the active cells, and resolves with the counts', async () => {
+    vi.mocked(api.post).mockResolvedValue({ restored: 2, skipped: 0 });
+    vi.mocked(api.get).mockResolvedValue([{ goal_id: 'a', participants: [apiRow('a', 'u1', { state: 'want' })], record_only: [] }]);
+
+    const result = await useCollectionGoalStore.getState().undoCells('group-1', 'tok-1');
+
+    expect(api.post).toHaveBeenCalledWith('/api/static-groups/group-1/collection-participants/undo', { token: 'tok-1' });
+    expect(api.get).toHaveBeenCalledWith('/api/static-groups/group-1/collection-participants');
+    expect(vi.mocked(api.post).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(api.get).mock.invocationCallOrder[0]);
+    expect(result).toEqual({ restored: 2, skipped: 0 });
+    expect(useCollectionGoalStore.getState().participants.a[0].state).toBe('want');
+  });
+
+  it('propagates a failed post and fetches nothing', async () => {
+    vi.mocked(api.post).mockRejectedValue(new Error('boom'));
+
+    await expect(useCollectionGoalStore.getState().undoCells('group-1', 'tok-1')).rejects.toThrow('boom');
+
+    expect(api.get).not.toHaveBeenCalled();
+  });
+});

@@ -44,7 +44,7 @@ describe('Tooltip disableHoverableContent', () => {
     expect(contentEl()).not.toHaveClass('pointer-events-none');
   });
 
-  it('makes the content pointer-transparent when set', async () => {
+  it('lets the pointer pass through the content when set (the Root prop, below, does the closing)', async () => {
     renderTip(true);
     await waitFor(() => expect(contentEl()).not.toBeNull());
     expect(contentEl()).toHaveClass('pointer-events-none');
