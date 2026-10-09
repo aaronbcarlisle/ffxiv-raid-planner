@@ -7,6 +7,12 @@
  * "own" cells are the viewed user's, and a write goes through the lead route aimed at
  * them (`isViewingAs`, the slot contract's R-S2-4), never at the admin's own row.
  *
+ * Edit statuses (F6, R-S2-10, R-S2-12): a reader who may manage (owner, lead or admin
+ * access, never a viewer) gets the one toolbar row above the matrix. The mode is held
+ * here, so leaving the page forgets it, and it is derived off the moment the reader may
+ * no longer manage. In it `cellWriteTarget` makes every claimed cell on an active row a
+ * picker aimed at its member, and the bulk Need sends the blank ones (`blankClaimedCells`).
+ *
  * Data: the page fetches the static's goals on mount and the cells of every active
  * goal (`fetchProgress`) whenever the SET of active goal ids changes, keyed on the
  * sorted ids joined into one string, never an array identity (R-S2-17, the churn
@@ -27,8 +33,9 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
 import type { MemberRole, PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
-import { buildColumns, splitFarmRows } from '../../utils/progressModel';
-import type { CellWriteTarget } from './CellPicker';
+import { buildColumns, splitFarmRows, type ProgressCell as ProgressCellModel } from '../../utils/progressModel';
+import { blankClaimedCells, cellWriteTarget } from './editStatuses';
+import { EditStatusesBar } from './EditStatusesBar';
 import { ProgressMatrix } from './ProgressMatrix';
 import { TierRow } from './TierRow';
 
@@ -172,12 +179,20 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     return names;
   }, [group.members, authUserId, authUserName]);
 
-  // Who may edit their own cells (R-S2-10): any member role but viewer. Under View As the
-  // write goes through the lead route aimed at the viewed user (`currentUserId` is theirs).
-  const edit = useMemo<CellWriteTarget | undefined>(() => {
-    if (!isMember || userRole === 'viewer' || currentUserId === null) return undefined;
-    return isViewingAs ? { groupId: group.id, targetUserId: currentUserId } : { groupId: group.id };
-  }, [isMember, userRole, currentUserId, isViewingAs, group.id]);
+  // ── Edit statuses (F6, R-S2-10) ──
+  // Who gets the mode: NewShell's canManage (owner, lead, admin access), never a viewer.
+  const mayEdit = canManage && isMember && userRole !== 'viewer';
+  const [mode, setMode] = useState(false);
+  // Derived, so a reader who loses the role mid-mode never renders a stale true.
+  const editing = mode && mayEdit;
+
+  // Where each active cell writes (R-S2-10): one's own (View As: the lead route aimed at the
+  // viewed user), and in the mode every claimed cell, aimed at its member.
+  const editFor = useCallback(
+    (cell: ProgressCellModel) => cellWriteTarget(cell, { groupId: group.id, currentUserId, userRole, isViewingAs, editing }),
+    [group.id, currentUserId, userRole, isViewingAs, editing],
+  );
+  const blankCells = useMemo(() => blankClaimedCells(active), [active]);
 
   const retry = () => {
     // Behind a mounted matrix the stale cells stay on screen while the retry runs.
@@ -219,18 +234,29 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
           </div>
         )}
         {isMember && !loading && (error === null || matrixLoaded) && groupGoals.length > 0 && (
-          <ProgressMatrix
-            columns={columns}
-            active={active}
-            finished={finished}
-            canManage={canManage}
-            currentUserId={currentUserId}
-            memberNames={memberNames}
-            edit={edit}
-            finishedLoading={finishedLoading}
-            finishedError={finishedError}
-            onExpandFinished={expandFinished}
-          />
+          <>
+            {mayEdit && active.length > 0 && (
+              <EditStatusesBar
+                groupId={group.id}
+                editing={editing}
+                onEdit={() => setMode(true)}
+                onDone={() => setMode(false)}
+                blankCells={blankCells}
+              />
+            )}
+            <ProgressMatrix
+              columns={columns}
+              active={active}
+              finished={finished}
+              canManage={canManage}
+              currentUserId={currentUserId}
+              memberNames={memberNames}
+              editFor={editFor}
+              finishedLoading={finishedLoading}
+              finishedError={finishedError}
+              onExpandFinished={expandFinished}
+            />
+          </>
         )}
       </div>
     </div>

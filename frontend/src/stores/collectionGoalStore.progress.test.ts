@@ -427,3 +427,68 @@ describe('collectionGoalStore.undoCells (R-S2-11)', () => {
     expect(api.get).not.toHaveBeenCalled();
   });
 });
+
+// ── markNeed (S2a-2·F6 Task TF8; R-S2-12) ───────────────────────────────────
+
+describe('collectionGoalStore.markNeed (R-S2-12)', () => {
+  const MARK_NEED = '/api/static-groups/group-1/collection-participants/mark-need';
+  const markNeed = (cells: { goalId: string; userId: string }[]) => useCollectionGoalStore.getState().markNeed('group-1', cells);
+  const cellsOf = (n: number) => Array.from({ length: n }, (_, i) => ({ goalId: `g${i}`, userId: `u${i}` }));
+
+  afterEach(() => {
+    useCollectionGoalStore.setState({ participants: {}, recordOnly: {}, progressLoading: false, progressError: null });
+    vi.clearAllMocks();
+  });
+
+  it('posts the cells in snake_case, then refetches the active cells once, and resolves with the counts and the token', async () => {
+    vi.mocked(api.post).mockResolvedValue({ created: [apiRow('a', 'u1'), apiRow('a', 'u2')], skipped: 1, undo_token: 'tok-1' });
+    vi.mocked(api.get).mockResolvedValue([]);
+
+    const result = await markNeed([{ goalId: 'a', userId: 'u1' }, { goalId: 'a', userId: 'u2' }, { goalId: 'b', userId: 'u1' }]);
+
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.post).toHaveBeenCalledWith(MARK_NEED, { cells: [{ goal_id: 'a', user_id: 'u1' }, { goal_id: 'a', user_id: 'u2' }, { goal_id: 'b', user_id: 'u1' }] });
+    expect(api.get).toHaveBeenCalledTimes(1);
+    expect(api.get).toHaveBeenCalledWith('/api/static-groups/group-1/collection-participants');
+    expect(vi.mocked(api.post).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(api.get).mock.invocationCallOrder[0]);
+    expect(result).toEqual({ created: 2, skipped: 1, undoTokens: ['tok-1'] });
+  });
+
+  it('chunks at 200 cells, one request after another, sums the counts and keeps every non-null token in order', async () => {
+    vi.mocked(api.post)
+      .mockResolvedValueOnce({ created: cellsOf(200).map((c) => apiRow(c.goalId, c.userId)), skipped: 0, undo_token: 'tok-1' })
+      .mockResolvedValueOnce({ created: [], skipped: 200, undo_token: null })
+      .mockResolvedValueOnce({ created: [apiRow('g400', 'u400')], skipped: 0, undo_token: 'tok-3' });
+    vi.mocked(api.get).mockResolvedValue([]);
+
+    const result = await markNeed(cellsOf(401));
+
+    const bodies = vi.mocked(api.post).mock.calls.map(([, body]) => (body as { cells: unknown[] }).cells.length);
+    expect(bodies).toEqual([200, 200, 1]);
+    expect(api.get).toHaveBeenCalledTimes(1);
+    expect(Math.max(...vi.mocked(api.post).mock.invocationCallOrder)).toBeLessThan(vi.mocked(api.get).mock.invocationCallOrder[0]);
+    expect(result).toEqual({ created: 201, skipped: 200, undoTokens: ['tok-1', 'tok-3'] });
+  });
+
+  it('throws on the first failed request, sends no later chunk, and refetches only when an earlier chunk succeeded', async () => {
+    vi.mocked(api.post).mockRejectedValueOnce(new Error('boom'));
+    await expect(markNeed(cellsOf(201))).rejects.toThrow('boom');
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.get).not.toHaveBeenCalled();
+
+    vi.clearAllMocks();
+    vi.mocked(api.post)
+      .mockResolvedValueOnce({ created: [apiRow('g0', 'u0')], skipped: 199, undo_token: 'tok-1' })
+      .mockRejectedValueOnce(new Error('later'));
+    vi.mocked(api.get).mockResolvedValue([]);
+    await expect(markNeed(cellsOf(401))).rejects.toThrow('later');
+    expect(api.post).toHaveBeenCalledTimes(2);
+    expect(api.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends nothing and fetches nothing for an empty list', async () => {
+    await expect(markNeed([])).resolves.toEqual({ created: 0, skipped: 0, undoTokens: [] });
+    expect(api.post).not.toHaveBeenCalled();
+    expect(api.get).not.toHaveBeenCalled();
+  });
+});
