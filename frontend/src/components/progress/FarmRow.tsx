@@ -8,11 +8,17 @@ import { Tag } from '../ui/Tag';
 import { GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from '../../utils/goalTypeMeta';
 import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
 import { ProgressCell } from './ProgressCell';
+import type { ProvenanceContext } from './progressProvenance';
+import type { MatrixKeyboard } from './useMatrixKeyboard';
 
 interface FarmRowProps {
   row: FarmRowModel;
   /** Leads read "Everyone has it" at n = m; everyone else reads the count. */
   canManage: boolean;
+  /** Who is looking and how to name a writer, for each cell's provenance tooltip. */
+  provenance: ProvenanceContext;
+  /** The matrix's roving grid; absent for rows outside it (Finished), whose cells are not tab stops. */
+  keyboard?: MatrixKeyboard;
 }
 
 function statusText(tally: FarmRowModel['tally'], canManage: boolean): string {
@@ -21,13 +27,13 @@ function statusText(tally: FarmRowModel['tally'], canManage: boolean): string {
   return `${tally.n} of ${tally.m} have it`;
 }
 
-export function FarmRow({ row, canManage }: FarmRowProps) {
+export function FarmRow({ row, canManage, provenance, keyboard }: FarmRowProps) {
   const { goal } = row;
   const TypeIcon = GOAL_TYPE_ICONS[goal.goalType];
   const stateTag = goal.status === 'wanted' ? 'Wanted' : goal.status === 'scheduled' ? 'Scheduled' : null;
   return (
-    <tr data-testid="progress-farm-row" data-goal-id={goal.id} className="border-t border-border-subtle">
-      <th scope="row" className="px-3 py-2 text-left align-middle font-normal">
+    <tr role="row" data-testid="progress-farm-row" data-goal-id={goal.id} className="border-t border-border-subtle">
+      <th role="rowheader" scope="row" className="px-3 py-2 text-left align-middle font-normal">
         <div className="flex items-center gap-2">
           <TypeIcon size={16} className="shrink-0 text-accent" aria-hidden="true" />
           <span className="whitespace-nowrap text-sm font-medium text-text-primary">
@@ -36,11 +42,17 @@ export function FarmRow({ row, canManage }: FarmRowProps) {
           {stateTag !== null && <Tag variant="label">{stateTag}</Tag>}
         </div>
       </th>
-      <td data-testid="progress-status" className="whitespace-nowrap px-3 py-2 text-sm text-text-secondary">
+      <td role="gridcell" data-testid="progress-status" className="whitespace-nowrap px-3 py-2 text-sm text-text-secondary">
         {statusText(row.tally, canManage)}
       </td>
       {row.cells.map((cell) => (
-        <ProgressCell key={cell.column.key} cell={cell} goal={goal} />
+        <ProgressCell
+          key={cell.column.key}
+          cell={cell}
+          goal={goal}
+          provenance={provenance}
+          grid={keyboard?.cellProps(goal.id, cell.column.key)}
+        />
       ))}
     </tr>
   );
