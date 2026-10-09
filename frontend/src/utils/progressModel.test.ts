@@ -359,7 +359,7 @@ describe('cellFor', () => {
     expect(cellFor(caster, { participants: [legacy] }, LEAD).countHidden).toBe(false);
   });
 
-  it('withholds other members\' counts from a viewer', () => {
+  it('withholds every count from a viewer', () => {
     const cell = cellFor(
       caster,
       { participants: [entry('g1', 'u-c1', { state: 'need', tokenCount: 62 })] },
@@ -368,12 +368,22 @@ describe('cellFor', () => {
     expect(cell).toMatchObject({ state: 'need', countHidden: true, count: null });
   });
 
-  it('always shows one\'s own count, a viewer\'s included', () => {
+  it('shows a member, lead or owner their own count', () => {
     const rows = { participants: [entry('g1', 'u-c1', { state: 'need', tokenCount: 62 })] };
-    for (const userRole of ['viewer', 'member', 'lead', 'owner'] as const) {
+    for (const userRole of ['member', 'lead', 'owner'] as const) {
       const cell = cellFor(caster, rows, { currentUserId: 'u-c1', userRole });
       expect(cell, userRole).toMatchObject({ own: true, countHidden: false, count: 62 });
     }
+  });
+
+  it('withholds a viewer\'s own count too: viewers see states only (R-S2-8)', () => {
+    const viewer: ProgressReader = { currentUserId: 'u-c1', userRole: 'viewer' };
+    const cell = cellFor(caster, { participants: [entry('g1', 'u-c1', { state: 'need', tokenCount: 62 })] }, viewer);
+    expect(cell).toMatchObject({ own: true, state: 'need', countHidden: true, count: null });
+    expect(cellText(cell, { tokenCost: 99 })).toBe('Need');
+    // A record-only cell is withheld the same way.
+    const record = cellFor(caster, { recordOnly: [recordOnly('u-c1', { state: 'have', tokenCount: 5 })] }, viewer);
+    expect(record).toMatchObject({ own: true, countHidden: true, count: null });
   });
 
   it('keeps the server\'s flag on one\'s own cell (View As reads stay gated as the admin, vet M-7)', () => {
@@ -587,12 +597,14 @@ describe('cellText', () => {
     expect(cellText(cellFor(caster, { participants }, LEAD), g)).toBe(expected);
   });
 
-  it('shows a viewer no counts on others\' cells', () => {
+  it('shows a viewer no counts, on their own cell or others\'', () => {
     const viewer: ProgressReader = { currentUserId: 'u-viewer', userRole: 'viewer' };
     const need = cellFor(caster, { participants: [entry('g1', 'u-c1', { state: 'need', tokenCount: 62 })] }, viewer);
     const want = cellFor(caster, { participants: [entry('g1', 'u-c1', { state: 'want', tokenCount: 30 })] }, viewer);
+    const own = cellFor(caster, { participants: [entry('g1', 'u-c1', { state: 'need', tokenCount: 62 })] }, { currentUserId: 'u-c1', userRole: 'viewer' });
     expect(cellText(need, withCost)).toBe('Need');
     expect(cellText(want, withCost)).toBe('★ Want');
+    expect(cellText(own, withCost)).toBe('Need');
   });
 
   it('is empty on an unclaimed column', () => {

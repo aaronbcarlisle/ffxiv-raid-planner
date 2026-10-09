@@ -29,6 +29,7 @@ import {
   type ParticipantStateEntry,
 } from '../../stores/collectionGoalStore';
 import type { StaticGroup, TierSnapshot } from '../../types';
+import { goal, row } from './__fixtures__/progressFixtures';
 import { ProgressPage } from './ProgressPage';
 
 const group = { id: 'g1', name: 'Dev Test Static', shareCode: 'DEVTST', settings: {}, userRole: 'owner', members: [] } as unknown as StaticGroup;
@@ -50,23 +51,6 @@ const tier = {
   ],
 } as unknown as TierSnapshot;
 const USERS = ['u1', 'u2', 'u3', 'u4', 'u5', 'u6'];
-
-function goal(id: string, overrides: Partial<CollectionGoal> = {}): CollectionGoal {
-  return {
-    id, staticGroupId: 'g1', createdById: null, goalType: 'mount', contentType: null, contentKey: null,
-    title: id, status: 'farming', priorityMode: null, summary: null, linkedDutyId: null, linkedRewardId: null,
-    targetCount: null, currentCount: null, note: null, createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z',
-    completedAt: null, catalogItemId: null, tokenName: 'Tokens', tokenCost: 99, participantSummary: null, ...overrides,
-  };
-}
-
-function row(goalId: string, userId: string, overrides: Partial<ParticipantStateEntry> = {}): ParticipantStateEntry {
-  return {
-    id: `${goalId}:${userId}`, goalId, userId, staticGroupId: 'g1', state: 'need', tokenCount: null, priorityRank: null,
-    source: 'manual', lastSyncedAt: null, notes: null, updatedAt: '2026-10-01T00:00:00Z', displayName: userId,
-    memberRole: 'member', countHidden: false, record: null, ...overrides,
-  };
-}
 
 const fetchGoals = vi.fn();
 const fetchProgress = vi.fn();
@@ -175,17 +159,55 @@ describe('ProgressPage matrix: order and Finished', () => {
     expect(finishedCalls.flatMap((c) => c[1] as string[]).sort()).toEqual(finished.map((g) => g.id));
   });
 
-  it('keeps the columns when the finished rows hold an off-roster member (TF5 ruling 2)', async () => {
+  it('builds the columns from the active goals only: an off-roster holder of a finished goal adds none (TF5 ruling 2)', async () => {
     seed({
       goals,
       participants: { ...participants, done: [row('done', 'u1', { state: 'have' }), row('done', 'u-ghost', { displayName: 'Ghost', state: 'have' })] },
     });
     renderPage();
-    const before = (await screen.findAllByRole('columnheader')).length;
+    // Farm, Status and the six players: the finished goal's holder is already in the store.
+    expect(await screen.findAllByRole('columnheader')).toHaveLength(8);
     fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
     await screen.findByText('Done Farm · Mount');
-    expect(screen.getAllByRole('columnheader')).toHaveLength(before);
+    expect(screen.getAllByRole('columnheader')).toHaveLength(8);
     expect(screen.queryByText('Ghost')).not.toBeInTheDocument();
+  });
+
+  it('keeps Finished open, and the matrix mounted, when the active goals change', async () => {
+    seed({ goals, participants });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Finished (1)' }));
+    await screen.findByText('Done Farm · Mount');
+    const matrix = screen.getByTestId('progress-matrix');
+
+    await act(async () => {
+      useCollectionGoalStore.setState({ goals: [...goals, goal('fresh', { title: 'Fresh Farm' })] });
+    });
+
+    expect(screen.getByTestId('progress-matrix')).toBe(matrix);
+    expect(screen.queryByTestId('progress-loading')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Finished (1)' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Done Farm · Mount')).toBeInTheDocument();
+    expect(farmIds()).toContain('fresh');
+  });
+
+  it('shows a finished-fetch failure on its own line and keeps the active rows (TF5 review)', async () => {
+    seed({ goals, participants });
+    renderPage();
+    await screen.findByTestId('progress-matrix');
+    fetchProgress.mockImplementation(async (_group: string, ids?: string[]) => {
+      if (ids) useCollectionGoalStore.setState({ progressError: 'boom' });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
+    const alert = await screen.findByTestId('progress-finished-error');
+    expect(alert).toHaveTextContent('boom');
+    expect(screen.queryByTestId('progress-error')).not.toBeInTheDocument();
+    expect(farmIds()).toEqual(['hot', 'calm']);
+
+    fetchProgress.mockClear();
+    fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
+    expect(fetchProgress).toHaveBeenCalledWith('g1', ['done']);
   });
 });
 
@@ -213,12 +235,12 @@ describe('ProgressPage matrix: status and counts by role', () => {
     expect(screen.queryByText('Everyone has it')).not.toBeInTheDocument();
   });
 
-  it('shows a viewer states with no count anywhere', async () => {
+  it('shows a viewer states with no count anywhere, their own cell included', async () => {
     seed({
       goals,
       participants: { wings: [row('wings', 'u2', { state: 'need', tokenCount: 62 }), row('wings', 'u3', { state: 'want', tokenCount: 30 })] },
     });
-    renderPage({ userRole: 'viewer', canManage: false, currentUserId: 'u-viewer' });
+    renderPage({ userRole: 'viewer', canManage: false, currentUserId: 'u2' });
     const matrix = await screen.findByTestId('progress-matrix');
     expect(within(matrix).getByText('Need')).toBeInTheDocument();
     expect(matrix.textContent).not.toMatch(/62|30|\d+\/\d+/);
@@ -345,13 +367,26 @@ describe('ProgressPage matrix: loading and error (TF5 ruling 3)', () => {
     expect(alert).toHaveTextContent('boom');
     expect(screen.queryByTestId('progress-matrix')).not.toBeInTheDocument();
 
-    const before = fetchProgress.mock.calls.length;
-    fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
-    await act(async () => {
+    // A real fetch clears the error as it starts.
+    fetchProgress.mockImplementationOnce(async () => {
       useCollectionGoalStore.setState({ progressError: null });
     });
-    expect(fetchProgress.mock.calls.length).toBe(before + 1);
+    const before = fetchProgress.mock.calls.length;
+    fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
     expect(await screen.findByTestId('progress-matrix')).toBeInTheDocument();
+    expect(fetchProgress.mock.calls.length).toBe(before + 1);
+    expect(screen.queryByTestId('progress-error')).not.toBeInTheDocument();
+  });
+
+  it('ignores a stale progress error when no farm is active, so there is no dead Retry', async () => {
+    seed({
+      goals: [goal('done', { title: 'Done Farm', status: 'complete', completedAt: '2026-10-01T00:00:00Z' })],
+      progressError: 'boom',
+    });
+    renderPage();
+    expect(await screen.findByTestId('progress-matrix')).toBeInTheDocument();
+    expect(screen.queryByTestId('progress-error')).not.toBeInTheDocument();
+    expect(fetchProgress).not.toHaveBeenCalled();
   });
 
   it('shows a goals failure as an error, not as loading forever', async () => {

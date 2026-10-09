@@ -65,7 +65,6 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   const participants = useCollectionGoalStore((s) => s.participants);
   const recordOnly = useCollectionGoalStore((s) => s.recordOnly);
   const progressLoading = useCollectionGoalStore((s) => s.progressLoading);
-  const progressError = useCollectionGoalStore((s) => s.progressError);
 
   const groupGoals = useMemo(() => goals.filter((g) => g.staticGroupId === group.id), [goals, group.id]);
   const activeGoals = useMemo(() => groupGoals.filter((g) => g.status !== 'complete'), [groupGoals]);
@@ -83,7 +82,9 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   // Retry bumps this, so both effects run again.
   const [attempt, setAttempt] = useState(0);
   const fetchKey = `${group.id}|${activeKey}|${attempt}`;
-  const [settledKey, setSettledKey] = useState<string | null>(null);
+  // The first load of this static has settled, and how the last ACTIVE fetch ended. Later key
+  // changes refetch behind the mounted matrix (stale-while-revalidate), so Finished stays open.
+  const [settled, setSettled] = useState<{ groupId: string; error: string | null } | null>(null);
 
   useEffect(() => {
     if (!isMember) return;
@@ -91,14 +92,21 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   }, [isMember, group.id, attempt]);
 
   useEffect(() => {
-    if (!isMember || !goalsReady || activeKey === '') return;
+    if (!isMember || !goalsReady) return;
     let cancelled = false;
-    void useCollectionGoalStore
-      .getState()
-      .fetchProgress(group.id)
-      .then(() => {
-        if (!cancelled) setSettledKey(fetchKey);
-      });
+    // Nothing active means nothing to fetch, and any earlier failure belongs to farms that
+    // are gone; otherwise fetchProgress clears the error as it starts, so what it leaves is
+    // this fetch's outcome.
+    const settle =
+      activeKey === ''
+        ? Promise.resolve(null)
+        : useCollectionGoalStore
+            .getState()
+            .fetchProgress(group.id)
+            .then(() => useCollectionGoalStore.getState().progressError);
+    void settle.then((error) => {
+      if (!cancelled) setSettled({ groupId: group.id, error });
+    });
     return () => {
       cancelled = true;
     };
@@ -106,11 +114,13 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
 
   // A goals failure never reaches `goalsReady`, so it would read as loading forever.
   const goalsFailed = isMember && !goalsReady && goalsError !== null;
-  const loading = isMember && !goalsFailed && (!goalsReady || (activeKey !== '' && settledKey !== fetchKey));
-  const error = !isMember || loading ? null : goalsFailed ? goalsError : progressError;
+  const settledHere = settled?.groupId === group.id;
+  const loading = isMember && !goalsFailed && (!goalsReady || !settledHere);
+  const error = !isMember || loading ? null : goalsFailed ? goalsError : activeKey !== '' ? (settled?.error ?? null) : null;
 
   // ── Finished: fetch the finished goals' cells on the first expand ──
   const [finishedLoading, setFinishedLoading] = useState(false);
+  const [finishedError, setFinishedError] = useState<string | null>(null);
   const finishedIds = useMemo(
     () => groupGoals.filter((g) => g.status === 'complete').map((g) => g.id),
     [groupGoals],
@@ -121,9 +131,12 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
       chunks.push(finishedIds.slice(i, i + FINISHED_GOALS_PER_REQUEST));
     }
     setFinishedLoading(true);
-    void Promise.all(chunks.map((ids) => useCollectionGoalStore.getState().fetchProgress(group.id, ids))).then(() =>
-      setFinishedLoading(false),
-    );
+    setFinishedError(null);
+    void Promise.all(chunks.map((ids) => useCollectionGoalStore.getState().fetchProgress(group.id, ids))).then(() => {
+      // Its own line inside Finished: the active rows stay on screen.
+      setFinishedError(useCollectionGoalStore.getState().progressError);
+      setFinishedLoading(false);
+    });
   }, [finishedIds, group.id]);
 
   // ── The matrix ──
@@ -139,7 +152,10 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     return { columns, ...rows };
   }, [players, preset, activeGoals, groupGoals, participants, recordOnly, currentUserId, userRole]);
 
-  const retry = () => setAttempt((n) => n + 1);
+  const retry = () => {
+    setSettled(null);
+    setAttempt((n) => n + 1);
+  };
 
   return (
     <div data-testid="progress-screen">
@@ -181,6 +197,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
             finished={finished}
             canManage={canManage}
             finishedLoading={finishedLoading}
+            finishedError={finishedError}
             onExpandFinished={expandFinished}
           />
         )}

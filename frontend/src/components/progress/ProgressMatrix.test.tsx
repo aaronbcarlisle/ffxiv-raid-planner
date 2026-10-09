@@ -5,7 +5,7 @@
  */
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { CollectionGoal, ParticipantStateEntry } from '../../stores/collectionGoalStore';
+import type { CollectionGoal } from '../../stores/collectionGoalStore';
 import type { SnapshotPlayer } from '../../types';
 import {
   buildColumns,
@@ -13,29 +13,13 @@ import {
   type ProgressData,
   type ProgressReader,
 } from '../../utils/progressModel';
+import { goal, row } from './__fixtures__/progressFixtures';
 import { ProgressMatrix } from './ProgressMatrix';
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
 function player(id: string, overrides: Partial<SnapshotPlayer>): SnapshotPlayer {
   return { id, name: id, job: 'PLD', role: 'tank', position: null, configured: true, isSubstitute: false, sortOrder: 0, userId: null, ...overrides } as unknown as SnapshotPlayer;
-}
-
-function goal(id: string, overrides: Partial<CollectionGoal> = {}): CollectionGoal {
-  return {
-    id, staticGroupId: 'g1', createdById: null, goalType: 'mount', contentType: null, contentKey: null,
-    title: id, status: 'farming', priorityMode: null, summary: null, linkedDutyId: null, linkedRewardId: null,
-    targetCount: null, currentCount: null, note: null, createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z',
-    completedAt: null, catalogItemId: null, tokenName: 'Tokens', tokenCost: 99, participantSummary: null, ...overrides,
-  };
-}
-
-function row(goalId: string, userId: string, overrides: Partial<ParticipantStateEntry> = {}): ParticipantStateEntry {
-  return {
-    id: `${goalId}:${userId}`, goalId, userId, staticGroupId: 'g1', state: 'need', tokenCount: null, priorityRank: null,
-    source: 'manual', lastSyncedAt: null, notes: null, updatedAt: '2026-10-01T00:00:00Z', displayName: userId,
-    memberRole: 'member', countHidden: false, record: null, ...overrides,
-  };
 }
 
 const PLAYERS = [
@@ -55,6 +39,7 @@ interface RenderOptions {
   players?: SnapshotPlayer[];
   canManage?: boolean;
   finishedLoading?: boolean;
+  finishedError?: string | null;
   onExpandFinished?: () => void;
 }
 
@@ -72,6 +57,7 @@ function renderMatrix(o: RenderOptions = {}) {
       finished={finished}
       canManage={o.canManage ?? true}
       finishedLoading={o.finishedLoading ?? false}
+      finishedError={o.finishedError ?? null}
       onExpandFinished={onExpandFinished}
     />,
   );
@@ -126,6 +112,22 @@ describe('ProgressMatrix columns', () => {
 });
 
 // ── Rows and cells (R-S2-7, R-S2-8) ─────────────────────────────────────────
+
+describe('ProgressMatrix header alignment', () => {
+  it('top-aligns every header and puts the Claim to track tag after the name, so names line up', () => {
+    renderMatrix({ participants: { wings: [row('wings', 'u-zed', { displayName: 'Zed' })] } });
+    for (const header of screen.getAllByTestId('progress-column')) {
+      expect(header).toHaveClass('align-top');
+    }
+    const cy = screen.getByRole('columnheader', { name: /Cy/ });
+    const tag = within(cy).getByText('Claim to track');
+    expect(within(cy).getByText('Cy').compareDocumentPosition(tag) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The tag is a sibling row below the name row, not a flex item beside the name.
+    expect(within(cy).getByText('Cy').parentElement).not.toContainElement(tag);
+    const zed = screen.getByRole('columnheader', { name: /Zed/ });
+    expect(within(zed).getByText('Zed').compareDocumentPosition(within(zed).getByText('Not on the roster')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
 
 describe('ProgressMatrix rows and cells', () => {
   it('reads "{title} · {type}" with the type icon, and a Scheduled tag only off Farming', () => {
@@ -202,11 +204,9 @@ describe('ProgressMatrix status column', () => {
     expect(statusOf(farmRows()[0])).toBe('2 of 3 have it');
   });
 
-  it('tells a lead "Everyone has it" at n = m, and a member "3 of 3 have it"', () => {
-    const participants = { wings: have('wings', ['u1', 'u2', 'u4']) };
-    const lead = renderMatrix({ participants, reader: LEAD, canManage: true });
+  it('tells a lead "Everyone has it" at n = m', () => {
+    renderMatrix({ participants: { wings: have('wings', ['u1', 'u2', 'u4']) }, reader: LEAD, canManage: true });
     expect(statusOf(farmRows()[0])).toBe('Everyone has it');
-    expect(lead.columns).toHaveLength(4);
   });
 
   it('tells a member "3 of 3 have it" at n = m', () => {
@@ -228,12 +228,12 @@ describe('ProgressMatrix status column', () => {
 // ── Counts (R-S2-8; B1) ─────────────────────────────────────────────────────
 
 describe('ProgressMatrix counts', () => {
-  it('shows a viewer states only: no count anywhere', () => {
+  it('shows a viewer states only: no count anywhere, their own cell included', () => {
     renderMatrix({
       participants: {
         wings: [row('wings', 'u2', { state: 'need', tokenCount: 62 }), row('wings', 'u4', { state: 'want', tokenCount: 30 })],
       },
-      reader: { currentUserId: 'u-viewer', userRole: 'viewer' },
+      reader: { currentUserId: 'u2', userRole: 'viewer' },
       canManage: false,
     });
     const r = farmRows()[0];
@@ -251,6 +251,9 @@ describe('ProgressMatrix container', () => {
     renderMatrix({ goals: [goal('wings'), goal('done', { status: 'complete', completedAt: '2026-10-01T00:00:00Z' })] });
     const matrix = screen.getByTestId('progress-matrix');
     expect(matrix).toHaveClass('overflow-x-auto');
+    // The sr-only caption is absolutely positioned; without a positioned scroller it lands
+    // against <body> and widens the page at phone width.
+    expect(matrix).toHaveClass('relative');
     expect(matrix.querySelector('table')).not.toBeNull();
     const sticky = [matrix, ...Array.from(matrix.querySelectorAll('*'))].filter((el) => /(^|\s)(sticky|fixed)(\s|$)|\bsticky:/.test(el.getAttribute('class') ?? ''));
     expect(sticky).toEqual([]);
@@ -303,18 +306,33 @@ describe('ProgressMatrix Finished', () => {
     expect(farmRows().map((r) => r.getAttribute('data-goal-id'))).toEqual(['wings']);
   });
 
-  it('adds no column when a finished goal\'s row holder is off the roster (TF5 ruling 2)', () => {
+  // The harness builds the columns from the active goals, as the page does; whether the page
+  // really does is pinned in ProgressPage.matrix.test.tsx. This pins the rendering: a finished
+  // row gets one cell per existing column, and a holder with no column is not shown.
+  it('renders one cell per existing column on a finished row and shows no off-roster holder', () => {
     const { columns } = renderMatrix({
       goals: [goal('wings'), done('new', '2026-10-01T00:00:00Z')],
       participants: { new: [row('new', 'u-ghost', { displayName: 'Ghost', state: 'have' }), row('new', 'u1', { state: 'have' })] },
     });
-    const before = screen.getAllByRole('columnheader').length;
     fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
-    expect(screen.getAllByRole('columnheader')).toHaveLength(before);
-    expect(columns.some((c) => c.userId === 'u-ghost')).toBe(false);
-    expect(screen.queryByText('Ghost')).not.toBeInTheDocument();
-    // The finished row renders one cell per existing column.
     const finishedRow = farmRows().find((r) => r.getAttribute('data-goal-id') === 'new')!;
     expect(within(finishedRow).getAllByTestId('progress-cell')).toHaveLength(columns.length);
+    expect(within(finishedRow).getByRole('cell', { name: 'Aya, new, Have' })).toBeInTheDocument();
+    expect(screen.queryByText('Ghost')).not.toBeInTheDocument();
+  });
+
+  it('shows a finished-fetch failure on its own line with a Retry, and keeps the active rows', () => {
+    const onExpandFinished = vi.fn();
+    renderMatrix({
+      goals: [goal('wings'), done('new', '2026-10-01T00:00:00Z')],
+      finishedError: 'boom',
+      onExpandFinished,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
+    const alert = screen.getByTestId('progress-finished-error');
+    expect(alert).toHaveTextContent('boom');
+    expect(farmRows().map((r) => r.getAttribute('data-goal-id'))).toEqual(['wings']);
+    fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
+    expect(onExpandFinished).toHaveBeenCalledTimes(2);
   });
 });

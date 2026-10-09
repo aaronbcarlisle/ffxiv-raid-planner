@@ -13,6 +13,8 @@
  *     pnpm -C frontend exec playwright test e2e/progress.spec.ts
  */
 import AxeBuilder from '@axe-core/playwright';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import {
   API_BASE,
@@ -26,6 +28,26 @@ import {
 
 const PREFIX = 'E2E Progress';
 const THEMES = ['dark', 'light'] as const;
+
+/**
+ * Ids of every farm this file created, written the moment each exists. A catalog-sourced
+ * mount carries the catalog's title, not the prefix, so a crashed run would otherwise leak
+ * it on DEVTST; the next run's pre-clean reads this file. (test-results/ is git-ignored.)
+ */
+const LEDGER = join(process.cwd(), 'test-results', 'progress-e2e-seeded.json');
+
+function ledgerIds(): string[] {
+  try {
+    return JSON.parse(readFileSync(LEDGER, 'utf8')) as string[];
+  } catch {
+    return [];
+  }
+}
+
+function recordSeeded(id: string): void {
+  mkdirSync(join(process.cwd(), 'test-results'), { recursive: true });
+  writeFileSync(LEDGER, JSON.stringify([...ledgerIds(), id]));
+}
 
 interface Seeded {
   mountId: string;
@@ -63,11 +85,12 @@ async function deleteSeededFarms(page: Page, groupId: string, headers: ApiHeader
   const list = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/collection-goals`);
   if (!list.ok()) throw new Error(`E2E cleanup failed: farm list returned ${list.status()}`);
   const goals = (await list.json()) as Array<{ id: string; title: string }>;
-  const doomed = new Set([...ids, ...goals.filter((g) => g.title.startsWith(PREFIX)).map((g) => g.id)]);
+  const doomed = new Set([...ids, ...ledgerIds(), ...goals.filter((g) => g.title.startsWith(PREFIX)).map((g) => g.id)]);
   for (const id of doomed) {
     const del = await page.request.delete(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${id}`, { headers });
     if (!del.ok() && del.status() !== 404) throw new Error(`E2E cleanup failed: deleting ${id} returned ${del.status()}`);
   }
+  rmSync(LEDGER, { force: true });
 }
 
 test.describe.serial('Progress matrix', () => {
@@ -90,6 +113,7 @@ test.describe.serial('Progress matrix', () => {
           });
           if (res.ok()) {
             mountId = ((await res.json()) as { id: string }).id;
+            recordSeeded(mountId);
             mountCost = item.token_cost as number;
           }
         }
@@ -101,6 +125,7 @@ test.describe.serial('Progress matrix', () => {
         });
         if (!res.ok()) throw new Error(`seeding the mount returned ${res.status()}`);
         mountId = ((await res.json()) as { id: string }).id;
+        recordSeeded(mountId);
       }
 
       const custom = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals`, {
@@ -109,6 +134,7 @@ test.describe.serial('Progress matrix', () => {
       });
       if (!custom.ok()) throw new Error(`seeding the custom farm returned ${custom.status()}`);
       const customId = ((await custom.json()) as { id: string }).id;
+      recordSeeded(customId);
 
       // The owner needs the mount (so it sorts first) and wants the custom farm.
       for (const [id, data] of [
@@ -135,10 +161,11 @@ test.describe.serial('Progress matrix', () => {
     }
   });
 
-  async function openProgress(page: Page) {
+  /** At phone width the shell hides the user menu, so that wait is optional there. */
+  async function openProgress(page: Page, { userMenu = true } = {}) {
     await page.goto(`/group/${DEV_SHARE_CODE}?shell=v2&tab=progress`);
     await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
-    await page.getByRole('button', { name: /User menu for/i }).waitFor({ timeout: 15_000 });
+    if (userMenu) await page.getByRole('button', { name: /User menu for/i }).waitFor({ timeout: 15_000 });
     await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
     await page.waitForLoadState('networkidle');
   }
@@ -179,8 +206,30 @@ test.describe.serial('Progress matrix', () => {
     await openProgress(page);
 
     expect(await seededOrder(page)).toEqual([seeded.mountId, seeded.customId]);
-    await expect(page.locator(`[data-goal-id="${seeded.mountId}"]`).getByText(/^Need\b/)).toBeVisible();
+    // A member sees the owner's count on the seeded mount, and the tally.
+    await expect(page.locator(`[data-goal-id="${seeded.mountId}"]`).getByText(`Need 62/${seeded.mountCost}`)).toBeVisible();
     await expect(page.getByTestId('progress-matrix').getByText(/of \d+ have it/).first()).toBeVisible();
+    await context.close();
+  });
+
+  test('phone width: the matrix scrolls inside its container and the page does not', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await loginAsOwner(page);
+    await openProgress(page, { userMenu: false });
+
+    const { pageWidth, viewport, scroller, client } = await page.evaluate(() => {
+      const box = document.querySelector('[data-testid="progress-matrix"]') as HTMLElement;
+      return {
+        pageWidth: document.documentElement.scrollWidth,
+        viewport: window.innerWidth,
+        scroller: box.scrollWidth,
+        client: box.clientWidth,
+      };
+    });
+    expect(pageWidth, 'the page must not scroll sideways').toBeLessThanOrEqual(viewport);
+    expect(scroller, 'the matrix scrolls inside its container').toBeGreaterThan(client);
     await context.close();
   });
 

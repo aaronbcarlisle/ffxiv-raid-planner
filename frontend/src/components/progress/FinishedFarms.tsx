@@ -17,11 +17,15 @@ interface FinishedFarmsProps {
   canManage: boolean;
   /** The finished goals' cells are being fetched. */
   loading: boolean;
+  /** Fetching the finished goals' cells failed; shown here so the active rows stay. */
+  error: string | null;
   /** Called on the first expand only. */
   onFirstExpand: () => void;
+  /** Fetch the finished goals' cells again. */
+  onRetry: () => void;
 }
 
-export function FinishedFarms({ rows, colSpan, canManage, loading, onFirstExpand }: FinishedFarmsProps) {
+export function FinishedFarms({ rows, colSpan, canManage, loading, error, onFirstExpand, onRetry }: FinishedFarmsProps) {
   const [expanded, setExpanded] = useState(false);
   const [requested, setRequested] = useState(false);
 
@@ -52,7 +56,19 @@ export function FinishedFarms({ rows, colSpan, canManage, loading, onFirstExpand
           </td>
         </tr>
       )}
-      {expanded && !loading && rows.map((row) => <FarmRow key={row.goal.id} row={row} canManage={canManage} />)}
+      {expanded && !loading && error !== null && (
+        <tr>
+          <td colSpan={colSpan} className="px-3 py-2">
+            <div role="alert" data-testid="progress-finished-error" className="flex flex-wrap items-center gap-3 text-sm text-text-primary">
+              <span>{`Couldn't load finished farms: ${error}`}</span>
+              <Button variant="secondary" size="sm" onClick={onRetry}>
+                Retry
+              </Button>
+            </div>
+          </td>
+        </tr>
+      )}
+      {expanded && !loading && error === null && rows.map((row) => <FarmRow key={row.goal.id} row={row} canManage={canManage} />)}
     </tbody>
   );
 }
