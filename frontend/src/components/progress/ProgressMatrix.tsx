@@ -27,7 +27,7 @@ const ROLE_TEXT = {
 function ColumnHeader({ column }: { column: ProgressColumn }) {
   if (column.kind === 'notOnRoster') {
     return (
-      <th scope="col" data-testid="progress-column" data-column-kind={column.kind} className="min-w-32 px-3 py-2 text-left align-bottom font-normal">
+      <th scope="col" data-testid="progress-column" data-column-kind={column.kind} className="min-w-32 px-3 py-2 text-left align-top font-normal">
         <div className="truncate text-sm font-medium text-text-secondary">{column.name}</div>
         <Tag variant="label" className="mt-1">
           {column.reason === 'unconfigured' ? 'Card not set up' : 'Not on the roster'}
@@ -38,7 +38,7 @@ function ColumnHeader({ column }: { column: ProgressColumn }) {
   const { player } = column;
   const claimed = column.kind === 'claimed';
   return (
-    <th scope="col" data-testid="progress-column" data-column-kind={column.kind} className="min-w-32 px-3 py-2 text-left align-bottom font-normal">
+    <th scope="col" data-testid="progress-column" data-column-kind={column.kind} className="min-w-32 px-3 py-2 text-left align-top font-normal">
       <div className="flex items-center gap-1.5">
         <JobIcon job={player.job} size="xs" className={claimed ? '' : 'opacity-60'} />
         {player.position != null && <span className="text-xs text-text-secondary">{player.position}</span>}
@@ -64,11 +64,13 @@ interface ProgressMatrixProps {
   canManage: boolean;
   /** The finished goals' cells are being fetched. */
   finishedLoading: boolean;
-  /** Called once, on the first expand of Finished. */
+  /** Fetching the finished goals' cells failed. */
+  finishedError?: string | null;
+  /** Called once, on the first expand of Finished; also the retry. */
   onExpandFinished: () => void;
 }
 
-export function ProgressMatrix({ columns, active, finished, canManage, finishedLoading, onExpandFinished }: ProgressMatrixProps) {
+export function ProgressMatrix({ columns, active, finished, canManage, finishedLoading, finishedError = null, onExpandFinished }: ProgressMatrixProps) {
   return (
     <div
       data-testid="progress-matrix"
@@ -76,7 +78,7 @@ export function ProgressMatrix({ columns, active, finished, canManage, finishedL
       aria-label="Farms by player"
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scroll region for a keyboard-only user; focus is the keyboard path to the columns off screen (axe scrollable-region-focusable)
       tabIndex={0}
-      className="overflow-x-auto rounded-lg border border-border-default bg-surface-card focus-visible:outline-2 focus-visible:outline-accent"
+      className="relative overflow-x-auto rounded-lg border border-border-default bg-surface-card focus-visible:outline-2 focus-visible:outline-accent"
     >
       <table className="w-full min-w-max border-collapse">
         <caption>
@@ -84,10 +86,10 @@ export function ProgressMatrix({ columns, active, finished, canManage, finishedL
         </caption>
         <thead>
           <tr>
-            <th scope="col" className="px-3 py-2 text-left align-bottom text-xs font-medium text-text-secondary">
+            <th scope="col" className="px-3 py-2 text-left align-top text-xs font-medium text-text-secondary">
               Farm
             </th>
-            <th scope="col" className="px-3 py-2 text-left align-bottom text-xs font-medium text-text-secondary">
+            <th scope="col" className="px-3 py-2 text-left align-top text-xs font-medium text-text-secondary">
               Status
             </th>
             {columns.map((column) => (
@@ -105,7 +107,9 @@ export function ProgressMatrix({ columns, active, finished, canManage, finishedL
           colSpan={columns.length + 2}
           canManage={canManage}
           loading={finishedLoading}
+          error={finishedError}
           onFirstExpand={onExpandFinished}
+          onRetry={onExpandFinished}
         />
       </table>
     </div>

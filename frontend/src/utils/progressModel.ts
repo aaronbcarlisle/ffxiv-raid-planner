@@ -127,9 +127,10 @@ export interface ProgressCell {
   count: number | null;
   /**
    * A count is withheld from this reader: the server's `countHidden` (a member's
-   * privacy flag, or the caller's own gate), or a viewer reading someone else's
-   * cell. Never inferred from `tokenCount === null`, which also means "no count
-   * yet" (vet I-1).
+   * privacy flag, or the caller's own gate), or the reader is a viewer, who sees
+   * states only, on their own cell too (R-S2-8). Never true on a blank cell, and
+   * never inferred from `tokenCount === null`, which also means "no count yet"
+   * (vet I-1).
    */
   countHidden: boolean;
   /** The column is the reader's own (R-S2-10). */
@@ -144,10 +145,11 @@ export interface ProgressCell {
 
 /**
  * The cell at one column of one goal: the row's merged entry; else a record-only
- * cell (Have, or blank when its state is null); else blank. Others' counts are
- * withheld from a viewer, as the server withholds them; the server already gates
- * every read for the real caller, so this matters under View As, where reads stay
- * gated as the admin (R-S2-10). One's own count is never withheld by role.
+ * cell (Have, or blank when its state is null); else blank. A viewer sees states
+ * only: every count is withheld from them, their own included (R-S2-8). The server
+ * already gates every read for the real caller, so the role check matters under
+ * View As, where reads stay gated as the admin (R-S2-10). For any other role one's
+ * own count is never withheld by role; the server's `countHidden` still applies.
  */
 export function cellFor(column: ProgressColumn, cells: GoalCells, reader: ProgressReader): ProgressCell {
   const userId = column.userId;
@@ -161,7 +163,7 @@ export function cellFor(column: ProgressColumn, cells: GoalCells, reader: Progre
   const state = entry ? entry.state : (recordOnly?.state ?? null);
   const serverHidden = entry ? entry.countHidden === true : recordOnly?.countHidden === true;
   // A blank cell has nothing to withhold (TF5 ruling 5).
-  const countHidden = state !== null && (serverHidden || (!own && reader.userRole === 'viewer'));
+  const countHidden = state !== null && (serverHidden || reader.userRole === 'viewer');
   const count = entry ? entry.tokenCount : (recordOnly?.tokenCount ?? null);
 
   return {
