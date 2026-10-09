@@ -71,7 +71,7 @@ const messageOf = (err: unknown) => (err instanceof Error ? err.message : 'somet
 
 interface CellPickerProps {
   cell: ProgressCellModel;
-  goal: Pick<CollectionGoal, 'id' | 'tokenCost' | 'tokenName'>;
+  goal: Pick<CollectionGoal, 'id' | 'title' | 'tokenCost' | 'tokenName'>;
   write: CellWriteTarget;
   /** The trigger's accessible name. */
   label: string;
@@ -177,7 +177,7 @@ export function CellPicker({ cell, goal, write, label, grid, onOpenChange, child
           {children}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="p-2">
+      <PopoverContent align="start" className="p-2" aria-label={`Status for ${cell.column.name}, ${goal.title}`}>
         {/* A pointer press here keeps focus where it is (no blur of the count field), so the
             pick it starts carries a typed count as one write. Keyboard focus moves are not
             picks: leaving the field by Tab commits the count on its blur. */}
