@@ -231,6 +231,15 @@ export interface ParticipantStateUpsert {
   notes?: string | null;
 }
 
+/** One Progress cell write (S2a-2, R-S2-10): a state, and a count only when it changes. */
+export interface CellWrite {
+  /** The member written through the lead route; absent for the caller's own cell (the self route). */
+  targetUserId?: string;
+  state: ParticipantState;
+  /** The count to set; absent leaves the count as it is (the body sends null, which the API reads as unchanged). */
+  tokenCount?: number;
+}
+
 export interface RewardDropCreate {
   recipientUserId?: string | null;
   quantity?: number;
@@ -301,6 +310,16 @@ interface ApiParticipant {
   count_from_record?: boolean;
   count_hidden?: boolean;
   record?: ApiParticipantRecord | null;
+}
+
+/** A farm-status PATCH's response (R-S2-11): the row as written, plus its undo token (null when minting failed). */
+interface ApiParticipantWrite extends ApiParticipant {
+  undo_token?: string | null;
+}
+
+interface ApiUndoResult {
+  restored: number;
+  skipped: number;
 }
 
 interface ApiParticipantRecord {
@@ -522,6 +541,16 @@ interface CollectionGoalStore {
   progressError: string | null;
   upsertMyState: (groupId: string, goalId: string, data: ParticipantStateUpsert) => Promise<void>;
   upsertStateForUser: (groupId: string, goalId: string, targetUserId: string, data: ParticipantStateUpsert) => Promise<void>;
+  /**
+   * The Progress tab's one write (S2a-2; R-S2-10, R-S2-11): the caller's own cell through
+   * the self route, or `targetUserId`'s through the lead route. The written row replaces the
+   * member's row for the goal and drops their record-only cell; the goal list is not
+   * refetched (a cell write changes no goal). Errors propagate. `undoToken` puts the write
+   * back through `undoCells`, or is null when the server could not mint one.
+   */
+  setCell: (groupId: string, goalId: string, write: CellWrite) => Promise<{ entry: ParticipantStateEntry; undoToken: string | null }>;
+  /** Puts a write back by its token (R-S2-11), then refetches the active cells. Errors propagate. */
+  undoCells: (groupId: string, token: string) => Promise<{ restored: number; skipped: number }>;
 
   fetchDrops: (groupId: string, goalId: string) => Promise<void>;
   logDrop: (groupId: string, goalId: string, data: RewardDropCreate) => Promise<RewardDrop>;
@@ -705,6 +734,36 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
       return { participants: { ...s.participants, [goalId]: next } };
     });
     await get().fetchGoals(groupId);
+  },
+
+  setCell: async (groupId, goalId, write) => {
+    const base = `/api/static-groups/${groupId}/collection-goals/${goalId}/participants`;
+    const written = await api.patch<ApiParticipantWrite>(
+      write.targetUserId ? `${base}/${write.targetUserId}` : base,
+      // Only these two keys: the server leaves priority_rank and notes alone when absent.
+      { state: write.state, token_count: write.tokenCount ?? null },
+    );
+    const entry = fromApiParticipant(written);
+    set((s) => {
+      const existing = s.participants[goalId] ?? [];
+      const idx = existing.findIndex((p) => p.userId === entry.userId);
+      const next = idx >= 0 ? existing.map((p, i) => (i === idx ? entry : p)) : [...existing, entry];
+      const cells = s.recordOnly[goalId];
+      const recordOnly = cells?.some((c) => c.userId === entry.userId)
+        ? { ...s.recordOnly, [goalId]: cells.filter((c) => c.userId !== entry.userId) }
+        : s.recordOnly;
+      return { participants: { ...s.participants, [goalId]: next }, recordOnly };
+    });
+    return { entry, undoToken: written.undo_token ?? null };
+  },
+
+  undoCells: async (groupId, token) => {
+    const result = await api.post<ApiUndoResult>(
+      `/api/static-groups/${groupId}/collection-participants/undo`,
+      { token },
+    );
+    await get().fetchProgress(groupId);
+    return { restored: result.restored, skipped: result.skipped };
   },
 
   fetchDrops: async (groupId, goalId) => {

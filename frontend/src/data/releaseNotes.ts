@@ -108,6 +108,13 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): S2a-2·F4 — provenance and the roving grid',
         internal: true,
       },
+      {
+        category: 'feature',
+        title: 'V2 preview: change your own Progress status in place, with Undo',
+        description:
+          'V2 preview: your own cells in the Progress matrix are now buttons; a blank one reads "Set status". Open one to pick Need, Want, Have or Pass, and on a farm with a token cost set your count (Enter or clicking away saves it). Every save shows a toast with Undo for eight seconds, which puts the status, the count and who set it back exactly, unless something changed them since. Under View As an edit is written to the viewed member\'s row through the lead route, and the admin\'s own name shows as the writer.',
+        internal: true,
+      },
     ],
   },
   {
