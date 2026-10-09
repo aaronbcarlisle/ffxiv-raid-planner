@@ -121,6 +121,44 @@ export interface ParticipantStateEntry {
   displayName: string | null;
   /** The participant's role in the static (R-P0-4); null once they are no longer a member. */
   memberRole: string | null;
+  // The row's provenance and the merge (S2a-1, R-S1-9; S2a-2, R-S2-13). Optional so a
+  // V1-shaped row (and every existing fixture) stays valid; the mapper always fills them.
+  updatedByUserId?: string | null;
+  updatedVia?: string | null;
+  stateChangedAt?: string | null;
+  tokenCountUpdatedAt?: string | null;
+  /** True when `state` came from the member's character record, not their own row. */
+  stateFromRecord?: boolean;
+  /** True when `tokenCount` came from the member's character record. */
+  countFromRecord?: boolean;
+  /** True when the count gate withheld this member's counts from the caller. */
+  countHidden?: boolean;
+  record?: ParticipantRecordView | null;
+}
+
+/** The member's character record behind a farm cell (S2a-1, R-S1-9), as merged. */
+export interface ParticipantRecordView {
+  characterId: string | null;
+  ownershipState: string;
+  tokenCount: number | null;
+  source: string;
+  updatedByUserId: string | null;
+  updatedVia: string | null;
+  stateChangedAt: string | null;
+  tokenCountUpdatedAt: string | null;
+  lastSyncedAt: string | null;
+}
+
+/** A claimant's record for a goal's item when they have no row for the goal (Q1, R-S2-13). */
+export interface RecordOnlyCell {
+  userId: string;
+  displayName: string | null;
+  memberRole: string;
+  /** `'have'` when the record says so, else null. */
+  state: 'have' | null;
+  tokenCount: number | null;
+  countHidden: boolean;
+  record: ParticipantRecordView;
 }
 
 export interface RewardDrop {
@@ -255,6 +293,42 @@ interface ApiParticipant {
   updated_at: string;
   display_name: string | null;
   member_role?: string | null;
+  updated_by_user_id?: string | null;
+  updated_via?: string | null;
+  state_changed_at?: string | null;
+  token_count_updated_at?: string | null;
+  state_from_record?: boolean;
+  count_from_record?: boolean;
+  count_hidden?: boolean;
+  record?: ApiParticipantRecord | null;
+}
+
+interface ApiParticipantRecord {
+  character_id: string | null;
+  ownership_state: string;
+  token_count: number | null;
+  source: string;
+  updated_by_user_id?: string | null;
+  updated_via?: string | null;
+  state_changed_at?: string | null;
+  token_count_updated_at?: string | null;
+  last_synced_at?: string | null;
+}
+
+interface ApiRecordOnlyCell {
+  user_id: string;
+  display_name: string | null;
+  member_role: string;
+  state: 'have' | null;
+  token_count: number | null;
+  count_hidden: boolean;
+  record: ApiParticipantRecord;
+}
+
+interface ApiGoalParticipants {
+  goal_id: string;
+  participants: ApiParticipant[];
+  record_only: ApiRecordOnlyCell[];
 }
 
 interface ApiDrop {
@@ -313,6 +387,40 @@ function fromApiParticipant(p: ApiParticipant): ParticipantStateEntry {
     updatedAt: p.updated_at,
     displayName: p.display_name,
     memberRole: p.member_role ?? null,
+    updatedByUserId: p.updated_by_user_id ?? null,
+    updatedVia: p.updated_via ?? null,
+    stateChangedAt: p.state_changed_at ?? null,
+    tokenCountUpdatedAt: p.token_count_updated_at ?? null,
+    stateFromRecord: p.state_from_record ?? false,
+    countFromRecord: p.count_from_record ?? false,
+    countHidden: p.count_hidden ?? false,
+    record: p.record ? fromApiRecord(p.record) : null,
+  };
+}
+
+function fromApiRecord(r: ApiParticipantRecord): ParticipantRecordView {
+  return {
+    characterId: r.character_id,
+    ownershipState: r.ownership_state,
+    tokenCount: r.token_count,
+    source: r.source,
+    updatedByUserId: r.updated_by_user_id ?? null,
+    updatedVia: r.updated_via ?? null,
+    stateChangedAt: r.state_changed_at ?? null,
+    tokenCountUpdatedAt: r.token_count_updated_at ?? null,
+    lastSyncedAt: r.last_synced_at ?? null,
+  };
+}
+
+function fromApiRecordOnly(c: ApiRecordOnlyCell): RecordOnlyCell {
+  return {
+    userId: c.user_id,
+    displayName: c.display_name ?? null,
+    memberRole: c.member_role,
+    state: c.state ?? null,
+    tokenCount: c.token_count,
+    countHidden: c.count_hidden ?? false,
+    record: fromApiRecord(c.record),
   };
 }
 
@@ -386,6 +494,8 @@ interface CollectionGoalStore {
   // participants keyed by goalId
   participants: Record<string, ParticipantStateEntry[]>;
   participantsLoading: Record<string, boolean>;
+  // Record-only cells keyed by goalId (R-S2-13): a claimant's record, no row for the goal.
+  recordOnly: Record<string, RecordOnlyCell[]>;
 
   // drops keyed by goalId
   drops: Record<string, RewardDrop[]>;
@@ -398,6 +508,12 @@ interface CollectionGoalStore {
   deleteGoal: (groupId: string, goalId: string) => Promise<void>;
 
   fetchParticipants: (groupId: string, goalId: string) => Promise<void>;
+  /**
+   * The Progress tab's one read (R-S2-13): every cell of the given goals (default: every
+   * goal not complete), in `participants` and `recordOnly`. Goals the response omits keep
+   * their cached rows.
+   */
+  fetchProgress: (groupId: string, goalIds?: string[]) => Promise<void>;
   upsertMyState: (groupId: string, goalId: string, data: ParticipantStateUpsert) => Promise<void>;
   upsertStateForUser: (groupId: string, goalId: string, targetUserId: string, data: ParticipantStateUpsert) => Promise<void>;
 
@@ -434,6 +550,7 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
   loadedGroupId: null,
   participants: {},
   participantsLoading: {},
+  recordOnly: {},
   drops: {},
   dropsLoading: {},
 
@@ -493,6 +610,28 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
       }));
     } catch {
       set((s) => ({ participantsLoading: { ...s.participantsLoading, [goalId]: false } }));
+    }
+  },
+
+  fetchProgress: async (groupId, goalIds) => {
+    const qs = new URLSearchParams();
+    for (const id of goalIds ?? []) qs.append('goal_id', id);
+    const query = qs.toString();
+    try {
+      const data = await api.get<ApiGoalParticipants[]>(
+        `/api/static-groups/${groupId}/collection-participants${query ? `?${query}` : ''}`,
+      );
+      set((s) => {
+        const participants = { ...s.participants };
+        const recordOnly = { ...s.recordOnly };
+        for (const g of data) {
+          participants[g.goal_id] = g.participants.map(fromApiParticipant);
+          recordOnly[g.goal_id] = g.record_only.map(fromApiRecordOnly);
+        }
+        return { participants, recordOnly };
+      });
+    } catch {
+      // api.ts has toasted; the cached rows stay (as fetchParticipants does).
     }
   },
 
