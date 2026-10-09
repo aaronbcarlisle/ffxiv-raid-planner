@@ -748,12 +748,11 @@ describe('ProgressMatrix keyboard grid with own-cell buttons', () => {
     expect(setCell).toHaveBeenCalledWith('g1', 'hot', { state: 'have' });
     await waitFor(() => expect(own).toHaveFocus());
 
-    // The response merges: Hot has no Need left, so Calm (one Want) sorts above it and the
-    // focused row moves. The stop must stay on Hot's cell, second row now, not fall back to
-    // the first cell, and focus must survive the move. Browsers drop focus to <body> when
-    // the focused element is moved (the focus fixup rule); jsdom keeps it, so that read is
-    // simulated for the re-render.
-    Object.defineProperty(document, 'activeElement', { configurable: true, get: () => document.body });
+    // The response merges: Hot has no Need left, so Calm (one Want) sorts above it and React
+    // moves the focused row. The DOM's focus fixup drops focus to <body> on that move (jsdom
+    // does it too), and React DOM refocuses the moved button in the same commit; the stop
+    // must stay on Hot's cell, second row now, not fall back to the first cell.
+    const refocus = vi.spyOn(own, 'focus');
     try {
       rerender({
         goals: two,
@@ -761,15 +760,52 @@ describe('ProgressMatrix keyboard grid with own-cell buttons', () => {
         reader: MEMBER,
         edit: EDIT,
       });
+      expect(refocus).toHaveBeenCalled();
     } finally {
-      delete (document as { activeElement?: Element | null }).activeElement;
+      refocus.mockRestore();
     }
 
     expect(farmRows().map((r) => r.getAttribute('data-goal-id'))).toEqual(['calm', 'hot']);
     const after = ownButton('Aya, Hot, Have — change your status');
+    expect(after).toBe(own);
     expect(after.closest('tr')).toBe(farmRows()[1]);
     expect(gridStops()).toEqual([after]);
     expect(after).toHaveFocus();
+  });
+
+  it('moves focus to the fallback stop when the focused row is gone, where React cannot restore it', () => {
+    const { rerender } = renderMatrix({ goals: two, participants: mixed, reader: MEMBER, edit: EDIT });
+    const own = ownButton('Aya, Calm, Want — change your status');
+    focusCell(own);
+    expect(own).toHaveFocus();
+
+    rerender({ goals: [two[0]], participants: mixed, reader: MEMBER, edit: EDIT });
+
+    const first = ownButton('Aya, Hot, Need, 62 of 99 Tokens — change your status');
+    expect(gridStops()).toEqual([first]);
+    expect(first).toHaveFocus();
+  });
+
+  it('forgets a tooltip wish the cell could not show, so a later provenance does not open it unprompted (review M-a)', async () => {
+    // A blank own cell has no provenance: Radix still asks to open on focus, and, with the
+    // controlled value already false, never asks to close.
+    const { rerender } = renderMatrix({ participants: {}, reader: MEMBER, edit: EDIT });
+    const own = ownButton('Aya, Wings of Resolve, no status — set your status');
+    focusCell(own);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    act(() => own.blur());
+
+    rerender({
+      participants: { wings: [row('wings', 'u1', { state: 'need', updatedByUserId: 'u1', updatedVia: 'web' })] },
+      reader: MEMBER,
+      edit: EDIT,
+    });
+    await act(async () => {});
+    expect(screen.queryByRole('tooltip')).toBeNull();
+
+    // A fresh focus still opens it.
+    focusCell(ownButton('Aya, Wings of Resolve, Need — change your status'));
+    expect((await screen.findAllByText('you')).length).toBeGreaterThan(0);
   });
 
   it('puts the provenance tooltip to sleep while the picker is open, and wakes it after (review M3)', async () => {
