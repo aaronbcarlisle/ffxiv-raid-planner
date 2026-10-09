@@ -30,6 +30,13 @@ interface TooltipProps {
   /** Explicitly disable the tooltip */
   disabled?: boolean;
   /**
+   * Controlled open state. Given, the tooltip is controlled for its whole life (Radix warns
+   * when a tooltip switches between controlled and uncontrolled, which `disabled` toggling
+   * would do): Radix asks to open or close through `onOpenChange`, and the caller decides.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /**
    * Radix's `disableHoverableContent` on the Root: the tooltip closes the moment the
    * pointer leaves its trigger, instead of staying open while the pointer crosses to the
    * content, so it never holds open over the neighbour below it. The content also gets
@@ -49,6 +56,8 @@ export function Tooltip({
   delayDuration = 500,
   disabled,
   disableHoverableContent,
+  open,
+  onOpenChange,
 }: TooltipProps) {
   const { canHover } = useDevice();
 
@@ -63,7 +72,8 @@ export function Tooltip({
   // but use open={false} to prevent the tooltip from showing.
   return (
     <TooltipPrimitive.Root
-      open={disabled ? false : undefined}
+      open={open ?? (disabled ? false : undefined)}
+      onOpenChange={onOpenChange}
       delayDuration={delayDuration}
       disableHoverableContent={disableHoverableContent}
     >

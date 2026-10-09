@@ -7,17 +7,19 @@
  *
  * The popover holds four state Buttons in a "Status" group, the current one pressed, and
  * on a token farm the count field, unless the count is hidden from the reader. A pick
- * saves at once and closes (Radix returns focus to the trigger). The count commits on
- * Enter (the form's submit) or when focus leaves it, with the cell's current state; a
- * count typed and then carried into a pick goes with that pick as one write. Escape
- * discards a typed count. Nothing is optimistic: the cell shows the store's row, so a
- * failed save leaves it as it was. Every save toasts "{Word} saved" with Undo while the
- * server returned a token; Undo posts it back and refetches the matrix.
+ * saves at once and closes (Radix returns focus to the trigger). The count commits as a
+ * whole number on Enter (the form's submit) or whenever focus leaves the field, Tab
+ * included, with the cell's current state, and on nothing else: Escape closes without a
+ * commit of its own (Chrome fires no blur for a field it removes, so Escape discards a
+ * typed count there). A pointer press on a status button keeps focus in the field, so
+ * that pick carries the typed count as one write. Nothing is optimistic: the cell shows
+ * the store's row, so a failed save leaves it as it was. Every save toasts "{Word} saved"
+ * with Undo while the server returned a token; Undo posts it back and refetches.
  *
  * `write.targetUserId` sends the write through the lead route: the viewed user under
  * View As (R-S2-10), and a lead's correction from S2a-2·F6 on.
  */
-import { useId, useRef, useState, type FocusEvent, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import { Button } from '../primitives/Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives/Popover';
 import { Label } from '../ui/Label';
@@ -77,8 +79,10 @@ interface CellPickerProps {
 export function CellPicker({ cell, goal, write, label, grid, onOpenChange, children }: CellPickerProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<number | null>(cell.count);
+  // The option focused when the content mounts: fixed at open, so a state change while the
+  // picker is open cannot move the auto-focus ref and steal focus from the count field.
+  const [focusTarget, setFocusTarget] = useState<ParticipantState>('need');
   const countId = useId();
-  const groupRef = useRef<HTMLDivElement>(null);
   const setCell = useCollectionGoalStore((s) => s.setCell);
   const undoCells = useCollectionGoalStore((s) => s.undoCells);
   // Saves run one after another, in the order they were made, so a later response can never
@@ -105,6 +109,7 @@ export function CellPicker({ cell, goal, write, label, grid, onOpenChange, child
   const changeOpen = (next: boolean) => {
     if (next) {
       setDraft(cell.count);
+      setFocusTarget(state ?? 'need');
       sentRef.current = null;
     }
     setOpen(next);
@@ -138,9 +143,13 @@ export function CellPicker({ cell, goal, write, label, grid, onOpenChange, child
     });
   };
 
-  // A typed count the cell does not hold yet (and that is not already on its way).
-  const pendingCount = () =>
-    state !== null && draft !== null && draft !== cell.count && draft !== sentRef.current ? draft : undefined;
+  // A typed count the cell does not hold yet (and that is not already on its way), as a whole
+  // number: the field takes "62.5", the API takes integers only.
+  const pendingCount = () => {
+    if (state === null || draft === null) return undefined;
+    const count = Math.trunc(draft);
+    return count !== cell.count && count !== sentRef.current ? count : undefined;
+  };
 
   const pick = (option: Option) => {
     changeOpen(false);
@@ -154,12 +163,6 @@ export function CellPicker({ cell, goal, write, label, grid, onOpenChange, child
     save(state, count, `${tokenLabel} saved`);
   };
 
-  const onCountBlur = (event: FocusEvent<HTMLFormElement>) => {
-    // Focus moving to a status button: that pick carries the count, as one write.
-    if (event.relatedTarget !== null && groupRef.current?.contains(event.relatedTarget)) return;
-    commitCount();
-  };
-
   return (
     <Popover open={open} onOpenChange={changeOpen}>
       <PopoverTrigger asChild>
@@ -170,13 +173,16 @@ export function CellPicker({ cell, goal, write, label, grid, onOpenChange, child
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="p-2">
-        <div ref={groupRef} role="group" aria-label="Status" className="flex gap-1">
+        {/* A pointer press here keeps focus where it is (no blur of the count field), so the
+            pick it starts carries a typed count as one write. Keyboard focus moves are not
+            picks: leaving the field by Tab commits the count on its blur. */}
+        <div role="group" aria-label="Status" className="flex gap-1" onPointerDown={(event) => event.preventDefault()}>
           {OPTIONS.map((option) => {
             const pressed = option.state === state;
             return (
               <Button
                 key={option.state}
-                ref={option.state === (state ?? 'need') ? focusOnMount : undefined}
+                ref={option.state === focusTarget ? focusOnMount : undefined}
                 type="button"
                 size="sm"
                 variant={pressed ? 'primary' : 'secondary'}
@@ -195,7 +201,7 @@ export function CellPicker({ cell, goal, write, label, grid, onOpenChange, child
               event.preventDefault();
               commitCount();
             }}
-            onBlur={onCountBlur}
+            onBlur={commitCount}
           >
             <Label htmlFor={countId} size="sm" description={state === null ? 'Pick a status first' : undefined}>
               {tokenLabel}
