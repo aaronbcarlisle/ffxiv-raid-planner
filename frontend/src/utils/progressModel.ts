@@ -43,12 +43,21 @@ export interface GoalCells {
 /**
  * A matrix column. `claimed`: a configured player with a user. `unclaimed`: a
  * configured player with none (dim, "Claim to track", no cells). `notOnRoster`: a
- * member with a farm row and no column in this tier (trailing).
+ * member with a farm row and no column in this tier (trailing). Its `reason` is
+ * `unconfigured` when the member holds a claimed card in this tier that is not set
+ * up yet ("Card not set up"), else `notOnRoster` ("Not on the roster").
  */
 export type ProgressColumn =
   | { kind: 'claimed'; key: string; name: string; userId: string; player: SnapshotPlayer }
   | { kind: 'unclaimed'; key: string; name: string; userId: null; player: SnapshotPlayer }
-  | { kind: 'notOnRoster'; key: string; name: string; userId: string; player: null };
+  | {
+      kind: 'notOnRoster';
+      key: string;
+      name: string;
+      userId: string;
+      player: null;
+      reason: 'unconfigured' | 'notOnRoster';
+    };
 
 const byText = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' });
 const byId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -59,7 +68,10 @@ const byId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
  * then one "Not on the roster" column per member who holds a row on one of
  * `data.goals` but has no column, by display name. A row whose `memberRole` is
  * null (a former member) or `viewer` adds none, and record-only cells never do.
- * Pass the goals the matrix shows: `participants` is keyed across statics.
+ * Pass the ACTIVE goals only, so expanding Finished never adds or shifts a column
+ * (TF5 ruling 2): `participants` is keyed across statics, and a finished-goal row
+ * whose member has no column is simply not shown. A member whose claimed card in
+ * these `players` is not configured trails with reason `unconfigured`.
  */
 export function buildColumns(
   players: readonly SnapshotPlayer[],
@@ -77,6 +89,7 @@ export function buildColumns(
     );
 
   const placed = new Set(columns.flatMap((c) => (c.userId ? [c.userId] : [])));
+  const unconfigured = new Set(players.flatMap((p) => (!p.configured && p.userId ? [p.userId] : [])));
   const offRoster = new Map<string, string | null>();
   for (const goal of data.goals) {
     for (const row of data.participants[goal.id] ?? []) {
@@ -88,7 +101,14 @@ export function buildColumns(
   const trailing = [...offRoster]
     .map(([userId, displayName]) => ({ userId, name: displayName ?? 'Unknown' }))
     .sort((a, b) => byText(a.name, b.name) || byId(a.userId, b.userId))
-    .map(({ userId, name }): ProgressColumn => ({ kind: 'notOnRoster', key: `user:${userId}`, name, userId, player: null }));
+    .map(({ userId, name }): ProgressColumn => ({
+      kind: 'notOnRoster',
+      key: `user:${userId}`,
+      name,
+      userId,
+      player: null,
+      reason: unconfigured.has(userId) ? 'unconfigured' : 'notOnRoster',
+    }));
 
   return [...columns, ...trailing];
 }
@@ -138,13 +158,15 @@ export function cellFor(column: ProgressColumn, cells: GoalCells, reader: Progre
   const entry = cells.participants?.find((p) => p.userId === userId) ?? null;
   const recordOnly = entry ? null : (cells.recordOnly?.find((c) => c.userId === userId) ?? null);
 
+  const state = entry ? entry.state : (recordOnly?.state ?? null);
   const serverHidden = entry ? entry.countHidden === true : recordOnly?.countHidden === true;
-  const countHidden = serverHidden || (!own && reader.userRole === 'viewer');
+  // A blank cell has nothing to withhold (TF5 ruling 5).
+  const countHidden = state !== null && (serverHidden || (!own && reader.userRole === 'viewer'));
   const count = entry ? entry.tokenCount : (recordOnly?.tokenCount ?? null);
 
   return {
     column,
-    state: entry ? entry.state : (recordOnly?.state ?? null),
+    state,
     count: countHidden ? null : count,
     countHidden,
     own,

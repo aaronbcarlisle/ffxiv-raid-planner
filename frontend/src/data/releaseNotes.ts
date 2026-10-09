@@ -90,6 +90,13 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): S2a-2·F2 — the Progress read model',
         internal: true,
       },
+      {
+        category: 'feature',
+        title: 'V2 preview: the Progress matrix is on screen',
+        description:
+          'V2 preview: Progress now shows every active farm as a row under the tier row, with a column per player in Roster ▸ Board order. Each cell reads Have, Need or Want (with a count on Need and Want), Pass, or stays blank, and each farm says "n of m have it" (leads read "Everyone has it" when all do). Farms are ordered by most Need, then most Want. Finished farms sit under a "Finished (n)" button and load when opened. The matrix scrolls sideways inside its own panel, and it is read-only for now. A member whose card is not set up trails as "Card not set up". The Goals & Farms type labels moved to one shared file.',
+        internal: true,
+      },
     ],
   },
   {

@@ -514,6 +514,10 @@ interface CollectionGoalStore {
    * their cached rows.
    */
   fetchProgress: (groupId: string, goalIds?: string[]) => Promise<void>;
+  /** A `fetchProgress` is in flight (overlapping calls count: true until the last settles). */
+  progressLoading: boolean;
+  /** The last `fetchProgress` failure's message; cleared when the next one starts. */
+  progressError: string | null;
   upsertMyState: (groupId: string, goalId: string, data: ParticipantStateUpsert) => Promise<void>;
   upsertStateForUser: (groupId: string, goalId: string, targetUserId: string, data: ParticipantStateUpsert) => Promise<void>;
 
@@ -521,6 +525,9 @@ interface CollectionGoalStore {
   logDrop: (groupId: string, goalId: string, data: RewardDropCreate) => Promise<RewardDrop>;
   deleteDrop: (groupId: string, goalId: string, dropId: string) => Promise<void>;
 }
+
+/** Overlapping `fetchProgress` calls: `progressLoading` stays true until the last settles. */
+let progressInFlight = 0;
 
 export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => ({
   catalog: [],
@@ -551,6 +558,8 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
   participants: {},
   participantsLoading: {},
   recordOnly: {},
+  progressLoading: false,
+  progressError: null,
   drops: {},
   dropsLoading: {},
 
@@ -617,22 +626,38 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
     const qs = new URLSearchParams();
     for (const id of goalIds ?? []) qs.append('goal_id', id);
     const query = qs.toString();
+    progressInFlight += 1;
+    set({ progressLoading: true, progressError: null });
+    let cells: { goalId: string; participants: ParticipantStateEntry[]; recordOnly: RecordOnlyCell[] }[] = [];
+    let failure: string | null = null;
     try {
       const data = await api.get<ApiGoalParticipants[]>(
         `/api/static-groups/${groupId}/collection-participants${query ? `?${query}` : ''}`,
       );
-      set((s) => {
-        const participants = { ...s.participants };
-        const recordOnly = { ...s.recordOnly };
-        for (const g of data) {
-          participants[g.goal_id] = g.participants.map(fromApiParticipant);
-          recordOnly[g.goal_id] = g.record_only.map(fromApiRecordOnly);
-        }
-        return { participants, recordOnly };
-      });
-    } catch {
+      cells = data.map((g) => ({
+        goalId: g.goal_id,
+        participants: g.participants.map(fromApiParticipant),
+        recordOnly: g.record_only.map(fromApiRecordOnly),
+      }));
+    } catch (err) {
       // api.ts has toasted; the cached rows stay (as fetchParticipants does).
+      failure = err instanceof Error ? err.message : 'Failed to load progress';
     }
+    progressInFlight -= 1;
+    const progressLoading = progressInFlight > 0;
+    if (failure !== null) {
+      set({ progressLoading, progressError: failure });
+      return;
+    }
+    set((s) => {
+      const participants = { ...s.participants };
+      const recordOnly = { ...s.recordOnly };
+      for (const c of cells) {
+        participants[c.goalId] = c.participants;
+        recordOnly[c.goalId] = c.recordOnly;
+      }
+      return { participants, recordOnly, progressLoading };
+    });
   },
 
   upsertMyState: async (groupId, goalId, data) => {
