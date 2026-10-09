@@ -86,6 +86,8 @@ export const RELEASES: Release[] = [
         title: 'V2 preview: the Progress matrix\'s model',
         description:
           'V2 preview: groundwork for the Progress farm matrix. One request now fetches every active farm\'s member statuses, and one shared model decides what the matrix shows: columns in Roster ▸ Board order (unclaimed players dim, members with a status but no card trailing as "Not on the roster"), each cell\'s status and totem count (a hidden count stays hidden, and viewers see none), farms ordered by most Need, then most Want, then title, and each farm\'s "n of m have it". Roster ▸ Board draws its party dividers from the same sections. The shortcut list now names key 3 Progress, and the Progress header\'s icon matches the tab bar\'s. The farm rows arrive in the next update.',
+        pr: 371,
+        prTitle: 'feat(v2): S2a-2·F2 — the Progress read model',
         internal: true,
       },
     ],
