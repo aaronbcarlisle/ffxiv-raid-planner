@@ -33,7 +33,7 @@ import { wasToastedByApi } from '../../services/api';
 import { useCollectionGoalStore, type CellWrite, type CollectionGoal, type ParticipantState } from '../../stores/collectionGoalStore';
 import { toast } from '../../stores/toastStore';
 import type { ProgressCell as ProgressCellModel } from '../../utils/progressModel';
-import { undoWithToasts } from './undoToasts';
+import { messageOf, undoWithToasts } from './undoToasts';
 import type { MatrixCellProps } from './useMatrixKeyboard';
 
 /** Where a cell's write goes (R-S2-10). */
@@ -66,8 +66,6 @@ const OPTIONS: readonly Option[] = [
  * path). Module-level, so its identity never changes and it fires on mount only.
  */
 const focusOnMount = (el: HTMLButtonElement | null) => el?.focus();
-
-const messageOf = (err: unknown) => (err instanceof Error ? err.message : 'something went wrong');
 
 interface CellPickerProps {
   cell: ProgressCellModel;

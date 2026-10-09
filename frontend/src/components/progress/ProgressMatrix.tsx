@@ -20,8 +20,8 @@ import { VisuallyHidden } from '../primitives/VisuallyHidden';
 import { JobIcon } from '../ui/JobIcon';
 import { Tag } from '../ui/Tag';
 import { getValidRole } from '../../gamedata';
-import type { FarmRow as FarmRowModel, ProgressCell as ProgressCellModel, ProgressColumn } from '../../utils/progressModel';
-import type { CellWriteTarget } from './CellPicker';
+import type { FarmRow as FarmRowModel, ProgressColumn } from '../../utils/progressModel';
+import type { CellWriteResolver } from './editStatuses';
 import { FarmRow } from './FarmRow';
 import { FinishedFarms } from './FinishedFarms';
 import type { ProvenanceContext } from './progressProvenance';
@@ -84,7 +84,7 @@ interface ProgressMatrixProps {
    */
   memberNames?: ReadonlyMap<string, string>;
   /** Where each active cell writes (R-S2-10), undefined for a read-only one; absent when nothing is editable (a viewer). */
-  editFor?: (cell: ProgressCellModel) => CellWriteTarget | undefined;
+  editFor?: CellWriteResolver;
   /** The finished goals' cells are being fetched. */
   finishedLoading: boolean;
   /** Fetching the finished goals' cells failed. */

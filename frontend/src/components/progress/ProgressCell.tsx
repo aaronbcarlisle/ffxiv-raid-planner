@@ -19,7 +19,8 @@ import { useState } from 'react';
 import { Tooltip } from '../primitives/Tooltip';
 import type { CollectionGoal, ParticipantState } from '../../stores/collectionGoalStore';
 import { cellAccessibleName, cellText, type ProgressCell as ProgressCellModel } from '../../utils/progressModel';
-import { CellPicker, type CellWriteTarget } from './CellPicker';
+import { CellPicker } from './CellPicker';
+import type { CellWriteResolver } from './editStatuses';
 import { cellProvenance, type ProvenanceContext } from './progressProvenance';
 import type { MatrixCellProps } from './useMatrixKeyboard';
 
@@ -39,7 +40,7 @@ interface ProgressCellProps {
   /** The roving-grid props; absent where the cell is not part of the keyboard grid (Finished). */
   grid?: MatrixCellProps;
   /** Where a cell writes (R-S2-10), undefined for one this reader may not; absent where every cell is read-only (Finished). */
-  editFor?: (cell: ProgressCellModel) => CellWriteTarget | undefined;
+  editFor?: CellWriteResolver;
 }
 
 export function ProgressCell({ cell, goal, provenance, grid, editFor }: ProgressCellProps) {

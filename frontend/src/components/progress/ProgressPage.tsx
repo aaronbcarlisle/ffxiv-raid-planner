@@ -180,17 +180,21 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   }, [group.members, authUserId, authUserName]);
 
   // ── Edit statuses (F6, R-S2-10) ──
-  // Who gets the mode: NewShell's canManage (owner, lead, admin access), never a viewer.
+  // Who gets the mode: NewShell's canManage (owner, lead, admin access), never a viewer, and
+  // only while there is an active farm to edit (the bar renders under the same condition).
   const mayEdit = canManage && isMember && userRole !== 'viewer';
+  const barShown = mayEdit && active.length > 0;
   const [mode, setMode] = useState(false);
-  // Derived, so a reader who loses the role mid-mode never renders a stale true.
-  const editing = mode && mayEdit;
+  // Reset during the render that loses the bar (React's adjust-state-on-change pattern), so the
+  // mode never outlives it: it cannot resume when the role, or an active farm, comes back.
+  if (mode && !barShown) setMode(false);
+  const editing = mode && barShown;
 
   // Where each active cell writes (R-S2-10): one's own (View As: the lead route aimed at the
   // viewed user), and in the mode every claimed cell, aimed at its member.
   const editFor = useCallback(
-    (cell: ProgressCellModel) => cellWriteTarget(cell, { groupId: group.id, currentUserId, userRole, isViewingAs, editing }),
-    [group.id, currentUserId, userRole, isViewingAs, editing],
+    (cell: ProgressCellModel) => cellWriteTarget(cell, { groupId: group.id, currentUserId, userRole, canManage, isViewingAs, editing }),
+    [group.id, currentUserId, userRole, canManage, isViewingAs, editing],
   );
   const blankCells = useMemo(() => blankClaimedCells(active), [active]);
 
@@ -235,7 +239,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
         )}
         {isMember && !loading && (error === null || matrixLoaded) && groupGoals.length > 0 && (
           <>
-            {mayEdit && active.length > 0 && (
+            {barShown && (
               <EditStatusesBar
                 groupId={group.id}
                 editing={editing}

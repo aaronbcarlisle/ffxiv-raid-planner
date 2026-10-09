@@ -26,7 +26,7 @@ const offRoster = (userId: string): ProgressColumn => ({ kind: 'notOnRoster', ke
 const cell = (column: ProgressColumn, own: boolean, state: ParticipantState | null = null): ProgressCell =>
   ({ column, state, count: null, countHidden: false, own, entry: null, recordOnly: null, record: null });
 const ctx = (over: Partial<EditContext> = {}): EditContext =>
-  ({ groupId: 'g1', currentUserId: 'u1', userRole: 'lead', isViewingAs: false, editing: false, ...over });
+  ({ groupId: 'g1', currentUserId: 'u1', userRole: 'lead', canManage: true, isViewingAs: false, editing: false, ...over });
 
 describe('cellWriteTarget (R-S2-10)', () => {
   it('outside the mode: the own cell goes through the self route, Not on the roster included', () => {
@@ -54,6 +54,15 @@ describe('cellWriteTarget (R-S2-10)', () => {
   it('in the mode: another member\'s claimed cell, blank or not, goes through the lead route aimed at them', () => {
     expect(cellWriteTarget(cell(claimed('u2'), false, 'have'), ctx({ editing: true }))).toEqual({ groupId: 'g1', targetUserId: 'u2' });
     expect(cellWriteTarget(cell(claimed('u4'), false), ctx({ editing: true }))).toEqual({ groupId: 'g1', targetUserId: 'u4' });
+  });
+
+  it('in the mode without canManage (a member, whatever set editing) grants no lead route; the own cell keeps the self route', () => {
+    const member = ctx({ userRole: 'member', canManage: false, editing: true });
+    expect(cellWriteTarget(cell(claimed('u2'), false, 'have'), member)).toBeUndefined();
+    expect(cellWriteTarget(cell(claimed('u4'), false), member)).toBeUndefined();
+    expect(cellWriteTarget(cell(claimed('u1'), true, 'need'), member)).toEqual({ groupId: 'g1' });
+    // Admin access: canManage with the member role is the mode.
+    expect(cellWriteTarget(cell(claimed('u2'), false), ctx({ userRole: 'member', canManage: true, editing: true }))).toEqual({ groupId: 'g1', targetUserId: 'u2' });
   });
 
   it('in the mode: the lead\'s own cell keeps the self route', () => {

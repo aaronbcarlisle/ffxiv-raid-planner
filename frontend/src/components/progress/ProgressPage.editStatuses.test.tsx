@@ -225,7 +225,7 @@ describe('ProgressPage Edit statuses: the mode (rulings 2, 3, 4)', () => {
     expect(screen.queryByRole('button', { name: /^Bo,/ })).not.toBeInTheDocument();
   });
 
-  it('forces the mode off while the reader may no longer manage: no toolbar, no lead-editable cell', async () => {
+  it('forgets the mode when the reader may no longer manage, so it does not resume when they may again', async () => {
     seed(mixed);
     const { rerender } = renderPage();
     await enterMode();
@@ -235,6 +235,25 @@ describe('ProgressPage Edit statuses: the mode (rulings 2, 3, 4)', () => {
     expect(screen.queryByTestId('progress-toolbar')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Bo,/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Aya, Wings of Resolve, Need — change your status' })).toBeInTheDocument();
+
+    rerender({ canManage: true, userRole: 'owner' });
+    expect(editButton()).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Bo,/ })).not.toBeInTheDocument();
+  });
+
+  it('forgets the mode when the last active farm finishes, so it does not resume when one is active again', async () => {
+    seed(mixed);
+    renderPage();
+    await enterMode();
+
+    act(() => useCollectionGoalStore.setState({ goals: [{ ...WINGS, status: 'complete', completedAt: '2026-10-09T00:00:00Z' }] }));
+    expect(screen.queryByTestId('progress-toolbar')).not.toBeInTheDocument();
+
+    act(() => useCollectionGoalStore.setState({ goals: [WINGS] }));
+    await screen.findByRole('button', { name: 'Edit statuses' });
+    expect(screen.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Bo,/ })).not.toBeInTheDocument();
   });
 });
 
