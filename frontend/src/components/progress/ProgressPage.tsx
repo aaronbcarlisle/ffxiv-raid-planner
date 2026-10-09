@@ -154,6 +154,17 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     return { columns, ...rows };
   }, [players, preset, activeGoals, groupGoals, participants, recordOnly, currentUserId, userRole]);
 
+  const memberNames = useMemo(
+    () =>
+      new Map(
+        (group.members ?? []).flatMap((m) => {
+          const name = m.user?.displayName ?? m.user?.discordUsername;
+          return name ? [[m.userId, name] as const] : [];
+        }),
+      ),
+    [group.members],
+  );
+
   const retry = () => {
     // Behind a mounted matrix the stale cells stay on screen while the retry runs.
     if (!matrixLoaded) setSettled(null);
@@ -200,6 +211,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
             finished={finished}
             canManage={canManage}
             currentUserId={currentUserId}
+            memberNames={memberNames}
             finishedLoading={finishedLoading}
             finishedError={finishedError}
             onExpandFinished={expandFinished}

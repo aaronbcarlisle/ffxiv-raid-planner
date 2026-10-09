@@ -35,6 +35,8 @@ export function ProgressCell({ cell, goal, provenance, grid }: ProgressCellProps
   return (
     <Tooltip
       side="bottom"
+      // The next row's cell sits right under this tooltip: it must not cover or hold it open.
+      disableHoverableContent
       disabled={origin === null}
       content={
         origin !== null && (

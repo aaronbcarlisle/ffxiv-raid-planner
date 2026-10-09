@@ -15,7 +15,7 @@ export interface ProvenanceContext {
   nameOf: (userId: string) => string | null;
 }
 
-export interface CellProvenance {
+interface CellProvenance {
   /** Who set the state, and when for a plugin write. */
   state: string;
   /** A second line, only when the count came from the other side than the state. */

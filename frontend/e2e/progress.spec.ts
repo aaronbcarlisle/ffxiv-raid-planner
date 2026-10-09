@@ -57,6 +57,12 @@ interface Seeded {
   mountCost: number;
 }
 let seeded: Seeded;
+/**
+ * The owner's own record for the catalog mount before the run. Records outlive farms, and the
+ * owner's Need/62 writes through to it, so afterAll puts the values back (there is no route that
+ * deletes a record, so a record that did not exist is left as "unknown" with no count).
+ */
+let priorRecord: { catalogItemId: string; ownership_state: string; token_count: number | null } | null = null;
 /** DevMember's id, once the viewer test has demoted them (afterAll restores the role). */
 let demotedUserId: string | null = null;
 
@@ -109,6 +115,16 @@ test.describe.serial('Progress matrix', () => {
         const items = (await catalog.json()) as Array<{ id: string; token_cost: number | null }>;
         const item = items.find((i) => i.token_cost != null && i.token_cost > 0);
         if (item) {
+          const snaps = await page.request.get(`${API_BASE}/api/me/collection-snapshots`);
+          const records = snaps.ok()
+            ? ((await snaps.json()) as Array<{ catalog_item_id: string; ownership_state: string; token_count: number | null }>)
+            : [];
+          const before = records.find((r) => r.catalog_item_id === item.id);
+          priorRecord = {
+            catalogItemId: item.id,
+            ownership_state: before?.ownership_state ?? 'unknown',
+            token_count: before?.token_count ?? null,
+          };
           const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals/from-suggestion`, {
             headers,
             data: { catalog_item_id: item.id, status: 'scheduled' },
@@ -117,6 +133,8 @@ test.describe.serial('Progress matrix', () => {
             mountId = ((await res.json()) as { id: string }).id;
             recordSeeded(mountId);
             mountCost = item.token_cost as number;
+          } else {
+            priorRecord = null; // nothing of the owner's record was touched
           }
         }
       }
@@ -158,6 +176,14 @@ test.describe.serial('Progress matrix', () => {
     try {
       if (demotedUserId) await setMemberRole(page, groupId, headers, demotedUserId, 'member');
       await deleteSeededFarms(page, groupId, headers, seeded ? [seeded.mountId, seeded.customId] : []);
+      if (priorRecord) {
+        const res = await page.request.put(`${API_BASE}/api/me/collection-snapshot/${priorRecord.catalogItemId}`, {
+          headers,
+          data: { ownership_state: priorRecord.ownership_state, token_count: priorRecord.token_count },
+        });
+        if (!res.ok()) throw new Error(`restoring the owner's record returned ${res.status()}`);
+        priorRecord = null;
+      }
     } finally {
       await context.close();
     }
@@ -211,6 +237,15 @@ test.describe.serial('Progress matrix', () => {
     // The scroller is not a stop of its own; the grid has exactly one.
     await expect(matrix).not.toHaveAttribute('tabindex', /.*/);
     await expect(matrix.locator('[role="gridcell"][tabindex="0"]')).toHaveCount(1);
+
+    // A real Tab in from the element before the matrix lands on that one gridcell; the next
+    // Tab leaves the matrix (not onto the scroller, not onto another cell).
+    await page.getByTestId('progress-tier-row').getByText('Open board').focus();
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => document.activeElement?.getAttribute('role'))).toBe('gridcell');
+    expect(await matrix.evaluate((m) => m.contains(document.activeElement))).toBe(true);
+    await page.keyboard.press('Tab');
+    expect(await matrix.evaluate((m) => m === document.activeElement || m.contains(document.activeElement))).toBe(false);
 
     const needCell = page.locator(`[data-goal-id="${seeded.mountId}"] [data-testid="progress-cell"][aria-label*=", Need, "]`).first();
     await needCell.focus();
