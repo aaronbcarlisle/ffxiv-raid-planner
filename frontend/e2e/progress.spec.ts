@@ -13,7 +13,8 @@
  *     pnpm -C frontend exec playwright test e2e/progress.spec.ts
  */
 import AxeBuilder from '@axe-core/playwright';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import {
@@ -32,9 +33,11 @@ const THEMES = ['dark', 'light'] as const;
 /**
  * Ids of every farm this file created, written the moment each exists. A catalog-sourced
  * mount carries the catalog's title, not the prefix, so a crashed run would otherwise leak
- * it on DEVTST; the next run's pre-clean reads this file. (test-results/ is git-ignored.)
+ * it on DEVTST; the next run's pre-clean reads this file. It lives in the OS temp dir, not
+ * `test-results/`: Playwright empties its output directory before `beforeAll`, which would
+ * erase the very record a crashed run left behind.
  */
-const LEDGER = join(process.cwd(), 'test-results', 'progress-e2e-seeded.json');
+const LEDGER = join(tmpdir(), 'xrp-progress-e2e-seeded.json');
 
 function ledgerIds(): string[] {
   try {
@@ -45,7 +48,6 @@ function ledgerIds(): string[] {
 }
 
 function recordSeeded(id: string): void {
-  mkdirSync(join(process.cwd(), 'test-results'), { recursive: true });
   writeFileSync(LEDGER, JSON.stringify([...ledgerIds(), id]));
 }
 
@@ -55,6 +57,12 @@ interface Seeded {
   mountCost: number;
 }
 let seeded: Seeded;
+/**
+ * The owner's own record for the catalog mount before the run. Records outlive farms, and the
+ * owner's Need/62 writes through to it, so afterAll puts the values back (there is no route that
+ * deletes a record, so a record that did not exist is left as "unknown" with no count).
+ */
+let priorRecord: { catalogItemId: string; ownership_state: string; token_count: number | null } | null = null;
 /** DevMember's id, once the viewer test has demoted them (afterAll restores the role). */
 let demotedUserId: string | null = null;
 
@@ -107,6 +115,16 @@ test.describe.serial('Progress matrix', () => {
         const items = (await catalog.json()) as Array<{ id: string; token_cost: number | null }>;
         const item = items.find((i) => i.token_cost != null && i.token_cost > 0);
         if (item) {
+          const snaps = await page.request.get(`${API_BASE}/api/me/collection-snapshots`);
+          const records = snaps.ok()
+            ? ((await snaps.json()) as Array<{ catalog_item_id: string; ownership_state: string; token_count: number | null }>)
+            : [];
+          const before = records.find((r) => r.catalog_item_id === item.id);
+          priorRecord = {
+            catalogItemId: item.id,
+            ownership_state: before?.ownership_state ?? 'unknown',
+            token_count: before?.token_count ?? null,
+          };
           const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals/from-suggestion`, {
             headers,
             data: { catalog_item_id: item.id, status: 'scheduled' },
@@ -115,6 +133,8 @@ test.describe.serial('Progress matrix', () => {
             mountId = ((await res.json()) as { id: string }).id;
             recordSeeded(mountId);
             mountCost = item.token_cost as number;
+          } else {
+            priorRecord = null; // nothing of the owner's record was touched
           }
         }
       }
@@ -156,6 +176,14 @@ test.describe.serial('Progress matrix', () => {
     try {
       if (demotedUserId) await setMemberRole(page, groupId, headers, demotedUserId, 'member');
       await deleteSeededFarms(page, groupId, headers, seeded ? [seeded.mountId, seeded.customId] : []);
+      if (priorRecord) {
+        const res = await page.request.put(`${API_BASE}/api/me/collection-snapshot/${priorRecord.catalogItemId}`, {
+          headers,
+          data: { ownership_state: priorRecord.ownership_state, token_count: priorRecord.token_count },
+        });
+        if (!res.ok()) throw new Error(`restoring the owner's record returned ${res.status()}`);
+        priorRecord = null;
+      }
     } finally {
       await context.close();
     }
@@ -196,6 +224,42 @@ test.describe.serial('Progress matrix', () => {
 
     // Read-only: no control inside the matrix body except the Finished button.
     await expect(page.getByTestId('progress-matrix').locator('tbody button:not([aria-expanded])')).toHaveCount(0);
+    await context.close();
+  });
+
+  test('owner: one Tab stop, arrow keys between cells, and a focused cell says where its value came from', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await loginAsOwner(page);
+    await openProgress(page);
+
+    const matrix = page.getByTestId('progress-matrix');
+    // The scroller is not a stop of its own; the grid has exactly one.
+    await expect(matrix).not.toHaveAttribute('tabindex', /.*/);
+    await expect(matrix.locator('[role="gridcell"][tabindex="0"]')).toHaveCount(1);
+
+    // A real Tab in from the element before the matrix lands on that one gridcell; the next
+    // Tab leaves the matrix (not onto the scroller, not onto another cell).
+    await page.getByTestId('progress-tier-row').getByText('Open board').focus();
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => document.activeElement?.getAttribute('role'))).toBe('gridcell');
+    expect(await matrix.evaluate((m) => m.contains(document.activeElement))).toBe(true);
+    await page.keyboard.press('Tab');
+    expect(await matrix.evaluate((m) => m === document.activeElement || m.contains(document.activeElement))).toBe(false);
+
+    const needCell = page.locator(`[data-goal-id="${seeded.mountId}"] [data-testid="progress-cell"][aria-label*=", Need, "]`).first();
+    await needCell.focus();
+    // The owner wrote their own status, so the tooltip reads "you" to them.
+    await expect(page.getByRole('tooltip').first()).toContainText('you');
+    await expect(matrix.locator('[role="gridcell"][tabindex="0"]')).toHaveCount(1);
+
+    const name = await needCell.getAttribute('aria-label');
+    await page.keyboard.press('ArrowRight');
+    const moved = await page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? null);
+    expect(moved).not.toBeNull();
+    expect(moved).not.toBe(name);
+    await page.keyboard.press('ArrowDown');
+    expect(await page.evaluate(() => document.activeElement?.getAttribute('role'))).toBe('gridcell');
     await context.close();
   });
 

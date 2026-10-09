@@ -3,18 +3,22 @@
  * `complete` goals, most recently completed first, collapsed under a disclosure
  * `Button`. The first expand asks the page to fetch their cells; the rows are the
  * same read-only rows, over the columns the active farms already built (TF5 ruling
- * 2). Reopen is S2a-3a's. Rendered inside the matrix `<table>` so the columns line up.
+ * 2). They are outside the roving grid (TF6): their cells show provenance on hover but
+ * are not Tab stops or arrow targets, so the matrix stays one stop. Reopen is S2a-3a's.
+ * Rendered inside the matrix `<table>` so the columns line up.
  */
 import { useState } from 'react';
 import { Button } from '../primitives/Button';
 import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
 import { FarmRow } from './FarmRow';
+import type { ProvenanceContext } from './progressProvenance';
 
 interface FinishedFarmsProps {
   rows: FarmRowModel[];
   /** Total columns of the matrix (farm + status + one per column), for the full-width rows. */
   colSpan: number;
   canManage: boolean;
+  provenance: ProvenanceContext;
   /** The finished goals' cells are being fetched. */
   loading: boolean;
   /** Fetching the finished goals' cells failed; shown here so the active rows stay. */
@@ -25,7 +29,7 @@ interface FinishedFarmsProps {
   onRetry: () => void;
 }
 
-export function FinishedFarms({ rows, colSpan, canManage, loading, error, onFirstExpand, onRetry }: FinishedFarmsProps) {
+export function FinishedFarms({ rows, colSpan, canManage, provenance, loading, error, onFirstExpand, onRetry }: FinishedFarmsProps) {
   const [expanded, setExpanded] = useState(false);
   const [requested, setRequested] = useState(false);
 
@@ -68,7 +72,7 @@ export function FinishedFarms({ rows, colSpan, canManage, loading, error, onFirs
           </td>
         </tr>
       )}
-      {expanded && !loading && error === null && rows.map((row) => <FarmRow key={row.goal.id} row={row} canManage={canManage} />)}
+      {expanded && !loading && error === null && rows.map((row) => <FarmRow key={row.goal.id} row={row} canManage={canManage} provenance={provenance} />)}
     </tbody>
   );
 }

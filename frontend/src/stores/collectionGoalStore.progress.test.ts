@@ -218,11 +218,11 @@ describe('collectionGoalStore.fetchProgress (R-S2-13)', () => {
     expect(api.get).toHaveBeenCalledWith('/api/static-groups/group-1/collection-participants?goal_id=a&goal_id=b');
   });
 
-  it('keeps the cache and rethrows nothing when the request fails', async () => {
+  it('keeps the cache and rethrows nothing when the request fails, resolving with its own error', async () => {
     useCollectionGoalStore.setState({ participants: { c: [cachedRow('c')] } });
     vi.mocked(api.get).mockRejectedValue(new Error('boom'));
 
-    await expect(useCollectionGoalStore.getState().fetchProgress('group-1')).resolves.toBeUndefined();
+    await expect(useCollectionGoalStore.getState().fetchProgress('group-1')).resolves.toEqual({ error: 'boom' });
 
     expect(useCollectionGoalStore.getState().participants.c).toEqual([cachedRow('c')]);
   });
@@ -287,5 +287,36 @@ describe('collectionGoalStore.fetchProgress loading and error (TF5 ruling 3)', (
     resolvers[1]([]);
     await second;
     expect(useCollectionGoalStore.getState().progressLoading).toBe(false);
+  });
+});
+
+describe('collectionGoalStore.fetchProgress per-call result (TF6 ruling 3c)', () => {
+  afterEach(() => {
+    useCollectionGoalStore.setState({ participants: {}, recordOnly: {}, progressLoading: false, progressError: null });
+    vi.clearAllMocks();
+  });
+
+  it('resolves { error: null } on success and its own failure otherwise', async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([]);
+    await expect(useCollectionGoalStore.getState().fetchProgress('group-1')).resolves.toEqual({ error: null });
+
+    vi.mocked(api.get).mockRejectedValueOnce(new Error('boom'));
+    await expect(useCollectionGoalStore.getState().fetchProgress('group-1')).resolves.toEqual({ error: 'boom' });
+  });
+
+  it('keeps the results of overlapping calls apart even though progressError is one slot', async () => {
+    const settlers: Array<{ ok: (v: unknown[]) => void; fail: (e: Error) => void }> = [];
+    vi.mocked(api.get).mockImplementation(
+      () => new Promise((ok, fail) => { settlers.push({ ok: ok as (v: unknown[]) => void, fail }); }),
+    );
+    const failing = useCollectionGoalStore.getState().fetchProgress('group-1');
+    const succeeding = useCollectionGoalStore.getState().fetchProgress('group-1', ['done']);
+    settlers[0].fail(new Error('boom'));
+    settlers[1].ok([]);
+
+    await expect(failing).resolves.toEqual({ error: 'boom' });
+    // The store's one slot holds the failure, yet the other call's own result is clean.
+    await expect(succeeding).resolves.toEqual({ error: null });
+    expect(useCollectionGoalStore.getState().progressError).toBe('boom');
   });
 });
