@@ -7,12 +7,21 @@
  *
  * The stop is DERIVED at render, as `GearBoard` does: the last focused cell while it
  * still exists, else the first cell. Focus moves through a ref map, never a document
- * query. Focus is read from `onFocus` (React's bubbles), so an editing control placed
- * inside a gridcell later (S2a-2·F5) makes its cell the stop without any change here;
- * the keys are read on the cell too, and a handler that has already handled a key
- * (`defaultPrevented`) is left alone.
+ * query. A handler that has already handled a key (`defaultPrevented`) is left alone.
+ *
+ * The props go on the cell's focus element: the `<td>` itself, or, when the cell holds a
+ * single control (S2a-2·F5's own-cell picker), that control, as the WAI-ARIA grid puts a
+ * cell's focus on its one widget. The `<td>` around a control takes no tabIndex, so the
+ * grid keeps exactly one stop. Putting the props on the control, not the `<td>`, is also
+ * what keeps a portalled popover's keys and focus (which React bubbles through the
+ * Popover root, the control's sibling) away from the grid.
+ *
+ * Focus survives a re-sort (a pick that changes a row's Need count moves its `<tr>`): the
+ * DOM's focus fixup drops focus to `<body>` on the move, and React DOM puts it back on the
+ * moved element in the same commit. When the focused row is gone instead, nothing can:
+ * while focus is known to be on a cell, a layout effect moves it to the stop.
  */
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 
 interface CellKey {
   rowId: string;
@@ -20,10 +29,11 @@ interface CellKey {
 }
 
 export interface MatrixCellProps {
-  ref: (el: HTMLTableCellElement | null) => void;
+  ref: (el: HTMLElement | null) => void;
   tabIndex: 0 | -1;
   onFocus: () => void;
-  onKeyDown: (event: KeyboardEvent<HTMLTableCellElement>) => void;
+  onBlur: (event: FocusEvent<HTMLElement>) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
 }
 
 const SEP = '\u001f';
@@ -53,11 +63,15 @@ const NAV_KEYS: ReadonlySet<string> = new Set(['ArrowRight', 'ArrowLeft', 'Arrow
 
 /**
  * `rowIds` are the grid's rows top to bottom and `colKeys` its columns left to right.
- * Spread `cellProps(rowId, colKey)` onto each gridcell `<td>`.
+ * Spread `cellProps(rowId, colKey)` onto each cell's focus element (see above).
  */
 export function useMatrixKeyboard(rowIds: readonly string[], colKeys: readonly string[]) {
   const [active, setActive] = useState<CellKey | null>(null);
-  const cellEls = useRef(new Map<string, HTMLTableCellElement>());
+  const cellEls = useRef(new Map<string, HTMLElement>());
+  // Focus is on a cell now: set on a cell's focus, cleared by a blur the user caused. A blur
+  // fired for a cell the DOM has already detached (a row move, in browsers that fire one) is
+  // not the user leaving, so it keeps the flag.
+  const focusWithin = useRef(false);
 
   const stillThere = active !== null && rowIds.includes(active.rowId) && colKeys.includes(active.colKey);
   const stop: CellKey | null = stillThere
@@ -65,6 +79,16 @@ export function useMatrixKeyboard(rowIds: readonly string[], colKeys: readonly s
     : rowIds.length > 0 && colKeys.length > 0
       ? { rowId: rowIds[0], colKey: colKeys[0] }
       : null;
+
+  // React DOM refocuses an element it moved in the same commit (restoreSelection, before any
+  // layout effect), so a row that re-sorts keeps focus by itself. This covers the row that is
+  // gone instead (finished or deleted elsewhere, then refetched): focus has fallen to <body>
+  // with no blur, and the fallback stop takes it.
+  useLayoutEffect(() => {
+    if (!focusWithin.current || stop === null) return;
+    const el = cellEls.current.get(keyOf(stop.rowId, stop.colKey));
+    if (el && el.ownerDocument.activeElement === el.ownerDocument.body) el.focus();
+  });
 
   const focusAt = (row: number, col: number): boolean => {
     const el = cellEls.current.get(keyOf(rowIds[row], colKeys[col]));
@@ -83,7 +107,13 @@ export function useMatrixKeyboard(rowIds: readonly string[], colKeys: readonly s
       else cellEls.current.delete(key);
     },
     tabIndex: stop !== null && stop.rowId === rowId && stop.colKey === colKey ? 0 : -1,
-    onFocus: () => setActive((prev) => (prev?.rowId === rowId && prev.colKey === colKey ? prev : { rowId, colKey })),
+    onFocus: () => {
+      focusWithin.current = true;
+      setActive((prev) => (prev?.rowId === rowId && prev.colKey === colKey ? prev : { rowId, colKey }));
+    },
+    onBlur: (event) => {
+      if (event.currentTarget.isConnected) focusWithin.current = false;
+    },
     onKeyDown: (event) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       if (!NAV_KEYS.has(event.key)) return;

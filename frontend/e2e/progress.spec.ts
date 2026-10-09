@@ -222,8 +222,12 @@ test.describe.serial('Progress matrix', () => {
     await expect(page.locator(`[data-goal-id="${seeded.customId}"]`).getByText('★ Want')).toBeVisible();
     await expect(mount.getByTestId('progress-status')).toContainText(/\d+ of \d+ have it|Everyone has it|Nobody to track yet/);
 
-    // Read-only: no control inside the matrix body except the Finished button.
-    await expect(page.getByTestId('progress-matrix').locator('tbody button:not([aria-expanded])')).toHaveCount(0);
+    // The only controls in the matrix body are the owner's own cells (F5) and Finished.
+    const bodyButtons = await page.getByTestId('progress-matrix').locator('tbody button').evaluateAll((els) =>
+      els.map((el) => el.getAttribute('aria-label') ?? el.textContent ?? ''),
+    );
+    expect(bodyButtons.length).toBeGreaterThan(0);
+    for (const label of bodyButtons) expect(label).toMatch(/ your status$|^Finished \(\d+\)$/);
     await context.close();
   });
 
@@ -234,24 +238,28 @@ test.describe.serial('Progress matrix', () => {
     await openProgress(page);
 
     const matrix = page.getByTestId('progress-matrix');
-    // The scroller is not a stop of its own; the grid has exactly one.
+    // The scroller is not a stop of its own; the grid has exactly one: a cell, or, for the
+    // owner's own cell (F5), the picker button inside it.
+    const stops = matrix.locator('[role="gridcell"][tabindex="0"], [role="gridcell"] [tabindex="0"]');
     await expect(matrix).not.toHaveAttribute('tabindex', /.*/);
-    await expect(matrix.locator('[role="gridcell"][tabindex="0"]')).toHaveCount(1);
+    await expect(stops).toHaveCount(1);
 
-    // A real Tab in from the element before the matrix lands on that one gridcell; the next
-    // Tab leaves the matrix (not onto the scroller, not onto another cell).
+    // A real Tab in from the element before the matrix lands inside that one gridcell; the
+    // next Tab leaves every gridcell (not onto the scroller, not onto another cell).
     await page.getByTestId('progress-tier-row').getByText('Open board').focus();
     await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => document.activeElement?.getAttribute('role'))).toBe('gridcell');
+    expect(await page.evaluate(() => document.activeElement?.closest('[role="gridcell"]') !== null)).toBe(true);
     expect(await matrix.evaluate((m) => m.contains(document.activeElement))).toBe(true);
     await page.keyboard.press('Tab');
-    expect(await matrix.evaluate((m) => m === document.activeElement || m.contains(document.activeElement))).toBe(false);
+    expect(await page.evaluate(() => document.activeElement?.closest('[role="gridcell"]') ?? null)).toBeNull();
+    expect(await matrix.evaluate((m) => m === document.activeElement)).toBe(false);
 
+    // The owner's Need cell is their own, so its focus element is the picker button (F5).
     const needCell = page.locator(`[data-goal-id="${seeded.mountId}"] [data-testid="progress-cell"][aria-label*=", Need, "]`).first();
-    await needCell.focus();
+    await needCell.locator('button').focus();
     // The owner wrote their own status, so the tooltip reads "you" to them.
     await expect(page.getByRole('tooltip').first()).toContainText('you');
-    await expect(matrix.locator('[role="gridcell"][tabindex="0"]')).toHaveCount(1);
+    await expect(stops).toHaveCount(1);
 
     const name = await needCell.getAttribute('aria-label');
     await page.keyboard.press('ArrowRight');
@@ -259,7 +267,7 @@ test.describe.serial('Progress matrix', () => {
     expect(moved).not.toBeNull();
     expect(moved).not.toBe(name);
     await page.keyboard.press('ArrowDown');
-    expect(await page.evaluate(() => document.activeElement?.getAttribute('role'))).toBe('gridcell');
+    expect(await page.evaluate(() => document.activeElement?.closest('[role="gridcell"]') !== null)).toBe(true);
     await context.close();
   });
 

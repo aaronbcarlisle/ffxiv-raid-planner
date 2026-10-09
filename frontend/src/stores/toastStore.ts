@@ -100,6 +100,19 @@ export const toast = {
     });
   },
 
+  /** Show a success toast with an Undo button, offered for 8 s by default (R-S2-11) */
+  withUndo: (message: string, onUndo: () => void, duration = 8000) => {
+    return useToastStore.getState().addToast({
+      type: 'success',
+      message,
+      duration,
+      action: {
+        label: 'Undo',
+        onClick: onUndo,
+      },
+    });
+  },
+
   warning: (message: string, duration?: number) => {
     return useToastStore.getState().addToast({
       type: 'warning',
