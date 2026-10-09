@@ -1,12 +1,12 @@
 import { useRef } from 'react';
 import type { FC, KeyboardEvent } from 'react';
 import type { PageMode } from '../../types';
-import { LayoutDashboard, Users, Shield, Calendar } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, Calendar, Target } from 'lucide-react';
 import { analytics } from '../../services/analytics';
 
 interface SpineProps {
   /**
-   * The selected tab, or `null` when the shell is on a page outside the four
+   * The selected tab, or `null` when the shell is on a page outside the five
    * (the Recruiting route, R-RH-G): then no tab is selected, the first tab
    * keeps the tablist reachable (M14), and any arrow/Home/End activates it.
    */
@@ -19,6 +19,8 @@ const SPINE_TABS: { id: PageMode; label: string; Icon: FC<{ size?: number }> }[]
   { id: 'roster',   label: 'Roster', Icon: Users },
   { id: 'gear',     label: 'Loot', Icon: Shield },
   { id: 'schedule', label: 'Schedule', Icon: Calendar },
+  // S2a-2 (spec §4): the `goals` mode is the Progress tab in V2.
+  { id: 'goals',    label: 'Progress', Icon: Target },
 ];
 
 const NAV_KEYS = new Set(['ArrowRight', 'ArrowLeft', 'Home', 'End']);

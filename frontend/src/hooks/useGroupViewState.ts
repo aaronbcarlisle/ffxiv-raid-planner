@@ -12,6 +12,7 @@ import { useAuthStore } from '../stores/authStore';
 import { clearRegisteredTabParams } from './useUrlTabState';
 import { prefRememberTabs } from '../lib/navPreferences';
 import { recallTab, rememberTab, tabKey } from '../lib/tabMemory';
+import { useResolvedShell, type Shell } from '../lib/shellPreference';
 import type { PageMode, GearSubTab, ViewMode, SortPreset, SnapshotPlayer } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 
@@ -36,8 +37,18 @@ export function pageModeFromTabParam(urlTab: string | null): PageMode | null {
     case 'players': return 'roster';
     case 'loot': case 'priority': case 'weapon': case 'log': case 'history': case 'summary': return 'gear';
     case 'mount-farms': case 'collections': return 'goals';
+    // V2's name for the goals mode (R-S2-3). Shared, so the legacy shell opens
+    // Goals & Farms for it too (S2a-2 V1 delta (d)).
+    case 'progress': return 'goals';
     default: return null;
   }
+}
+
+/** The `?tab=` value a shell writes for a page mode (R-S2-3): V2 names the
+ *  `goals` mode `progress`; the legacy shell writes every mode as itself.
+ *  Tab memory keeps the mode (`goals`), never this value. */
+export function tabParamFor(mode: PageMode, shell: Shell): string {
+  return shell === 'v2' && mode === 'goals' ? 'progress' : mode;
 }
 
 export function gearSubFromParam(urlSub: string | null): GearSubTab | null {
@@ -159,6 +170,9 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // currentGroup loads), so each static remembers its own last tab.
   const { shareCode } = useParams<{ shareCode: string }>();
   const scope = shareCode ?? undefined;
+  // Which shell renders decides only the `?tab=` value written for `goals`
+  // (tabParamFor, R-S2-3); everything else this hook does is shell-blind.
+  const shell = useResolvedShell();
   const navigate = useNavigate();
   // Distinguishes a browser back/forward (POP) from forward/programmatic
   // navigation, so the reconciliation effect can restore a param-less history
@@ -313,7 +327,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     const resetSubTabs = !prefRememberTabs(useAuthStore.getState().user);
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
-      params.set('tab', mode);
+      params.set('tab', tabParamFor(mode, shell));
       // Clear old subtab param; gear sub-tab is stored as ?sub=
       params.delete('subtab');
       if (resetSubTabs) {
@@ -333,7 +347,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     }
     // Note: pushes a history entry (no { replace }) so browser back/forward
     // returns to the previously-viewed tab.
-  }, [setSearchParams, scope]);
+  }, [setSearchParams, scope, shell]);
 
   // Wrapper to persist gearSubTab and update URL
   const setGearSubTab = useCallback((tab: GearSubTab) => {
@@ -496,7 +510,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     if (!searchParams.get('tab')) {
       setSearchParams(prev => {
         const params = new URLSearchParams(prev);
-        params.set('tab', pageMode);
+        params.set('tab', tabParamFor(pageMode, shell));
         return params;
       }, { replace: true });
     }

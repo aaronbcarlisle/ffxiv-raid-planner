@@ -21,8 +21,9 @@ import { Home as StaticHome } from '../components/home/Home';
 import { Roster } from '../components/roster/Roster';
 import { Loot } from '../components/loot/Loot';
 import { Schedule } from '../components/schedule/Schedule';
+import { ProgressPage } from '../components/progress/ProgressPage';
 import { canManageRoster } from '../utils/permissions';
-import { useGroupViewState } from '../hooks/useGroupViewState';
+import { tabParamFor, useGroupViewState } from '../hooks/useGroupViewState';
 import { useStaticPermissions } from '../hooks/useStaticPermissions';
 import { useViewAsUrlSync } from '../hooks/useViewAsUrlSync';
 import { useStaticNavMemory } from '../hooks/useStaticNavMemory';
@@ -48,7 +49,7 @@ import { logger } from '../lib/logger';
  *  F6b: in v2 the `overview` tab is the redesigned <Home/> dashboard, injected as
  *  the `overview` slot. Dual shell (Phase R): the legacy route renders
  *  GroupViewContent with no slots, so its restored fallback bodies serve the
- *  classic UI — v2 always passes all four slots. Exported for the slot-wiring test. */
+ *  classic UI — v2 always passes all five slots. Exported for the slot-wiring test. */
 export function ShellContent({ onRecruitPath = false }: { onRecruitPath?: boolean }) {
   const gv = useGroupViewState();
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -131,6 +132,22 @@ export function ShellContent({ onRecruitPath = false }: { onRecruitPath?: boolea
     />
   ) : undefined;
 
+  // S2a-2 (R-S2-4): in v2 the `goals` tab (Spine label "Progress") is the
+  // <ProgressPage/>, injected as the `goals` slot — mirroring the four above.
+  // The legacy route passes no slots, so GroupViewContent renders its
+  // Goals & Farms body there unchanged.
+  const progress = currentGroup ? (
+    <ProgressPage
+      group={currentGroup}
+      tier={currentTier}
+      canManage={canManage}
+      userRole={userRole}
+      currentUserId={effectiveUserId ?? null}
+      isViewingAs={viewAsUser !== null}
+      onNavigate={gv.setPageMode}
+    />
+  ) : undefined;
+
   // ShellContentStates renders the v2 load / error / not-found / no-tiers states
   // (legacy copy, new chrome) BEFORE the content — falling through to the
   // GroupViewContent children only on the happy path (and overlaying an error
@@ -179,7 +196,7 @@ export function ShellContent({ onRecruitPath = false }: { onRecruitPath?: boolea
       ) : (
         <GroupViewContent
           actions={actions}
-          slots={{ overview, roster, gear: loot, schedule }}
+          slots={{ overview, roster, gear: loot, schedule, goals: progress }}
           onSwitchToClassicUi={() => switchShell('legacy')}
         />
       )}
@@ -382,10 +399,11 @@ export function NewShell() {
   // M1: a Spine / ⌘K tab change from the Recruiting route goes back to the
   // static on that tab, carrying the current search (the tier, so the target
   // selects the same tier without a `?tier=` mirror write; `viewAs`/`adminMode`
-  // so admin access survives) minus the route's own `rtab`/`create`.
+  // so admin access survives) minus the route's own `rtab`/`create`. It writes
+  // the V2 tab name, as setPageMode does here (`goals` → `progress`, R-S2-3).
   const goToTab = useCallback(
     (tab: PageMode) => {
-      navigate(withCarriedParams(`/group/${shareCode}?tab=${tab}`, currentSearch));
+      navigate(withCarriedParams(`/group/${shareCode}?tab=${tabParamFor(tab, 'v2')}`, currentSearch));
     },
     [navigate, shareCode, currentSearch],
   );

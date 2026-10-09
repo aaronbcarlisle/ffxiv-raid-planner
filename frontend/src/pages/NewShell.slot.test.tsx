@@ -27,22 +27,49 @@ const track = vi.fn();
 vi.mock('../services/analytics', () => ({ analytics: { track: (...a: unknown[]) => track(...a) } }));
 
 vi.mock('./GroupViewContent', () => ({
-  GroupViewContent: (p: { slots?: { overview?: unknown }; onSwitchToClassicUi?: () => void }) => (
+  GroupViewContent: (p: { slots?: { overview?: unknown; goals?: React.ReactNode }; onSwitchToClassicUi?: () => void }) => (
     <div data-testid="gvc" data-has-overview={String(!!p.slots?.overview)}>
       {p.onSwitchToClassicUi && (
         <button onClick={p.onSwitchToClassicUi}>switch-to-classic</button>
       )}
+      {/* The goals slot is rendered so the ProgressPage stub can report its props. */}
+      <div data-testid="gvc-goals-slot">{p.slots?.goals}</div>
     </div>
   ),
 }));
 vi.mock('../components/home/Home', () => ({ Home: () => <div data-testid="home" /> }));
+// S2a-2 (R-S2-4): the stub reports the props the shell hands the Progress slot.
+vi.mock('../components/progress/ProgressPage', () => ({
+  ProgressPage: (p: {
+    group: { id: string };
+    tier: { tierId: string } | null;
+    canManage: boolean;
+    userRole: string | null | undefined;
+    currentUserId: string | null;
+    isViewingAs: boolean;
+    onNavigate: (tab: string, extra?: Record<string, string>) => void;
+  }) => (
+    <div
+      data-testid="progress-page"
+      data-group={p.group.id}
+      data-tier={p.tier?.tierId ?? 'none'}
+      data-can-manage={String(p.canManage)}
+      data-user-role={String(p.userRole)}
+      data-current-user={String(p.currentUserId)}
+      data-viewing-as={String(p.isViewingAs)}
+    >
+      <button onClick={() => p.onNavigate('roster', { rview: 'board' })}>progress-open-board</button>
+    </div>
+  ),
+}));
 vi.mock('./groupActionsContext', () => ({
   GroupActionModals: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useGroupActions: () => ({}),
 }));
+const setPageMode = vi.fn();
 vi.mock('../hooks/useGroupViewState', async () => {
   const { makeGroupViewStateMock } = await import('./newShellTestScaffold');
-  return { useGroupViewState: () => makeGroupViewStateMock({ pageMode: 'overview' }) };
+  return { useGroupViewState: () => makeGroupViewStateMock({ pageMode: 'overview', setPageMode }) };
 });
 vi.mock('../stores/staticGroupStore', () => ({
   useStaticGroupStore: (sel: (s: { currentGroup: unknown }) => unknown) => sel({ currentGroup: mocks.currentGroup }),
@@ -68,14 +95,20 @@ vi.mock('../hooks/useStaticPermissions', () => ({
 }));
 
 import { ShellContent } from './NewShell';
+import { useAuthStore } from '../stores/authStore';
+import { useViewAsStore, type ViewAsUserInfo } from '../stores/viewAsStore';
+import type { User } from '../types';
 
 beforeEach(() => {
   mocks.currentGroup = { id: 'g1', name: 'Crescent', userRole: 'owner' };
   mocks.tier = { tierId: 't1', players: [] };
   mocks.canEdit = true;
   track.mockClear();
+  setPageMode.mockClear();
   localStorage.clear();
   useShellPreferenceStore.setState({ preference: null });
+  useAuthStore.setState({ user: { id: 'u-self' } as unknown as User });
+  useViewAsStore.setState({ viewAsUser: null });
 });
 
 const renderShell = () => render(<MemoryRouter><ShellContent /></MemoryRouter>);
@@ -92,6 +125,35 @@ describe('NewShell ShellContent slot wiring', () => {
     expect(track).toHaveBeenCalledWith('navigation', 'ui_shell_toggle',
       { direction: 'to-legacy', surface: 'v2-more-page' });
     expect(useShellPreferenceStore.getState().preference).toBe('legacy');
+  });
+
+  it('passes a goals slot that renders ProgressPage with the group, tier and the user (S2a-2, R-S2-4)', () => {
+    renderShell();
+    const page = screen.getByTestId('progress-page');
+    expect(screen.getByTestId('gvc-goals-slot')).toContainElement(page);
+    expect(page).toHaveAttribute('data-group', 'g1');
+    expect(page).toHaveAttribute('data-tier', 't1');
+    expect(page).toHaveAttribute('data-can-manage', 'true');
+    expect(page).toHaveAttribute('data-user-role', 'owner');
+    expect(page).toHaveAttribute('data-current-user', 'u-self');
+    expect(page).toHaveAttribute('data-viewing-as', 'false');
+    fireEvent.click(screen.getByText('progress-open-board'));
+    expect(setPageMode).toHaveBeenCalledWith('roster', { rview: 'board' });
+  });
+
+  it("ProgressPage's canManage is the shell's canEdit, not the roster gate (an owner role with canEdit false)", () => {
+    // canManageRoster('owner') would say true; canEdit says false — the slot must follow canEdit.
+    mocks.canEdit = false;
+    renderShell();
+    expect(screen.getByTestId('progress-page')).toHaveAttribute('data-can-manage', 'false');
+  });
+
+  it('under View As, ProgressPage gets the viewed user as currentUserId and isViewingAs true', () => {
+    useViewAsStore.setState({ viewAsUser: { userId: 'u-viewed', role: 'member' } as unknown as ViewAsUserInfo });
+    renderShell();
+    const page = screen.getByTestId('progress-page');
+    expect(page).toHaveAttribute('data-current-user', 'u-viewed');
+    expect(page).toHaveAttribute('data-viewing-as', 'true');
   });
 
   it('renders the not-found state (no gvc) when there is no current group', () => {

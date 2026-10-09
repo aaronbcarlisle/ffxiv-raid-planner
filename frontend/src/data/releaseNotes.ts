@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.68';
+export const CURRENT_VERSION = '2.1.72';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,26 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.72',
+    date: '2026-10-08T00:00:00Z',
+    title: 'Progress links open Goals & Farms in the classic view',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Progress links open Goals & Farms in the classic view',
+        description:
+          'Progress links open Goals & Farms in the classic view. Progress is the new view\'s name for the tab, so a link to it from there no longer drops you on the tab you last had open.',
+      },
+      {
+        category: 'feature',
+        title: 'V2 preview: Progress is the fifth tab',
+        description:
+          'V2 preview: the tab bar gains Progress after Schedule. It opens on the tier row, with the raid week and an Open board link. Every Goals & Farms link, key 3, the command palette\'s "Go to Progress" and the phone bar\'s Goals open it, and its address reads ?tab=progress.',
+        internal: true,
+      },
+    ],
+  },
   {
     version: '2.1.71',
     date: '2026-10-08T00:00:00Z',
