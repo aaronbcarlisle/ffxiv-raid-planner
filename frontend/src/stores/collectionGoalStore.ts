@@ -511,9 +511,11 @@ interface CollectionGoalStore {
   /**
    * The Progress tab's one read (R-S2-13): every cell of the given goals (default: every
    * goal not complete), in `participants` and `recordOnly`. Goals the response omits keep
-   * their cached rows.
+   * their cached rows. Resolves with THIS call's outcome (`error` is its failure message, or
+   * null), so overlapping callers (the active fetch and a Finished fetch) never read each
+   * other's failure from the shared `progressError`.
    */
-  fetchProgress: (groupId: string, goalIds?: string[]) => Promise<void>;
+  fetchProgress: (groupId: string, goalIds?: string[]) => Promise<{ error: string | null }>;
   /** A `fetchProgress` is in flight (overlapping calls count: true until the last settles). */
   progressLoading: boolean;
   /** The last `fetchProgress` failure's message; cleared when the next one starts. */
@@ -647,7 +649,7 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
     const progressLoading = progressInFlight > 0;
     if (failure !== null) {
       set({ progressLoading, progressError: failure });
-      return;
+      return { error: failure };
     }
     set((s) => {
       const participants = { ...s.participants };
@@ -658,6 +660,7 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
       }
       return { participants, recordOnly, progressLoading };
     });
+    return { error: null };
   },
 
   upsertMyState: async (groupId, goalId, data) => {

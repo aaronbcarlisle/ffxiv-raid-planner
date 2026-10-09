@@ -6,7 +6,7 @@
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../services/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../services/api')>();
@@ -30,6 +30,7 @@ import {
 } from '../../stores/collectionGoalStore';
 import type { StaticGroup, TierSnapshot } from '../../types';
 import { goal, row } from './__fixtures__/progressFixtures';
+import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
 import { ProgressPage } from './ProgressPage';
 
 const group = { id: 'g1', name: 'Dev Test Static', shareCode: 'DEVTST', settings: {}, userRole: 'owner', members: [] } as unknown as StaticGroup;
@@ -91,6 +92,7 @@ function renderPage(props: Partial<Parameters<typeof ProgressPage>[0]> = {}) {
         {...props}
       />
     </MemoryRouter>,
+    { wrapper: TooltipWrapper },
   );
 }
 
@@ -99,9 +101,12 @@ const rowOf = (id: string) => screen.getAllByTestId('progress-farm-row').find((r
 
 beforeEach(() => {
   vi.clearAllMocks();
+  stubCanHover();
   fetchGoals.mockResolvedValue(undefined);
-  fetchProgress.mockResolvedValue(undefined);
+  fetchProgress.mockResolvedValue({ error: null });
 });
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('ProgressPage matrix: order and Finished', () => {
   const goals = [
@@ -196,7 +201,9 @@ describe('ProgressPage matrix: order and Finished', () => {
     renderPage();
     await screen.findByTestId('progress-matrix');
     fetchProgress.mockImplementation(async (_group: string, ids?: string[]) => {
+      // The real store writes its one shared slot too; the page must read its own call's result.
       if (ids) useCollectionGoalStore.setState({ progressError: 'boom' });
+      return { error: ids ? 'boom' : null };
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
@@ -339,7 +346,7 @@ describe('ProgressPage matrix: loading and error (TF5 ruling 3)', () => {
 
   it('shows no tally and no cell until the first fetch settles', async () => {
     let settle: () => void = () => {};
-    fetchProgress.mockReturnValue(new Promise<void>((resolve) => { settle = resolve; }));
+    fetchProgress.mockReturnValue(new Promise((resolve) => { settle = () => resolve({ error: null }); }));
     seed({ goals, participants });
     renderPage();
 
@@ -360,22 +367,64 @@ describe('ProgressPage matrix: loading and error (TF5 ruling 3)', () => {
   });
 
   it('shows the error with a Retry that fetches again', async () => {
-    seed({ goals, participants, progressError: 'boom' });
+    fetchProgress.mockResolvedValueOnce({ error: 'boom' });
+    seed({ goals, participants });
     renderPage();
 
     const alert = await screen.findByTestId('progress-error');
     expect(alert).toHaveTextContent('boom');
     expect(screen.queryByTestId('progress-matrix')).not.toBeInTheDocument();
 
-    // A real fetch clears the error as it starts.
-    fetchProgress.mockImplementationOnce(async () => {
-      useCollectionGoalStore.setState({ progressError: null });
-    });
     const before = fetchProgress.mock.calls.length;
     fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
     expect(await screen.findByTestId('progress-matrix')).toBeInTheDocument();
     expect(fetchProgress.mock.calls.length).toBe(before + 1);
     expect(screen.queryByTestId('progress-error')).not.toBeInTheDocument();
+  });
+
+  it('does not show an active failure on the Finished section (one store slot, two callers)', async () => {
+    seed({ goals: [goal('wings'), goal('done', { status: 'complete', completedAt: '2026-10-01T00:00:00Z' })], participants });
+    renderPage();
+    await screen.findByTestId('progress-matrix');
+
+    // An active refetch fails, and the shared slot says so; then Finished loads fine.
+    fetchProgress.mockImplementationOnce(async () => {
+      useCollectionGoalStore.setState({ progressError: 'active boom' });
+      return { error: 'active boom' };
+    });
+    await act(async () => {
+      useCollectionGoalStore.setState({ goals: [...useCollectionGoalStore.getState().goals, goal('fresh')] });
+    });
+    expect(await screen.findByTestId('progress-error')).toHaveTextContent('active boom');
+
+    fetchProgress.mockImplementation(async () => ({ error: null }));
+    fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
+    expect(await screen.findByText('done · Mount')).toBeInTheDocument();
+    expect(screen.queryByTestId('progress-finished-error')).not.toBeInTheDocument();
+  });
+
+  it('keeps the matrix, stale, behind the error line when a later active fetch fails, and through the retry', async () => {
+    seed({ goals, participants });
+    renderPage();
+    const matrix = await screen.findByTestId('progress-matrix');
+
+    fetchProgress.mockResolvedValueOnce({ error: 'boom' });
+    await act(async () => {
+      useCollectionGoalStore.setState({ goals: [...goals, goal('fresh', { title: 'Fresh Farm' })] });
+    });
+    const alert = await screen.findByTestId('progress-error');
+    expect(alert).toHaveTextContent('boom');
+    expect(screen.getByTestId('progress-matrix')).toBe(matrix);
+    expect(screen.queryByTestId('progress-loading')).not.toBeInTheDocument();
+
+    // The retry runs behind the same matrix, which a pending fetch does not unmount.
+    let settle: () => void = () => {};
+    fetchProgress.mockReturnValueOnce(new Promise((resolve) => { settle = () => resolve({ error: null }); }));
+    fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
+    expect(screen.getByTestId('progress-matrix')).toBe(matrix);
+    await act(async () => settle());
+    expect(screen.queryByTestId('progress-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('progress-matrix')).toBe(matrix);
   });
 
   it('ignores a stale progress error when no farm is active, so there is no dead Retry', async () => {

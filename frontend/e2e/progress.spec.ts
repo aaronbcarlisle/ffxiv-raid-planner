@@ -13,7 +13,8 @@
  *     pnpm -C frontend exec playwright test e2e/progress.spec.ts
  */
 import AxeBuilder from '@axe-core/playwright';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import {
@@ -32,9 +33,11 @@ const THEMES = ['dark', 'light'] as const;
 /**
  * Ids of every farm this file created, written the moment each exists. A catalog-sourced
  * mount carries the catalog's title, not the prefix, so a crashed run would otherwise leak
- * it on DEVTST; the next run's pre-clean reads this file. (test-results/ is git-ignored.)
+ * it on DEVTST; the next run's pre-clean reads this file. It lives in the OS temp dir, not
+ * `test-results/`: Playwright empties its output directory before `beforeAll`, which would
+ * erase the very record a crashed run left behind.
  */
-const LEDGER = join(process.cwd(), 'test-results', 'progress-e2e-seeded.json');
+const LEDGER = join(tmpdir(), 'xrp-progress-e2e-seeded.json');
 
 function ledgerIds(): string[] {
   try {
@@ -45,7 +48,6 @@ function ledgerIds(): string[] {
 }
 
 function recordSeeded(id: string): void {
-  mkdirSync(join(process.cwd(), 'test-results'), { recursive: true });
   writeFileSync(LEDGER, JSON.stringify([...ledgerIds(), id]));
 }
 
@@ -196,6 +198,33 @@ test.describe.serial('Progress matrix', () => {
 
     // Read-only: no control inside the matrix body except the Finished button.
     await expect(page.getByTestId('progress-matrix').locator('tbody button:not([aria-expanded])')).toHaveCount(0);
+    await context.close();
+  });
+
+  test('owner: one Tab stop, arrow keys between cells, and a focused cell says where its value came from', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await loginAsOwner(page);
+    await openProgress(page);
+
+    const matrix = page.getByTestId('progress-matrix');
+    // The scroller is not a stop of its own; the grid has exactly one.
+    await expect(matrix).not.toHaveAttribute('tabindex', /.*/);
+    await expect(matrix.locator('[role="gridcell"][tabindex="0"]')).toHaveCount(1);
+
+    const needCell = page.locator(`[data-goal-id="${seeded.mountId}"] [data-testid="progress-cell"][aria-label*=", Need, "]`).first();
+    await needCell.focus();
+    // The owner wrote their own status, so the tooltip reads "you" to them.
+    await expect(page.getByRole('tooltip').first()).toContainText('you');
+    await expect(matrix.locator('[role="gridcell"][tabindex="0"]')).toHaveCount(1);
+
+    const name = await needCell.getAttribute('aria-label');
+    await page.keyboard.press('ArrowRight');
+    const moved = await page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? null);
+    expect(moved).not.toBeNull();
+    expect(moved).not.toBe(name);
+    await page.keyboard.press('ArrowDown');
+    expect(await page.evaluate(() => document.activeElement?.getAttribute('role'))).toBe('gridcell');
     await context.close();
   });
 

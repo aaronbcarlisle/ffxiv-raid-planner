@@ -99,6 +99,13 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): S2a-2·F3 — the Progress matrix on screen',
         internal: true,
       },
+      {
+        category: 'feature',
+        title: 'V2 preview: Progress cells say where they came from, and the matrix has arrow keys',
+        description:
+          'V2 preview: hover or focus a Progress cell to see who set it: "plugin" with how long ago, "you", "self-reported", "set by" a lead\'s name, "added when tracked", or the older source ("from the Hub", "recorded earlier"). When the count came from a different place than the status, a second line says so, and a hidden count never gets one. The matrix is now one Tab stop with the arrow keys, Home and End moving between cells. If a refresh fails, the matrix stays on screen with the error and a Retry above it, and a failed Finished load no longer shows under the active farms (or the other way round).',
+        internal: true,
+      },
     ],
   },
   {
