@@ -320,20 +320,63 @@ describe('CellPicker: the count', () => {
     await screen.findByText('Need 70/99');
   });
 
-  it('carries a typed count into the pick when focus moved from the field to the status group', async () => {
+  it('commits on Tab out of the field too: focus wrapping to a status button is not a pick (browser A)', async () => {
+    seed([row('wings', 'u1', { state: 'need', tokenCount: 30 })]);
+    vi.mocked(api.patch).mockResolvedValue(written({ state: 'need', token_count: 45 }));
+    render(<Harness />);
+    open();
+
+    fireEvent.change(count(), { target: { value: '45' } });
+    fireEvent.blur(count(), { relatedTarget: option('Need') });
+
+    expect(api.patch).toHaveBeenCalledWith('/api/static-groups/g1/collection-goals/wings/participants', { state: 'need', token_count: 45 });
+    expect(await screen.findByText('Need 45/99')).toBeInTheDocument();
+    await waitFor(() => expect(toasts()[0]?.message).toBe('Totems saved'));
+  });
+
+  it('keeps focus in the field on a pointer press on a status button, so that pick carries the typed count as one write', async () => {
     seed([row('wings', 'u1', { state: 'need', tokenCount: 62 })]);
     vi.mocked(api.patch).mockResolvedValue(written({ state: 'want', token_count: 70 }));
     render(<Harness />);
     open();
+    const input = count();
+    act(() => input.focus());
 
-    fireEvent.change(count(), { target: { value: '70' } });
-    fireEvent.blur(count(), { relatedTarget: option('★ Want') });
+    fireEvent.change(input, { target: { value: '70' } });
+    // The press's default (focus moving to the button, which would blur the field) is prevented.
+    expect(fireEvent.pointerDown(option('★ Want'))).toBe(false);
+    expect(input).toHaveFocus();
     expect(api.patch).not.toHaveBeenCalled();
     fireEvent.click(option('★ Want'));
 
     expect(api.patch).toHaveBeenCalledTimes(1);
     expect(api.patch).toHaveBeenCalledWith('/api/static-groups/g1/collection-goals/wings/participants', { state: 'want', token_count: 70 });
     await waitFor(() => expect(toasts()[0]?.message).toBe('Want saved'));
+  });
+
+  it('commits a whole number: a typed 62.5 is sent as 62 (review M6)', async () => {
+    seed([row('wings', 'u1', { state: 'need', tokenCount: 30 })]);
+    vi.mocked(api.patch).mockResolvedValue(written({ state: 'need', token_count: 62 }));
+    render(<Harness />);
+    open();
+
+    fireEvent.change(count(), { target: { value: '62.5' } });
+    fireEvent.submit(count());
+
+    expect(api.patch).toHaveBeenCalledWith('/api/static-groups/g1/collection-goals/wings/participants', { state: 'need', token_count: 62 });
+  });
+
+  it('keeps focus in the count field when the cell\'s state changes while the picker is open (review M2)', () => {
+    seed([row('wings', 'u1', { state: 'need', tokenCount: 62 })]);
+    render(<Harness />);
+    open();
+    const input = count();
+    act(() => input.focus());
+
+    act(() => seed([row('wings', 'u1', { state: 'want', tokenCount: 62 })]));
+
+    expect(option('★ Want')).toHaveAttribute('aria-pressed', 'true');
+    expect(input).toHaveFocus();
   });
 
   it('resets the draft to the cell\'s count each time the picker opens', async () => {
