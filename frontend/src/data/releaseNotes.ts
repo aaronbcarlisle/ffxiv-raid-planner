@@ -122,6 +122,8 @@ export const RELEASES: Release[] = [
         title: 'V2 preview: leads edit everyone\'s Progress statuses, and fill the blanks with Need',
         description:
           'V2 preview: owners and leads get an "Edit statuses" button above the Progress matrix. In that mode every claimed cell on an active farm is a button: pick a member\'s status, and set their count when they have none yet (a member who hides their counts keeps the field hidden). "Mark everyone without a status as Need" fills every blank cell on the active farms at once, says how many it marked, and offers Undo for eight seconds; it is disabled with "No blank cells" when there is nothing to fill. Done leaves the mode, and leaving the page does too. Members and viewers see no such button.',
+        pr: 375,
+        prTitle: 'feat(v2): S2a-2·F6 — leads\' Edit statuses and the bulk Need',
         internal: true,
       },
     ],
