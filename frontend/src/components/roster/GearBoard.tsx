@@ -3,7 +3,8 @@
  *
  * The re-homed gearsheet: party-grouped rows × 11 slot columns + a BiS summary
  * column, and the bird's-eye gear-*editing* surface. Reuses the same store
- * derivations legacy GroupViewContent feeds the gear table (`groupPlayersByLightParty`,
+ * derivations legacy GroupViewContent feeds the gear table (`boardSections`, over
+ * `groupPlayersByLightParty`,
  * `bisSlotTotals` for the no-BiS gate, `calculateAverageItemLevel`); the summary
  * column prints RosterCard's own fraction (`playerBisProgress`, R-E2-F). Clicking a
  * cell cycles obtained state through the shared gear state machine
@@ -33,7 +34,7 @@ import { GearBoardCell } from './GearBoardCell';
 import { nextBoardCell } from './gearBoardNav';
 import { equippedAverageIlv } from './rosterIlv';
 import {
-  groupPlayersByLightParty,
+  boardSections,
   calculateAverageItemLevel,
   toGearState,
   requiresAugmentation,
@@ -122,7 +123,6 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
   const slotOrder = showOffhand ? OFFHAND_SLOT_ORDER : BASE_SLOT_ORDER;
   const slotHeads = showOffhand ? OFFHAND_SLOT_HEADS : BASE_SLOT_HEADS;
   const totalCols = slotOrder.length;
-  const grouped = groupPlayersByLightParty(players.filter((p) => p.configured), true);
   const toRow = (player: SnapshotPlayer): BoardRow => {
     // Per-row gear-edit gate (legacy GearTable's per-player canEditGear
     // pattern, adapted to one-row-per-player).
@@ -131,12 +131,7 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
     const cells = slotOrder.map((slot) => player.gear.find((x) => x.slot === slot));
     return { player, editable, total, progress: playerBisProgress(player), cells, interactive: cells.map((g) => editable && total > 0 && !!g?.bisSource) };
   };
-  const sections = [
-    { label: 'Light Party 1', rows: grouped.group1 },
-    { label: 'Light Party 2', rows: grouped.group2 },
-    { label: 'Unassigned', rows: grouped.unassigned },
-    { label: 'Substitutes', rows: grouped.substitutes },
-  ].filter((s) => s.rows.length > 0).map((s) => ({ label: s.label, rows: s.rows.map(toRow) }));
+  const sections = boardSections(players).map((s) => ({ label: s.label, rows: s.players.map(toRow) }));
   // Render order == grid row order: dividers are not rows, a no-BiS row is all-false.
   const rows = sections.flatMap((s) => s.rows);
   const grid = rows.map((r) => r.interactive);
