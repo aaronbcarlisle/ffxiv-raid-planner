@@ -40,6 +40,7 @@ interface RenderOptions {
   goals?: CollectionGoal[];
   participants?: ProgressData['participants'];
   reader?: ProgressReader;
+  memberNames?: ReadonlyMap<string, string>;
   players?: SnapshotPlayer[];
   canManage?: boolean;
   finishedLoading?: boolean;
@@ -62,6 +63,7 @@ function matrixElement(o: RenderOptions, onExpandFinished: () => void) {
         finished={finished}
         canManage={o.canManage ?? true}
         currentUserId={(o.reader ?? LEAD).currentUserId}
+        memberNames={o.memberNames}
         finishedLoading={o.finishedLoading ?? false}
         finishedError={o.finishedError ?? null}
         onExpandFinished={onExpandFinished}
@@ -381,7 +383,7 @@ describe('ProgressMatrix keyboard grid', () => {
     renderMatrix({ goals: two, participants: needy });
     const stops = allCells().filter((c) => c.tabIndex === 0);
     expect(stops).toEqual([cellsOf(farmRows()[0])[0]]);
-    expect(allCells().filter((c) => c.tabIndex === -1)).toHaveLength(allCells().length - 1);
+    expect(allCells().filter((c) => c.getAttribute('tabindex') === '-1')).toHaveLength(allCells().length - 1);
   });
 
   it('is one Tab stop for the whole matrix: before, one gridcell, after', () => {
@@ -456,6 +458,20 @@ describe('ProgressMatrix keyboard grid', () => {
     expect(last).toHaveFocus();
   });
 
+  it('scrolls the cell it moves to into view, since native focus leaves a half-hidden one cut off', () => {
+    renderMatrix({ goals: two, participants: needy });
+    const a = cellsOf(farmRows()[0]);
+    const spies = a.map((c) => {
+      const spy = vi.fn();
+      (c as unknown as { scrollIntoView: typeof spy }).scrollIntoView = spy;
+      return spy;
+    });
+    focusCell(a[0]);
+    key(a[0], 'ArrowRight');
+    expect(spies[1]).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+    expect(spies[0]).not.toHaveBeenCalled();
+  });
+
   it('ignores a modified arrow and any other key', () => {
     renderMatrix({ goals: two, participants: needy });
     const a = cellsOf(farmRows()[0]);
@@ -492,7 +508,7 @@ describe('ProgressMatrix keyboard grid', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
     const doneRow = farmRows().find((r) => r.getAttribute('data-goal-id') === 'done')!;
-    for (const c of cellsOf(doneRow)) expect(c.tabIndex).toBe(-1);
+    for (const c of cellsOf(doneRow)) expect(c).not.toHaveAttribute('tabindex');
     expect(allCells().filter((c) => c.tabIndex === 0)).toHaveLength(1);
 
     const active = cellsOf(farmRows()[0]);
@@ -516,6 +532,34 @@ describe('ProgressMatrix provenance tooltip', () => {
     });
     focusCell(aya());
     expect((await screen.findAllByText('set by Lead One')).length).toBeGreaterThan(0);
+  });
+
+  it('names a writer with no column from the member list', async () => {
+    // u7 holds no row and no column here (a lead with no claimed card); u2 has a column.
+    renderMatrix({
+      participants: { wings: [row('wings', 'u1', { state: 'need', updatedByUserId: 'u7', updatedVia: 'web' })] },
+      memberNames: new Map([['u7', 'Offstage Lead'], ['u2', 'Not Bo']]),
+    });
+    focusCell(aya());
+    expect((await screen.findAllByText('set by Offstage Lead')).length).toBeGreaterThan(0);
+  });
+
+  it('prefers the column name over the member list, and says "another member" with neither', async () => {
+    renderMatrix({
+      participants: {
+        wings: [
+          row('wings', 'u1', { state: 'need', updatedByUserId: 'u2', updatedVia: 'web' }),
+          row('wings', 'u4', { state: 'need', updatedByUserId: 'u8', updatedVia: 'web' }),
+        ],
+      },
+      memberNames: new Map([['u2', 'Not Bo']]),
+    });
+    focusCell(aya());
+    expect((await screen.findAllByText('set by Bo')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('set by Not Bo')).not.toBeInTheDocument();
+    act(() => aya().blur());
+    focusCell(screen.getByRole('gridcell', { name: /^Dee, Wings of Resolve, Need/ }));
+    expect((await screen.findAllByText('set by another member')).length).toBeGreaterThan(0);
   });
 
   it('opens on hover too', async () => {

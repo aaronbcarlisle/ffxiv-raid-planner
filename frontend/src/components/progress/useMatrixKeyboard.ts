@@ -69,8 +69,10 @@ export function useMatrixKeyboard(rowIds: readonly string[], colKeys: readonly s
   const focusAt = (row: number, col: number): boolean => {
     const el = cellEls.current.get(keyOf(rowIds[row], colKeys[col]));
     if (!el) return false;
-    // No `preventScroll`: focusing scrolls the cell into view inside the matrix's scroller.
     el.focus();
+    // Native focus() scrolls only a fully hidden element; a half-hidden cell needs the nudge.
+    // (Optional: jsdom has no scrollIntoView.)
+    el.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     return el.ownerDocument.activeElement === el;
   };
 

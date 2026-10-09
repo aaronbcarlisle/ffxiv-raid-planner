@@ -72,6 +72,11 @@ interface ProgressMatrixProps {
   canManage: boolean;
   /** The effective viewer (View As aware): the provenance tooltip's "you". */
   currentUserId: string | null;
+  /**
+   * Display names of the static's members by user id, for "set by {name}" when the writer
+   * has no column in this tier (a lead without a card, a past tier, the View As admin).
+   */
+  memberNames?: ReadonlyMap<string, string>;
   /** The finished goals' cells are being fetched. */
   finishedLoading: boolean;
   /** Fetching the finished goals' cells failed. */
@@ -86,6 +91,7 @@ export function ProgressMatrix({
   finished,
   canManage,
   currentUserId,
+  memberNames,
   finishedLoading,
   finishedError = null,
   onExpandFinished,
@@ -97,19 +103,16 @@ export function ProgressMatrix({
   // scroller; without one the scroller itself is the stop (axe scrollable-region-focusable).
   const hasCells = rowIds.length > 0 && colKeys.length > 0;
 
-  // Names for "set by {name}": the columns first, then anyone a cell's row names.
-  const names = useMemo(() => {
+  // Names for "set by {name}": a writer's column first, then the static's members.
+  const columnNames = useMemo(() => {
     const byId = new Map<string, string>();
-    for (const row of [...active, ...finished]) {
-      for (const cell of row.cells) {
-        const name = cell.entry?.displayName ?? cell.recordOnly?.displayName;
-        if (name && cell.column.userId !== null) byId.set(cell.column.userId, name);
-      }
-    }
     for (const column of columns) if (column.userId !== null) byId.set(column.userId, column.name);
     return byId;
-  }, [active, finished, columns]);
-  const provenance: ProvenanceContext = { viewerUserId: currentUserId, nameOf: (userId) => names.get(userId) ?? null };
+  }, [columns]);
+  const provenance: ProvenanceContext = {
+    viewerUserId: currentUserId,
+    nameOf: (userId) => columnNames.get(userId) ?? memberNames?.get(userId) ?? null,
+  };
 
   return (
     <div
