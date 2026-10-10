@@ -73,7 +73,7 @@ Every control uses the design-system primitives (`Button`, `IconButton`, `Popove
 - Mark finished / Reopen / Edit: `updateGoal`. Mark finished's Undo: `updateGoal` with the earlier status.
 - Delete: `deleteGoal`.
 - **Store change (delta (e), additive):** after a drop, a drop delete or a status change, V2 refreshes its read model for that farm (`fetchProgress(groupId, [goalId])`, plus the active list when a farm moves between active and Finished). Today these actions refetch only the legacy participant list. V1's calls behave as before.
-- The backend changes nothing. A null recipient is allowed; the drop already stores the recipient's character; the delete route restores the prior state.
+- The backend changes one thing, additively: `RewardDropResponse` gains `recipient_character_name` (the drop row already stores it, `collection_goals.py:1526`, but the response leaves it out, `schemas/collection_goals.py:248-262`). Nothing else: a null recipient is allowed and the delete route restores the prior state. The plugin calls no drop route.
 
 ### 3.6 Keyboard and the grid (the risky part)
 
@@ -96,7 +96,7 @@ The parent's criteria 4 and 5 (the `?track=<id>` half), 10 and 11 apply, demonst
 
 ## 5. Slicing
 
-Four PRs stacked on #375, each with an internal 2.1.72 release item, screenshots and a browser walk; the plan sets the tasks and sizes:
+PRs stacked on #375, each with an internal 2.1.72 release item, screenshots and a browser walk. The cut below is the design's; the plan (`plans/2026-10-10-s2a-3a-row-expansion.md`) sizes it into five PRs under the cap:
 1. **G1 · the models:** `progressQueue`, `discordPlan` (with the V1 pin), the drop-week label, `useTrackParam`.
 2. **G2 · the panel:** disclosure, `?track=`, queue, About, Copy plan, drops (Show all, delete), the grid integration (§3.6).
 3. **G3 · logging:** the split button and picker, I got it, Undo, the read-model refresh.
