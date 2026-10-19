@@ -115,6 +115,14 @@ describe('ProgressPage', () => {
     expect(screen.queryByText(/no farms|nothing yet|get started/i)).not.toBeInTheDocument();
   });
 
+  it('puts the tier row first in the Progress content (DOM order)', () => {
+    renderPage({ userRole: null, canManage: false });
+    const content = screen.getByTestId('progress-tier-row').parentElement!;
+    expect(content.firstElementChild).toBe(screen.getByTestId('progress-tier-row'));
+    // The members-only card is a later sibling, so "first" is not merely "only".
+    expect(content.children.length).toBeGreaterThan(1);
+  });
+
   it('has no Objectives / Farms switch (P-12)', () => {
     renderPage();
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();

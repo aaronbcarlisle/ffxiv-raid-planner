@@ -8,7 +8,7 @@
  * R-S2-19: a viewer with no role (guest or outsider) sees the tier row and the
  * members-only card in place of the matrix, and no `collection-` request fires.
  */
-import { ListChecks } from 'lucide-react';
+import { Target } from 'lucide-react';
 import { MembersOnlyCard } from '../auth';
 import { PageHeader } from '../layout/PageHeader';
 import { getTierById } from '../../gamedata';
@@ -42,7 +42,7 @@ export function ProgressPage({ group, tier, userRole, onNavigate }: ProgressPage
   return (
     <div data-testid="progress-screen">
       <PageHeader
-        icon={<ListChecks size={14} className="text-accent" />}
+        icon={<Target size={14} className="text-accent" />}
         title="Progress"
         subtitle={`Every track ${group.name} is working on, the tier first${week !== null ? ` · Week ${week}` : ''}`}
       />
