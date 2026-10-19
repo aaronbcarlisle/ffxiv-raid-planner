@@ -5,7 +5,7 @@
  * a MemoryRouter whose location a probe reports. (The tab-memory cases are the hook's:
  * `hooks/useGroupViewState.progress.test.ts`.)
  */
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -23,9 +23,11 @@ vi.mock('../../services/api', async (importOriginal) => {
   };
 });
 
+import { api } from '../../services/api';
 import { useCollectionGoalStore, type CollectionGoal, type ParticipantStateEntry } from '../../stores/collectionGoalStore';
+import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
 import type { StaticGroup, TierSnapshot } from '../../types';
-import { goal, row } from './__fixtures__/progressFixtures';
+import { apiDrop, goal, row } from './__fixtures__/progressFixtures';
 import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
 import { ProgressPage } from './ProgressPage';
 
@@ -289,5 +291,53 @@ describe('ProgressPage ?track= across a static switch (R-S3-3)', () => {
     await screen.findByTestId('progress-matrix');
     expect(panel()).toBeNull();
     expect(trackOf()).toBeNull();
+  });
+});
+
+// ── The open row's drops (S2a-3a·G3 Task TG5) ───────────────────────────────
+
+describe('ProgressPage open row: Escape in the Log a drop picker (R-S3-4, vet I-2)', () => {
+  it('closes only the portalled picker: the panel stays open, ?track is unchanged and focus returns to the ▾', async () => {
+    seed();
+    renderAt('/group/DEVTST?shell=v2&tab=progress&track=hot');
+    await screen.findByTestId('progress-matrix');
+    const more = within(panel()!).getByRole('button', { name: 'More recipients' });
+    fireEvent.click(more);
+    const picker = screen.getByRole('dialog', { name: 'Log a drop for Hot Farm' });
+    // The picker renders through a portal: outside the panel row in the DOM.
+    expect(panel()!.contains(picker)).toBe(false);
+    const checked = within(picker).getByRole('radio', { checked: true });
+    expect(checked).toHaveFocus();
+
+    fireEvent.keyDown(checked, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(panel()).not.toBeNull();
+    expect(nameOf('hot')).toHaveAttribute('aria-expanded', 'true');
+    expect(trackOf()).toBe('hot');
+    await waitFor(() => expect(more).toHaveFocus());
+  });
+});
+
+describe('ProgressPage open row: the drops\' week labels follow the week clock (R-S3-9)', () => {
+  afterEach(() => {
+    useLootTrackingStore.setState({ weekClockKey: null, weekStartDate: null, currentWeek: 1 });
+    vi.mocked(api.get).mockResolvedValue([]);
+  });
+
+  async function dropLine(clockKey: string) {
+    useLootTrackingStore.setState({ weekClockKey: clockKey, currentWeek: 3, weekStartDate: '2026-09-01T00:00:00Z' });
+    vi.mocked(api.get).mockResolvedValue([apiDrop('d1', 'u1', { recipient_display_name: 'Aya', dropped_at: '2026-09-09T10:00:00Z' })]);
+    seed();
+    renderAt('/group/DEVTST?shell=v2&tab=progress&track=hot');
+    await screen.findByTestId('progress-matrix');
+    return (await within(screen.getByTestId('progress-expansion-drops')).findByRole('listitem')).textContent;
+  }
+
+  it('reads "Week n" when THIS tier\'s clock is resolved', async () => {
+    expect(await dropLine(weekClockKeyOf('g1', 'aac-cruiserweight'))).toBe('Week 2 · Aya · ×1');
+  });
+
+  it('reads a date while the clock belongs to another tier (weekStartDate is withheld with the week)', async () => {
+    expect(await dropLine(weekClockKeyOf('g1', 'other-tier'))).toMatch(/^9 Sept?( 2026)? · Aya · ×1$/);
   });
 });

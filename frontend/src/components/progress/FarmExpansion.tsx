@@ -5,8 +5,13 @@
  * and Tab moves from the open row's cell into the panel's controls in DOM order. The action
  * bar comes first (TG5's Log a drop / I got it and TG7's Mark finished join Copy plan, which
  * every role has, a finished row included), then the three columns, Next in line · Last drops
- * (TG5) · About (D-4). The props TG5 reads (`finished`, `canManage`, `currentUserId`,
- * `groupId`) are declared here and unused until then.
+ * · About (D-4).
+ *
+ * The drop action (S2a-3a·G3 Task TG5), on active rows only: a lead's split button
+ * (`canManage` and not a viewer, R-S3-6), else "I got it" for a member's own cell (a `claimed`
+ * or Not-on-the-roster column) that is not Have (D-5), once the drops have loaded and hold none
+ * for `currentUserId`, the viewed user under View As (R-S3-16, D-21). A failed drops load leaves
+ * the cell rule to decide, with whatever drops are known. Last drops reads the same load.
  *
  * Escape inside the panel closes it (TG8's Edit excepted), through `escapeClosesPanel`'s
  * filter (R-S3-4, vet I-2): never a key a layer handled already, never one from a portalled
@@ -17,11 +22,16 @@ import { Copy } from 'lucide-react';
 import { toast } from '../../stores/toastStore';
 import type { MemberRole } from '../../types';
 import { buildDiscordPlan, planEntriesFor, type DiscordPlanEntry } from '../../utils/discordPlan';
+import type { WeekClock } from '../../utils/dropWeek';
 import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
 import { Button } from '../primitives';
 import { AboutBlock } from './AboutBlock';
+import { DropList } from './DropList';
+import { IGotItButton } from './IGotItButton';
+import { LogDropButton } from './LogDropButton';
 import { escapeClosesPanel } from './panelEscape';
 import { QueueList } from './QueueList';
+import { useGoalDrops } from './useDrops';
 
 export interface FarmExpansionProps {
   row: FarmRowModel;
@@ -44,13 +54,42 @@ export interface FarmExpansionProps {
    * its columns wrap rather than overflow.
    */
   viewWidth?: number | null;
+  /** The tier's week clock for the drops' labels (R-S3-9); unknown when absent. */
+  clock?: WeekClock;
 }
 
 const HEADING = 'text-xs font-semibold uppercase tracking-wide text-text-muted';
 
-export function FarmExpansion({ row, userRole, onClose, id, spanAll, viewWidth = null }: FarmExpansionProps) {
+const UNKNOWN_CLOCK: WeekClock = { currentWeek: null, weekStartDate: null };
+
+export function FarmExpansion({
+  row,
+  finished,
+  canManage,
+  userRole,
+  currentUserId,
+  groupId,
+  onClose,
+  id,
+  spanAll,
+  viewWidth = null,
+  clock = UNKNOWN_CLOCK,
+}: FarmExpansionProps) {
   const panelRef = useRef<HTMLTableRowElement>(null);
   const viewer = userRole === 'viewer';
+  const lead = canManage && !viewer;
+  const { drops, status: dropsStatus, retry: retryDrops } = useGoalDrops(groupId, row.goal.id);
+
+  const own = row.cells.find((cell) => cell.own) ?? null;
+  const ownUserId = own?.column.userId ?? null;
+  const gotItShown =
+    !finished &&
+    !lead &&
+    !viewer &&
+    ownUserId !== null &&
+    own?.state !== 'have' &&
+    dropsStatus !== 'loading' &&
+    !drops.some((drop) => drop.recipientUserId === currentUserId);
 
   // R-S3-2: the paste follows the queue, and a viewer's has no counts, so no "Can buy now" (R-S3-15).
   const copyPlan = async () => {
@@ -86,8 +125,10 @@ export function FarmExpansion({ row, userRole, onClose, id, spanAll, viewWidth =
           style={viewWidth === null ? undefined : { width: viewWidth }}
           className="max-w-full px-4 py-3"
         >
-          {/* The action bar: TG5's Log a drop / I got it and TG7's Mark finished go before Copy plan. */}
+          {/* The action bar: the drop action, (TG7's Mark finished,) then Copy plan. */}
           <div data-testid="progress-expansion-actions" className="mb-3 flex flex-wrap items-center gap-2">
+            {!finished && lead && <LogDropButton row={row} groupId={groupId} />}
+            {gotItShown && <IGotItButton groupId={groupId} goalId={row.goal.id} userId={ownUserId} />}
             <Button
               variant="secondary"
               size="sm"
@@ -110,6 +151,9 @@ export function FarmExpansion({ row, userRole, onClose, id, spanAll, viewWidth =
               <h2 id={`${id}-drops`} className={HEADING}>
                 Last drops
               </h2>
+              <div className="mt-2">
+                <DropList drops={drops} status={dropsStatus} onRetry={retryDrops} clock={clock} />
+              </div>
             </section>
             <section aria-labelledby={`${id}-about`} data-testid="progress-expansion-about">
               <h2 id={`${id}-about`} className={HEADING}>
