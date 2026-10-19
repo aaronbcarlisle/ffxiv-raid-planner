@@ -34,6 +34,7 @@ import { Button } from '../primitives';
 import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
 import { Select } from '../ui/Select';
+import { farmEditTitleId } from './farmFocus';
 import { BUSY_CLASS } from './useDrops';
 import { messageOf } from './undoToasts';
 
@@ -49,15 +50,16 @@ const CONTENT_OPTIONS = [
   { value: NONE, label: 'None' },
   ...(Object.keys(CONTENT_TYPE_LABELS) as CollectionContentType[]).map((value) => ({ value, label: CONTENT_TYPE_LABELS[value] })),
 ];
+const STATUS_OPTIONS = GOAL_STATUS_OPTIONS.map((option) => ({ ...option }));
 const MODE_OPTIONS = PRIORITY_MODE_OPTIONS.map((option) => ({ value: option.value ?? NONE, label: option.label }));
 
 interface Draft {
   title: string;
   goalType: CollectionGoalType;
   status: CollectionGoal['status'];
-  contentType: string;
+  contentType: CollectionContentType | typeof NONE;
   contentKey: string;
-  priorityMode: string;
+  priorityMode: CollectionPriorityMode | typeof NONE;
   notes: string;
 }
 
@@ -78,14 +80,14 @@ const textOrNull = (value: string | null): string | null => value?.trim() || nul
 function changesOf(goal: CollectionGoal, draft: Draft): CollectionGoalUpdate {
   const update: CollectionGoalUpdate = {};
   const title = draft.title.trim();
-  if (title !== goal.title) update.title = title;
+  if (title !== goal.title.trim()) update.title = title;
   if (draft.goalType !== goal.goalType) update.goalType = draft.goalType;
   if (draft.status !== goal.status) update.status = draft.status;
-  const contentType = draft.contentType === NONE ? null : (draft.contentType as CollectionContentType);
+  const contentType = draft.contentType === NONE ? null : draft.contentType;
   if (contentType !== goal.contentType) update.contentType = contentType;
   const contentKey = textOrNull(draft.contentKey);
   if (contentKey !== textOrNull(goal.contentKey)) update.contentKey = contentKey;
-  const priorityMode = draft.priorityMode === NONE ? null : (draft.priorityMode as CollectionPriorityMode);
+  const priorityMode = draft.priorityMode === NONE ? null : draft.priorityMode;
   if (priorityMode !== goal.priorityMode) update.priorityMode = priorityMode;
   const summary = textOrNull(draft.notes);
   if (summary !== textOrNull(goal.summary)) update.summary = summary;
@@ -189,12 +191,12 @@ export function FarmEditBlock({ groupId, goal, onDone, onDirtyChange }: FarmEdit
     >
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-x-4 gap-y-1">
         <div>
-          <Label htmlFor={id('title')} size="sm">
+          <Label htmlFor={farmEditTitleId(goal.id)} size="sm">
             Title
           </Label>
           <Input
             ref={titleRef}
-            id={id('title')}
+            id={farmEditTitleId(goal.id)}
             size="sm"
             fullWidth
             required
@@ -216,7 +218,7 @@ export function FarmEditBlock({ groupId, goal, onDone, onDirtyChange }: FarmEdit
           <Select
             id={id('status')}
             value={draft.status}
-            options={GOAL_STATUS_OPTIONS.map((option) => ({ ...option }))}
+            options={STATUS_OPTIONS}
             onChange={(value) => set('status', value as Draft['status'])}
           />
         </div>
@@ -224,7 +226,7 @@ export function FarmEditBlock({ groupId, goal, onDone, onDirtyChange }: FarmEdit
           <Label htmlFor={id('content')} size="sm">
             Content
           </Label>
-          <Select id={id('content')} value={draft.contentType} options={CONTENT_OPTIONS} onChange={(value) => set('contentType', value)} />
+          <Select id={id('content')} value={draft.contentType} options={CONTENT_OPTIONS} onChange={(value) => set('contentType', value as Draft['contentType'])} />
         </div>
         <div>
           <Label htmlFor={id('key')} size="sm">
@@ -236,7 +238,7 @@ export function FarmEditBlock({ groupId, goal, onDone, onDirtyChange }: FarmEdit
           <Label htmlFor={id('mode')} size="sm">
             Priority mode
           </Label>
-          <Select id={id('mode')} value={draft.priorityMode} options={MODE_OPTIONS} onChange={(value) => set('priorityMode', value)} />
+          <Select id={id('mode')} value={draft.priorityMode} options={MODE_OPTIONS} onChange={(value) => set('priorityMode', value as Draft['priorityMode'])} />
           {modeHelp !== undefined && (
             <p data-testid="progress-edit-mode-help" className="mt-1 text-xs text-text-muted">
               {modeHelp}

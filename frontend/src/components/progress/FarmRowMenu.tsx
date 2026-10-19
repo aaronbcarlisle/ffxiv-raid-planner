@@ -56,7 +56,7 @@ export function FarmRowMenu({ groupId, goal, grid }: FarmRowMenuProps) {
     ? [{ label: 'Reopen', onClick: () => void reopen() }]
     : [
         { label: 'Edit', onClick: () => edit.start(goal.id) },
-        { label: 'Mark finished', accent: true, onClick: () => edit.guard(goal.id, () => void markFinished()) },
+        { label: 'Mark finished', accent: true, onClick: () => edit.guard(goal.id, () => void markFinished(), buttonRef.current) },
       ];
   const items: ContextMenuItem[] = [
     ...status,

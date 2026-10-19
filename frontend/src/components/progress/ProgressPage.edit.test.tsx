@@ -179,6 +179,17 @@ describe('the menu\'s Edit (vet M-1)', () => {
     expect(field('Title')).toHaveValue('Hot Farm');
   });
 
+  it('chosen again while editing, puts focus back on the Title', async () => {
+    seed();
+    await startEditing('hot', 'Hot Farm');
+    menuOf('Hot Farm').focus();
+    fireEvent.click(menuOf('Hot Farm'));
+    pick('Edit');
+    await waitFor(() => expect(field('Title')).toHaveFocus());
+    expect(field('Title').id).toBe('progress-expansion-hot-edit-title');
+    expect(within(panel()!).getAllByRole('form')).toHaveLength(1);
+  });
+
   it('enters the block on a row that is already open', async () => {
     seed();
     await startEditing('hot', 'Hot Farm');
@@ -186,9 +197,9 @@ describe('the menu\'s Edit (vet M-1)', () => {
     expect(within(panel()!).getAllByRole('form')).toHaveLength(1);
   });
 
-  it('is not offered to a member or a viewer: no menu, no block', async () => {
+  it.each(['member', 'viewer'] as const)('is not offered to a %s: no menu, no block', async (userRole) => {
     seed();
-    renderAt('/?track=hot', { userRole: 'member', canManage: false });
+    renderAt('/?track=hot', { userRole, canManage: false });
     await screen.findByTestId('progress-expansion');
     expect(screen.queryAllByRole('button', { name: /^Actions for / })).toHaveLength(0);
     expect(block()).not.toBeInTheDocument();
@@ -448,5 +459,131 @@ describe('Mark finished with unsaved changes (vet M-8)', () => {
     await waitFor(() => expect(updateGoal).toHaveBeenCalledWith('g1', 'calm', { status: 'complete' }));
     expect(field('Notes')).toHaveValue('Edited notes');
     expect(trackOf()).toBe('hot');
+  });
+});
+
+// ── Focus after "Discard changes?" (G5 fix wave) ─────────────────────────────
+
+describe('focus after "Discard changes?"', () => {
+  const finishedToggle = () => screen.getByRole('button', { name: /^Finished \(/ });
+  /** What a browser does when a control is pressed: it takes focus, then the click lands. */
+  const press = (el: HTMLElement) => {
+    el.focus();
+    fireEvent.click(el);
+  };
+  /** The Modal moves focus into itself on the next frame; a browser's confirm is never answered before that. */
+  const confirmHasFocus = () => waitFor(() => expect(discardDialog()!.contains(document.activeElement)).toBe(true));
+  const actionBarMarkFinished = () =>
+    within(within(panel()!).getByTestId('progress-expansion-actions')).getByRole('button', { name: 'Mark finished' });
+
+  it("another row's name: Keep editing returns to it, and Discard lands on it, now open", async () => {
+    seed();
+    await startEditing('hot', 'Hot Farm');
+    dirty();
+    press(nameOf('calm'));
+    expect(discardDialog()).toBeInTheDocument();
+    await confirmHasFocus();
+    keepEditing();
+    expect(discardDialog()).not.toBeInTheDocument();
+    expect(nameOf('calm')).toHaveFocus();
+    expect(field('Notes')).toHaveValue('Edited notes');
+
+    press(nameOf('calm'));
+    await confirmHasFocus();
+    discard();
+    await waitFor(() => expect(trackOf()).toBe('calm'));
+    expect(nameOf('calm')).toHaveFocus();
+  });
+
+  it("the open row's own name: Keep editing returns to it, and Discard leaves it on the closed row's name", async () => {
+    seed();
+    await startEditing('hot', 'Hot Farm');
+    dirty();
+    press(nameOf('hot'));
+    await confirmHasFocus();
+    keepEditing();
+    expect(nameOf('hot')).toHaveFocus();
+    expect(panel()).toBeInTheDocument();
+
+    press(nameOf('hot'));
+    await confirmHasFocus();
+    discard();
+    await waitFor(() => expect(panel()).not.toBeInTheDocument());
+    expect(nameOf('hot')).toHaveFocus();
+  });
+
+  /** The menu as a browser leaves it: its first item focused, then the one chosen. */
+  const chooseMarkFinished = () => {
+    press(menuOf('Hot Farm'));
+    screen.getByRole('menuitem', { name: 'Mark finished' }).focus();
+    pick('Mark finished');
+  };
+
+  it("the menu's Mark finished: Keep editing returns to the ⋯ button (the menu item is gone), Discard lands on Finished (n)", async () => {
+    seed();
+    await startEditing('hot', 'Hot Farm');
+    dirty();
+    chooseMarkFinished();
+    await confirmHasFocus();
+    keepEditing();
+    expect(menuOf('Hot Farm')).toHaveFocus();
+    expect(updateGoal).not.toHaveBeenCalled();
+
+    chooseMarkFinished();
+    await confirmHasFocus();
+    discard();
+    await waitFor(() => expect(finishedToggle()).toHaveFocus());
+    expect(document.body).not.toHaveFocus();
+  });
+
+  it("the action bar's Mark finished: Keep editing returns to the button, Discard lands on Finished (n)", async () => {
+    seed(EVERYONE);
+    await startEditing('hot', 'Hot Farm');
+    dirty();
+    press(actionBarMarkFinished());
+    await confirmHasFocus();
+    keepEditing();
+    expect(actionBarMarkFinished()).toHaveFocus();
+
+    press(actionBarMarkFinished());
+    await confirmHasFocus();
+    discard();
+    await waitFor(() => expect(finishedToggle()).toHaveFocus());
+    expect(document.body).not.toHaveFocus();
+  });
+
+  it('falls back to the Title when the control that asked took no focus (a click that does not focus, as in Safari)', async () => {
+    seed();
+    await startEditing('hot', 'Hot Farm');
+    dirty();
+    (document.activeElement as HTMLElement).blur();
+    fireEvent.click(nameOf('calm'));
+    await confirmHasFocus();
+    keepEditing();
+    expect(field('Title')).toHaveFocus();
+  });
+
+  it("answered from the keyboard (focus is on the confirm's button) lands the same", async () => {
+    seed();
+    await startEditing('hot', 'Hot Farm');
+    dirty();
+    press(nameOf('calm'));
+    await confirmHasFocus();
+    const keep = within(discardDialog()!).getByRole('button', { name: 'Keep editing' });
+    keep.focus();
+    fireEvent.click(keep);
+    expect(nameOf('calm')).toHaveFocus();
+  });
+
+  it('Escape on the confirm is Keep editing', async () => {
+    seed();
+    await startEditing('hot', 'Hot Farm');
+    dirty();
+    press(nameOf('calm'));
+    await confirmHasFocus();
+    fireEvent.keyDown(discardDialog()!, { key: 'Escape' });
+    expect(discardDialog()).not.toBeInTheDocument();
+    expect(nameOf('calm')).toHaveFocus();
+    expect(field('Notes')).toHaveValue('Edited notes');
   });
 });
