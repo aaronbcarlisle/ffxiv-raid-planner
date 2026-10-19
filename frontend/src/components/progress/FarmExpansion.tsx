@@ -23,8 +23,8 @@ export interface FarmExpansionProps {
   finished: boolean;
   canManage: boolean;
   userRole: MemberRole | null | undefined;
-  /** The viewed user under View As, as `ProgressPage` receives it. */
-  currentUserId: string;
+  /** The viewed user under View As, as `ProgressPage` receives it (null with no signed-in viewer). */
+  currentUserId: string | null;
   groupId: string;
   /** The panel asks to close (Escape); the caller closes it and returns focus to the name button. */
   onClose: () => void;

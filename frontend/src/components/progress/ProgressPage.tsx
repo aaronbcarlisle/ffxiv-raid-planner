@@ -25,8 +25,9 @@
  * The open row (S2a-3a·G2, R-S3-3, D-7, D-8): `?track=<goal id>` through `useTrackParam`,
  * one row at a time. A row is open only while its id names a goal of THIS static whose
  * goals have loaded, so a stale id opens nothing during a load; an id that matches no goal
- * is dropped from the URL only once the goals have loaded (never while loading); and a
- * static switch under the mounted page clears it at once (a goal id never belongs to two
+ * is dropped from the URL only once THIS mount's goals fetch has returned (never on the
+ * cached list, which a warm cache reports as loaded and idle before the refetch runs); and
+ * a static switch under the mounted page clears it at once (a goal id never belongs to two
  * statics), before the new static's goals load.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -80,7 +81,6 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   const goals = useCollectionGoalStore((s) => s.goals);
   const loadedGroupId = useCollectionGoalStore((s) => s.loadedGroupId);
   const goalsError = useCollectionGoalStore((s) => s.error);
-  const goalsLoading = useCollectionGoalStore((s) => s.isLoading);
   const participants = useCollectionGoalStore((s) => s.participants);
   const recordOnly = useCollectionGoalStore((s) => s.recordOnly);
   const progressLoading = useCollectionGoalStore((s) => s.progressLoading);
@@ -107,9 +107,20 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   // keeps the matrix (stale cells) and shows the error line beside it, never in place of it.
   const [loadedOnce, setLoadedOnce] = useState<string | null>(null);
 
+  // The (static, attempt) whose goals THIS mount's fetch has brought back. The `?track` drop
+  // below waits for it, never for the store's flags: a warm cache reads as loaded and idle at the
+  // first render, while the refetch (which flips `isLoading`) runs in the same effect flush.
+  const [goalsSettled, setGoalsSettled] = useState<{ groupId: string; attempt: number } | null>(null);
   useEffect(() => {
     if (!isMember) return;
-    void useCollectionGoalStore.getState().fetchGoals(group.id);
+    let cancelled = false;
+    // `fetchGoals` keeps its errors (the store's `error`), so this resolves either way.
+    void Promise.resolve(useCollectionGoalStore.getState().fetchGoals(group.id)).then(() => {
+      if (!cancelled) setGoalsSettled({ groupId: group.id, attempt });
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [isMember, group.id, attempt]);
 
   useEffect(() => {
@@ -217,11 +228,13 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   const [track, setTrack] = useTrackParam();
   // Open only while the id names a goal of this static and the goals have loaded.
   const openId = track !== null && goalsReady && groupGoals.some((g) => g.id === track) ? track : null;
-  // An id that matches no goal here is dropped, once the goals have loaded and no fetch is in flight.
+  // An id that matches no goal here is dropped once this mount's goals fetch has returned and the
+  // store holds this static's goals; never on the cached list alone (R-S3-3, "never during loading").
+  const goalsFetched = goalsSettled?.groupId === group.id && goalsSettled.attempt === attempt;
   useEffect(() => {
-    if (track === null || !goalsReady || goalsLoading) return;
+    if (track === null || !goalsReady || !goalsFetched) return;
     if (!groupGoals.some((g) => g.id === track)) setTrack(null);
-  }, [track, goalsReady, goalsLoading, groupGoals, setTrack]);
+  }, [track, goalsReady, goalsFetched, groupGoals, setTrack]);
   // A static switch under the mounted page clears it at once (the switches that navigate with
   // no query clear it already); the id belongs to the static it was read under.
   const trackedGroupId = useRef(group.id);

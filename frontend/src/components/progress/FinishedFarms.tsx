@@ -56,6 +56,7 @@ export function FinishedFarms({
   // A finished id in `?track` expands the section when it arrives (a deep link, a tab switch
   // back), adjusted during the render that sees it; the same id never re-expands, so collapsing
   // by the button holds, and the memory clears once the id is gone.
+  // The rule (TG3 ruling): a manual collapse holds, and `?track` stays until the row is toggled or closed.
   const openHere = openId !== null && rows.some((r) => r.goal.id === openId);
   const [expandedFor, setExpandedFor] = useState<string | null>(null);
   if (openHere && expandedFor !== openId) {
