@@ -32,7 +32,7 @@ const SIX: ColumnSpec[] = [
 describe('QueueList for leads and members', () => {
   it('lists the top four as "{name} · {text}" with their ranks, in queue order', () => {
     renderQueue(SIX);
-    expect(items()).toEqual(['#1Bea · Need 10/99', '#2Cy · Need 30/99', '#3Ann · Need 60/99', '#4Eli · Need 90/99']);
+    expect(items()).toEqual(['#1 Bea · Need 10/99', '#2 Cy · Need 30/99', '#3 Ann · Need 60/99', '#4 Eli · Need 90/99']);
     expect(screen.getByText('Bea · Need 10/99')).toBeInTheDocument();
   });
 
@@ -40,9 +40,10 @@ describe('QueueList for leads and members', () => {
     renderQueue(SIX);
     const toggle = screen.getByRole('button', { name: 'Show all (6)' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle.getAttribute('aria-controls')).toBe(screen.getByRole('list').id);
     fireEvent.click(toggle);
     expect(items()).toHaveLength(6);
-    expect(items().slice(4)).toEqual(['#5Fay · Want 1/99', '#6Dee · Want 5/99']);
+    expect(items().slice(4)).toEqual(['#5 Fay · Want 1/99', '#6 Dee · Want 5/99']);
     const collapse = screen.getByRole('button', { name: 'Show fewer' });
     expect(collapse).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(collapse);
@@ -76,7 +77,7 @@ describe('QueueList for leads and members', () => {
       { id: 'Neo', kind: 'unconfigured', cell: want(1) },
       { id: 'Cara', kind: 'unclaimed' },
     ]);
-    expect(items()).toEqual(['#1Ghost · Need 3/99', '#2Ann · Need 60/99', '#3Neo · Want 1/99']);
+    expect(items()).toEqual(['#1 Ghost · Need 3/99', '#2 Ann · Need 60/99', '#3 Neo · Want 1/99']);
   });
 });
 
