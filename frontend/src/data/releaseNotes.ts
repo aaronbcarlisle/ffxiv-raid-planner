@@ -162,6 +162,13 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): S2a-3a·G3 — log a drop and I got it',
         internal: true,
       },
+      {
+        category: 'feature',
+        title: 'Progress: drop history and the row menu',
+        description:
+          'V2 preview: the open farm row\'s last drops gain "Show all" for the full history, and a delete button on each drop: leads on every drop, members on the drops they logged, viewers on none. Deleting asks first, and says when the recipient goes back to Need or Want.',
+        internal: true,
+      },
     ],
   },
   {

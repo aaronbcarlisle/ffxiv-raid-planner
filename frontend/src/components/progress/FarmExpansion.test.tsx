@@ -9,7 +9,7 @@
  * layer of its own yet (TG5, TG6/TG7 and TG8 pin the real picker, confirm and Select).
  */
 import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The panel loads its drops (S2a-3a·G3); none here.
 vi.mock('../../services/api', async (importOriginal) => ({
@@ -18,8 +18,8 @@ vi.mock('../../services/api', async (importOriginal) => ({
 }));
 
 import { useToastStore } from '../../stores/toastStore';
-import type { MemberRole } from '../../types';
-import { buildColumns, splitFarmRows, type FarmRow } from '../../utils/progressModel';
+import { buildColumns, splitFarmRows } from '../../utils/progressModel';
+import { renderPanel as renderHarness, type PanelOptions } from './__fixtures__/panelHarness';
 import { farmRowOf, goal, row, type ColumnSpec } from './__fixtures__/progressFixtures';
 import { FarmExpansion } from './FarmExpansion';
 import { escapeClosesPanel } from './panelEscape';
@@ -28,37 +28,9 @@ const data = { goals: [goal('wings', { title: 'Wings of Resolve' })], participan
 const columns = buildColumns([], 'standard', data);
 const [wings] = splitFarmRows(data, columns, { currentUserId: 'u1', userRole: 'lead' }).active;
 
-interface PanelOptions {
-  onClose?: () => void;
-  row?: FarmRow;
-  userRole?: MemberRole;
-  finished?: boolean;
-  viewWidth?: number | null;
-}
-
-function renderPanel({ onClose = vi.fn(), row: farmRow = wings, userRole = 'lead', finished = false, viewWidth }: PanelOptions = {}) {
-  render(
-    <table>
-      <tbody>
-        <FarmExpansion
-          row={farmRow}
-          finished={finished}
-          canManage
-          userRole={userRole}
-          currentUserId="u1"
-          groupId="g1"
-          onClose={onClose}
-          id="progress-expansion-wings"
-          spanAll={5}
-          viewWidth={viewWidth}
-        />
-      </tbody>
-    </table>,
-  );
-  return { onClose, panel: screen.getByTestId('progress-expansion') };
-}
-
-afterEach(() => document.body.replaceChildren());
+/** The harness, defaulting to the lead of `wings` (u1's own Need) that this file's cases assume. */
+const renderPanel = (options: PanelOptions = {}) =>
+  renderHarness({ row: wings, userRole: 'lead', canManage: true, currentUserId: 'u1', ...options });
 
 describe('FarmExpansion shell', () => {
   it('is a grid row with one gridcell spanning every column, carrying the id the name button controls', () => {
