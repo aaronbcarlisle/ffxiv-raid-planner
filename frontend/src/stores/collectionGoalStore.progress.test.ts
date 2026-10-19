@@ -549,6 +549,7 @@ describe('collectionGoalStore.refreshGoalProgress (R-S3-5)', () => {
   });
 
   it('with lists, also fetches the goals and every active goal\'s cells', async () => {
+    useCollectionGoalStore.setState({ loadedGroupId: 'group-1' });
     vi.mocked(api.get).mockResolvedValue([]);
     await useCollectionGoalStore.getState().refreshGoalProgress('group-1', 'goal-1', { lists: true });
     expect(vi.mocked(api.get).mock.calls.map(([url]) => url).sort()).toEqual([
@@ -556,6 +557,17 @@ describe('collectionGoalStore.refreshGoalProgress (R-S3-5)', () => {
       '/api/static-groups/group-1/collection-participants',
       '/api/static-groups/group-1/collection-participants?goal_id=goal-1',
     ]);
+  });
+
+  it('with lists, leaves the goal list alone while another static is loaded (an Undo after a static switch)', async () => {
+    useCollectionGoalStore.setState({ loadedGroupId: 'group-2' });
+    vi.mocked(api.get).mockResolvedValue([]);
+    await useCollectionGoalStore.getState().refreshGoalProgress('group-1', 'goal-1', { lists: true });
+    expect(vi.mocked(api.get).mock.calls.map(([url]) => url).sort()).toEqual([
+      '/api/static-groups/group-1/collection-participants',
+      '/api/static-groups/group-1/collection-participants?goal_id=goal-1',
+    ]);
+    expect(useCollectionGoalStore.getState().loadedGroupId).toBe('group-2');
   });
 
   it('never rejects: a failed fetch keeps its own error', async () => {

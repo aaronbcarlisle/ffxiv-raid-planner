@@ -17,7 +17,7 @@
  * filter (R-S3-4, vet I-2): never a key a layer handled already, never one from a portalled
  * node outside this row. Closing returns focus to the name button: the caller's `onClose`.
  */
-import { useRef, type KeyboardEvent } from 'react';
+import { useCallback, useRef, type KeyboardEvent } from 'react';
 import { Copy } from 'lucide-react';
 import { toast } from '../../stores/toastStore';
 import type { MemberRole } from '../../types';
@@ -76,6 +76,9 @@ export function FarmExpansion({
   clock = UNKNOWN_CLOCK,
 }: FarmExpansionProps) {
   const panelRef = useRef<HTMLTableRowElement>(null);
+  // Takes focus from "I got it" when a log hides it.
+  const copyRef = useRef<HTMLButtonElement>(null);
+  const focusCopyPlan = useCallback(() => copyRef.current?.focus(), []);
   const viewer = userRole === 'viewer';
   const lead = canManage && !viewer;
   const { drops, status: dropsStatus, retry: retryDrops } = useGoalDrops(groupId, row.goal.id);
@@ -128,8 +131,9 @@ export function FarmExpansion({
           {/* The action bar: the drop action, (TG7's Mark finished,) then Copy plan. */}
           <div data-testid="progress-expansion-actions" className="mb-3 flex flex-wrap items-center gap-2">
             {!finished && lead && <LogDropButton row={row} groupId={groupId} />}
-            {gotItShown && <IGotItButton groupId={groupId} goalId={row.goal.id} userId={ownUserId} />}
+            {gotItShown && <IGotItButton groupId={groupId} goalId={row.goal.id} userId={ownUserId} onLeave={focusCopyPlan} />}
             <Button
+              ref={copyRef}
               variant="secondary"
               size="sm"
               leftIcon={<Copy size={14} aria-hidden="true" />}

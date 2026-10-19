@@ -16,6 +16,7 @@ import { useCollectionGoalStore, type CollectionGoal, type RewardDrop } from '..
 import { useToastStore } from '../../stores/toastStore';
 import type { MemberRole } from '../../types';
 import { serveDrops } from './__fixtures__/dropServer';
+import { emulateFocusFixup } from './__fixtures__/focusFixup';
 import { apiDrop, farmRowOf, goal, type ColumnSpec } from './__fixtures__/progressFixtures';
 import { FarmExpansion } from './FarmExpansion';
 
@@ -173,7 +174,7 @@ describe('I got it: one per member per farm (R-S3-16, D-21)', () => {
     expect(posts()).toHaveLength(1);
   });
 
-  it('stays disabled from the click until the refresh resolves, and sends nothing on a click meanwhile', async () => {
+  it('stays unavailable from the click until the refresh resolves, and sends nothing on a click meanwhile', async () => {
     // A log whose drop the store never lists, so only the lock can hold the button.
     const logged: RewardDrop = {
       id: 'd9', goalId: 'wings', staticGroupId: 'g1', recipientUserId: 'me', createdById: 'me', quantity: 1,
@@ -188,12 +189,24 @@ describe('I got it: one per member per farm (R-S3-16, D-21)', () => {
 
     fireEvent.click(button);
     await waitFor(() => expect(refresh).toHaveBeenCalled());
-    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(button);
     expect(logDrop).toHaveBeenCalledTimes(1);
 
     await act(async () => finish());
-    expect(button).toBeEnabled();
+    expect(button).not.toHaveAttribute('aria-disabled');
+  });
+
+  it('hands focus to Copy plan when a log hides it, never to <body> (G3 live defect)', async () => {
+    const stop = emulateFocusFixup();
+    renderPanel({ specs: mine({ state: 'pass' }) });
+    const button = await screen.findByRole('button', { name: 'I got it' });
+    act(() => button.focus());
+    fireEvent.click(button);
+    await waitFor(() => expect(gotIt()).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Copy plan' })).toHaveFocus();
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    stop();
   });
 
   it('comes back when the drop is undone', async () => {
@@ -222,5 +235,21 @@ describe('I got it: one per member per farm (R-S3-16, D-21)', () => {
     renderPanel();
     expect(await screen.findByText('Couldn\'t load drops')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'I got it' })).toBeEnabled();
+  });
+
+  it('stays hidden by a cached drop of the reader\'s when a later load, and its Retry, fail', async () => {
+    server = serveDrops(api, [apiDrop('d0', 'me')]);
+    const view = renderPanel();
+    await screen.findByText(/· me · ×1$/);
+    view.unmount();
+
+    // The row reopens: its load fails, and so does Retry; the store still holds the drop.
+    vi.mocked(api.get).mockRejectedValueOnce(new Error('down')).mockRejectedValueOnce(new Error('down'));
+    renderPanel();
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(vi.mocked(api.get).mock.calls.filter(([url]) => url === DROPS)).toHaveLength(3));
+    expect(await screen.findByText('Couldn\'t load drops')).toBeInTheDocument();
+    expect(useCollectionGoalStore.getState().drops.wings?.map((d) => d.recipientUserId)).toEqual(['me']);
+    expect(gotIt()).not.toBeInTheDocument();
   });
 });
