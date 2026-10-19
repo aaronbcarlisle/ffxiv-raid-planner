@@ -126,6 +126,13 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): S2a-2·F6 — leads\' Edit statuses and the bulk Need',
         internal: true,
       },
+      {
+        category: 'improvement',
+        title: 'Progress: the farm queue model',
+        description:
+          'V2 preview: groundwork for the Progress row expansion. One shared queue decides who is next on a farm: Need before Want, the fewest totems first, a hidden count after the known ones, and members who are not on the roster queue like anyone else. Free roll queues nobody and Desired only queues Need alone. Nothing changes on screen yet.',
+        internal: true,
+      },
     ],
   },
   {
