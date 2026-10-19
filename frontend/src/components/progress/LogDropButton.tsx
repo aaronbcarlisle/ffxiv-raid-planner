@@ -3,24 +3,27 @@
  * button in one `group` named "Log a drop": the main `Button` logs for the queue's #1 in one
  * click ("Log drop for {name}"), and the ▾ `IconButton` opens the picker, a `Popover` named "Log
  * a drop for {track}". With no #1 (`free_roll`, or nobody queued) the main button reads "Log a
- * drop" and opens the picker with Nobody checked.
+ * drop", opens the picker with Nobody checked (it then says so: `aria-haspopup`,
+ * `aria-expanded`), and takes focus back when the picker closes.
  *
  * The picker is one `radiogroup` with a single tab stop (the checked option; the arrow keys move
- * the check and focus, the `loot/RecipientPicker` precedent, vet M-2): the queue in order with
- * "#n", then "Not in the queue" and every other member column (claimed and Not on the roster,
- * R-S3-14) in column order, then Nobody; an optional note; "Log drop" and Cancel. Both halves
- * and the picker's submit are disabled from the click until the log and its refresh are done
- * (`useDropLogger`). The picker portals, so its Escape is Radix's: it closes the picker alone and
- * returns focus to the ▾ (the panel's filter leaves a handled key alone, R-S3-4).
+ * the check and focus, the `loot/RecipientPicker` precedent, vet M-2; Enter logs): the queue in
+ * order with "#n", then "Not in the queue" and every other member column (claimed and Not on the
+ * roster, R-S3-14) in column order, then Nobody; an optional note; "Log drop" and Cancel. From
+ * the click until the log and its refresh are done (`useDropLogger`) both halves and the submit
+ * are unavailable but stay focusable (`aria-disabled`, clicks ignored), so a keyboard user's
+ * focus is never dropped and the picker always closes onto a live ▾. The picker portals, so its
+ * Escape is Radix's: it closes the picker alone (the panel's filter leaves a handled key alone,
+ * R-S3-4).
  */
-import { useId, useState, type KeyboardEvent } from 'react';
+import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import { ChevronDown, Gift } from 'lucide-react';
 import { Button, IconButton, Popover, PopoverContent, PopoverTrigger } from '../primitives';
 import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
-import { cellText, type FarmRow } from '../../utils/progressModel';
+import type { FarmRow, ProgressCell } from '../../utils/progressModel';
 import { queueEntryText, queueFor } from '../../utils/progressQueue';
-import { useDropLogger } from './useDrops';
+import { BUSY_CLASS, useDropLogger } from './useDrops';
 
 interface Recipient {
   key: string;
@@ -29,13 +32,22 @@ interface Recipient {
   name: string;
   /** The queue's "#n", or null outside it. */
   rank: number | null;
-  /** "Need 12/99", the cell's state, or nothing. */
+  /** "Need 12/99", the state's word, or nothing. */
   detail: string;
 }
 
 const NOBODY: Recipient = { key: '__nobody', userId: null, name: 'Nobody', rank: null, detail: '' };
 
 const NOTE_MAX = 500;
+
+/** A cell outside the queue: Need or Want as the queue writes them, else the state's word. */
+function restDetail(cell: ProgressCell, tokenCost: number | null): string {
+  const { state } = cell;
+  if (state === 'need' || state === 'want') {
+    return queueEntryText({ cell, rank: 0, state, count: cell.count, countHidden: cell.countHidden }, tokenCost);
+  }
+  return state === 'have' ? 'Have' : state === 'pass' ? 'Pass' : '';
+}
 
 /** The queue in order, then every other member column in column order (R-S3-14). */
 function recipientsFor(row: FarmRow): { queued: Recipient[]; rest: Recipient[] } {
@@ -51,7 +63,7 @@ function recipientsFor(row: FarmRow): { queued: Recipient[]; rest: Recipient[] }
   const rest = row.cells.flatMap((cell): Recipient[] => {
     const { column } = cell;
     if (column.kind === 'unclaimed' || inQueue.has(cell)) return [];
-    return [{ key: column.key, userId: column.userId, name: column.name, rank: null, detail: cellText(cell, row.goal) }];
+    return [{ key: column.key, userId: column.userId, name: column.name, rank: null, detail: restDetail(cell, row.goal.tokenCost) }];
   });
   return { queued, rest };
 }
@@ -81,13 +93,17 @@ export function LogDropButton({ row, groupId }: { row: FarmRow; groupId: string 
   const [note, setNote] = useState('');
   const noteId = useId();
   const restId = useId();
+  const mainRef = useRef<HTMLButtonElement>(null);
+  // The main button opened the picker (no #1): focus goes back to it, not to the ▾.
+  const openedByMain = useRef(false);
 
-  const changeOpen = (next: boolean) => {
+  const changeOpen = (next: boolean, byMain = false) => {
     if (next) {
       const key = first?.key ?? NOBODY.key;
       setChecked(key);
       setFocusKey(key);
       setNote('');
+      openedByMain.current = byMain;
     }
     setOpen(next);
   };
@@ -95,18 +111,20 @@ export function LogDropButton({ row, groupId }: { row: FarmRow; groupId: string 
   const logFor = (recipient: Recipient, notes: string | null) =>
     log({ recipientUserId: recipient.userId, notes }, recipient.userId === null ? 'Drop logged' : `Drop logged for ${recipient.name}`);
 
-  const submit = async () => {
-    const recipient = options.find((option) => option.key === checked) ?? NOBODY;
+  const submit = async (recipient = options.find((option) => option.key === checked) ?? NOBODY) => {
+    if (busy) return;
     if (await logFor(recipient, note.trim() || null)) setOpen(false);
   };
 
   const onRadioKey = (event: KeyboardEvent<HTMLDivElement>, index: number) => {
-    const step = STEP[event.key];
     if (event.key === ' ' || event.key === 'Enter') {
       event.preventDefault();
       setChecked(options[index].key);
+      // Enter logs, as it would submit a form of native radios.
+      if (event.key === 'Enter') void submit(options[index]);
       return;
     }
+    const step = STEP[event.key];
     if (!step) return;
     event.preventDefault();
     const next = step(index, options.length);
@@ -146,12 +164,19 @@ export function LogDropButton({ row, groupId }: { row: FarmRow; groupId: string 
   return (
     <div role="group" aria-label="Log a drop" className="inline-flex">
       <Button
+        ref={mainRef}
         variant="accent-subtle"
         size="sm"
-        className="rounded-r-none"
+        className={`rounded-r-none ${BUSY_CLASS}`}
         leftIcon={<Gift size={14} aria-hidden="true" />}
-        disabled={busy}
-        onClick={() => (first ? void logFor(first, null) : changeOpen(true))}
+        aria-disabled={busy || undefined}
+        aria-haspopup={first ? undefined : 'dialog'}
+        aria-expanded={first ? undefined : open}
+        onClick={() => {
+          if (busy) return;
+          if (first) void logFor(first, null);
+          else changeOpen(true, true);
+        }}
       >
         {first ? `Log drop for ${first.name}` : 'Log a drop'}
       </Button>
@@ -160,14 +185,27 @@ export function LogDropButton({ row, groupId }: { row: FarmRow; groupId: string 
           <IconButton
             aria-label="More recipients"
             aria-haspopup="dialog"
-            variant="primary"
+            aria-disabled={busy || undefined}
+            variant="accent-subtle"
             size="sm"
-            className="rounded-l-none border-l-0"
+            className={`rounded-l-none border-l-0 ${BUSY_CLASS}`}
             icon={<ChevronDown size={14} aria-hidden="true" />}
-            disabled={busy}
+            // Radix skips its toggle for a click whose default is prevented.
+            onClick={(event) => {
+              if (busy) event.preventDefault();
+            }}
           />
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)] p-3" aria-label={`Log a drop for ${goal.title}`}>
+        <PopoverContent
+          align="start"
+          className="w-80 max-w-[calc(100vw-2rem)] p-3"
+          aria-label={`Log a drop for ${goal.title}`}
+          onCloseAutoFocus={(event) => {
+            if (!openedByMain.current) return;
+            event.preventDefault();
+            mainRef.current?.focus();
+          }}
+        >
           <form
             noValidate
             onSubmit={(event) => {
@@ -195,7 +233,7 @@ export function LogDropButton({ row, groupId }: { row: FarmRow; groupId: string 
               <Button type="button" variant="ghost" size="sm" onClick={() => changeOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" size="sm" disabled={busy}>
+              <Button type="submit" variant="primary" size="sm" aria-disabled={busy || undefined} className={BUSY_CLASS}>
                 Log drop
               </Button>
             </div>

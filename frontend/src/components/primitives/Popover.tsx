@@ -72,6 +72,8 @@ interface PopoverContentProps {
   /** The dialog's accessible name; Radix gives the content role="dialog" and no name of its own */
   'aria-label'?: string;
   'aria-labelledby'?: string;
+  /** Radix's: called as the content closes; `preventDefault()` keeps it from focusing the trigger. */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 export const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
@@ -86,6 +88,7 @@ export const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
       className = '',
       'aria-label': ariaLabel,
       'aria-labelledby': ariaLabelledBy,
+      onCloseAutoFocus,
     },
     ref
   ) => {
@@ -113,6 +116,7 @@ export const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
             ${className}
           `}
           onOpenAutoFocus={(e) => e.preventDefault()} // Don't auto-focus first focusable
+          onCloseAutoFocus={onCloseAutoFocus}
         >
           {children}
         </PopoverPrimitive.Content>

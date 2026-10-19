@@ -20,6 +20,12 @@ import { messageOf } from './undoToasts';
 
 export type DropsStatus = 'loading' | 'loaded' | 'failed';
 
+/**
+ * A drop control while its log is in flight: `aria-disabled` rather than `disabled`, which in a
+ * browser drops the focus of the control pressed to <body>; this is its look (clicks are ignored).
+ */
+export const BUSY_CLASS = 'aria-disabled:cursor-not-allowed aria-disabled:opacity-50';
+
 const NO_DROPS: readonly RewardDrop[] = [];
 
 export function useGoalDrops(groupId: string, goalId: string): { drops: readonly RewardDrop[]; status: DropsStatus; retry: () => void } {
@@ -48,12 +54,16 @@ export function useGoalDrops(groupId: string, goalId: string): { drops: readonly
 
 async function undoDrop(groupId: string, goalId: string, dropId: string): Promise<void> {
   const store = useCollectionGoalStore.getState();
+  // The toast outlives a static switch, and `deleteDrop` refetches the goals of the drop's static,
+  // replacing the list wholesale: put back the static that was loaded when Undo was clicked.
+  const loaded = store.loadedGroupId;
   try {
     await store.deleteDrop(groupId, goalId, dropId);
   } catch (err) {
     if (!wasToastedByApi(err)) toast.error("Couldn't undo the drop");
     return;
   }
+  if (loaded !== null && loaded !== groupId) await store.fetchGoals(loaded);
   toast.success('Undone');
   await store.refreshGoalProgress(groupId, goalId);
 }

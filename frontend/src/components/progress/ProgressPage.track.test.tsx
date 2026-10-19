@@ -26,6 +26,7 @@ vi.mock('../../services/api', async (importOriginal) => {
 import { api } from '../../services/api';
 import { useCollectionGoalStore, type CollectionGoal, type ParticipantStateEntry } from '../../stores/collectionGoalStore';
 import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
+import { useToastStore } from '../../stores/toastStore';
 import type { StaticGroup, TierSnapshot } from '../../types';
 import { apiDrop, goal, row } from './__fixtures__/progressFixtures';
 import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
@@ -315,6 +316,37 @@ describe('ProgressPage open row: Escape in the Log a drop picker (R-S3-4, vet I-
     expect(nameOf('hot')).toHaveAttribute('aria-expanded', 'true');
     expect(trackOf()).toBe('hot');
     await waitFor(() => expect(more).toHaveFocus());
+  });
+});
+
+describe('ProgressPage: a drop\'s Undo after a static switch (G3 fix wave)', () => {
+  const G2_GOALS = [goal('far', { title: 'Far Farm', staticGroupId: 'g2' })];
+
+  it('leaves the static on screen loaded: the Undo\'s refetch of the old static\'s goals is put back', async () => {
+    // The store's own fetchGoals replaces goals and loadedGroupId wholesale; so does this one.
+    fetchGoals.mockImplementation(async (groupId: string) => {
+      useCollectionGoalStore.setState({ goals: groupId === 'g2' ? G2_GOALS : GOALS, loadedGroupId: groupId });
+    });
+    vi.mocked(api.post).mockResolvedValueOnce(apiDrop('d1', 'u1', { goal_id: 'hot' }));
+    useToastStore.getState().clearAll();
+    seed();
+    const { rerender } = renderAt('/group/DEVTST?shell=v2&tab=progress&track=hot');
+    await screen.findByTestId('progress-matrix');
+    fireEvent.click(await within(panel()!).findByRole('button', { name: 'Log drop for Aya' }));
+    await waitFor(() => expect(useToastStore.getState().toasts.map((t) => t.action?.label)).toContain('Undo'));
+
+    rerender({ group: otherGroup });
+    expect(await screen.findByRole('button', { name: 'Far Farm' })).toBeInTheDocument();
+    expect(useCollectionGoalStore.getState().loadedGroupId).toBe('g2');
+
+    act(() => useToastStore.getState().toasts.find((t) => t.action?.label === 'Undo')?.action?.onClick());
+    await waitFor(() => expect(useToastStore.getState().toasts.map((t) => t.message)).toContain('Undone'));
+    await act(async () => {});
+    expect(fetchGoals).toHaveBeenCalledWith('g1');
+    expect(useCollectionGoalStore.getState().loadedGroupId).toBe('g2');
+    expect(screen.queryByTestId('progress-loading')).not.toBeInTheDocument();
+    expect(screen.getByTestId('progress-matrix')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Far Farm' })).toBeInTheDocument();
   });
 });
 

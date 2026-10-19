@@ -16,6 +16,7 @@ import { api } from '../../services/api';
 import { useCollectionGoalStore, type CollectionGoal } from '../../stores/collectionGoalStore';
 import { useToastStore } from '../../stores/toastStore';
 import { serveDrops } from './__fixtures__/dropServer';
+import { emulateFocusFixup } from './__fixtures__/focusFixup';
 import { farmRowOf, goal, type ColumnSpec } from './__fixtures__/progressFixtures';
 import { stubCanHover } from './__fixtures__/tooltipEnv';
 import { FarmExpansion } from './FarmExpansion';
@@ -105,7 +106,7 @@ describe('LogDropButton: one click for #1 (D-6)', () => {
     expect(toasts()).toEqual([['success', 'Drop logged for Healer 1', 'Undo']]);
   });
 
-  it('sends one request for a double click, and keeps both halves disabled until the log and its refresh are done', async () => {
+  it('sends one request for a double click, and keeps both halves unavailable until the log and its refresh are done', async () => {
     let finish = () => {};
     refresh.mockReturnValue(new Promise<void>((resolve) => (finish = resolve)));
     const release = server.gate();
@@ -116,17 +117,34 @@ describe('LogDropButton: one click for #1 (D-6)', () => {
       button.click();
     });
     expect(posts()).toHaveLength(1);
-    expect(button).toBeDisabled();
-    expect(more()).toBeDisabled();
+    for (const half of [button, more()]) expect(half).toHaveAttribute('aria-disabled', 'true');
 
     release();
     await waitFor(() => expect(refresh).toHaveBeenCalled());
-    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(button);
+    // The ▾ ignores a click too: no picker while a log is in flight.
+    fireEvent.click(more());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await act(async () => finish());
-    expect(main()).toBeEnabled();
-    expect(more()).toBeEnabled();
+    for (const half of [main(), more()]) expect(half).not.toHaveAttribute('aria-disabled');
     expect(posts()).toHaveLength(1);
+  });
+
+  it('keeps focus on the main button through a one-click log: it is never natively disabled (G3 live defect)', async () => {
+    const stop = emulateFocusFixup();
+    let finish = () => {};
+    refresh.mockReturnValue(new Promise<void>((resolve) => (finish = resolve)));
+    await renderPanel();
+    const button = main('Log drop for Healer 1');
+    act(() => button.focus());
+    fireEvent.click(button);
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveFocus();
+    await act(async () => finish());
+    expect(document.activeElement).toBe(button);
+    stop();
   });
 });
 
@@ -140,7 +158,7 @@ describe('LogDropButton: the picker (D-6, vet M-2)', () => {
     expect(radios().map((r) => r.textContent)).toEqual([
       '#1 Healer 1 · Need 12/99',
       '#2 Tank 1 · Want 3/99',
-      'Melee 2 · – Pass',
+      'Melee 2 · Pass',
       'Ranged',
       'Nobody',
     ]);
@@ -210,6 +228,31 @@ describe('LogDropButton: the picker (D-6, vet M-2)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(posts()).toHaveLength(0);
   });
+
+  it('logs for the checked option on Enter in the radio group (a form of radios submits on Enter)', async () => {
+    await renderPanel();
+    fireEvent.click(more());
+    fireEvent.keyDown(radios()[0], { key: 'ArrowDown' });
+    fireEvent.keyDown(radios()[1], { key: 'Enter' });
+    await waitFor(() => expect(toasts()).toEqual([['success', 'Drop logged for Tank 1', 'Undo']]));
+    expect(posts()).toHaveLength(1);
+    expect(posts()[0][1]).toMatchObject({ recipient_user_id: 'Tank 1' });
+  });
+
+  it('closes onto a live ▾ when Cancel is pressed while its log is in flight (G3 fix wave)', async () => {
+    const stop = emulateFocusFixup();
+    const release = server.gate();
+    await renderPanel();
+    fireEvent.click(more());
+    fireEvent.click(screen.getByRole('button', { name: 'Log drop' }));
+    expect(more()).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(more()).toHaveFocus());
+    expect(more()).not.toBeDisabled();
+    release();
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    stop();
+  });
 });
 
 describe('LogDropButton: Not-on-the-roster members (R-S3-14, vet C-2)', () => {
@@ -228,7 +271,7 @@ describe('LogDropButton: Not-on-the-roster members (R-S3-14, vet C-2)', () => {
   it('lists a Not-on-the-roster Pass member under "Not in the queue", and logs for them when picked', async () => {
     await renderPanel(MIXED);
     fireEvent.click(more());
-    expect(radios().map((r) => r.textContent)).toEqual(['#1 Nora · Need 2/99', '#2 Healer 1 · Need 12/99', 'Pip · – Pass', 'Nobody']);
+    expect(radios().map((r) => r.textContent)).toEqual(['#1 Nora · Need 2/99', '#2 Healer 1 · Need 12/99', 'Pip · Pass', 'Nobody']);
     fireEvent.click(radios()[2]);
     fireEvent.click(screen.getByRole('button', { name: 'Log drop' }));
     await waitFor(() => expect(toasts()).toEqual([['success', 'Drop logged for Pip', 'Undo']]));
@@ -242,11 +285,18 @@ describe('LogDropButton: no #1 (D-6)', () => {
     ['an empty queue', [{ id: 'Melee 2', cell: { state: 'pass' } }, { id: 'Ranged' }] as ColumnSpec[], WINGS],
   ])('reads "Log a drop" under %s and opens the picker with Nobody checked', async (_label, specs, g) => {
     await renderPanel(specs, g);
+    expect(main('Log a drop')).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(main('Log a drop')).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(main('Log a drop'));
     expect(screen.getByRole('dialog', { name: 'Log a drop for Wings' })).toBeInTheDocument();
+    expect(main('Log a drop')).toHaveAttribute('aria-expanded', 'true');
     expect(checkedName()).toBe('Nobody');
     expect(radios().at(-1)).toHaveFocus();
     expect(posts()).toHaveLength(0);
+    // Closing hands focus back to the button that opened it, not the ▾.
+    fireEvent.keyDown(radios().at(-1)!, { key: 'Escape' });
+    await waitFor(() => expect(main('Log a drop')).toHaveFocus());
+    expect(main('Log a drop')).toHaveAttribute('aria-expanded', 'false');
   });
 });
 

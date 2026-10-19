@@ -587,7 +587,8 @@ interface CollectionGoalStore {
   /**
    * V2's read-model refresh after a write (S2a-3a, R-S3-5): the one goal's cells, and with
    * `lists` also the goal list and every active goal's cells (a farm moved between active and
-   * Finished). Never rejects: each fetch keeps its own failure.
+   * Finished). The goal list refetches only while `groupId` is the static loaded (an Undo can
+   * land after a static switch). Never rejects: each fetch keeps its own failure.
    */
   refreshGoalProgress: (groupId: string, goalId: string, opts?: { lists?: boolean }) => Promise<void>;
   /**
@@ -879,11 +880,10 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
   },
 
   refreshGoalProgress: async (groupId, goalId, opts) => {
-    const { fetchProgress, fetchGoals } = get();
-    await Promise.all([
-      fetchProgress(groupId, [goalId]),
-      ...(opts?.lists ? [fetchGoals(groupId), fetchProgress(groupId)] : []),
-    ]);
+    const { fetchProgress, fetchGoals, loadedGroupId } = get();
+    // The goal list is one static's: never swap in this static's while another one is loaded.
+    const goals = opts?.lists && loadedGroupId === groupId ? [fetchGoals(groupId)] : [];
+    await Promise.all([fetchProgress(groupId, [goalId]), ...goals, ...(opts?.lists ? [fetchProgress(groupId)] : [])]);
   },
 
   loadDrops: async (groupId, goalId) => {
