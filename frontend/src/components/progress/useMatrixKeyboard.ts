@@ -85,7 +85,16 @@ export function useMatrixKeyboard(rowIds: readonly string[], colKeys: readonly s
   // gone instead (finished or deleted elsewhere, then refetched): focus has fallen to <body>
   // with no blur, and the fallback stop takes it.
   useLayoutEffect(() => {
-    if (!focusWithin.current || stop === null) return;
+    if (!focusWithin.current) return;
+    // Focus went somewhere that is not a cell (a write moved it to the Finished toggle, as the
+    // row it was on was removed, so no blur reached us): it is no longer ours, and a later
+    // re-render that finds <body> must not pull it back to the first cell.
+    const active = document.activeElement;
+    if (active !== null && active !== document.body && ![...cellEls.current.values()].includes(active as HTMLElement)) {
+      focusWithin.current = false;
+      return;
+    }
+    if (stop === null) return;
     const el = cellEls.current.get(keyOf(stop.rowId, stop.colKey));
     if (el && el.ownerDocument.activeElement === el.ownerDocument.body) el.focus();
   });

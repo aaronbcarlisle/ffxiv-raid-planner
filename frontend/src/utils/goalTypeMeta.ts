@@ -5,7 +5,12 @@
  * component references, so this stays a `.ts` file and callers render `<Icon size />`.
  */
 import { Music, Package, Star, Trophy, type LucideIcon } from 'lucide-react';
-import type { CollectionContentType, CollectionGoalType, CollectionPriorityMode } from '../stores/collectionGoalStore';
+import type {
+  CollectionContentType,
+  CollectionGoalStatus,
+  CollectionGoalType,
+  CollectionPriorityMode,
+} from '../stores/collectionGoalStore';
 
 export const GOAL_TYPE_LABELS: Record<CollectionGoalType, string> = {
   mount: 'Mount',
@@ -44,12 +49,37 @@ export const CONTENT_TYPE_LABELS: Record<CollectionContentType, string> = {
   custom: 'Other / Custom',
 };
 
+/** A priority mode's label and the one-line account of how it queues. */
+interface PriorityModeMeta {
+  label: string;
+  help: string;
+}
+
+/**
+ * Keyed by every mode: `satisfies` makes a missing or an extra mode a compile error, so the
+ * options below can never drift from the server's modes (TG8 carry). Insertion order is the order
+ * the Edit block offers them.
+ */
+const PRIORITY_MODE_META = {
+  everyone_gets_one: { label: 'Everyone gets one', help: 'Need before Want, fewest totems first.' },
+  priority_order: { label: 'Priority order', help: 'Need before Want, fewest totems first.' },
+  free_roll: { label: 'Free roll', help: 'No queue: anyone can win the drop.' },
+  desired_only: { label: 'Desired only', help: 'Only players who Need it are queued.' },
+  custom: { label: 'Custom', help: 'Need before Want, fewest totems first.' },
+} satisfies Record<CollectionPriorityMode, PriorityModeMeta>;
+
 /** The priority modes (null = not set), each with a one-line account of how it queues (R-S3-10). */
 export const PRIORITY_MODE_OPTIONS: readonly { value: CollectionPriorityMode | null; label: string; help: string }[] = [
   { value: null, label: 'Not set', help: 'Queues as Everyone gets one.' },
-  { value: 'everyone_gets_one', label: 'Everyone gets one', help: 'Need before Want, fewest totems first.' },
-  { value: 'priority_order', label: 'Priority order', help: 'Need before Want, fewest totems first.' },
-  { value: 'free_roll', label: 'Free roll', help: 'No queue: anyone can win the drop.' },
-  { value: 'desired_only', label: 'Desired only', help: 'Only players who Need it are queued.' },
-  { value: 'custom', label: 'Custom', help: 'Need before Want, fewest totems first.' },
+  ...(Object.entries(PRIORITY_MODE_META) as [CollectionPriorityMode, PriorityModeMeta][]).map(([value, meta]) => ({
+    value,
+    ...meta,
+  })),
+];
+
+/** The statuses an active farm can hold, in the order Edit offers them (R-S3-10); `complete` is Mark finished's. */
+export const GOAL_STATUS_OPTIONS: readonly { value: Exclude<CollectionGoalStatus, 'complete'>; label: string }[] = [
+  { value: 'wanted', label: 'Wanted' },
+  { value: 'farming', label: 'Farming' },
+  { value: 'scheduled', label: 'Scheduled' },
 ];

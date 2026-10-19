@@ -6,6 +6,7 @@
  * state in input order, V2 (`planEntriesFor`) lists the queue's order.
  */
 import type { CollectionGoal, CollectionPriorityMode, ParticipantState } from '../stores/collectionGoalStore';
+import { PRIORITY_MODE_OPTIONS } from './goalTypeMeta';
 import type { FarmRow } from './progressModel';
 import { queueFor } from './progressQueue';
 
@@ -16,13 +17,10 @@ export interface DiscordPlanEntry {
   count: number | null;
 }
 
-const MODE_LABELS: Record<string, string> = {
-  everyone_gets_one: 'Everyone gets one',
-  priority_order: 'Priority order',
-  free_roll: 'Free roll',
-  desired_only: 'Desired only',
-  custom: 'Custom',
-};
+/** Derived from the Edit block's options, so a mode has one name everywhere (TG8 carry). */
+const MODE_LABELS: Record<string, string> = Object.fromEntries(
+  PRIORITY_MODE_OPTIONS.flatMap((option) => (option.value === null ? [] : [[option.value, option.label]])),
+);
 
 /**
  * The plan text. The 🎯, ⭐ and ✅ lines filter `ordered` by state, keeping its order;

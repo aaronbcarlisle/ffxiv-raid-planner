@@ -27,6 +27,7 @@ vi.mock('../../services/api', async (importOriginal) => {
 import { useCollectionGoalStore, type CollectionGoal, type ParticipantStateEntry } from '../../stores/collectionGoalStore';
 import { useToastStore } from '../../stores/toastStore';
 import type { StaticGroup, TierSnapshot } from '../../types';
+import { ToastContainer } from '../layout/ToastContainer';
 import { goal, row } from './__fixtures__/progressFixtures';
 import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
 import { ProgressPage } from './ProgressPage';
@@ -369,6 +370,36 @@ describe('focus after a write that moves or removes the row', () => {
     await screen.findByTestId('progress-expansion');
     await deleteFarm('Cold Farm');
     expect(nameOf('calm')).toHaveFocus();
+  });
+
+  it("Delete of the only finished farm lands on the grid's stop (the first active row's name), not <body>", async () => {
+    seed(withDone, [...GOALS, DONE]);
+    renderAt('/');
+    await screen.findAllByTestId('progress-farm-row');
+    fireEvent.click(finishedToggle());
+    await screen.findByRole('button', { name: 'Done Farm' });
+    await deleteFarm('Done Farm');
+    expect(screen.queryByRole('button', { name: /^Finished \(/ })).not.toBeInTheDocument();
+    expect(nameOf('hot')).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+  });
+
+  it("Undo through the real toast puts focus on the restored row's name once the toast's exit has run", async () => {
+    seed();
+    renderAt('/');
+    render(<ToastContainer />);
+    await screen.findAllByTestId('progress-farm-row');
+    fireEvent.click(menuOf('Hot Farm'));
+    pick('Mark finished');
+    await waitFor(() => expect(finishedToggle()).toHaveFocus());
+
+    // The user presses the toast's Undo: it takes the focus, and stays in the DOM through its exit.
+    const undo = await screen.findByRole('button', { name: 'Undo' });
+    undo.focus();
+    fireEvent.click(undo);
+    await waitFor(() => expect(inFinished(screen.queryAllByTestId('progress-farm-row').find((r) => r.getAttribute('data-goal-id') === 'hot') ?? null)).toBe(false));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument(), { timeout: 3000 });
+    expect(nameOf('hot')).toHaveFocus();
   });
 
   it('a failed write moves nothing and leaves nothing owed', async () => {
