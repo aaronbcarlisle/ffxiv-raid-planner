@@ -692,3 +692,373 @@ test.describe.serial('Progress: Edit statuses', () => {
     });
   }
 });
+
+/**
+ * S2a-3a·G5b: the row expansion end to end (design criteria 4, 5, 10, 11; R-S3-3, R-S3-4, R-S3-17).
+ *
+ * Four farms ("E2E Progress Row …"), each owned by one test group so the serial order does not
+ * matter between groups: `drops` (the owner and DevMember Need it: a queue of two), `finish` (the
+ * owner Needs it), `everyone` (every member Has it: the action bar's Mark finished) and `edit`
+ * (renamed, then deleted). As the owner: `?track=`, the grid's arrows, a log for #1 and its Undo,
+ * a log for Nobody with a note, Mark finished from the menu and its Undo, Mark finished from the
+ * action bar and Reopen, Edit and Delete, and axe with the row, the picker and Edit open in both
+ * themes. As DevMember: "I got it", gone after the log, back after Undo.
+ */
+const ROW = `${PREFIX} Row`;
+const TITLES = {
+  drops: `${ROW} Drops`,
+  finish: `${ROW} Finish`,
+  everyone: `${ROW} Everyone`,
+  edit: `${ROW} Edit`,
+} as const;
+const EDITED_TITLE = `${ROW} Renamed`;
+
+/** The active rows' body: every `tbody` but the Finished section's. */
+const ACTIVE_ROWS = 'tbody:not([data-testid="progress-finished"]) [data-testid="progress-farm-row"]';
+
+interface MemberRow {
+  userId: string;
+  user?: { discordUsername?: string };
+}
+
+test.describe.serial('Progress: row expansion', () => {
+  const ids = { drops: '', finish: '', everyone: '', edit: '' };
+  let editedTitle: string = TITLES.edit;
+
+  async function seedFarm(page: Page, groupId: string, headers: ApiHeaders, title: string): Promise<string> {
+    const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals`, {
+      headers,
+      data: { goal_type: 'custom_reward', title, status: 'farming' },
+    });
+    if (!res.ok()) throw new Error(`seeding ${title} returned ${res.status()}`);
+    const id = ((await res.json()) as { id: string }).id;
+    recordSeeded(id);
+    return id;
+  }
+
+  async function setStates(page: Page, groupId: string, headers: ApiHeaders, goalId: string, userIds: string[], state: 'need' | 'have') {
+    for (const userId of userIds) {
+      const res = await page.request.patch(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${goalId}/participants/${userId}`, {
+        headers,
+        data: { state },
+      });
+      if (!res.ok()) throw new Error(`setting ${state} for ${userId} returned ${res.status()}`);
+    }
+  }
+
+  test.beforeAll(async ({ browser }) => {
+    const { context, page, groupId, headers } = await ownerSession(browser);
+    try {
+      await deleteSeededFarms(page, groupId, headers);
+      const membersRes = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/members`);
+      if (!membersRes.ok()) throw new Error(`the member list returned ${membersRes.status()}`);
+      const members = (await membersRes.json()) as MemberRow[];
+      const ownerId = await currentUserId(page);
+      const memberId = members.find((m) => m.user?.discordUsername === 'DevMember')?.userId;
+      if (!memberId) throw new Error('DevMember is not in DEVTST');
+
+      ids.drops = await seedFarm(page, groupId, headers, TITLES.drops);
+      ids.finish = await seedFarm(page, groupId, headers, TITLES.finish);
+      ids.everyone = await seedFarm(page, groupId, headers, TITLES.everyone);
+      ids.edit = await seedFarm(page, groupId, headers, TITLES.edit);
+      await setStates(page, groupId, headers, ids.drops, [ownerId, memberId], 'need');
+      await setStates(page, groupId, headers, ids.finish, [ownerId], 'need');
+      await setStates(page, groupId, headers, ids.everyone, members.map((m) => m.userId), 'have');
+    } finally {
+      await context.close();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { context, page, groupId, headers } = await ownerSession(browser);
+    try {
+      await deleteSeededFarms(page, groupId, headers, Object.values(ids).filter(Boolean));
+    } finally {
+      await context.close();
+    }
+  });
+
+  const nameOf = (page: Page, id: string) => page.locator(`[data-goal-id="${id}"] [role="rowheader"] button`);
+  const panelOf = (page: Page) => page.getByTestId('progress-expansion');
+
+  /** Sign in as `login`, open Progress (optionally on a `?track=` row) and wait for the matrix. */
+  async function open(page: Page, opts: { login?: 'owner' | 'member'; track?: string; theme?: 'dark' | 'light' } = {}) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    if (opts.theme) await page.addInitScript((t) => window.localStorage.setItem('theme', t), opts.theme);
+    if ((opts.login ?? 'owner') === 'owner') await loginAsOwner(page);
+    else await loginAsMember(page);
+    const track = opts.track ? `&track=${opts.track}` : '';
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=progress${track}`);
+    await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
+    await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(`[data-goal-id="${ids.drops}"]`)).toBeVisible();
+    await page.waitForLoadState('networkidle');
+  }
+
+  async function menuItem(page: Page, title: string, item: string) {
+    await page.getByRole('button', { name: `Actions for ${title}` }).click();
+    await page.getByRole('menuitem', { name: item, exact: true }).click();
+  }
+
+  test('owner: ?track= opens its row, in view, and the panel is the row after it (criterion 5)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, { track: ids.drops });
+
+    await expect(nameOf(page, ids.drops)).toHaveAttribute('aria-expanded', 'true');
+    await expect(nameOf(page, ids.drops)).toBeInViewport();
+    await expect(panelOf(page)).toHaveCount(1);
+    await expect(panelOf(page)).toBeInViewport();
+    expect(await panelOf(page).evaluate((el) => el.previousElementSibling?.getAttribute('data-goal-id') ?? null)).toBe(ids.drops);
+    await expect(page).toHaveURL(new RegExp(`[?&]track=${ids.drops}(&|$)`));
+    await context.close();
+  });
+
+  test('owner: arrows reach the name and the menu column and skip the open panel (R-S3-4, R-S3-17)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page);
+
+    const first = page.locator(ACTIVE_ROWS).first();
+    const firstId = (await first.getAttribute('data-goal-id'))!;
+    await nameOf(page, firstId).click();
+    await expect(panelOf(page)).toHaveCount(1);
+    const nextId = await panelOf(page).evaluate((el) => el.nextElementSibling?.getAttribute('data-goal-id') ?? null);
+    expect(nextId, 'a farm row follows the open panel').not.toBeNull();
+
+    const where = () =>
+      page.evaluate(() => ({
+        inPanel: document.activeElement?.closest('[data-testid="progress-expansion"]') !== null,
+        row: document.activeElement?.closest('[data-testid="progress-farm-row"]')?.getAttribute('data-goal-id') ?? null,
+        menu: document.activeElement?.getAttribute('aria-label')?.startsWith('Actions for ') ?? false,
+        name: document.activeElement?.closest('[role="rowheader"]') !== null,
+      }));
+
+    // Name, then the menu column, then the first player cell, all of the open row.
+    await nameOf(page, firstId).focus();
+    await page.keyboard.press('ArrowRight');
+    expect(await where()).toMatchObject({ row: firstId, menu: true, inPanel: false });
+    await page.keyboard.press('ArrowRight');
+    expect(await where()).toMatchObject({ row: firstId, menu: false, inPanel: false });
+    // Down from the open row's cell lands on the next farm's cell, past the panel.
+    await page.keyboard.press('ArrowDown');
+    expect(await where()).toMatchObject({ row: nextId, inPanel: false });
+    // Back up: the open row's cell, never the panel.
+    await page.keyboard.press('ArrowUp');
+    expect(await where()).toMatchObject({ row: firstId, inPanel: false });
+    // Left twice: the menu, then the name.
+    await page.keyboard.press('ArrowLeft');
+    expect(await where()).toMatchObject({ row: firstId, menu: true });
+    await page.keyboard.press('ArrowLeft');
+    expect(await where()).toMatchObject({ row: firstId, name: true });
+    // Down from the name and up again: never the panel.
+    await page.keyboard.press('ArrowDown');
+    expect(await where()).toMatchObject({ row: nextId, name: true, inPanel: false });
+    await page.keyboard.press('ArrowUp');
+    expect(await where()).toMatchObject({ row: firstId, name: true, inPanel: false });
+    await context.close();
+  });
+
+  test('owner: Log drop for #1, then Undo (criterion 4)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, { track: ids.drops });
+    const panel = panelOf(page);
+
+    const main = panel.getByRole('button', { name: /^Log drop for / });
+    const recipient = ((await main.textContent()) ?? '').replace(/^\s*Log drop for /, '').trim();
+    expect(recipient).not.toBe('');
+    await main.click();
+    await expect(page.getByText(`Drop logged for ${recipient}`)).toBeVisible();
+    const drops = panel.getByTestId('progress-expansion-drops');
+    // The list names the drop by the member's display name, the queue by their column, so count the line.
+    await expect(drops.locator('li')).toHaveCount(1);
+    await expect(drops).toContainText('×1');
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(page.getByText('Undone', { exact: true })).toBeVisible();
+    await expect(drops).toContainText('No drops logged yet.');
+    await context.close();
+  });
+
+  test('owner: Log a drop for Nobody with a note, then delete it', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, { track: ids.drops });
+    const panel = panelOf(page);
+
+    await panel.getByRole('button', { name: 'More recipients' }).click();
+    const picker = page.getByRole('dialog', { name: `Log a drop for ${TITLES.drops}` });
+    await expect(picker).toBeVisible();
+    await picker.getByRole('radio', { name: /^Nobody/ }).click();
+    await expect(picker.getByRole('radio', { name: /^Nobody/ })).toHaveAttribute('aria-checked', 'true');
+    await picker.getByLabel('Note (optional)').fill('E2E note');
+    await picker.getByRole('button', { name: 'Log drop', exact: true }).click();
+    await expect(picker).toBeHidden();
+    await expect(page.getByText('Drop logged', { exact: true })).toBeVisible();
+    const drops = panel.getByTestId('progress-expansion-drops');
+    await expect(drops).toContainText('Nobody · ×1 · E2E note');
+
+    // Delete Drop (G4): the confirm is V1's, and the list empties.
+    await drops.getByRole('button', { name: /^Delete drop for Nobody/ }).click();
+    await page.getByRole('dialog', { name: 'Delete Drop' }).getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(drops).toContainText('No drops logged yet.');
+    await context.close();
+  });
+
+  test('member: "I got it" logs, the button is gone, Undo brings it back (criterion 10)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, { login: 'member', track: ids.drops });
+    const panel = panelOf(page);
+
+    // A member has no lead controls in the panel or the matrix.
+    await expect(panel.getByRole('group', { name: 'Log a drop' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Actions for / })).toHaveCount(0);
+    const gotIt = panel.getByRole('button', { name: 'I got it' });
+    await expect(gotIt).toBeVisible();
+    await gotIt.click();
+    await expect(page.getByText('Logged as yours')).toBeVisible();
+    await expect(gotIt).toHaveCount(0);
+    await expect(panel.getByTestId('progress-expansion-drops')).not.toContainText('No drops logged yet.');
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(page.getByText('Undone', { exact: true })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'I got it' })).toBeVisible();
+    await expect(panel.getByTestId('progress-expansion-drops')).toContainText('No drops logged yet.');
+    await context.close();
+  });
+
+  test('owner: Mark finished from the menu, then Undo (criterion 11)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page);
+    const active = page.locator(`tbody:not([data-testid="progress-finished"]) [data-goal-id="${ids.finish}"]`);
+    await expect(active).toBeVisible();
+
+    await menuItem(page, TITLES.finish, 'Mark finished');
+    await expect(page.getByText('Marked finished', { exact: true })).toBeVisible();
+    await expect(active).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Finished \(\d+\)$/ })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(page.getByText('Undone', { exact: true })).toBeVisible();
+    await expect(active).toBeVisible();
+    await context.close();
+  });
+
+  test('owner: Mark finished from the action bar of a farm everyone has, then Reopen', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, { track: ids.everyone });
+    const row = page.locator(`[data-goal-id="${ids.everyone}"]`);
+    await expect(row.getByTestId('progress-status')).toHaveText('Everyone has it');
+    // The inline link is gone (R-S3-17): the action bar and the menu carry it.
+    await expect(row.getByTestId('progress-status').getByRole('button')).toHaveCount(0);
+
+    await panelOf(page).getByTestId('progress-expansion-actions').getByRole('button', { name: 'Mark finished' }).click();
+    await expect(page.getByText('Marked finished', { exact: true })).toBeVisible();
+    const finishedSection = page.getByTestId('progress-finished');
+    await expect(finishedSection).toBeVisible();
+
+    // Expand Finished, then Reopen from the row's menu.
+    const toggle = page.getByRole('button', { name: /^Finished \(\d+\)$/ });
+    if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+    await expect(finishedSection.locator(`[data-goal-id="${ids.everyone}"]`)).toBeVisible();
+    await menuItem(page, TITLES.everyone, 'Reopen');
+    await expect(page.getByText('Reopened', { exact: true })).toBeVisible();
+    await expect(
+      page.locator(`tbody:not([data-testid="progress-finished"]) [data-goal-id="${ids.everyone}"]`),
+    ).toBeVisible();
+    await expect(finishedSection.locator(`[data-goal-id="${ids.everyone}"]`)).toHaveCount(0);
+    await context.close();
+  });
+
+  for (const theme of THEMES) {
+    test(`owner: axe reports no critical or serious violation with the picker open (${theme}, 1440 x 900)`, async ({ browser }) => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await open(page, { track: ids.drops, theme });
+      await panelOf(page).getByRole('button', { name: 'More recipients' }).click();
+      const radios = page.getByRole('radiogroup', { name: 'Recipient' });
+      await expect(radios).toBeVisible();
+      // The picker is portalled out of the screen: tag it so the scan includes it.
+      const tagged = await radios.evaluate((el) => {
+        const popover = el.closest('[role="dialog"]');
+        popover?.setAttribute('data-e2e-picker', '1');
+        return popover !== null;
+      });
+      expect(tagged, 'the picker is a dialog').toBe(true);
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(300);
+
+      const blocking = await blockingIn(page, ['[data-testid="progress-screen"]', '[data-e2e-picker="1"]']);
+      expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+      await context.close();
+    });
+
+    test(`owner: axe reports no critical or serious violation with Mark finished in the action bar (${theme}, 1440 x 900)`, async ({ browser }) => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await open(page, { track: ids.everyone, theme });
+      await expect(panelOf(page).getByRole('button', { name: 'Mark finished' })).toBeVisible();
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(300);
+
+      const blocking = await blockingIn(page, ['[data-testid="progress-screen"]']);
+      expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+      await context.close();
+    });
+
+    test(`owner: axe reports no critical or serious violation with Edit open (${theme}, 1440 x 900)`, async ({ browser }) => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await open(page, { track: ids.drops, theme });
+      await menuItem(page, TITLES.drops, 'Edit');
+      await expect(page.getByTestId('progress-edit-block')).toBeVisible();
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(300);
+
+      const blocking = await blockingIn(page, ['[data-testid="progress-screen"]']);
+      expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+      await context.close();
+    });
+  }
+
+  test('owner: Edit the title and save, then Delete the farm (criterion 11)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page);
+
+    await menuItem(page, TITLES.edit, 'Edit');
+    const block = page.getByTestId('progress-edit-block');
+    await expect(block).toBeVisible();
+    await expect(nameOf(page, ids.edit)).toHaveAttribute('aria-expanded', 'true');
+    await block.getByRole('textbox', { name: 'Title' }).fill(EDITED_TITLE);
+    await block.getByRole('button', { name: 'Save' }).click();
+    await expect(block).toBeHidden();
+    editedTitle = EDITED_TITLE;
+    await expect(nameOf(page, ids.edit)).toHaveText(EDITED_TITLE);
+    // Focus goes back to the row's menu button, which carries the new name.
+    await expect(page.getByRole('button', { name: `Actions for ${EDITED_TITLE}` })).toBeFocused();
+    const { groupId } = await ownerApiContext(page);
+    const read = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/collection-goals`);
+    expect(((await read.json()) as Array<{ id: string; title: string }>).find((g) => g.id === ids.edit)?.title).toBe(EDITED_TITLE);
+
+    await menuItem(page, editedTitle, 'Delete');
+    const confirm = page.getByRole('dialog', { name: 'Delete Goal' });
+    await expect(confirm).toBeVisible();
+    await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(page.locator(`[data-goal-id="${ids.edit}"]`)).toHaveCount(0);
+    await expect(page).not.toHaveURL(new RegExp(`[?&]track=${ids.edit}`));
+    await context.close();
+  });
+});
+
+/** The same known role-token debt as the matrix tests above is excluded; every other node is scanned. */
+async function blockingIn(page: Page, includes: string[]) {
+  let builder = new AxeBuilder({ page }).exclude('[data-testid="progress-column"] [class*="text-role-"]');
+  for (const selector of includes) builder = builder.include(selector);
+  const results = await builder.analyze();
+  return results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+}
