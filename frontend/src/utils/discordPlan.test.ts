@@ -4,11 +4,10 @@
  * cover the builder over ordered entries and V2's entries (`planEntriesFor`).
  */
 import { describe, expect, it } from 'vitest';
-import { goal, row } from '../components/progress/__fixtures__/progressFixtures';
-import type { CollectionGoal, CollectionPriorityMode, ParticipantStateEntry } from '../stores/collectionGoalStore';
-import type { MemberRole, SnapshotPlayer } from '../types';
+import { farmRowOf, goal, type ColumnSpec } from '../components/progress/__fixtures__/progressFixtures';
+import type { CollectionGoal, CollectionPriorityMode } from '../stores/collectionGoalStore';
+import type { MemberRole } from '../types';
 import { buildDiscordPlan, planEntriesFor, type DiscordPlanEntry } from './discordPlan';
-import { cellFor, type FarmRow, type ProgressColumn } from './progressModel';
 
 const lines = (...l: string[]) => l.join('\n');
 const entry = (name: string, state: DiscordPlanEntry['state'], count: number | null): DiscordPlanEntry => ({ name, state, count });
@@ -72,31 +71,10 @@ describe('buildDiscordPlan', () => {
 
 // ── V2's entries ────────────────────────────────────────────────────────────
 
-type Kind = 'claimed' | 'unclaimed' | 'notOnRoster';
-interface ColumnSpec {
-  id: string;
-  kind?: Kind;
-  cell?: Partial<ParticipantStateEntry> | null;
-}
-
-function columnOf(id: string, kind: Kind): ProgressColumn {
-  if (kind === 'claimed') return { kind, key: id, name: id, userId: id, player: {} as SnapshotPlayer };
-  if (kind === 'unclaimed') return { kind, key: id, name: id, userId: null, player: {} as SnapshotPlayer };
-  return { kind, key: `user:${id}`, name: id, userId: id, player: null, reason: 'notOnRoster' };
-}
-
-function farm(columns: ColumnSpec[], g: CollectionGoal, userRole: MemberRole = 'lead'): FarmRow {
-  const participants = columns.flatMap((c) => (c.cell ? [row(g.id, c.id, c.cell)] : []));
-  const cells = columns.map((c) =>
-    cellFor(columnOf(c.id, c.kind ?? 'claimed'), { participants }, { currentUserId: 'me', userRole }),
-  );
-  return { goal: g, cells, need: 0, want: 0, tally: { n: 0, m: 0, everyone: false } };
-}
-
 /** The V2 paste for a row, as TG4 builds it: the goal's mode drives the queue. */
 function v2Plan(columns: ColumnSpec[], mode: CollectionPriorityMode | null, extra: Partial<CollectionGoal> = {}, role: MemberRole = 'lead'): string {
   const g = goal('g1', { title: 'Shiny Mount', priorityMode: mode, tokenName: 'Tomestone', tokenCost: 99, ...extra });
-  const { ordered, canBuyFrom } = planEntriesFor(farm(columns, g, role), mode);
+  const { ordered, canBuyFrom } = planEntriesFor(farmRowOf(columns, g, role), mode);
   return buildDiscordPlan(g, ordered, canBuyFrom);
 }
 
