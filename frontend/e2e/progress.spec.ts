@@ -222,14 +222,22 @@ test.describe.serial('Progress matrix', () => {
     await expect(page.locator(`[data-goal-id="${seeded.customId}"]`).getByText('★ Want')).toBeVisible();
     await expect(mount.getByTestId('progress-status')).toContainText(/\d+ of \d+ have it|Everyone has it|Nobody to track yet/);
 
-    // The controls in the matrix body: each farm's name (a disclosure, S2a-3a), the owner's row
-    // menus (a lead's ⋯ column, G4), the owner's own cells (F5) and Finished (a disclosure too).
+    // The controls in the matrix body: each farm's name and Finished (disclosures, S2a-3a), the
+    // owner's row menus (a lead's ⋯ column, G4: they also carry aria-expanded, so they are told
+    // apart by aria-haspopup) and the owner's own cells (F5). A menu is named "Actions for {title}",
+    // a cell button "… your status"; the disclosures are exempt.
     const bodyButtons = await page.getByTestId('progress-matrix').locator('tbody button').evaluateAll((els) =>
-      els.map((el) => ({ label: el.getAttribute('aria-label') ?? el.textContent ?? '', disclosure: el.hasAttribute('aria-expanded') })),
+      els.map((el) => ({
+        label: el.getAttribute('aria-label') ?? el.textContent ?? '',
+        menu: el.getAttribute('aria-haspopup') === 'menu',
+        disclosure: el.hasAttribute('aria-expanded') && el.getAttribute('aria-haspopup') !== 'menu',
+      })),
     );
     expect(bodyButtons.length).toBeGreaterThan(0);
-    for (const { label, disclosure } of bodyButtons) {
-      if (!disclosure) expect(label).toMatch(/^Actions for | your status$/);
+    expect(bodyButtons.some((b) => b.menu)).toBe(true);
+    for (const { label, menu, disclosure } of bodyButtons) {
+      if (menu) expect(label).toMatch(/^Actions for /);
+      else if (!disclosure) expect(label).toMatch(/ your status$/);
     }
     await expect(mount.locator('[role="rowheader"] button')).toHaveAttribute('aria-expanded', 'false');
     await context.close();

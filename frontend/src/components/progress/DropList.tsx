@@ -35,9 +35,9 @@ function recipientOf(drop: RewardDrop): string {
   return character !== null && character !== name ? `${name} (${character})` : name;
 }
 
-/** "Oct 2, 2026": what tells two drops of one recipient apart in a delete button's name. */
+/** "2 Oct 2026" (en-GB, as `dropWeekLabel`'s dates): what tells two drops of one recipient apart in a delete button's name. */
 const dateOf = (drop: RewardDrop) =>
-  new Date(drop.droppedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  new Date(drop.droppedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 /** Newest first by when it dropped; the server's order breaks a tie. */
 const byNewest = (a: RewardDrop, b: RewardDrop) => Date.parse(b.droppedAt) - Date.parse(a.droppedAt) || 0;

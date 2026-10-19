@@ -10,17 +10,20 @@
  * did (a true 403). The Undo is a `withUndo` toast, so it outlives the row, the panel and a
  * static switch (the store's `updateGoal` maps the goals by id; `refreshGoalProgress` guards its
  * lists on the loaded static).
+ *
+ * Focus (`farmFocus`): the row remounts in the other section, so the write expects focus for its
+ * goal and the new row (or, for Mark finished while Finished is collapsed or loading, its
+ * disclosure) takes it; a failed write cancels it. A successful Undo puts focus on the restored
+ * row's name only when it was lost to <body>.
  */
 import { useRef, useState } from 'react';
 import { wasToastedByApi } from '../../services/api';
 import { useCollectionGoalStore, type CollectionGoal } from '../../stores/collectionGoalStore';
 import { toast } from '../../stores/toastStore';
+import { cancelFarmFocus, expectFarmFocus, FINISHED_TOGGLE_ID, settleFarmFocus } from './farmFocus';
 import { messageOf } from './undoToasts';
 
-/** The row's name button id: the panel's id plus `-name`. */
-export const farmNameId = (goalId: string) => `progress-expansion-${goalId}-name`;
-
-export interface GoalStatusActions {
+interface GoalStatusActions {
   /** A write is in flight: controls that start one are unavailable (`aria-disabled`, clicks ignored). */
   busy: boolean;
   markFinished: () => Promise<void>;
@@ -37,17 +40,20 @@ export function useGoalStatus(groupId: string, goal: Pick<CollectionGoal, 'id' |
     if (lock.current) return;
     lock.current = true;
     setBusy(true);
+    expectFarmFocus(goalId, next === 'complete' ? 'finished' : 'active');
     try {
       const store = useCollectionGoalStore.getState();
       try {
         await store.updateGoal(groupId, goalId, { status: next });
       } catch (err) {
+        cancelFarmFocus(goalId);
         if (!wasToastedByApi(err)) toast.error(`${failure}: ${messageOf(err)}`);
         return;
       }
       onDone();
       await store.refreshGoalProgress(groupId, goalId, { lists: true });
     } finally {
+      settleFarmFocus(goalId, next === 'complete' ? FINISHED_TOGGLE_ID : undefined);
       lock.current = false;
       setBusy(false);
     }
@@ -55,14 +61,20 @@ export function useGoalStatus(groupId: string, goal: Pick<CollectionGoal, 'id' |
 
   const undo = (prior: CollectionGoal['status']) => async () => {
     const store = useCollectionGoalStore.getState();
+    // The restored row takes the focus only if the toast's own click left it on <body>.
+    expectFarmFocus(goalId, 'active', true);
     try {
-      await store.updateGoal(groupId, goalId, { status: prior });
-    } catch (err) {
-      if (!wasToastedByApi(err)) toast.error(`Couldn't undo: ${messageOf(err)}`);
-      return;
+      try {
+        await store.updateGoal(groupId, goalId, { status: prior });
+      } catch (err) {
+        if (!wasToastedByApi(err)) toast.error(`Couldn't undo: ${messageOf(err)}`);
+        return;
+      }
+      toast.success('Undone');
+      await store.refreshGoalProgress(groupId, goalId, { lists: true });
+    } finally {
+      settleFarmFocus(goalId);
     }
-    toast.success('Undone');
-    await store.refreshGoalProgress(groupId, goalId, { lists: true });
   };
 
   return {

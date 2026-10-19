@@ -18,16 +18,17 @@
  * on a Finished row a plain tab stop. The status cell reads only "Everyone has it"; Mark finished
  * lives in the menu and the open panel's action bar. Members and viewers get no such cell.
  */
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Button } from '../primitives/Button';
 import { Tag } from '../ui/Tag';
 import { GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from '../../utils/goalTypeMeta';
+import type { MemberRole } from '../../types';
 import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
 import type { CellWriteResolver } from './editStatuses';
+import { claimFarmFocus, farmNameId } from './farmFocus';
 import { FarmRowMenu } from './FarmRowMenu';
 import { ProgressCell } from './ProgressCell';
 import type { ProvenanceContext } from './progressProvenance';
-import { farmNameId } from './useGoalStatus';
 import type { MatrixKeyboard } from './useMatrixKeyboard';
 
 /** The roving grid's key for the name column (R-S3-4); a lead's `MENU_KEY` follows it (R-S3-17). */
@@ -39,8 +40,8 @@ interface FarmRowProps {
   row: FarmRowModel;
   /** Leads read "Everyone has it" at n = m; everyone else reads the count. */
   canManage: boolean;
-  /** The reader is a lead (`canManage` and not a viewer): the row has the ⋯ menu cell (R-S3-17). */
-  lead: boolean;
+  /** With `canManage`, whether the reader is a lead (not a viewer): the row has the ⋯ menu cell (R-S3-17). */
+  userRole: MemberRole | null | undefined;
   groupId: string;
   /** Who is looking and how to name a writer, for each cell's provenance tooltip. */
   provenance: ProvenanceContext;
@@ -62,12 +63,13 @@ function statusText(tally: FarmRowModel['tally'], canManage: boolean): string {
   return `${tally.n} of ${tally.m} have it`;
 }
 
-export function FarmRow({ row, canManage, lead, groupId, provenance, keyboard, editFor, open, onToggle, renderExpansion }: FarmRowProps) {
+export function FarmRow({ row, canManage, userRole, groupId, provenance, keyboard, editFor, open, onToggle, renderExpansion }: FarmRowProps) {
   const { goal } = row;
   const TypeIcon = GOAL_TYPE_ICONS[goal.goalType];
   const stateTag = goal.status === 'wanted' ? 'Wanted' : goal.status === 'scheduled' ? 'Scheduled' : null;
   const panelId = `progress-expansion-${goal.id}`;
   const nameId = farmNameId(goal.id);
+  const lead = canManage && userRole !== 'viewer';
   const rowRef = useRef<HTMLTableRowElement>(null);
 
   // Once per open (R-S3-3): the row, then its panel (the next <tr>, committed before this effect),
@@ -79,6 +81,14 @@ export function FarmRow({ row, canManage, lead, groupId, provenance, keyboard, e
     rowEl?.scrollIntoView?.({ block: 'nearest' });
     rowEl?.nextElementSibling?.scrollIntoView?.({ block: 'nearest' });
   }, [open]);
+
+  // An active row that a status write just moved here takes the focus the old row held
+  // (`farmFocus`). A Finished row's focus is `FinishedFarms`'s call: its rows come and go with
+  // the section's fetch.
+  const inGrid = keyboard !== undefined;
+  useLayoutEffect(() => {
+    if (inGrid && claimFarmFocus(goal.id, 'active')) document.getElementById(nameId)?.focus();
+  }, [inGrid, goal.id, nameId]);
 
   const close = () => {
     onToggle();

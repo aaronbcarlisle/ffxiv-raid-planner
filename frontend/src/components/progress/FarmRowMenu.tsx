@@ -8,8 +8,8 @@
  * word): "Delete Goal", `Delete "{title}"? This will remove all participant states and drop
  * history for this goal.`, danger, label "Delete"; confirming calls the store's `deleteGoal`. The
  * row is gone as the store drops the goal, and the page closes its panel and clears `?track` (it
- * names no goal any more), so the confirm unmounts with the row. A failure toasts and keeps the
- * confirm open.
+ * names no goal any more), so the confirm unmounts with the row, and focus goes to the farm beside
+ * it (`focusAfterDelete`). A failure toasts and keeps the confirm open.
  *
  * Focus: closing the menu returns it to the button, so the confirm's own restore (it records the
  * focused element when it opens) lands there too, never on the vanished menu item. The button
@@ -24,6 +24,7 @@ import { toast } from '../../stores/toastStore';
 import { IconButton } from '../primitives';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
+import { focusAfterDelete, neighbourFarmId } from './farmFocus';
 import { messageOf } from './undoToasts';
 import type { MatrixCellProps } from './useMatrixKeyboard';
 import { useGoalStatus } from './useGoalStatus';
@@ -56,14 +57,17 @@ export function FarmRowMenu({ groupId, goal, grid }: FarmRowMenuProps) {
   ];
 
   const confirmDelete = async () => {
+    // The farm beside this one, read while the row is still here: it takes the focus the row held.
+    const neighbour = buttonRef.current ? neighbourFarmId(buttonRef.current) : null;
     try {
       await useCollectionGoalStore.getState().deleteGoal(groupId, goal.id);
     } catch (err) {
       if (!wasToastedByApi(err)) toast.error(`Couldn't delete the goal: ${messageOf(err)}`);
       return;
     }
-    toast.success('Goal deleted.');
+    toast.success('Farm deleted.');
     setConfirming(false);
+    focusAfterDelete(neighbour);
   };
 
   return (
