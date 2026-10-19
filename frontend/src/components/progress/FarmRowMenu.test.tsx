@@ -166,7 +166,7 @@ describe('FarmRowMenu: Delete (D-11)', () => {
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith(GOAL_URL));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(toasts()).toEqual([['success', 'Goal deleted.', null]]);
+    expect(toasts()).toEqual([['success', 'Farm deleted.', null]]);
   });
 
   it('cancels without deleting and gives the focus back to the button', async () => {

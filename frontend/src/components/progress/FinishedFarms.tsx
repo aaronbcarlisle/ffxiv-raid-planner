@@ -14,9 +14,11 @@
  * S2a-3a·G4 Task TG7 (D-10, R-S3-17): a lead's finished row has the ⋯ menu (Reopen · Delete) as a
  * plain tab stop, like its name.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '../primitives/Button';
 import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
+import type { MemberRole } from '../../types';
+import { claimFarmFocus, expectedFarmFocus, farmNameId, FINISHED_TOGGLE_ID } from './farmFocus';
 import { FarmRow } from './FarmRow';
 import type { ProvenanceContext } from './progressProvenance';
 
@@ -25,8 +27,8 @@ interface FinishedFarmsProps {
   /** Total columns of the matrix (farm + status + one per column, + the lead's menu), for the full-width rows. */
   colSpan: number;
   canManage: boolean;
-  /** The reader is a lead: the rows carry the ⋯ menu cell. */
-  lead: boolean;
+  /** With `canManage`, whether the reader is a lead: the rows carry the ⋯ menu cell. */
+  userRole: MemberRole | null | undefined;
   groupId: string;
   provenance: ProvenanceContext;
   /** The finished goals' cells are being fetched. */
@@ -48,7 +50,7 @@ export function FinishedFarms({
   rows,
   colSpan,
   canManage,
-  lead,
+  userRole,
   groupId,
   provenance,
   loading,
@@ -82,13 +84,24 @@ export function FinishedFarms({
     onFirstExpand();
   }, [expanded, onFirstExpand]);
 
+  // A farm just marked finished lands here and takes the focus its old row held (`farmFocus`), in
+  // the commit that removed the old one: its own name when the section's rows are on screen and
+  // settled, else this disclosure (collapsed, or its cells being fetched, which hides the rows
+  // and would drop a focus held by one of them).
+  useLayoutEffect(() => {
+    const owed = rows.find((r) => expectedFarmFocus('finished').includes(r.goal.id));
+    if (!owed || !claimFarmFocus(owed.goal.id, 'finished')) return;
+    const settled = expanded && requested.current && !loading && error === null;
+    document.getElementById(settled ? farmNameId(owed.goal.id) : FINISHED_TOGGLE_ID)?.focus();
+  });
+
   if (rows.length === 0) return null;
 
   return (
     <tbody data-testid="progress-finished">
       <tr className="border-t border-border-default">
         <td colSpan={colSpan} className="px-3 py-2">
-          <Button variant="ghost" size="sm" aria-expanded={expanded} onClick={() => setExpanded((e) => !e)}>
+          <Button id={FINISHED_TOGGLE_ID} variant="ghost" size="sm" aria-expanded={expanded} onClick={() => setExpanded((e) => !e)}>
             {`Finished (${rows.length})`}
           </Button>
         </td>
@@ -120,7 +133,7 @@ export function FinishedFarms({
             key={row.goal.id}
             row={row}
             canManage={canManage}
-            lead={lead}
+            userRole={userRole}
             groupId={groupId}
             provenance={provenance}
             open={row.goal.id === openId}

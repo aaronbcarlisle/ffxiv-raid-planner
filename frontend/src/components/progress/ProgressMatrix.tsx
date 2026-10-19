@@ -213,7 +213,7 @@ export function ProgressMatrix({
               key={row.goal.id}
               row={row}
               canManage={canManage}
-              lead={lead}
+              userRole={userRole}
               groupId={groupId}
               provenance={provenance}
               keyboard={keyboard}
@@ -228,7 +228,7 @@ export function ProgressMatrix({
           rows={finished}
           colSpan={spanAll}
           canManage={canManage}
-          lead={lead}
+          userRole={userRole}
           groupId={groupId}
           provenance={provenance}
           loading={finishedLoading}

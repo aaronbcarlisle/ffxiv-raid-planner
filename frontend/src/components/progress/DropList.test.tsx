@@ -134,12 +134,16 @@ describe('DropList: Show all (D-13)', () => {
   });
 });
 
+/** A September day as the delete button names it: en-GB short ('9 Sept 2026' or '9 Sep 2026', whatever this ICU spells). */
+const sept = (day: number) =>
+  new Date(`2026-09-${String(day).padStart(2, '0')}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
 describe('DropList: delete (D-14)', () => {
   const DROPS_URL = '/api/static-groups/g1/collection-goals/wings/drops';
   const MINE = apiDrop('d1', 'Melee 1', { created_by_id: 'me', dropped_at: '2026-09-09T12:00:00Z' });
   const THEIRS = apiDrop('d2', 'Healer 1', { created_by_id: 'u9', dropped_at: '2026-09-02T12:00:00Z' });
-  const MINE_NAME = 'Delete drop for Melee 1, Sep 9, 2026';
-  const THEIRS_NAME = 'Delete drop for Healer 1, Sep 2, 2026';
+  const MINE_NAME = `Delete drop for Melee 1, ${sept(9)}`;
+  const THEIRS_NAME = `Delete drop for Healer 1, ${sept(2)}`;
   const refresh = vi.fn();
   let server: ReturnType<typeof serveDrops>;
 
@@ -183,10 +187,10 @@ describe('DropList: delete (D-14)', () => {
     await panel(lead);
     fireEvent.click(await screen.findByRole('button', { name: 'Show all (4)' }));
     const cases = [
-      ['Delete drop for Melee 1, Sep 9, 2026', 'Delete this drop? Melee 1 goes back to Need if it was their only drop.'],
-      ['Delete drop for Healer 1, Sep 8, 2026', 'Delete this drop? Healer 1 goes back to Want if it was their only drop.'],
-      ['Delete drop for Unknown member, Sep 7, 2026', 'Delete this drop? The recipient goes back to Need if it was their only drop.'],
-      ['Delete drop for Caster, Sep 6, 2026', 'Delete this drop?'],
+      [`Delete drop for Melee 1, ${sept(9)}`, 'Delete this drop? Melee 1 goes back to Need if it was their only drop.'],
+      [`Delete drop for Healer 1, ${sept(8)}`, 'Delete this drop? Healer 1 goes back to Want if it was their only drop.'],
+      [`Delete drop for Unknown member, ${sept(7)}`, 'Delete this drop? The recipient goes back to Need if it was their only drop.'],
+      [`Delete drop for Caster, ${sept(6)}`, 'Delete this drop?'],
     ];
     for (const [button, message] of cases) {
       const dialog = await open(button);

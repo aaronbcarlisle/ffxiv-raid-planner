@@ -281,3 +281,135 @@ describe('who has the menu (R-S3-17)', () => {
     expect(screen.queryByRole('columnheader', { name: 'Actions' })).not.toBeInTheDocument();
   });
 });
+
+// ── Focus follows the farm (G4 fix wave) ─────────────────────────────────────
+
+describe('focus after a write that moves or removes the row', () => {
+  const finishedToggle = () => screen.getByRole('button', { name: /^Finished \(/ });
+  const DONE = goal('done', { title: 'Done Farm', status: 'complete', completedAt: '2026-10-01T00:00:00Z' });
+  const withDone = { ...NEEDY, done: [row('done', 'u1', { state: 'have' })] };
+
+  it('Mark finished from the menu lands on Finished (n) while it is collapsed, never on another row', async () => {
+    seed();
+    renderAt('/');
+    await screen.findAllByTestId('progress-farm-row');
+    // Every element that takes focus on the way: the grid's own fallback would pass over calm's name.
+    const seen: string[] = [];
+    const record = (event: FocusEvent) => seen.push((event.target as HTMLElement).id);
+    document.addEventListener('focusin', record);
+    fireEvent.click(menuOf('Hot Farm'));
+    pick('Mark finished');
+    await waitFor(() => expect(finishedToggle()).toHaveFocus());
+    document.removeEventListener('focusin', record);
+    expect(seen).not.toContain('progress-expansion-calm-name');
+    expect(nameOf('calm')).not.toHaveFocus();
+    expect(refreshGoalProgress).toHaveBeenCalledWith('g1', 'hot', { lists: true });
+  });
+
+  it("Mark finished lands on the moved row's own name once Finished is open and settled", async () => {
+    seed();
+    renderAt('/');
+    await screen.findAllByTestId('progress-farm-row');
+    fireEvent.click(menuOf('Hot Farm'));
+    pick('Mark finished');
+    await waitFor(() => expect(finishedToggle()).toHaveFocus());
+    fireEvent.click(finishedToggle());
+    await screen.findByRole('button', { name: 'Hot Farm' });
+
+    fireEvent.click(menuOf('Calm Farm'));
+    pick('Mark finished');
+    await waitFor(() => expect(nameOf('calm')).toHaveFocus());
+    expect(inFinished(rowOf('calm'))).toBe(true);
+  });
+
+  it("Mark finished from the open panel's action bar lands on Finished (n), not <body>", async () => {
+    seed(EVERYONE);
+    renderAt('/?track=hot');
+    await screen.findByTestId('progress-expansion');
+    const button = within(within(panel()!).getByTestId('progress-expansion-actions')).getByRole('button', { name: 'Mark finished' });
+    button.focus();
+    fireEvent.click(button);
+    await waitFor(() => expect(inFinished(panel())).toBe(true));
+    await waitFor(() => expect(finishedToggle()).toHaveFocus());
+  });
+
+  it("Reopen lands on the reopened row's name in the active rows", async () => {
+    seed(withDone, [...GOALS, DONE]);
+    renderAt('/?track=done');
+    await screen.findByTestId('progress-expansion');
+    fireEvent.click(menuOf('Done Farm'));
+    pick('Reopen');
+    await waitFor(() => expect(inFinished(rowOf('done'))).toBe(false));
+    expect(nameOf('done')).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+  });
+
+  // Three rows, so the neighbour is not also the grid's own fallback (the first row).
+  const COLD = goal('cold', { title: 'Cold Farm' });
+  const three = { ...NEEDY, cold: [row('cold', 'u1', { state: 'want' })] };
+  const deleteFarm = async (title: string) => {
+    fireEvent.click(menuOf(title));
+    pick('Delete');
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Delete Goal' })).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(screen.queryByText(title)).not.toBeInTheDocument());
+  };
+
+  it("Delete lands on the next farm's name, not the first row's", async () => {
+    seed(three, [...GOALS, COLD]);
+    renderAt('/?track=calm');
+    await screen.findByTestId('progress-expansion');
+    expect(screen.getAllByTestId('progress-farm-row').map((r) => r.getAttribute('data-goal-id'))).toEqual(['hot', 'calm', 'cold']);
+    await deleteFarm('Calm Farm');
+    expect(nameOf('cold')).toHaveFocus();
+  });
+
+  it("Delete of the last row lands on the previous farm's name, past the open panel between them", async () => {
+    seed(three, [...GOALS, COLD]);
+    renderAt('/?track=calm');
+    await screen.findByTestId('progress-expansion');
+    await deleteFarm('Cold Farm');
+    expect(nameOf('calm')).toHaveFocus();
+  });
+
+  it('a failed write moves nothing and leaves nothing owed', async () => {
+    seed();
+    updateGoal.mockRejectedValueOnce(new Error('boom'));
+    renderAt('/');
+    await screen.findAllByTestId('progress-farm-row');
+    fireEvent.click(menuOf('Hot Farm'));
+    pick('Mark finished');
+    await waitFor(() => expect(useToastStore.getState().toasts.some((t) => t.type === 'error')).toBe(true));
+    // Nothing was claimed, so the next write's row is the only one owed.
+    fireEvent.click(menuOf('Calm Farm'));
+    pick('Mark finished');
+    await waitFor(() => expect(finishedToggle()).toHaveFocus());
+  });
+
+  it("Undo puts focus on the restored row's name when it was lost to <body>, and leaves a focus that is somewhere else", async () => {
+    seed();
+    renderAt('/');
+    await screen.findAllByTestId('progress-farm-row');
+    fireEvent.click(menuOf('Hot Farm'));
+    pick('Mark finished');
+    await waitFor(() => expect(finishedToggle()).toHaveFocus());
+
+    finishedToggle().blur();
+    expect(document.body).toHaveFocus();
+    await act(async () => {
+      useToastStore.getState().toasts.find((t) => t.action)!.action!.onClick();
+    });
+    await waitFor(() => expect(inFinished(rowOf('hot'))).toBe(false));
+    await waitFor(() => expect(nameOf('hot')).toHaveFocus());
+
+    // A second round, with focus parked on another control: Undo does not take it.
+    fireEvent.click(menuOf('Hot Farm'));
+    pick('Mark finished');
+    await waitFor(() => expect(finishedToggle()).toHaveFocus());
+    nameOf('calm').focus();
+    await act(async () => {
+      useToastStore.getState().toasts.filter((t) => t.action).at(-1)!.action!.onClick();
+    });
+    await waitFor(() => expect(inFinished(screen.queryAllByTestId('progress-farm-row').find((r) => r.getAttribute('data-goal-id') === 'hot') ?? null)).toBe(false));
+    expect(nameOf('calm')).toHaveFocus();
+  });
+});
