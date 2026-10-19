@@ -172,6 +172,8 @@ export interface RewardDrop {
   notes: string | null;
   createdAt: string;
   recipientDisplayName: string | null;
+  /** The recipient's character at the time of the drop (S2a-3a, R-S3-12); optional so V1-shaped literals stay valid. */
+  recipientCharacterName?: string | null;
   /** The state this drop flipped the recipient out of (need/want); null when it caused no flip. */
   recipientPriorState: string | null;
 }
@@ -377,6 +379,7 @@ interface ApiDrop {
   notes: string | null;
   created_at: string;
   recipient_display_name: string | null;
+  recipient_character_name?: string | null;
   recipient_prior_state?: string | null;
 }
 
@@ -471,6 +474,7 @@ function fromApiDrop(d: ApiDrop): RewardDrop {
     notes: d.notes,
     createdAt: d.created_at,
     recipientDisplayName: d.recipient_display_name,
+    recipientCharacterName: d.recipient_character_name ?? null,
     recipientPriorState: d.recipient_prior_state ?? null,
   };
 }

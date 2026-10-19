@@ -130,7 +130,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Progress: the farm queue model',
         description:
-          'V2 preview: groundwork for the Progress row expansion. One shared queue decides who is next on a farm: Need before Want, the fewest totems first, a hidden count after the known ones, and members who are not on the roster queue like anyone else. Free roll queues nobody and Desired only queues Need alone. Nothing changes on screen yet.',
+          'V2 preview: groundwork for the Progress row expansion. One shared queue decides who is next on a farm: Need before Want, the fewest totems first, a hidden count after the known ones, and members who are not on the roster queue like anyone else. Free roll queues nobody and Desired only queues Need alone. Also groundwork: the Copy plan text moves to a shared builder with the classic text unchanged, a drop gets a week label ("Week 3", or a date outside the tier clock), and a logged drop now carries its recipient\'s character name. Nothing changes on screen yet.',
         internal: true,
       },
     ],

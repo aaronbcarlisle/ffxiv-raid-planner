@@ -9,51 +9,14 @@ import { LogDropModal } from './LogDropModal';
 import { CatalogBrowse } from './CatalogBrowse';
 import { SuggestedFarmsTab } from './SuggestedFarmsTab';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
-import type { CollectionGoal, ParticipantStateEntry } from '../../stores/collectionGoalStore';
+import type { CollectionGoal } from '../../stores/collectionGoalStore';
 import { toast } from '../../stores/toastStore';
+import { buildDiscordPlan } from '../../utils/discordPlan';
+import type { DiscordPlanEntry } from '../../utils/discordPlan';
 import { Skeleton } from '../ui/Skeleton';
 
 const HUB_TABS = ['suggested', 'active', 'catalog'] as const;
 type HubTab = (typeof HUB_TABS)[number];
-
-function buildDiscordPlan(goal: CollectionGoal, participants: ParticipantStateEntry[]): string {
-  const needing = participants
-    .filter((p) => p.state === 'need')
-    .sort((a, b) => (a.priorityRank ?? 999) - (b.priorityRank ?? 999));
-  const wanting = participants.filter((p) => p.state === 'want');
-  const having = participants.filter((p) => p.state === 'have');
-
-  const canBuyPeople =
-    goal.tokenCost != null
-      ? participants.filter((p) => p.state !== 'have' && (p.tokenCount ?? 0) >= (goal.tokenCost ?? Infinity))
-      : [];
-
-  const lines: string[] = [`**${goal.title}** farm plan`];
-  if (goal.priorityMode) {
-    const modeLabels: Record<string, string> = {
-      everyone_gets_one: 'Everyone gets one',
-      priority_order: 'Priority order',
-      free_roll: 'Free roll',
-      desired_only: 'Desired only',
-      custom: 'Custom',
-    };
-    lines.push(`Mode: ${modeLabels[goal.priorityMode] ?? goal.priorityMode}`);
-  }
-  if (goal.tokenCost && goal.tokenName) {
-    lines.push(`Exchange: ${goal.tokenCost}× ${goal.tokenName}`);
-  }
-  lines.push('');
-  if (needing.length)
-    lines.push(`🎯 **Need (${needing.length}):** ${needing.map((p) => p.displayName ?? p.userId).join(', ')}`);
-  if (wanting.length)
-    lines.push(`⭐ **Want (${wanting.length}):** ${wanting.map((p) => p.displayName ?? p.userId).join(', ')}`);
-  if (canBuyPeople.length)
-    lines.push(`💰 **Can buy now:** ${canBuyPeople.map((p) => p.displayName ?? p.userId).join(', ')}`);
-  if (having.length)
-    lines.push(`✅ **Have (${having.length}):** ${having.map((p) => p.displayName ?? p.userId).join(', ')}`);
-  if (goal.note) lines.push(`\n📝 ${goal.note}`);
-  return lines.join('\n');
-}
 
 interface CollectionsHubProps {
   groupId: string;
@@ -107,7 +70,19 @@ export function CollectionsHub({ groupId, currentUserId, canManage, isViewer }: 
 
   function handleCopyPlan(goal: CollectionGoal) {
     const parts = participants[goal.id] ?? [];
-    const text = buildDiscordPlan(goal, parts);
+    // V1 sorts Need only (by priorityRank, unranked last); every other state keeps
+    // input order, and "Can buy now" reads every participant in input order.
+    const entries = parts.map((p): DiscordPlanEntry & { rank: number | null } => ({
+      name: p.displayName ?? p.userId,
+      state: p.state,
+      count: p.tokenCount ?? 0,
+      rank: p.priorityRank,
+    }));
+    const needing = entries
+      .filter((p) => p.state === 'need')
+      .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
+    const ordered = [...needing, ...entries.filter((p) => p.state !== 'need')];
+    const text = buildDiscordPlan(goal, ordered, entries);
     navigator.clipboard.writeText(text).then(
       () => toast.success('Farm plan copied to clipboard!'),
       () => toast.error('Failed to copy to clipboard'),

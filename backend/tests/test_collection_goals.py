@@ -13,6 +13,8 @@ from tests.factories import (
     create_catalog_item,
     create_collection_goal,
     create_membership,
+    create_player_character,
+    create_player_profile,
     create_static_group,
     create_user,
 )
@@ -350,6 +352,42 @@ async def test_drop_without_recipient(async_client: AsyncClient, group, goal, me
     )
     assert resp.status_code == 201
     assert resp.json()["recipient_user_id"] is None
+
+
+# ── Drop response: the recipient's character (S2a-3a, R-S3-12) ────────────────
+
+
+async def test_drop_response_carries_the_recipients_character_name(
+    async_client: AsyncClient, session: AsyncSession, group, goal, owner_headers, member
+):
+    profile = await create_player_profile(session, member)
+    await create_player_character(session, profile, name="Member Main", is_main=True)
+    url = f"/api/static-groups/{group.id}/collection-goals/{goal['id']}/drops"
+
+    created = await async_client.post(url, json={"recipient_user_id": member.id}, headers=owner_headers)
+    assert created.status_code == 201
+    assert created.json()["recipient_character_name"] == "Member Main"
+
+    listed = await async_client.get(url, headers=owner_headers)
+    assert listed.status_code == 200
+    assert [d["recipient_character_name"] for d in listed.json()] == ["Member Main"]
+
+
+async def test_drop_response_character_name_is_null_without_a_character(
+    async_client: AsyncClient, group, goal, owner_headers, member
+):
+    """A member with no profile, and a Nobody drop, both report a null character name."""
+    url = f"/api/static-groups/{group.id}/collection-goals/{goal['id']}/drops"
+    await async_client.post(url, json={"recipient_user_id": member.id}, headers=owner_headers)
+    await async_client.post(url, json={"quantity": 1}, headers=owner_headers)
+
+    listed = await async_client.get(url, headers=owner_headers)
+    assert listed.status_code == 200
+    rows = listed.json()
+    assert len(rows) == 2
+    for row in rows:
+        assert "recipient_character_name" in row
+        assert row["recipient_character_name"] is None
 
 
 # ── Mount farm compatibility ──────────────────────────────────────────────────
