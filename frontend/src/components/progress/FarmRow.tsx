@@ -1,10 +1,20 @@
 /**
- * FarmRow — one farm of the Progress matrix (R-S2-7): "{title} · {type}" with its
- * type icon, a "Wanted" / "Scheduled" tag when it isn't Farming (Q-3), the status
- * column ("{n} of {m} have it"), then one cell per column. From S2a-2·F5 a cell that
- * `editFor` gives a target is a picker (the reader's own; every claimed cell in a lead's
- * Edit statuses from F6); S2a-3a adds the row menu and "Mark finished".
+ * FarmRow — one farm of the Progress matrix (R-S2-7): the name cell, a "Wanted" /
+ * "Scheduled" tag when it isn't Farming (Q-3), the status column ("{n} of {m} have it"),
+ * then one cell per column. From S2a-2·F5 a cell that `editFor` gives a target is a picker
+ * (the reader's own; every claimed cell in a lead's Edit statuses from F6).
+ *
+ * S2a-3a·G2 (D-7, R-S3-4): the name is a disclosure `Button` named "{title}", with the type
+ * icon, a chevron, `aria-expanded` and `aria-controls`; the " · {type}" reads beside it. On an
+ * active row the button is the grid's `'__name'` cell (`cellProps`), so Home, ArrowLeft and
+ * the arrows reach it and Enter or Space toggles (a native button); on a Finished row it is a
+ * plain tab stop. The open row renders its panel (`renderExpansion`) as the next `<tr>`, and
+ * scrolls itself into view once per open (R-S3-3). When the panel asks to close (Escape),
+ * focus returns to the name button, found by its id (the button may be anywhere the row
+ * moved to). TG7 adds the row menu (R-S3-17).
  */
+import { useEffect, useRef, type ReactNode } from 'react';
+import { Button } from '../primitives/Button';
 import { Tag } from '../ui/Tag';
 import { GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from '../../utils/goalTypeMeta';
 import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
@@ -12,6 +22,9 @@ import type { CellWriteResolver } from './editStatuses';
 import { ProgressCell } from './ProgressCell';
 import type { ProvenanceContext } from './progressProvenance';
 import type { MatrixKeyboard } from './useMatrixKeyboard';
+
+/** The roving grid's key for the name column (R-S3-4); TG7's `'__menu'` follows it (R-S3-17). */
+export const NAME_KEY = '__name';
 
 interface FarmRowProps {
   row: FarmRowModel;
@@ -23,6 +36,12 @@ interface FarmRowProps {
   keyboard?: MatrixKeyboard;
   /** Where each cell writes (R-S2-10); absent for read-only rows (Finished). */
   editFor?: CellWriteResolver;
+  /** This is the one open row (D-7): its panel renders right after it. */
+  open: boolean;
+  /** The name button was activated. */
+  onToggle: () => void;
+  /** The open row's panel, given the close callback (which also returns focus here) and the panel's DOM id. */
+  renderExpansion: (onClose: () => void, id: string) => ReactNode;
 }
 
 function statusText(tally: FarmRowModel['tally'], canManage: boolean): string {
@@ -31,34 +50,63 @@ function statusText(tally: FarmRowModel['tally'], canManage: boolean): string {
   return `${tally.n} of ${tally.m} have it`;
 }
 
-export function FarmRow({ row, canManage, provenance, keyboard, editFor }: FarmRowProps) {
+export function FarmRow({ row, canManage, provenance, keyboard, editFor, open, onToggle, renderExpansion }: FarmRowProps) {
   const { goal } = row;
   const TypeIcon = GOAL_TYPE_ICONS[goal.goalType];
   const stateTag = goal.status === 'wanted' ? 'Wanted' : goal.status === 'scheduled' ? 'Scheduled' : null;
+  const panelId = `progress-expansion-${goal.id}`;
+  const nameId = `${panelId}-name`;
+  const rowRef = useRef<HTMLTableRowElement>(null);
+
+  // Once per open (R-S3-3): a deep link lands on the row; a click barely moves it (`nearest`).
+  // (Optional: jsdom has no scrollIntoView.)
+  useEffect(() => {
+    if (open) rowRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [open]);
+
+  const close = () => {
+    onToggle();
+    document.getElementById(nameId)?.focus();
+  };
+
   return (
-    <tr role="row" data-testid="progress-farm-row" data-goal-id={goal.id} className="border-t border-border-subtle">
-      <th role="rowheader" scope="row" className="px-3 py-2 text-left align-middle font-normal">
-        <div className="flex items-center gap-2">
-          <TypeIcon size={16} className="shrink-0 text-accent" aria-hidden="true" />
-          <span className="whitespace-nowrap text-sm font-medium text-text-primary">
-            {`${goal.title} · ${GOAL_TYPE_LABELS[goal.goalType]}`}
-          </span>
-          {stateTag !== null && <Tag variant="label">{stateTag}</Tag>}
-        </div>
-      </th>
-      <td role="gridcell" data-testid="progress-status" className="whitespace-nowrap px-3 py-2 text-sm text-text-secondary">
-        {statusText(row.tally, canManage)}
-      </td>
-      {row.cells.map((cell) => (
-        <ProgressCell
-          key={cell.column.key}
-          cell={cell}
-          goal={goal}
-          provenance={provenance}
-          grid={keyboard?.cellProps(goal.id, cell.column.key)}
-          editFor={editFor}
-        />
-      ))}
-    </tr>
+    <>
+      <tr ref={rowRef} role="row" data-testid="progress-farm-row" data-goal-id={goal.id} className="border-t border-border-subtle">
+        <th role="rowheader" scope="row" className="py-1 pl-0 pr-3 text-left align-middle font-normal">
+          <div className="flex items-center gap-2">
+            <Button
+              id={nameId}
+              variant="ghost"
+              size="sm"
+              leftIcon={<TypeIcon size={16} className="shrink-0" aria-hidden="true" />}
+              trailing="chevron"
+              aria-expanded={open}
+              aria-controls={panelId}
+              onClick={onToggle}
+              className={`[&>svg:last-child]:transition-transform ${open ? '[&>svg:last-child]:rotate-180' : ''}`}
+              {...keyboard?.cellProps(goal.id, NAME_KEY)}
+            >
+              {goal.title}
+            </Button>
+            <span className="whitespace-nowrap text-sm text-text-secondary">{`· ${GOAL_TYPE_LABELS[goal.goalType]}`}</span>
+            {stateTag !== null && <Tag variant="label">{stateTag}</Tag>}
+          </div>
+        </th>
+        <td role="gridcell" data-testid="progress-status" className="whitespace-nowrap px-3 py-2 text-sm text-text-secondary">
+          {statusText(row.tally, canManage)}
+        </td>
+        {row.cells.map((cell) => (
+          <ProgressCell
+            key={cell.column.key}
+            cell={cell}
+            goal={goal}
+            provenance={provenance}
+            grid={keyboard?.cellProps(goal.id, cell.column.key)}
+            editFor={editFor}
+          />
+        ))}
+      </tr>
+      {open && renderExpansion(close, panelId)}
+    </>
   );
 }

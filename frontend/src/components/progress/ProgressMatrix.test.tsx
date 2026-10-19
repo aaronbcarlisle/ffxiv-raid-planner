@@ -3,7 +3,8 @@
  * ProgressCell and FinishedFarms. Props-driven: the model builds the columns and rows
  * from fixtures, so these tests read exactly what the page would render.
  */
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { useState } from 'react';
+import { act, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCollectionGoalStore, type CollectionGoal } from '../../stores/collectionGoalStore';
 import { useToastStore } from '../../stores/toastStore';
@@ -51,34 +52,49 @@ interface RenderOptions {
   onExpandFinished?: () => void;
   /** How the reader's own cells write (F5), resolved for own cells only; absent = read-only, as a viewer sees it. */
   edit?: CellWriteTarget;
+  /** The row open on the first render (S2a-3a, the page's `?track`). */
+  openId?: string | null;
 }
 
 /** F5's own-cell rule as a resolver (the page's `cellWriteTarget` is tested in its own file). */
 const ownCellsOnly = (target: CellWriteTarget) => (cell: ProgressCellModel) => (cell.own ? target : undefined);
 
-function matrixElement(o: RenderOptions, onExpandFinished: () => void) {
+function build(o: RenderOptions) {
   const goals = o.goals ?? [goal('wings', { title: 'Wings of Resolve' })];
   const data: ProgressData = { goals, participants: o.participants ?? {}, recordOnly: {} };
   const activeData = { ...data, goals: goals.filter((g) => g.status !== 'complete') };
   const columns = buildColumns(o.players ?? PLAYERS, 'standard', activeData);
   const { active, finished } = splitFarmRows(data, columns, o.reader ?? LEAD);
-  return {
-    columns,
-    element: (
-      <ProgressMatrix
-        columns={columns}
-        active={active}
-        finished={finished}
-        canManage={o.canManage ?? true}
-        currentUserId={(o.reader ?? LEAD).currentUserId}
-        memberNames={o.memberNames}
-        editFor={o.edit ? ownCellsOnly(o.edit) : undefined}
-        finishedLoading={o.finishedLoading ?? false}
-        finishedError={o.finishedError ?? null}
-        onExpandFinished={onExpandFinished}
-      />
-    ),
-  };
+  return { columns, active, finished };
+}
+
+/** Holds the one open row, as the page does through `?track` (S2a-3a); a toggle on the open one closes it. */
+function Harness({ o, onExpandFinished }: { o: RenderOptions; onExpandFinished: () => void }) {
+  const [openId, setOpenId] = useState<string | null>(o.openId ?? null);
+  const { columns, active, finished } = build(o);
+  const reader = o.reader ?? LEAD;
+  return (
+    <ProgressMatrix
+      columns={columns}
+      active={active}
+      finished={finished}
+      canManage={o.canManage ?? true}
+      currentUserId={reader.currentUserId}
+      memberNames={o.memberNames}
+      editFor={o.edit ? ownCellsOnly(o.edit) : undefined}
+      finishedLoading={o.finishedLoading ?? false}
+      finishedError={o.finishedError ?? null}
+      onExpandFinished={onExpandFinished}
+      openId={openId}
+      onToggle={(id) => setOpenId((cur) => (cur === id ? null : id))}
+      groupId="g1"
+      userRole={reader.userRole}
+    />
+  );
+}
+
+function matrixElement(o: RenderOptions, onExpandFinished: () => void) {
+  return { columns: build(o).columns, element: <Harness o={o} onExpandFinished={onExpandFinished} /> };
 }
 
 function renderMatrix(o: RenderOptions = {}) {
@@ -92,6 +108,12 @@ function renderMatrix(o: RenderOptions = {}) {
 
 const farmRows = () => screen.getAllByTestId('progress-farm-row');
 const statusOf = (r: HTMLElement) => within(r).getByTestId('progress-status').textContent;
+/** The row's disclosure Button (S2a-3a): the one control in its rowheader. */
+const nameButton = (r: HTMLElement) => within(within(r).getByRole('rowheader')).getByRole('button');
+/** Every Tab stop inside the grid, whether a cell or the control inside one. */
+const gridStops = () => Array.from(screen.getByRole('grid').querySelectorAll<HTMLElement>('[tabindex="0"]'));
+/** Buttons inside the cells only (the name buttons are in the rowheaders). */
+const cellButtons = () => screen.getAllByTestId('progress-cell').flatMap((c) => within(c).queryAllByRole('button'));
 
 // ── Columns (R-S2-6) ────────────────────────────────────────────────────────
 
@@ -167,10 +189,13 @@ describe('ProgressMatrix rows and cells', () => {
     const [wings, later, plain] = ['wings', 'later', 'plain'].map(
       (id) => farmRows().find((r) => r.getAttribute('data-goal-id') === id)!,
     );
-    expect(within(wings).getByText('Wings of Resolve · Mount')).toBeInTheDocument();
+    // Since S2a-3a the title is the name Button's text and the type reads beside it.
+    expect(nameButton(wings)).toHaveTextContent('Wings of Resolve');
+    expect(within(wings).getByText('· Mount')).toBeInTheDocument();
     expect(within(wings).getByText('Scheduled')).toBeInTheDocument();
     expect(wings.querySelector('svg')).not.toBeNull();
-    expect(within(later).getByText('Later Farm · Custom')).toBeInTheDocument();
+    expect(nameButton(later)).toHaveTextContent('Later Farm');
+    expect(within(later).getByText('· Custom')).toBeInTheDocument();
     expect(within(later).getByText('Wanted')).toBeInTheDocument();
     expect(within(plain).queryByText(/Wanted|Scheduled/)).not.toBeInTheDocument();
   });
@@ -364,6 +389,7 @@ describe('ProgressMatrix Finished', () => {
 
 // ── The roving grid (S2a-2·F4 Task TF6) ─────────────────────────────────────
 
+const EDIT: CellWriteTarget = { groupId: 'g1' };
 const cellsOf = (r: HTMLElement) => within(r).getAllByTestId('progress-cell');
 const allCells = () => screen.getAllByTestId('progress-cell');
 const focusCell = (el: HTMLElement) => act(() => el.focus());
@@ -388,14 +414,14 @@ describe('ProgressMatrix keyboard grid', () => {
     expect(allCells().every((c) => c.getAttribute('role') === 'gridcell')).toBe(true);
   });
 
-  it('makes exactly one cell, the first, the Tab stop, blank and unclaimed cells included', () => {
+  it('makes exactly one stop, the first row\'s name button; every cell, blank and unclaimed included, is -1 (R-S3-4)', () => {
     renderMatrix({ goals: two, participants: needy });
-    const stops = allCells().filter((c) => c.tabIndex === 0);
-    expect(stops).toEqual([cellsOf(farmRows()[0])[0]]);
-    expect(allCells().filter((c) => c.getAttribute('tabindex') === '-1')).toHaveLength(allCells().length - 1);
+    expect(gridStops()).toEqual([nameButton(farmRows()[0])]);
+    expect(nameButton(farmRows()[1])).toHaveAttribute('tabindex', '-1');
+    expect(allCells().filter((c) => c.getAttribute('tabindex') === '-1')).toHaveLength(allCells().length);
   });
 
-  it('is one Tab stop for the whole matrix: before, one gridcell, after', () => {
+  it('is one Tab stop for the whole matrix: before, the first name button, after', () => {
     const { element } = matrixElement({ goals: two, participants: needy }, vi.fn());
     render(
       <>
@@ -408,7 +434,8 @@ describe('ProgressMatrix keyboard grid', () => {
     const stops = tabStops();
     expect(stops).toHaveLength(3);
     expect(stops[0]).toHaveTextContent('before');
-    expect(stops[1]).toHaveAttribute('role', 'gridcell');
+    expect(stops[1]).toBe(nameButton(farmRows()[0]));
+    expect(stops[1].closest('[role="rowheader"]')).not.toBeNull();
     expect(stops[2]).toHaveTextContent('after');
     // The scroller is not a second stop while the grid has a cell.
     expect(screen.getByTestId('progress-matrix')).not.toHaveAttribute('tabindex');
@@ -439,27 +466,27 @@ describe('ProgressMatrix keyboard grid', () => {
     expect(a[1]).toHaveFocus();
   });
 
-  it('jumps to the first and last cell of the row with Home and End', () => {
+  it('jumps to the name and the last cell of the row with Home and End', () => {
     renderMatrix({ goals: two, participants: needy });
     const b = cellsOf(farmRows()[1]);
     focusCell(b[2]);
     key(b[2], 'End');
     expect(b[b.length - 1]).toHaveFocus();
     key(b[b.length - 1], 'Home');
-    expect(b[0]).toHaveFocus();
+    expect(nameButton(farmRows()[1])).toHaveFocus();
   });
 
-  it('stops at every edge without wrapping and leaves the key alone', () => {
+  it('stops at every edge, the name on the left, without wrapping and leaves the key alone', () => {
     renderMatrix({ goals: two, participants: needy });
     const [first, second] = farmRows();
-    const a = cellsOf(first);
+    const name = nameButton(first);
     const b = cellsOf(second);
     const last = b[b.length - 1];
-    focusCell(a[0]);
-    expect(key(a[0], 'ArrowLeft')).toBe(true);
-    expect(key(a[0], 'ArrowUp')).toBe(true);
-    expect(key(a[0], 'Home')).toBe(true);
-    expect(a[0]).toHaveFocus();
+    focusCell(name);
+    expect(key(name, 'ArrowLeft')).toBe(true);
+    expect(key(name, 'ArrowUp')).toBe(true);
+    expect(key(name, 'Home')).toBe(true);
+    expect(name).toHaveFocus();
     focusCell(last);
     expect(key(last, 'ArrowRight')).toBe(true);
     expect(key(last, 'ArrowDown')).toBe(true);
@@ -503,14 +530,14 @@ describe('ProgressMatrix keyboard grid', () => {
     expect(after.getAttribute('aria-label')).toBe(target.getAttribute('aria-label'));
   });
 
-  it('falls back to the first cell when the stop\'s row is gone', () => {
+  it('falls back to the first row\'s name when the stop\'s row is gone', () => {
     const { rerender } = renderMatrix({ goals: two, participants: needy });
     focusCell(cellsOf(farmRows()[1])[1]);
     rerender({ goals: [two[0]], participants: needy });
-    expect(allCells().filter((c) => c.tabIndex === 0)).toEqual([cellsOf(farmRows()[0])[0]]);
+    expect(gridStops()).toEqual([nameButton(farmRows()[0])]);
   });
 
-  it('keeps Finished rows out of the grid: no extra stop, not an arrow target', () => {
+  it('keeps Finished rows out of the grid: their name a plain stop, their cells no stop and not an arrow target', () => {
     renderMatrix({
       goals: [goal('wings'), goal('done', { title: 'Done', status: 'complete', completedAt: '2026-10-01T00:00:00Z' })],
       participants: { done: [row('done', 'u1', { state: 'have' })] },
@@ -518,12 +545,174 @@ describe('ProgressMatrix keyboard grid', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
     const doneRow = farmRows().find((r) => r.getAttribute('data-goal-id') === 'done')!;
     for (const c of cellsOf(doneRow)) expect(c).not.toHaveAttribute('tabindex');
-    expect(allCells().filter((c) => c.tabIndex === 0)).toHaveLength(1);
+    // The finished row's disclosure is a plain tab stop (R-S3-4): no roving tabindex, reachable by Tab.
+    expect(nameButton(doneRow)).not.toHaveAttribute('tabindex');
+    expect(nameButton(doneRow).tabIndex).toBe(0);
+    expect(gridStops()).toEqual([nameButton(farmRows()[0])]);
 
     const active = cellsOf(farmRows()[0]);
     focusCell(active[0]);
     expect(key(active[0], 'ArrowDown')).toBe(true);
     expect(active[0]).toHaveFocus();
+  });
+});
+
+// ── The disclosure, the panel row and the grid (S2a-3a·G2 Task TG3; D-7, R-S3-3, R-S3-4) ──
+
+const panel = () => screen.queryByTestId('progress-expansion');
+
+describe('ProgressMatrix disclosure', () => {
+  const two = [goal('hot', { title: 'Hot' }), goal('calm', { title: 'Calm' })];
+  const needy = { hot: [row('hot', 'u1', { state: 'need' })], calm: [row('calm', 'u1', { state: 'want' })] };
+
+  it('makes the name cell a Button named "{title}" with a chevron, aria-expanded=false and aria-controls, and no panel', () => {
+    renderMatrix({ goals: two, participants: needy });
+    const [hot, calm] = farmRows();
+    const name = within(hot).getByRole('button', { name: 'Hot' });
+    expect(name).toBe(nameButton(hot));
+    expect(name).toHaveAttribute('aria-expanded', 'false');
+    expect(name).toHaveAttribute('aria-controls', 'progress-expansion-hot');
+    // The type icon leads and the chevron trails, both decorative.
+    expect(name.querySelectorAll('svg[aria-hidden]')).toHaveLength(2);
+    expect(within(calm).getByRole('button', { name: 'Calm' })).toHaveAttribute('aria-expanded', 'false');
+    expect(panel()).toBeNull();
+  });
+
+  it('opens the panel right after the row on click, one at a time, and a second click closes it', () => {
+    renderMatrix({ goals: two, participants: needy });
+    const [hot, calm] = farmRows();
+    fireEvent.click(nameButton(hot));
+    expect(nameButton(hot)).toHaveAttribute('aria-expanded', 'true');
+    expect(panel()).not.toBeNull();
+    expect(hot.nextElementSibling).toBe(panel());
+    expect(panel()).toHaveAttribute('id', 'progress-expansion-hot');
+    expect(screen.getAllByTestId('progress-expansion')).toHaveLength(1);
+
+    fireEvent.click(nameButton(calm));
+    expect(nameButton(hot)).toHaveAttribute('aria-expanded', 'false');
+    expect(nameButton(calm)).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getAllByTestId('progress-expansion')).toHaveLength(1);
+    expect(calm.nextElementSibling).toBe(panel());
+
+    fireEvent.click(nameButton(calm));
+    expect(nameButton(calm)).toHaveAttribute('aria-expanded', 'false');
+    expect(panel()).toBeNull();
+  });
+
+  it('opens the row the harness was given, as the page does from ?track', () => {
+    renderMatrix({ goals: two, participants: needy, openId: 'calm' });
+    expect(nameButton(farmRows()[1])).toHaveAttribute('aria-expanded', 'true');
+    expect(farmRows()[1].nextElementSibling).toBe(panel());
+  });
+
+  it('never opens the row from a player cell: the own-cell picker opens instead', () => {
+    renderMatrix({ goals: two, participants: needy, reader: MEMBER, edit: EDIT });
+    const own = screen.getByRole('button', { name: 'Aya, Hot, Need — change your status' });
+    fireEvent.click(own);
+    expect(screen.getByRole('group', { name: 'Status' })).toBeInTheDocument();
+    expect(panel()).toBeNull();
+    expect(nameButton(farmRows()[0])).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    // A plain cell's click opens nothing either.
+    fireEvent.click(screen.getByRole('gridcell', { name: 'Bo, Hot, no status' }));
+    expect(panel()).toBeNull();
+  });
+
+  it('renders the panel as a grid row with one gridcell spanning every column, outside the arrow keys\' rows', () => {
+    const { columns } = renderMatrix({ goals: two, participants: needy, openId: 'hot' });
+    const open = panel()!;
+    expect(open).toHaveAttribute('role', 'row');
+    const cells = within(open).getAllByRole('gridcell');
+    expect(cells).toHaveLength(1);
+    expect((cells[0] as HTMLTableCellElement).colSpan).toBe(columns.length + 2);
+    expect(cells[0]).not.toHaveAttribute('tabindex');
+    expect(within(open).queryAllByTestId('progress-cell')).toHaveLength(0);
+    // The grid's rows are the farm rows alone: ArrowDown from the open row skips the panel.
+    const [hot, calm] = farmRows();
+    focusCell(nameButton(hot));
+    expect(key(nameButton(hot), 'ArrowDown')).toBe(false);
+    expect(nameButton(calm)).toHaveFocus();
+    key(nameButton(calm), 'ArrowUp');
+    expect(nameButton(hot)).toHaveFocus();
+    // The panel holds the slots TG4 and TG5 fill, under their headings, and the empty action bar.
+    expect(within(open).getByRole('heading', { name: 'Next in line' })).toBeInTheDocument();
+    expect(within(open).getByRole('heading', { name: 'Last drops' })).toBeInTheDocument();
+    expect(within(open).getByRole('heading', { name: 'About' })).toBeInTheDocument();
+    expect(within(open).getByTestId('progress-expansion-actions')).toBeEmptyDOMElement();
+  });
+
+  it('reaches the name with Home and with ArrowLeft from the first player cell, and moves between names with ArrowDown', () => {
+    renderMatrix({ goals: two, participants: needy });
+    const [hot, calm] = farmRows();
+    const a = cellsOf(hot);
+    focusCell(a[2]);
+    expect(key(a[2], 'Home')).toBe(false);
+    expect(nameButton(hot)).toHaveFocus();
+    focusCell(a[0]);
+    expect(key(a[0], 'ArrowLeft')).toBe(false);
+    expect(nameButton(hot)).toHaveFocus();
+    expect(key(nameButton(hot), 'ArrowDown')).toBe(false);
+    expect(nameButton(calm)).toHaveFocus();
+    expect(gridStops()).toEqual([nameButton(calm)]);
+    expect(key(nameButton(calm), 'ArrowRight')).toBe(false);
+    expect(cellsOf(calm)[0]).toHaveFocus();
+  });
+
+  it('lets Enter and Space through to the native button, so they toggle the row', () => {
+    renderMatrix({ goals: two, participants: needy });
+    const name = nameButton(farmRows()[0]);
+    focusCell(name);
+    // The grid hook eats only its navigation keys: an activation key keeps its default.
+    expect(fireEvent.keyDown(name, { key: 'Enter' })).toBe(true);
+    expect(fireEvent.keyDown(name, { key: ' ' })).toBe(true);
+    expect(name).toHaveFocus();
+    // jsdom does not synthesize the click a real Enter fires on a button; the click is the toggle.
+    fireEvent.click(name);
+    expect(name).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(name);
+    expect(name).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('puts the panel next in Tab order after the open row, with no roving tabindex of its own', () => {
+    renderMatrix({ goals: two, participants: needy, openId: 'hot' });
+    const [hot, calm] = farmRows();
+    const open = panel()!;
+    expect(hot.nextElementSibling).toBe(open);
+    expect(open.nextElementSibling).toBe(calm);
+    // Nothing in the panel is pulled into the grid's roving order, so a control inside it (TG4–TG5)
+    // is the natural stop right after the row's; the shell itself adds no stop.
+    expect(open.querySelectorAll('[tabindex]')).toHaveLength(0);
+    const stops = tabStops();
+    expect(stops.filter((el) => open.contains(el))).toEqual([]);
+    expect(stops.indexOf(nameButton(hot))).toBeGreaterThanOrEqual(0);
+  });
+
+  it('closes on Escape inside the panel and returns focus to the name button', () => {
+    renderMatrix({ goals: two, participants: needy, openId: 'hot' });
+    const name = nameButton(farmRows()[0]);
+    const heading = within(panel()!).getByRole('heading', { name: 'About' });
+    expect(fireEvent.keyDown(heading, { key: 'Escape' })).toBe(false);
+    expect(panel()).toBeNull();
+    expect(name).toHaveAttribute('aria-expanded', 'false');
+    expect(name).toHaveFocus();
+    expect(gridStops()).toEqual([name]);
+  });
+
+  it('leaves the panel open on an Escape a layer already handled (defaultPrevented), R-S3-4', () => {
+    renderMatrix({ goals: two, participants: needy, openId: 'hot' });
+    const heading = within(panel()!).getByRole('heading', { name: 'About' });
+    const handled = createEvent.keyDown(heading, { key: 'Escape' });
+    handled.preventDefault();
+    fireEvent(heading, handled);
+    expect(panel()).not.toBeNull();
+    expect(nameButton(farmRows()[0])).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('leaves the panel open on an Escape from outside the open row (a cell of another row)', () => {
+    renderMatrix({ goals: two, participants: needy, openId: 'hot' });
+    const calmCell = cellsOf(farmRows()[1])[1];
+    expect(fireEvent.keyDown(calmCell, { key: 'Escape' })).toBe(true);
+    expect(panel()).not.toBeNull();
   });
 });
 
@@ -652,9 +841,6 @@ describe('ProgressMatrix provenance tooltip', () => {
 
 // ── The reader's own cell (S2a-2·F5 Task TF7; R-S2-10) ──────────────────────
 
-const EDIT: CellWriteTarget = { groupId: 'g1' };
-/** Every Tab stop inside the grid, whether a cell or the control inside one. */
-const gridStops = () => Array.from(screen.getByRole('grid').querySelectorAll<HTMLElement>('[tabindex="0"]'));
 const ownButton = (name: RegExp | string) => screen.getByRole('button', { name });
 
 describe('ProgressMatrix own cell', () => {
@@ -671,7 +857,7 @@ describe('ProgressMatrix own cell', () => {
       if (cell.contains(own)) continue;
       expect(within(cell).queryByRole('button')).not.toBeInTheDocument();
     }
-    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(cellButtons()).toEqual([own]);
   });
 
   it('shows a muted text-xs "Set status" in an own blank cell, named "…, no status — set your status"; another member\'s blank cell stays empty', () => {
@@ -685,7 +871,7 @@ describe('ProgressMatrix own cell', () => {
 
   it('makes no cell a button when no edit prop is passed', () => {
     renderMatrix({ participants: { wings: [row('wings', 'u1', { state: 'need' })] }, reader: { currentUserId: 'u1', userRole: 'viewer' } });
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(cellButtons()).toEqual([]);
   });
 
   it('makes a Not-on-the-roster own cell a button too, and leaves Finished rows read-only', () => {
@@ -698,7 +884,7 @@ describe('ProgressMatrix own cell', () => {
     expect(ownButton('Zed, Wings of Resolve, Want — change your status')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
     const doneRow = farmRows().find((r) => r.getAttribute('data-goal-id') === 'done')!;
-    expect(within(doneRow).queryByRole('button')).not.toBeInTheDocument();
+    for (const cell of cellsOf(doneRow)) expect(within(cell).queryByRole('button')).not.toBeInTheDocument();
     expect(within(doneRow).getByRole('gridcell', { name: 'Zed, Done, Have' })).toBeInTheDocument();
   });
 });
@@ -715,11 +901,14 @@ describe('ProgressMatrix keyboard grid with own-cell buttons', () => {
     useToastStore.getState().clearAll();
   });
 
-  it('has exactly one Tab stop, the own cell\'s button, with the td around it no stop of its own', () => {
+  it('has exactly one Tab stop, the own cell\'s button once focused, with the td around it no stop of its own', () => {
     renderMatrix({ goals: two, participants: mixed, reader: MEMBER, edit: EDIT });
+    // Before any cell is focused the stop is the first row's name (S2a-3a).
+    expect(gridStops()).toEqual([nameButton(farmRows()[0])]);
+    const own = ownButton('Aya, Hot, Need, 62 of 99 Tokens — change your status');
+    focusCell(own);
     const stops = gridStops();
-    expect(stops).toHaveLength(1);
-    expect(stops[0]).toBe(ownButton('Aya, Hot, Need, 62 of 99 Tokens — change your status'));
+    expect(stops).toEqual([own]);
     expect(stops[0].closest('td')).not.toHaveAttribute('tabindex');
     // Every other cell is in the grid at -1.
     expect(allCells().filter((c) => c.getAttribute('tabindex') === '-1')).toHaveLength(allCells().length - 2);
@@ -785,7 +974,8 @@ describe('ProgressMatrix keyboard grid with own-cell buttons', () => {
 
     rerender({ goals: [two[0]], participants: mixed, reader: MEMBER, edit: EDIT });
 
-    const first = ownButton('Aya, Hot, Need, 62 of 99 Tokens — change your status');
+    // The fallback stop is the first row's name button (S2a-3a), and it takes the focus.
+    const first = nameButton(farmRows()[0]);
     expect(gridStops()).toEqual([first]);
     expect(first).toHaveFocus();
   });

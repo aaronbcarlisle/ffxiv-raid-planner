@@ -222,12 +222,60 @@ test.describe.serial('Progress matrix', () => {
     await expect(page.locator(`[data-goal-id="${seeded.customId}"]`).getByText('★ Want')).toBeVisible();
     await expect(mount.getByTestId('progress-status')).toContainText(/\d+ of \d+ have it|Everyone has it|Nobody to track yet/);
 
-    // The only controls in the matrix body are the owner's own cells (F5) and Finished.
+    // The controls in the matrix body: each farm's name (a disclosure, S2a-3a), the owner's own
+    // cells (F5) and Finished (a disclosure too).
     const bodyButtons = await page.getByTestId('progress-matrix').locator('tbody button').evaluateAll((els) =>
-      els.map((el) => el.getAttribute('aria-label') ?? el.textContent ?? ''),
+      els.map((el) => ({ label: el.getAttribute('aria-label') ?? el.textContent ?? '', disclosure: el.hasAttribute('aria-expanded') })),
     );
     expect(bodyButtons.length).toBeGreaterThan(0);
-    for (const label of bodyButtons) expect(label).toMatch(/ your status$|^Finished \(\d+\)$/);
+    for (const { label, disclosure } of bodyButtons) {
+      if (!disclosure) expect(label).toMatch(/ your status$/);
+    }
+    await expect(mount.locator('[role="rowheader"] button')).toHaveAttribute('aria-expanded', 'false');
+    await context.close();
+  });
+
+  test('owner: a farm row opens by click, by keyboard and by ?track=, one at a time (S2a-3a·G2)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await loginAsOwner(page);
+    await openProgress(page);
+    const nameOf = (id: string) => page.locator(`[data-goal-id="${id}"] [role="rowheader"] button`);
+    const panel = page.getByTestId('progress-expansion');
+
+    // Click opens the row: the panel is the next row, and the URL names it in place.
+    await nameOf(seeded.mountId).click();
+    await expect(nameOf(seeded.mountId)).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toHaveCount(1);
+    expect(await panel.evaluate((el) => el.previousElementSibling?.getAttribute('data-goal-id') ?? null)).toBe(seeded.mountId);
+    await expect(page).toHaveURL(new RegExp(`[?&]track=${seeded.mountId}(&|$)`));
+
+    // Another row swaps the one open panel.
+    await nameOf(seeded.customId).click();
+    await expect(nameOf(seeded.mountId)).toHaveAttribute('aria-expanded', 'false');
+    await expect(nameOf(seeded.customId)).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toHaveCount(1);
+    await expect(page).toHaveURL(new RegExp(`[?&]track=${seeded.customId}(&|$)`));
+
+    // Keyboard: ArrowRight leaves the name for the first cell, Home comes back, Enter toggles.
+    await nameOf(seeded.customId).focus();
+    await page.keyboard.press('ArrowRight');
+    expect(await page.evaluate(() => document.activeElement?.closest('[role="gridcell"]') !== null)).toBe(true);
+    await page.keyboard.press('Home');
+    expect(await page.evaluate(() => document.activeElement?.closest('[role="rowheader"]') !== null)).toBe(true);
+    await page.keyboard.press('Enter');
+    await expect(nameOf(seeded.customId)).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toHaveCount(0);
+    await expect(page).not.toHaveURL(/[?&]track=/);
+    await page.keyboard.press('Enter');
+    await expect(nameOf(seeded.customId)).toHaveAttribute('aria-expanded', 'true');
+
+    // A deep link opens its row on load.
+    await page.goto(`/group/${DEV_SHARE_CODE}?shell=v2&tab=progress&track=${seeded.mountId}`);
+    await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
+    await expect(nameOf(seeded.mountId)).toHaveAttribute('aria-expanded', 'true');
+    await expect(nameOf(seeded.customId)).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toHaveCount(1);
     await context.close();
   });
 
@@ -238,21 +286,24 @@ test.describe.serial('Progress matrix', () => {
     await openProgress(page);
 
     const matrix = page.getByTestId('progress-matrix');
-    // The scroller is not a stop of its own; the grid has exactly one: a cell, or, for the
-    // owner's own cell (F5), the picker button inside it.
-    const stops = matrix.locator('[role="gridcell"][tabindex="0"], [role="gridcell"] [tabindex="0"]');
+    // The scroller is not a stop of its own; the grid has exactly one: since S2a-3a the first
+    // row's name button inside its rowheader until a cell is focused, then that cell, or, for
+    // the owner's own cell (F5), the picker button inside it.
+    const stops = matrix.locator('[role="gridcell"][tabindex="0"], [role="gridcell"] [tabindex="0"], [role="rowheader"] [tabindex="0"]');
     await expect(matrix).not.toHaveAttribute('tabindex', /.*/);
     await expect(stops).toHaveCount(1);
+    await expect(stops).toHaveAttribute('aria-expanded', 'false');
 
-    // A real Tab in from the element before the matrix lands inside that one gridcell; the
-    // next Tab leaves every gridcell (not onto the scroller, not onto another cell). Since F6
-    // the owner's toolbar ("Edit statuses") is the last control before the matrix.
+    // A real Tab in from the element before the matrix lands on that one stop, the first row's
+    // name; the next Tab leaves the grid's rows (not onto the scroller, not onto a cell, not onto
+    // another name). Since F6 the owner's toolbar ("Edit statuses") is the last control before
+    // the matrix.
     await page.getByRole('button', { name: 'Edit statuses' }).focus();
     await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => document.activeElement?.closest('[role="gridcell"]') !== null)).toBe(true);
+    expect(await page.evaluate(() => document.activeElement?.closest('[role="rowheader"]') !== null)).toBe(true);
     expect(await matrix.evaluate((m) => m.contains(document.activeElement))).toBe(true);
     await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => document.activeElement?.closest('[role="gridcell"]') ?? null)).toBeNull();
+    expect(await page.evaluate(() => document.activeElement?.closest('[role="gridcell"], [role="rowheader"]') ?? null)).toBeNull();
     expect(await matrix.evaluate((m) => m === document.activeElement)).toBe(false);
 
     // The owner's Need cell is their own, so its focus element is the picker button (F5).
@@ -346,6 +397,29 @@ test.describe.serial('Progress matrix', () => {
       // sets each column header's name in text-role-{role}, and the light-theme healer
       // token (#1a8a4a on white) measures 4.39:1, just under AA. Fixing it is a change to
       // the shared role tokens, which render in both shells; every other node is scanned.
+      const results = await new AxeBuilder({ page })
+        .include('[data-testid="progress-screen"]')
+        .exclude('[data-testid="progress-column"] [class*="text-role-"]')
+        .analyze();
+      const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+      expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+      await context.close();
+    });
+
+    test(`owner: axe reports no critical or serious violation with a row open (${theme}, 1440 x 900)`, async ({ browser }) => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.addInitScript((t) => window.localStorage.setItem('theme', t), theme);
+      await loginAsOwner(page);
+      // S2a-3a·G2: the deep link opens the mount's row; the panel is the row after it.
+      await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=progress&track=${seeded.mountId}`);
+      await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId('progress-expansion')).toBeVisible({ timeout: 15_000 });
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(300);
+
+      // The same known role-token debt as above is excluded; every other node is scanned.
       const results = await new AxeBuilder({ page })
         .include('[data-testid="progress-screen"]')
         .exclude('[data-testid="progress-column"] [class*="text-role-"]')

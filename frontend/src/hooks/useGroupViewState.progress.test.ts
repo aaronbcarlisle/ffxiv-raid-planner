@@ -17,6 +17,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { pageModeFromTabParam, tabParamFor, useGroupViewState } from './useGroupViewState';
 import { useShellPreferenceStore } from '../lib/shellPreference';
 import { useAuthStore } from '../stores/authStore';
+import type { User } from '../types';
 
 const TAB_KEY = 'group-view-tab:ABC';
 
@@ -35,6 +36,7 @@ function renderAt(url: string) {
 
 type Rendered = ReturnType<typeof renderAt>;
 const tabOf = (r: Rendered) => new URLSearchParams(r.result.current.location.search).get('tab');
+const trackOf = (r: Rendered) => new URLSearchParams(r.result.current.location.search).get('track');
 
 beforeEach(() => {
   localStorage.clear();
@@ -104,6 +106,31 @@ describe('useGroupViewState under ?shell=v2', () => {
     act(() => { void r.result.current.navigate(-1); });
     expect(tabOf(r)).toBe('progress');
     expect(r.result.current.gv.pageMode).toBe('goals');
+  });
+});
+
+// S2a-3a·G2 (R-S3-3, vet I-7): the open farm row's `?track` is a sub-tab param. The default tab
+// memory keeps it across a primary-tab switch, so Progress reopens the row; 'reset' clears it.
+describe('useGroupViewState and ?track', () => {
+  it('keeps ?track across a tab switch under the default tab memory, so coming back reopens the row', () => {
+    const r = renderAt('/group/ABC?shell=v2&tab=progress&track=goal-1');
+    act(() => r.result.current.gv.setPageMode('roster'));
+    expect(tabOf(r)).toBe('roster');
+    expect(trackOf(r)).toBe('goal-1');
+    act(() => r.result.current.gv.setPageMode('goals'));
+    expect(tabOf(r)).toBe('progress');
+    expect(trackOf(r)).toBe('goal-1');
+  });
+
+  it('removes ?track on a tab switch under the reset tab memory, so Progress comes back closed', () => {
+    useAuthStore.setState({ user: { tabPersistence: 'reset' } as unknown as User });
+    const r = renderAt('/group/ABC?shell=v2&tab=progress&track=goal-1');
+    act(() => r.result.current.gv.setPageMode('roster'));
+    expect(tabOf(r)).toBe('roster');
+    expect(trackOf(r)).toBeNull();
+    act(() => r.result.current.gv.setPageMode('goals'));
+    expect(tabOf(r)).toBe('progress');
+    expect(trackOf(r)).toBeNull();
   });
 });
 
