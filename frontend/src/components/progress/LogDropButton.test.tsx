@@ -140,6 +140,21 @@ describe('LogDropButton: the picker (D-6, vet M-2)', () => {
     expect(radios()[0]).toHaveFocus();
   });
 
+  it('draws the unchecked dots in a visible token (border-default was 1.1:1 in dark, G5b carry) and the rank in text-secondary', async () => {
+    await renderPanel();
+    fireEvent.click(more());
+    const dot = (r: HTMLElement) => r.firstElementChild as HTMLElement;
+    const unchecked = radios().filter((r) => r.getAttribute('aria-checked') === 'false');
+    expect(unchecked).toHaveLength(4);
+    for (const r of unchecked) {
+      expect(dot(r)).toHaveClass('border-text-muted');
+      expect(dot(r)).not.toHaveClass('border-border-default');
+    }
+    expect(dot(radios()[0])).toHaveClass('border-accent', 'bg-accent');
+    // The rank sits on the checked option's accent tint, where text-muted measured 4.45:1 in dark.
+    expect(within(radios()[0]).getByText('#1')).toHaveClass('text-text-secondary');
+  });
+
   it('moves the check and focus with ArrowDown and ArrowUp, wrapping, and keeps one tab stop', async () => {
     await renderPanel();
     fireEvent.click(more());

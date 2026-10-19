@@ -5,8 +5,7 @@
  * a MemoryRouter whose location a probe reports. (The tab-memory cases are the hook's:
  * `hooks/useGroupViewState.progress.test.ts`.)
  */
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../services/api', async (importOriginal) => {
@@ -27,26 +26,22 @@ import { api } from '../../services/api';
 import { useCollectionGoalStore, type CollectionGoal, type ParticipantStateEntry } from '../../stores/collectionGoalStore';
 import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
 import { useToastStore } from '../../stores/toastStore';
-import type { StaticGroup, TierSnapshot } from '../../types';
+import {
+  actionOf,
+  fetchGoals,
+  fetchProgress,
+  nameOf,
+  otherGroup,
+  panel,
+  renderAt,
+  rowOf,
+  search,
+  seedPage,
+  setUpPage,
+  tearDownPage,
+  trackOf,
+} from './__fixtures__/pageHarness';
 import { apiDrop, goal, row } from './__fixtures__/progressFixtures';
-import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
-import { ProgressPage } from './ProgressPage';
-
-const group = { id: 'g1', name: 'Dev Test Static', shareCode: 'DEVTST', settings: {}, userRole: 'owner', members: [] } as unknown as StaticGroup;
-const otherGroup = { ...group, id: 'g2', name: 'Other Static', shareCode: 'OTHER1' } as unknown as StaticGroup;
-
-const player = (id: string, name: string, position: string, role: string, userId: string | null) => ({
-  id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId,
-});
-const tier = {
-  id: 't1',
-  staticGroupId: 'g1',
-  tierId: 'aac-cruiserweight',
-  players: [player('p1', 'Aya', 'T1', 'tank', 'u1'), player('p2', 'Bo', 'H1', 'healer', 'u2')],
-} as unknown as TierSnapshot;
-
-const fetchGoals = vi.fn();
-const fetchProgress = vi.fn();
 
 interface Seed {
   goals?: CollectionGoal[];
@@ -65,83 +60,23 @@ const PARTICIPANTS = {
   done: [row('done', 'u1', { state: 'have' })],
 };
 
-function seed(s: Seed = {}) {
-  useCollectionGoalStore.setState({
-    goals: s.goals ?? GOALS,
-    participants: s.participants ?? PARTICIPANTS,
-    recordOnly: {},
-    loadedGroupId: s.ready === false ? null : 'g1',
-    isLoading: false,
-    progressError: null,
-    progressLoading: false,
-    error: null,
-    fetchGoals,
-    fetchProgress,
-  });
-}
-
-/** The router's current search and last action, for the URL assertions. */
-function LocationProbe() {
-  const { search } = useLocation();
-  const action = useNavigationType();
-  return <output data-testid="location" data-action={action}>{search}</output>;
-}
-
-function page(props: Partial<Parameters<typeof ProgressPage>[0]> = {}) {
-  return (
-    <ProgressPage
-      group={group}
-      tier={tier}
-      canManage={true}
-      userRole="owner"
-      currentUserId="u1"
-      isViewingAs={false}
-      onNavigate={vi.fn()}
-      {...props}
-    />
-  );
-}
-
-function renderAt(url: string, props: Partial<Parameters<typeof ProgressPage>[0]> = {}) {
-  const view = render(
-    <MemoryRouter initialEntries={[url]}>
-      {page(props)}
-      <LocationProbe />
-    </MemoryRouter>,
-    { wrapper: TooltipWrapper },
-  );
-  const rerender = (next: Partial<Parameters<typeof ProgressPage>[0]>) =>
-    view.rerender(
-      <MemoryRouter initialEntries={[url]}>
-        {page(next)}
-        <LocationProbe />
-      </MemoryRouter>,
-    );
-  return { rerender };
-}
-
-const search = () => new URLSearchParams(screen.getByTestId('location').textContent ?? '');
-const trackOf = () => search().get('track');
-const actionOf = () => screen.getByTestId('location').getAttribute('data-action');
-const rowOf = (id: string) => screen.getAllByTestId('progress-farm-row').find((r) => r.getAttribute('data-goal-id') === id)!;
-const nameOf = (id: string) => within(within(rowOf(id)).getByRole('rowheader')).getByRole('button');
-const panel = () => screen.queryByTestId('progress-expansion');
+// The real writes stay: these tests run `logDrop`, `deleteDrop` and the refresh over the mocked `api`.
+const seed = (s: Seed = {}) => seedPage(s.participants ?? PARTICIPANTS, s.goals ?? GOALS, { ready: s.ready !== false, writes: false });
 
 const scrollIntoView = vi.fn();
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  stubCanHover();
-  fetchGoals.mockResolvedValue(undefined);
-  fetchProgress.mockResolvedValue({ error: null });
+  setUpPage();
   // jsdom has none; the row calls it once per open (R-S3-3).
   Element.prototype.scrollIntoView = scrollIntoView;
 });
 
 afterEach(() => {
+  tearDownPage();
   vi.unstubAllGlobals();
   delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
 });
+
 
 describe('ProgressPage ?track= on load', () => {
   it('opens the active row it names and scrolls the row, then its panel, into view once', async () => {

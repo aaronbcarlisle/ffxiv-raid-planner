@@ -254,8 +254,6 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     if (track === null || !goalsReady || !goalsFetched) return;
     if (!groupGoals.some((g) => g.id === track)) setTrack(null);
   }, [track, goalsReady, goalsFetched, groupGoals, setTrack]);
-  // A static switch under the mounted page clears it at once (the switches that navigate with
-  // no query clear it already); the id belongs to the static it was read under.
   const [editId, setEditId] = useState<string | null>(null);
   // The edit belongs to the static it started under: dropped in the render that sees another one.
   const [editGroupId, setEditGroupId] = useState(group.id);
@@ -263,6 +261,8 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     setEditGroupId(group.id);
     setEditId(null);
   }
+  // A static switch under the mounted page clears `?track` at once (the switches that navigate with
+  // no query clear it already); the id belongs to the static it was read under.
   const trackedGroupId = useRef(group.id);
   useEffect(() => {
     if (trackedGroupId.current === group.id) return;
@@ -291,23 +291,25 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   }, [discarding]);
   // Runs `proceed` now, or once the lead has agreed to drop the dirty block of `editedId`. Keep
   // editing returns focus to the control that asked (the block's Title when it is gone); Discard to
-  // `landingId`, the element the action was heading for, when it names one.
+  // `landingId`, the element the action was heading for, when it names one, else (`returnOnDiscard`,
+  // a write that may fail and leave the control in place) to the control that asked.
   const askToDiscard = useCallback(
-    (editedId: string | null, proceed: () => void, landingId?: string, openedBy?: HTMLElement | null) => {
+    (editedId: string | null, proceed: () => void, landingId?: string, openedBy?: HTMLElement | null, returnOnDiscard = false) => {
       if (editedId === null || editedId !== editingId || !dirtyRef.current) {
         proceed();
         return;
       }
       const opener = openedBy ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+      const openerBack = () => (opener !== null && opener !== document.body && opener.isConnected ? opener : null);
       setDiscarding({
         keep: () => {
-          restoreFocus.current = () => {
-            const back = opener !== null && opener !== document.body && opener.isConnected ? opener : null;
-            (back ?? document.getElementById(farmEditTitleId(editedId)))?.focus();
-          };
+          restoreFocus.current = () => (openerBack() ?? document.getElementById(farmEditTitleId(editedId)))?.focus();
         },
         discard: () => {
           if (landingId !== undefined) restoreFocus.current = () => document.getElementById(landingId)?.focus();
+          // The confirm's unmount drops focus to <body>; the write that follows (the finished row's
+          // own claim wins when it lands) must not start from there, nor end there if it fails.
+          else if (returnOnDiscard) restoreFocus.current = () => openerBack()?.focus();
           proceed();
         },
       });
@@ -329,16 +331,21 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   const editControls = useMemo(
     () => ({
       editingId,
-      start: (goalId: string) => {
+      start: (goalId: string, opener?: HTMLElement | null) => {
         if (goalId === editingId) {
           // Already editing it: the menu has just returned focus to its button; the title takes it back.
           queueMicrotask(() => document.getElementById(farmEditTitleId(goalId))?.focus());
           return;
         }
-        askToDiscard(editingId, () => {
-          setEditId(goalId);
-          setTrack(goalId);
-        });
+        askToDiscard(
+          editingId,
+          () => {
+            setEditId(goalId);
+            setTrack(goalId);
+          },
+          undefined,
+          opener,
+        );
       },
       finish: (goalId: string) => {
         setEditId(null);
@@ -356,6 +363,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
           },
           undefined,
           opener,
+          true,
         ),
     }),
     [editingId, askToDiscard, setTrack, setDirty],
