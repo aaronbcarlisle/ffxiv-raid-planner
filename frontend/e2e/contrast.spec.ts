@@ -398,3 +398,85 @@ for (const theme of THEMES) {
     }
   })
 }
+
+// ── Risk view: v2 Progress with a row open (S2a-3a·G5b) ───────────────────────
+// The open row's panel (Next in line, Last drops, About and the action bar) and the Log-a-drop
+// picker, scoped to the progress region plus the portalled picker. One owner-Need custom farm
+// ("E2E Progress Contrast Row", deleted in `finally`) gives the panel a queue and the action bar
+// its Log a drop split. Axe's color-contrast rule reads text only, so the picker's unchecked
+// radio dots (a 3:1 graphic) are measured here directly against the picker's own surface.
+// EXCLUDED: the same role-token column-header debt as above.
+for (const theme of THEMES) {
+  test(`v2 progress with a row open has zero contrast violations (${theme})`, async ({ page }) => {
+    await forceTheme(page, theme)
+    await loginAsOwner(page)
+    const { groupId, csrfToken } = await ownerApiContext(page)
+    const headers = { 'X-CSRF-Token': csrfToken }
+    let id = ''
+    try {
+      const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals`, {
+        headers,
+        data: { goal_type: 'custom_reward', title: 'E2E Progress Contrast Row', status: 'farming' },
+      })
+      expect(res.ok(), 'seeding the row farm').toBe(true)
+      id = ((await res.json()) as { id: string }).id
+      const set = await page.request.patch(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${id}/participants`, {
+        headers,
+        data: { state: 'need' },
+      })
+      expect(set.ok(), `the owner's status on the row farm`).toBe(true)
+
+      await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=progress&track=${id}`)
+      const panel = page.getByTestId('progress-expansion')
+      await panel.waitFor({ timeout: 15_000 })
+      await page.waitForLoadState('networkidle')
+      await page.waitForTimeout(300)
+
+      const scan = (includes: string[]) => {
+        let builder = new AxeBuilder({ page }).exclude('[data-testid="progress-column"] [class*="text-role-"]').withRules(['color-contrast'])
+        for (const selector of includes) builder = builder.include(selector)
+        return builder.analyze()
+      }
+
+      const open = await scan(['[data-testid="progress-screen"]'])
+      expect(open.violations, JSON.stringify(open.violations, null, 2)).toEqual([])
+
+      // The picker: portalled, so it is tagged and scanned beside the screen.
+      await panel.getByRole('button', { name: 'More recipients' }).click()
+      const radios = page.getByRole('radiogroup', { name: 'Recipient' })
+      await radios.waitFor()
+      await radios.evaluate((el) => el.closest('[role="dialog"]')?.setAttribute('data-e2e-picker', '1'))
+      await page.mouse.move(0, 0)
+      await page.waitForTimeout(300)
+      const picker = await scan(['[data-testid="progress-screen"]', '[data-e2e-picker="1"]'])
+      expect(picker.violations, JSON.stringify(picker.violations, null, 2)).toEqual([])
+
+      // The unchecked dots against the picker's surface: WCAG 1.4.11 asks 3:1 of a control's boundary.
+      const ratios = await radios.evaluate((group) => {
+        const channels = (css: string) => (css.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number)
+        const luminance = (rgb: number[]) => {
+          const [r, g, b] = rgb.map((c) => {
+            const s = c / 255
+            return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+          })
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b
+        }
+        let surface = group as Element | null
+        while (surface && /rgba\(.*,\s*0\)|transparent/.test(getComputedStyle(surface).backgroundColor)) surface = surface.parentElement
+        const background = channels(getComputedStyle(surface ?? document.body).backgroundColor)
+        const out: number[] = []
+        for (const radio of group.querySelectorAll('[role="radio"][aria-checked="false"]')) {
+          const dot = radio.firstElementChild as HTMLElement
+          const edge = luminance(channels(getComputedStyle(dot).borderTopColor))
+          const back = luminance(background)
+          out.push((Math.max(edge, back) + 0.05) / (Math.min(edge, back) + 0.05))
+        }
+        return out
+      })
+      expect(ratios.length, 'the picker has unchecked options').toBeGreaterThan(0)
+      for (const ratio of ratios) expect(ratio).toBeGreaterThanOrEqual(3)
+    } finally {
+      if (id) await page.request.delete(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${id}`, { headers })
+    }
+  })
+}

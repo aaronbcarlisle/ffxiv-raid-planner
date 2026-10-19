@@ -180,6 +180,13 @@ export const RELEASES: Release[] = [
         pr: 382,
         prTitle: 'feat(v2): S2a-3a·G5 — inline Edit',
       },
+      {
+        category: 'improvement',
+        title: 'Progress: row expansion end-to-end checks',
+        description:
+          'V2 preview: browser checks now walk the open farm row as an owner, a member and a viewer, in both themes: a link to a row, the arrow keys, logging a drop and Undo, Mark finished and Reopen, Edit and Delete, and who sees which controls. They found and fixed the Log a drop and Mark finished buttons reading too faintly in the light theme, the unchecked dots in the Log a drop picker nearly vanishing in dark, and two places where focus fell to the page after answering "Discard changes?".',
+        internal: true,
+      },
     ],
   },
   {
