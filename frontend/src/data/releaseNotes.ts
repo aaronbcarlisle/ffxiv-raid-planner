@@ -171,6 +171,13 @@ export const RELEASES: Release[] = [
         pr: 381,
         prTitle: 'feat(v2): S2a-3a·G4 — drop history and the row menu',
       },
+      {
+        category: 'feature',
+        title: 'Progress: inline Edit',
+        description:
+          'V2 preview: leads get Edit first in a farm\'s ⋯ menu. It opens the row with a block on top for the farm\'s title, type, status (Wanted, Farming or Scheduled), content and its duty or key, priority mode (with a line on how it queues) and notes. Save sends only what changed, toasts "Saved" and shows the change under About; Escape and Cancel discard. Opening another row, closing the row or marking it finished with unsaved changes asks "Discard changes?" first.',
+        internal: true,
+      },
     ],
   },
   {

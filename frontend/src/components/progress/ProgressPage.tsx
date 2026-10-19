@@ -29,12 +29,18 @@
  * cached list, which a warm cache reports as loaded and idle before the refetch runs); and
  * a static switch under the mounted page clears it at once (a goal id never belongs to two
  * statics), before the new static's goals load.
+ *
+ * Inline Edit (S2a-3a·G5 Task TG8, D-12, R-S3-10): `editId` names the farm whose Edit block is on
+ * (shown only while it is the open row), and the block reports whether it is dirty. A dirty block
+ * is never dropped silently: opening another row, closing the row (its name button or Escape) and
+ * Mark finished each ask "Discard changes?" first (`askToDiscard`), through `farmEditContext`.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Target } from 'lucide-react';
 import { MembersOnlyCard } from '../auth';
 import { PageHeader } from '../layout/PageHeader';
 import { Button } from '../primitives/Button';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import { useRosterSortPreset } from '../roster/useRosterSortPreset';
 import { getTierById } from '../../gamedata';
 import { useTrackParam } from '../../hooks/useTrackParam';
@@ -44,6 +50,8 @@ import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingS
 import type { MemberRole, PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
 import { buildColumns, splitFarmRows, type ProgressCell as ProgressCellModel } from '../../utils/progressModel';
 import { blankClaimedCells, cellWriteTarget } from './editStatuses';
+import { FarmEditContext } from './farmEditContext';
+import { farmMenuId } from './farmFocus';
 import { EditStatusesBar } from './EditStatusesBar';
 import { ProgressMatrix } from './ProgressMatrix';
 import { TierRow } from './TierRow';
@@ -254,7 +262,63 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     trackedGroupId.current = group.id;
     setTrack(null);
   }, [group.id, setTrack]);
-  const toggleRow = useCallback((goalId: string) => setTrack(openId === goalId ? null : goalId), [openId, setTrack]);
+
+  // ── Inline Edit (G5, D-12) ──
+  const [editId, setEditId] = useState<string | null>(null);
+  // The block is on screen only while its row is the open one.
+  const editingId = editId !== null && editId === openId ? editId : null;
+  // Read in event handlers only: the block reports it from an effect, the handlers read it fresh.
+  const dirtyRef = useRef(false);
+  const setDirty = useCallback((dirty: boolean) => {
+    dirtyRef.current = dirty;
+  }, []);
+  // The action waiting on "Discard changes?" (a function, so it is held in an object).
+  const [discarding, setDiscarding] = useState<{ proceed: () => void } | null>(null);
+  // Runs `proceed` now, or once the lead has agreed to drop the dirty block of `editedId`.
+  const askToDiscard = useCallback(
+    (editedId: string | null, proceed: () => void) => {
+      if (editedId !== null && editedId === editingId && dirtyRef.current) setDiscarding({ proceed });
+      else proceed();
+    },
+    [editingId],
+  );
+  const toggleRow = useCallback(
+    (goalId: string) =>
+      askToDiscard(openId, () => {
+        setEditId(null);
+        setTrack(openId === goalId ? null : goalId);
+      }),
+    [openId, setTrack, askToDiscard],
+  );
+  const editControls = useMemo(
+    () => ({
+      editingId,
+      start: (goalId: string) => {
+        if (goalId === editingId) {
+          // Already editing it: the menu has just returned focus to its button; the title takes it back.
+          queueMicrotask(() => document.querySelector<HTMLElement>('[data-testid="progress-edit-block"] input')?.focus());
+          return;
+        }
+        askToDiscard(editingId, () => {
+          setEditId(goalId);
+          setTrack(goalId);
+        });
+      },
+      finish: (goalId: string) => {
+        setEditId(null);
+        dirtyRef.current = false;
+        document.getElementById(farmMenuId(goalId))?.focus();
+      },
+      setDirty,
+      guard: (goalId: string, proceed: () => void) =>
+        askToDiscard(goalId, () => {
+          // Only this farm's own block goes; another row's Mark finished leaves an edit elsewhere alone.
+          if (goalId === editingId) setEditId(null);
+          proceed();
+        }),
+    }),
+    [editingId, askToDiscard, setTrack, setDirty],
+  );
 
   return (
     <div data-testid="progress-screen">
@@ -300,26 +364,44 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
                 blankCells={blankCells}
               />
             )}
-            <ProgressMatrix
-              columns={columns}
-              active={active}
-              finished={finished}
-              canManage={canManage}
-              currentUserId={currentUserId}
-              memberNames={memberNames}
-              editFor={editFor}
-              finishedLoading={finishedLoading}
-              finishedError={finishedError}
-              onExpandFinished={expandFinished}
-              openId={openId}
-              onToggle={toggleRow}
-              groupId={group.id}
-              userRole={userRole}
-              clock={clock}
-            />
+            <FarmEditContext.Provider value={editControls}>
+              <ProgressMatrix
+                columns={columns}
+                active={active}
+                finished={finished}
+                canManage={canManage}
+                currentUserId={currentUserId}
+                memberNames={memberNames}
+                editFor={editFor}
+                finishedLoading={finishedLoading}
+                finishedError={finishedError}
+                onExpandFinished={expandFinished}
+                openId={openId}
+                onToggle={toggleRow}
+                groupId={group.id}
+                userRole={userRole}
+                clock={clock}
+              />
+            </FarmEditContext.Provider>
           </>
         )}
       </div>
+      {discarding !== null && (
+        <ConfirmModal
+          isOpen
+          variant="warning"
+          title="Discard changes?"
+          message="This farm has unsaved edits. Discarding them can't be undone."
+          confirmLabel="Discard"
+          cancelLabel="Keep editing"
+          onCancel={() => setDiscarding(null)}
+          onConfirm={() => {
+            const { proceed } = discarding;
+            setDiscarding(null);
+            proceed();
+          }}
+        />
+      )}
     </div>
   );
 }

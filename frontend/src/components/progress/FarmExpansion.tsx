@@ -23,6 +23,11 @@
  * Mark finished (S2a-3a·G4 Task TG7, D-22, R-S3-17): a lead's `Button` in the action bar on an
  * active row everyone has (n = m > 0), doing what the row menu's item does. The status cell reads
  * only "Everyone has it".
+ *
+ * Edit (S2a-3a·G5 Task TG8, D-12, R-S3-10): while the page says this row is being edited
+ * (`farmEditContext`), `FarmEditBlock` sits on top of the action bar. Escape inside it is the
+ * block's (it discards and prevents the key), so the filter above leaves the panel open. Mark
+ * finished asks "Discard changes?" first when the block is dirty, as the menu's item does.
  */
 import { useCallback, useRef, type KeyboardEvent } from 'react';
 import { CircleCheck, Copy } from 'lucide-react';
@@ -34,6 +39,8 @@ import type { WeekClock } from '../../utils/dropWeek';
 import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
 import { Button } from '../primitives';
 import { AboutBlock } from './AboutBlock';
+import { useFarmEdit } from './farmEditContext';
+import { FarmEditBlock } from './FarmEditBlock';
 import { DropList } from './DropList';
 import { IGotItButton } from './IGotItButton';
 import { LogDropButton } from './LogDropButton';
@@ -92,6 +99,8 @@ export function FarmExpansion({
   const lead = canManage && !viewer;
   const { drops, status: dropsStatus, retry: retryDrops } = useGoalDrops(groupId, row.goal.id);
   const { busy: statusBusy, markFinished } = useGoalStatus(groupId, row.goal);
+  const edit = useFarmEdit();
+  const editing = !finished && edit.editingId === row.goal.id;
 
   // D-14, as V1's history: a lead any drop, a member the ones they logged; a viewer none (the API refuses them).
   const canDeleteDrop = (drop: RewardDrop) => !viewer && (lead || drop.createdById === currentUserId);
@@ -141,6 +150,9 @@ export function FarmExpansion({
           style={viewWidth === null ? undefined : { width: viewWidth }}
           className="max-w-full px-4 py-3"
         >
+          {editing && (
+            <FarmEditBlock groupId={groupId} goal={row.goal} onDone={() => edit.finish(row.goal.id)} onDirtyChange={edit.setDirty} />
+          )}
           {/* The action bar: the drop action, Mark finished when everyone has it, then Copy plan. */}
           <div data-testid="progress-expansion-actions" className="mb-3 flex flex-wrap items-center gap-2">
             {!finished && lead && <LogDropButton row={row} groupId={groupId} />}
@@ -153,7 +165,7 @@ export function FarmExpansion({
                 leftIcon={<CircleCheck size={14} aria-hidden="true" />}
                 aria-disabled={statusBusy || undefined}
                 onClick={() => {
-                  if (!statusBusy) void markFinished();
+                  if (!statusBusy) edit.guard(row.goal.id, () => void markFinished());
                 }}
               >
                 Mark finished
