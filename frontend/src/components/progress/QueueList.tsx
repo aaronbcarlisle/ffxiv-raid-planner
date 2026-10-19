@@ -5,7 +5,7 @@
  * Want: C", names in column order, no ranks, no counts and no Show all. `free_roll` queues
  * nobody, for every role.
  */
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { FarmRow } from '../../utils/progressModel';
 import { queueEntryText, queueFor } from '../../utils/progressQueue';
 import { Button } from '../primitives';
@@ -22,6 +22,7 @@ const MUTED = 'text-sm text-text-muted';
 
 export function QueueList({ row, viewer }: QueueListProps) {
   const [showAll, setShowAll] = useState(false);
+  const listId = useId();
   const { goal } = row;
   const queue = queueFor(row, goal.priorityMode);
 
@@ -45,16 +46,18 @@ export function QueueList({ row, viewer }: QueueListProps) {
   const shown = showAll ? queue : queue.slice(0, TOP);
   return (
     <div className="flex flex-col items-start gap-1">
-      <ol className="flex flex-col gap-1 text-sm text-text-primary">
+      <ol id={listId} className="flex flex-col gap-1 text-sm text-text-primary">
         {shown.map((entry) => (
           <li key={entry.cell.column.key} className="flex gap-2">
             <span className="w-6 shrink-0 text-text-muted">#{entry.rank}</span>
+            {/* A real space: the flex gap spaces them on screen, the text keeps them apart (textContent, readers). */}
+            {' '}
             <span>{`${entry.cell.column.name} · ${queueEntryText(entry, goal.tokenCost)}`}</span>
           </li>
         ))}
       </ol>
       {queue.length > TOP && (
-        <Button variant="ghost" size="sm" aria-expanded={showAll} onClick={() => setShowAll((open) => !open)}>
+        <Button variant="ghost" size="sm" aria-expanded={showAll} aria-controls={listId} onClick={() => setShowAll((open) => !open)}>
           {showAll ? 'Show fewer' : `Show all (${queue.length})`}
         </Button>
       )}

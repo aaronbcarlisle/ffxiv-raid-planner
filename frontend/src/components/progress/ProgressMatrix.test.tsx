@@ -744,6 +744,70 @@ describe('ProgressMatrix disclosure', () => {
   });
 });
 
+// ── The open panel's width (G2b fix) ────────────────────────────────────────
+
+describe('ProgressMatrix open panel width', () => {
+  const two = [goal('hot', { title: 'Hot' }), goal('calm', { title: 'Calm' })];
+  const needy = { hot: [row('hot', 'u1', { state: 'need' })], calm: [row('calm', 'u1', { state: 'want' })] };
+  const TABLE_WIDTH = 1902;
+  let scrollerWidth = 1290;
+  let notify: (() => void) | null = null;
+  const WIDTH_PROPS = ['clientWidth', 'scrollWidth', 'offsetWidth'];
+  const originals = WIDTH_PROPS.map((prop) => Object.getOwnPropertyDescriptor(Element.prototype, prop));
+
+  beforeEach(() => {
+    scrollerWidth = 1290;
+    notify = null;
+    // jsdom has no layout: the scroller is 1290 wide, the table inside it (and anything else) 1902.
+    for (const prop of WIDTH_PROPS) {
+      Object.defineProperty(Element.prototype, prop, {
+        configurable: true,
+        get(this: Element) {
+          return this.getAttribute('data-testid') === 'progress-matrix' ? scrollerWidth : TABLE_WIDTH;
+        },
+      });
+    }
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(cb: () => void) {
+          notify = cb;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+  });
+  afterEach(() => {
+    WIDTH_PROPS.forEach((prop, i) => {
+      const descriptor = originals[i];
+      if (descriptor) Object.defineProperty(Element.prototype, prop, descriptor);
+      else delete (Element.prototype as unknown as Record<string, unknown>)[prop];
+    });
+  });
+
+  const body = () => within(panel()!).getByTestId('progress-expansion-body');
+
+  it('lays the panel out at the scroller\'s visible width, not the table\'s', () => {
+    renderMatrix({ goals: two, participants: needy, openId: 'hot' });
+    expect(body()).toHaveStyle({ width: `${scrollerWidth}px` });
+    expect(body().style.width).not.toBe(`${TABLE_WIDTH}px`);
+  });
+
+  it('follows the scroller when it resizes', () => {
+    renderMatrix({ goals: two, participants: needy, openId: 'hot' });
+    scrollerWidth = 980;
+    act(() => notify?.());
+    expect(body()).toHaveStyle({ width: '980px' });
+  });
+
+  it('applies to the panel of a row opened after the first render too', () => {
+    renderMatrix({ goals: two, participants: needy });
+    fireEvent.click(nameButton(farmRows()[1]));
+    expect(body()).toHaveStyle({ width: `${scrollerWidth}px` });
+  });
+});
+
 // ── Provenance tooltips (R-S2-9) ────────────────────────────────────────────
 
 describe('ProgressMatrix provenance tooltip', () => {

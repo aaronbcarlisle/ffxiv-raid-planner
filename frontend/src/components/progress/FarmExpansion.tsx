@@ -38,11 +38,17 @@ export interface FarmExpansionProps {
   id: string;
   /** Every column of the matrix, for the one cell that spans them. */
   spanAll: number;
+  /**
+   * The matrix scroller's visible width, or null while unmeasured. The cell spans a table wider
+   * than the view, so the content is held to this width, left-aligned at the table's edge, and
+   * its columns wrap rather than overflow.
+   */
+  viewWidth?: number | null;
 }
 
 const HEADING = 'text-xs font-semibold uppercase tracking-wide text-text-muted';
 
-export function FarmExpansion({ row, userRole, onClose, id, spanAll }: FarmExpansionProps) {
+export function FarmExpansion({ row, userRole, onClose, id, spanAll, viewWidth = null }: FarmExpansionProps) {
   const panelRef = useRef<HTMLTableRowElement>(null);
   const viewer = userRole === 'viewer';
 
@@ -74,40 +80,46 @@ export function FarmExpansion({ row, userRole, onClose, id, spanAll }: FarmExpan
       className="border-t border-border-subtle bg-surface-elevated"
       onKeyDown={onKeyDown}
     >
-      <td role="gridcell" colSpan={spanAll} className="px-4 py-3 align-top">
-        {/* The action bar: TG5's Log a drop / I got it and TG7's Mark finished go before Copy plan. */}
-        <div data-testid="progress-expansion-actions" className="mb-3 flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            leftIcon={<Copy size={14} aria-hidden="true" />}
-            onClick={() => void copyPlan()}
-          >
-            Copy plan
-          </Button>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          <section aria-labelledby={`${id}-queue`} data-testid="progress-expansion-queue">
-            <h2 id={`${id}-queue`} className={HEADING}>
-              Next in line
-            </h2>
-            <div className="mt-2">
-              <QueueList row={row} viewer={viewer} />
-            </div>
-          </section>
-          <section aria-labelledby={`${id}-drops`} data-testid="progress-expansion-drops">
-            <h2 id={`${id}-drops`} className={HEADING}>
-              Last drops
-            </h2>
-          </section>
-          <section aria-labelledby={`${id}-about`} data-testid="progress-expansion-about">
-            <h2 id={`${id}-about`} className={HEADING}>
-              About
-            </h2>
-            <div className="mt-2">
-              <AboutBlock goal={row.goal} />
-            </div>
-          </section>
+      <td role="gridcell" colSpan={spanAll} className="p-0 align-top">
+        <div
+          data-testid="progress-expansion-body"
+          style={viewWidth === null ? undefined : { width: viewWidth }}
+          className="max-w-full px-4 py-3"
+        >
+          {/* The action bar: TG5's Log a drop / I got it and TG7's Mark finished go before Copy plan. */}
+          <div data-testid="progress-expansion-actions" className="mb-3 flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Copy size={14} aria-hidden="true" />}
+              onClick={() => void copyPlan()}
+            >
+              Copy plan
+            </Button>
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,21rem),1fr))] gap-4">
+            <section aria-labelledby={`${id}-queue`} data-testid="progress-expansion-queue">
+              <h2 id={`${id}-queue`} className={HEADING}>
+                Next in line
+              </h2>
+              <div className="mt-2">
+                <QueueList row={row} viewer={viewer} />
+              </div>
+            </section>
+            <section aria-labelledby={`${id}-drops`} data-testid="progress-expansion-drops">
+              <h2 id={`${id}-drops`} className={HEADING}>
+                Last drops
+              </h2>
+            </section>
+            <section aria-labelledby={`${id}-about`} data-testid="progress-expansion-about">
+              <h2 id={`${id}-about`} className={HEADING}>
+                About
+              </h2>
+              <div className="mt-2">
+                <AboutBlock goal={row.goal} />
+              </div>
+            </section>
+          </div>
         </div>
       </td>
     </tr>

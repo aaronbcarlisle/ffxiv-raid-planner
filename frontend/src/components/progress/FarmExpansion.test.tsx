@@ -1,9 +1,12 @@
 /**
- * FarmExpansion (S2a-3a·G2 Task TG3; R-S3-4): the panel row's shape and its Escape filter.
- * The matrix tests cover the row inside the grid (open, close, focus return); here the panel
- * stands alone in a table, and the filter is pinned both through the row and as the predicate
- * `escapeClosesPanel`, since the shell has no portalled layer of its own yet (TG5, TG6/TG7 and
- * TG8 pin the real picker, confirm and Select).
+ * FarmExpansion (S2a-3a·G2 Task TG3, G2b Task TG4; R-S3-4, R-S3-2, R-S3-15): the panel row's shape,
+ * its Escape filter, and what the panel now holds. The matrix tests cover the row inside the grid
+ * (open, close, focus return, Tab in, the width following the scroller); here the panel stands
+ * alone in a table: the shell and D-4's order (action bar, then Next in line · Last drops ·
+ * About), the queue and About filled from the row (a viewer's unranked line), Copy plan (the
+ * clipboard text, its toasts, every role, a finished row), and the Escape filter, pinned both
+ * through the row and as the predicate `escapeClosesPanel`, since the shell has no portalled
+ * layer of its own yet (TG5, TG6/TG7 and TG8 pin the real picker, confirm and Select).
  */
 import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -23,9 +26,10 @@ interface PanelOptions {
   row?: FarmRow;
   userRole?: MemberRole;
   finished?: boolean;
+  viewWidth?: number | null;
 }
 
-function renderPanel({ onClose = vi.fn(), row: farmRow = wings, userRole = 'lead', finished = false }: PanelOptions = {}) {
+function renderPanel({ onClose = vi.fn(), row: farmRow = wings, userRole = 'lead', finished = false, viewWidth }: PanelOptions = {}) {
   render(
     <table>
       <tbody>
@@ -39,6 +43,7 @@ function renderPanel({ onClose = vi.fn(), row: farmRow = wings, userRole = 'lead
           onClose={onClose}
           id="progress-expansion-wings"
           spanAll={5}
+          viewWidth={viewWidth}
         />
       </tbody>
     </table>,
@@ -70,6 +75,14 @@ describe('FarmExpansion shell', () => {
       expect(section).toHaveAccessibleName(heading);
     }
     expect(panel.querySelectorAll('[tabindex]')).toHaveLength(0);
+  });
+
+  it('holds its content to the visible width it is given, and leaves it free until measured', () => {
+    const { panel } = renderPanel({ viewWidth: 1288 });
+    expect(within(panel).getByTestId('progress-expansion-body')).toHaveStyle({ width: '1288px' });
+    document.body.replaceChildren();
+    const unmeasured = renderPanel({ viewWidth: null }).panel;
+    expect((within(unmeasured).getByTestId('progress-expansion-body') as HTMLElement).style.width).toBe('');
   });
 
   it('puts the action bar first, then Next in line · Last drops · About, in DOM order (D-4)', () => {
