@@ -21,14 +21,22 @@
  *
  * R-S2-19: a viewer with no role (guest or outsider) sees the tier row and the
  * members-only card in place of the matrix, and no `collection-` request fires.
+ *
+ * The open row (S2a-3a·G2, R-S3-3, D-7, D-8): `?track=<goal id>` through `useTrackParam`,
+ * one row at a time. A row is open only while its id names a goal of THIS static whose
+ * goals have loaded, so a stale id opens nothing during a load; an id that matches no goal
+ * is dropped from the URL only once the goals have loaded (never while loading); and a
+ * static switch under the mounted page clears it at once (a goal id never belongs to two
+ * statics), before the new static's goals load.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Target } from 'lucide-react';
 import { MembersOnlyCard } from '../auth';
 import { PageHeader } from '../layout/PageHeader';
 import { Button } from '../primitives/Button';
 import { useRosterSortPreset } from '../roster/useRosterSortPreset';
 import { getTierById } from '../../gamedata';
+import { useTrackParam } from '../../hooks/useTrackParam';
 import { useAuthStore } from '../../stores/authStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
@@ -72,6 +80,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   const goals = useCollectionGoalStore((s) => s.goals);
   const loadedGroupId = useCollectionGoalStore((s) => s.loadedGroupId);
   const goalsError = useCollectionGoalStore((s) => s.error);
+  const goalsLoading = useCollectionGoalStore((s) => s.isLoading);
   const participants = useCollectionGoalStore((s) => s.participants);
   const recordOnly = useCollectionGoalStore((s) => s.recordOnly);
   const progressLoading = useCollectionGoalStore((s) => s.progressLoading);
@@ -204,6 +213,25 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     setAttempt((n) => n + 1);
   };
 
+  // ── The open row (S2a-3a·G2, R-S3-3) ──
+  const [track, setTrack] = useTrackParam();
+  // Open only while the id names a goal of this static and the goals have loaded.
+  const openId = track !== null && goalsReady && groupGoals.some((g) => g.id === track) ? track : null;
+  // An id that matches no goal here is dropped, once the goals have loaded and no fetch is in flight.
+  useEffect(() => {
+    if (track === null || !goalsReady || goalsLoading) return;
+    if (!groupGoals.some((g) => g.id === track)) setTrack(null);
+  }, [track, goalsReady, goalsLoading, groupGoals, setTrack]);
+  // A static switch under the mounted page clears it at once (the switches that navigate with
+  // no query clear it already); the id belongs to the static it was read under.
+  const trackedGroupId = useRef(group.id);
+  useEffect(() => {
+    if (trackedGroupId.current === group.id) return;
+    trackedGroupId.current = group.id;
+    setTrack(null);
+  }, [group.id, setTrack]);
+  const toggleRow = useCallback((goalId: string) => setTrack(openId === goalId ? null : goalId), [openId, setTrack]);
+
   return (
     <div data-testid="progress-screen">
       <PageHeader
@@ -259,6 +287,10 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
               finishedLoading={finishedLoading}
               finishedError={finishedError}
               onExpandFinished={expandFinished}
+              openId={openId}
+              onToggle={toggleRow}
+              groupId={group.id}
+              userRole={userRole}
             />
           </>
         )}

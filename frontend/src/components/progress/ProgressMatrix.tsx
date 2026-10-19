@@ -2,7 +2,7 @@
  * ProgressMatrix — the farms by player (S2a-2·F3, R-S2-6 / R-S2-7 / R-S2-18). One
  * `<table>`: a column per player in Board order, the unclaimed ones dim with "Claim
  * to track", then the "Not on the roster" / "Card not set up" members; a row per
- * active farm in `compareFarmRows` order; "Finished (n)" last. Read-only.
+ * active farm in `compareFarmRows` order; "Finished (n)" last.
  *
  * It scrolls sideways inside its own container, never the page (R-S2-18). Nothing is
  * sticky (CLAUDE.md § Product rules). The tier row is the page's, above this.
@@ -14,15 +14,24 @@
  * S2a-2·F5 (R-S2-10): the active cells `editFor` resolves a write target for (the reader's
  * own; every claimed cell in a lead's Edit statuses, S2a-2·F6) are pickers, and the
  * picker's Button is then that cell's stop. Everything else is read-only.
+ *
+ * S2a-3a·G2 (D-7, R-S3-3, R-S3-4): the grid's keys start with the name column (`NAME_KEY`),
+ * whose cell is each row's disclosure Button, so the first row's name is the stop until a
+ * cell is focused, and Home / ArrowLeft reach it. TG7 adds `'__menu'` after it for leads
+ * (R-S3-17). The one open row (`openId`, the page's `?track`) renders its panel
+ * (`FarmExpansion`) as the next `<tr>`, spanning every column (`spanAll`) and outside
+ * `rowIds`, in whichever `<tbody>` holds the row.
  */
 import { useMemo } from 'react';
 import { VisuallyHidden } from '../primitives/VisuallyHidden';
 import { JobIcon } from '../ui/JobIcon';
 import { Tag } from '../ui/Tag';
 import { getValidRole } from '../../gamedata';
+import type { MemberRole } from '../../types';
 import type { FarmRow as FarmRowModel, ProgressColumn } from '../../utils/progressModel';
 import type { CellWriteResolver } from './editStatuses';
-import { FarmRow } from './FarmRow';
+import { FarmExpansion } from './FarmExpansion';
+import { FarmRow, NAME_KEY } from './FarmRow';
 import { FinishedFarms } from './FinishedFarms';
 import type { ProvenanceContext } from './progressProvenance';
 import { useMatrixKeyboard } from './useMatrixKeyboard';
@@ -91,6 +100,13 @@ interface ProgressMatrixProps {
   finishedError?: string | null;
   /** Called once, on the first expand of Finished; also the retry. */
   onExpandFinished: () => void;
+  /** The one open row (D-7, D-8): a goal id of this static, or null. */
+  openId: string | null;
+  /** A row's name button was activated: open it, or close it when it is the open one. */
+  onToggle: (goalId: string) => void;
+  /** For the open row's panel. */
+  groupId: string;
+  userRole: MemberRole | null | undefined;
 }
 
 export function ProgressMatrix({
@@ -104,13 +120,21 @@ export function ProgressMatrix({
   finishedLoading,
   finishedError = null,
   onExpandFinished,
+  openId,
+  onToggle,
+  groupId,
+  userRole,
 }: ProgressMatrixProps) {
   const rowIds = useMemo(() => active.map((r) => r.goal.id), [active]);
-  const colKeys = useMemo(() => columns.map((c) => c.key), [columns]);
+  // The name column leads (R-S3-4), then the players; TG7 puts '__menu' between them for leads.
+  const colKeys = useMemo(() => [NAME_KEY, ...columns.map((c) => c.key)], [columns]);
   const keyboard = useMatrixKeyboard(rowIds, colKeys);
-  // With at least one cell the grid's single Tab stop is the keyboard's way into the
-  // scroller; without one the scroller itself is the stop (axe scrollable-region-focusable).
-  const hasCells = rowIds.length > 0 && colKeys.length > 0;
+  // Every column of the table: the grid's keys plus Status, which is never a focus target.
+  const spanAll = colKeys.length + 1;
+  // With an active row the grid's single Tab stop (its name button at least) is the keyboard's
+  // way into the scroller; without one the scroller itself is the stop (axe
+  // scrollable-region-focusable).
+  const hasCells = rowIds.length > 0;
 
   // Names for "set by {name}": a writer's column first, then the static's members.
   const columnNames = useMemo(() => {
@@ -122,6 +146,22 @@ export function ProgressMatrix({
     viewerUserId: currentUserId,
     nameOf: (userId) => columnNames.get(userId) ?? memberNames?.get(userId) ?? null,
   };
+
+  // The matrix renders for members only (the page's R-S2-19 gate), who always carry an id; the
+  // fallback is never reached and can match no recipient.
+  const renderExpansion = (row: FarmRowModel, finishedRow: boolean, onClose: () => void, id: string) => (
+    <FarmExpansion
+      row={row}
+      finished={finishedRow}
+      canManage={canManage}
+      userRole={userRole}
+      currentUserId={currentUserId ?? ''}
+      groupId={groupId}
+      onClose={onClose}
+      id={id}
+      spanAll={spanAll}
+    />
+  );
 
   return (
     <div
@@ -150,18 +190,31 @@ export function ProgressMatrix({
         </thead>
         <tbody>
           {active.map((row) => (
-            <FarmRow key={row.goal.id} row={row} canManage={canManage} provenance={provenance} keyboard={keyboard} editFor={editFor} />
+            <FarmRow
+              key={row.goal.id}
+              row={row}
+              canManage={canManage}
+              provenance={provenance}
+              keyboard={keyboard}
+              editFor={editFor}
+              open={row.goal.id === openId}
+              onToggle={() => onToggle(row.goal.id)}
+              renderExpansion={(onClose, id) => renderExpansion(row, false, onClose, id)}
+            />
           ))}
         </tbody>
         <FinishedFarms
           rows={finished}
-          colSpan={columns.length + 2}
+          colSpan={spanAll}
           canManage={canManage}
           provenance={provenance}
           loading={finishedLoading}
           error={finishedError}
           onFirstExpand={onExpandFinished}
           onRetry={onExpandFinished}
+          openId={openId}
+          onToggle={onToggle}
+          renderExpansion={(row, onClose, id) => renderExpansion(row, true, onClose, id)}
         />
       </table>
     </div>

@@ -187,7 +187,8 @@ describe('ProgressPage Edit statuses: the mode (rulings 2, 3, 4)', () => {
     seed(mixed);
     renderPage();
     await screen.findByTestId('progress-matrix');
-    expect(screen.getAllByRole('button', { name: /Wings of Resolve/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Aya, Wings of Resolve, Need — change your status']);
+    // The cells' buttons only: the row's name button (S2a-3a) is named "Wings of Resolve" too.
+    expect(screen.getAllByRole('button', { name: /, Wings of Resolve,/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Aya, Wings of Resolve, Need — change your status']);
     expect(cellNamed('Dee, Wings of Resolve, no status')).toHaveTextContent('');
   });
 

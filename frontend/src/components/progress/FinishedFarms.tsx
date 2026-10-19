@@ -6,8 +6,12 @@
  * 2). They are outside the roving grid (TF6): their cells show provenance on hover but
  * are not Tab stops or arrow targets, so the matrix stays one stop. Reopen is S2a-3a's.
  * Rendered inside the matrix `<table>` so the columns line up.
+ *
+ * S2a-3a·G2 (R-S3-3, R-S3-4): a finished row opens like an active one (its name button is
+ * a plain tab stop), and `?track=<finished id>` expands the section first, once per id's
+ * arrival, so a later collapse by the button holds while that id stays in the URL.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '../primitives/Button';
 import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
 import { FarmRow } from './FarmRow';
@@ -27,28 +31,55 @@ interface FinishedFarmsProps {
   onFirstExpand: () => void;
   /** Fetch the finished goals' cells again. */
   onRetry: () => void;
+  /** The one open row's goal id, which may be a finished one (D-8). */
+  openId: string | null;
+  onToggle: (goalId: string) => void;
+  /** The open row's panel (see `FarmRow`). */
+  renderExpansion: (row: FarmRowModel, onClose: () => void, id: string) => ReactNode;
 }
 
-export function FinishedFarms({ rows, colSpan, canManage, provenance, loading, error, onFirstExpand, onRetry }: FinishedFarmsProps) {
+export function FinishedFarms({
+  rows,
+  colSpan,
+  canManage,
+  provenance,
+  loading,
+  error,
+  onFirstExpand,
+  onRetry,
+  openId,
+  onToggle,
+  renderExpansion,
+}: FinishedFarmsProps) {
   const [expanded, setExpanded] = useState(false);
-  const [requested, setRequested] = useState(false);
+
+  // A finished id in `?track` expands the section when it arrives (a deep link, a tab switch
+  // back), adjusted during the render that sees it; the same id never re-expands, so collapsing
+  // by the button holds, and the memory clears once the id is gone.
+  const openHere = openId !== null && rows.some((r) => r.goal.id === openId);
+  const [expandedFor, setExpandedFor] = useState<string | null>(null);
+  if (openHere && expandedFor !== openId) {
+    setExpandedFor(openId);
+    if (!expanded) setExpanded(true);
+  } else if (!openHere && expandedFor !== null) {
+    setExpandedFor(null);
+  }
+
+  // The first expand, however it came, asks the page for the cells once.
+  const requested = useRef(false);
+  useEffect(() => {
+    if (!expanded || requested.current) return;
+    requested.current = true;
+    onFirstExpand();
+  }, [expanded, onFirstExpand]);
 
   if (rows.length === 0) return null;
-
-  const toggle = () => {
-    const next = !expanded;
-    setExpanded(next);
-    if (next && !requested) {
-      setRequested(true);
-      onFirstExpand();
-    }
-  };
 
   return (
     <tbody data-testid="progress-finished">
       <tr className="border-t border-border-default">
         <td colSpan={colSpan} className="px-3 py-2">
-          <Button variant="ghost" size="sm" aria-expanded={expanded} onClick={toggle}>
+          <Button variant="ghost" size="sm" aria-expanded={expanded} onClick={() => setExpanded((e) => !e)}>
             {`Finished (${rows.length})`}
           </Button>
         </td>
@@ -72,7 +103,20 @@ export function FinishedFarms({ rows, colSpan, canManage, provenance, loading, e
           </td>
         </tr>
       )}
-      {expanded && !loading && error === null && rows.map((row) => <FarmRow key={row.goal.id} row={row} canManage={canManage} provenance={provenance} />)}
+      {expanded &&
+        !loading &&
+        error === null &&
+        rows.map((row) => (
+          <FarmRow
+            key={row.goal.id}
+            row={row}
+            canManage={canManage}
+            provenance={provenance}
+            open={row.goal.id === openId}
+            onToggle={() => onToggle(row.goal.id)}
+            renderExpansion={(onClose, id) => renderExpansion(row, onClose, id)}
+          />
+        ))}
     </tbody>
   );
 }

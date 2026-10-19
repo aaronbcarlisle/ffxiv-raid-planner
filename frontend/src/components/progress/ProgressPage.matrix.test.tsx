@@ -141,8 +141,9 @@ describe('ProgressPage matrix: order and Finished', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Finished (1)' }));
 
     expect(fetchProgress).toHaveBeenCalledWith('g1', ['done']);
-    expect(await screen.findByText('Done Farm · Mount')).toBeInTheDocument();
-    expect(within(rowOf('done')).queryByRole('button')).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Done Farm' })).toBeInTheDocument();
+    // Read-only cells: the row's one control is its name (S2a-3a).
+    for (const cell of within(rowOf('done')).getAllByTestId('progress-cell')) expect(within(cell).queryByRole('button')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Finished (1)' })).toHaveAttribute('aria-expanded', 'true');
     // The second expand is not a second fetch.
     const calls = fetchProgress.mock.calls.length;
@@ -173,7 +174,7 @@ describe('ProgressPage matrix: order and Finished', () => {
     // Farm, Status and the six players: the finished goal's holder is already in the store.
     expect(await screen.findAllByRole('columnheader')).toHaveLength(8);
     fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
-    await screen.findByText('Done Farm · Mount');
+    await screen.findByRole('button', { name: 'Done Farm' });
     expect(screen.getAllByRole('columnheader')).toHaveLength(8);
     expect(screen.queryByText('Ghost')).not.toBeInTheDocument();
   });
@@ -182,7 +183,7 @@ describe('ProgressPage matrix: order and Finished', () => {
     seed({ goals, participants });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: 'Finished (1)' }));
-    await screen.findByText('Done Farm · Mount');
+    await screen.findByRole('button', { name: 'Done Farm' });
     const matrix = screen.getByTestId('progress-matrix');
 
     await act(async () => {
@@ -192,7 +193,7 @@ describe('ProgressPage matrix: order and Finished', () => {
     expect(screen.getByTestId('progress-matrix')).toBe(matrix);
     expect(screen.queryByTestId('progress-loading')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Finished (1)' })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText('Done Farm · Mount')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Done Farm' })).toBeInTheDocument();
     expect(farmIds()).toContain('fresh');
   });
 
@@ -399,7 +400,7 @@ describe('ProgressPage matrix: loading and error (TF5 ruling 3)', () => {
 
     fetchProgress.mockImplementation(async () => ({ error: null }));
     fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
-    expect(await screen.findByText('done · Mount')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'done' })).toBeInTheDocument();
     expect(screen.queryByTestId('progress-finished-error')).not.toBeInTheDocument();
   });
 
