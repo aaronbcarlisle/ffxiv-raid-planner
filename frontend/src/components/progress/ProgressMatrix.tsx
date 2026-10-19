@@ -28,6 +28,7 @@ import { JobIcon } from '../ui/JobIcon';
 import { Tag } from '../ui/Tag';
 import { getValidRole } from '../../gamedata';
 import type { MemberRole } from '../../types';
+import type { WeekClock } from '../../utils/dropWeek';
 import type { FarmRow as FarmRowModel, ProgressColumn } from '../../utils/progressModel';
 import type { CellWriteResolver } from './editStatuses';
 import { FarmExpansion } from './FarmExpansion';
@@ -108,6 +109,8 @@ interface ProgressMatrixProps {
   /** For the open row's panel. */
   groupId: string;
   userRole: MemberRole | null | undefined;
+  /** The tier's week clock, for the open panel's drop labels (R-S3-9). */
+  clock?: WeekClock;
 }
 
 export function ProgressMatrix({
@@ -125,6 +128,7 @@ export function ProgressMatrix({
   onToggle,
   groupId,
   userRole,
+  clock,
 }: ProgressMatrixProps) {
   const rowIds = useMemo(() => active.map((r) => r.goal.id), [active]);
   // The name column leads (R-S3-4), then the players; TG7 puts '__menu' between them for leads.
@@ -162,6 +166,7 @@ export function ProgressMatrix({
       id={id}
       spanAll={spanAll}
       viewWidth={viewWidth}
+      clock={clock}
     />
   );
 

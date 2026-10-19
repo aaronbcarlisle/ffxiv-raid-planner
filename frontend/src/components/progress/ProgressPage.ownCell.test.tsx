@@ -4,7 +4,7 @@
  * a store spy), and the View As admin's own name as a writer. The store is seeded and its
  * fetches replaced, as `ProgressPage.matrix.test.tsx` does.
  */
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -22,11 +22,12 @@ vi.mock('../../services/api', async (importOriginal) => {
   };
 });
 
+import { api } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useCollectionGoalStore, type ParticipantStateEntry } from '../../stores/collectionGoalStore';
 import { useToastStore } from '../../stores/toastStore';
 import type { StaticGroup, TierSnapshot, User } from '../../types';
-import { goal, row } from './__fixtures__/progressFixtures';
+import { apiDrop, goal, row } from './__fixtures__/progressFixtures';
 import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
 import { ProgressPage } from './ProgressPage';
 
@@ -176,5 +177,43 @@ describe('ProgressPage own cell: the View As admin\'s name', () => {
 
     expect((await screen.findAllByText('set by Lead Nine')).length).toBeGreaterThan(0);
     expect(screen.queryByText('set by Stale Name')).not.toBeInTheDocument();
+  });
+});
+
+describe('ProgressPage open row: I got it under View As (S2a-3a·G3; R-S3-7, R-S3-16)', () => {
+  const admin = { id: 'admin-1', discordId: 'd', discordUsername: 'root', displayName: 'Root Admin' } as User;
+  const DROPS = '/api/static-groups/g1/collection-goals/wings/drops';
+
+  async function openAsViewedMember(drops: ReturnType<typeof apiDrop>[]) {
+    useAuthStore.setState({ user: admin });
+    seed({ wings: [row('wings', 'u2', { state: 'need' })] });
+    vi.mocked(api.get).mockImplementation((url: string) => Promise.resolve((url === DROPS ? drops : []) as never));
+    renderPage({ userRole: 'member', canManage: false, currentUserId: 'u2', isViewingAs: true });
+    await screen.findByTestId('progress-matrix');
+    fireEvent.click(screen.getByRole('button', { name: 'Wings of Resolve' }));
+    await within(screen.getByTestId('progress-expansion-drops')).findByText(drops.length > 0 ? /×1$/ : 'No drops logged yet.');
+  }
+
+  afterEach(() => {
+    vi.mocked(api.get).mockResolvedValue([]);
+    useCollectionGoalStore.setState({ drops: {} });
+  });
+
+  it('logs the drop for the viewed user, never the signed-in admin', async () => {
+    vi.mocked(api.post).mockResolvedValue(apiDrop('d1', 'u2'));
+    await openAsViewedMember([]);
+    fireEvent.click(screen.getByRole('button', { name: 'I got it' }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith(DROPS, expect.objectContaining({ recipient_user_id: 'u2' })));
+    expect(api.post).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides for a drop the viewed user already has', async () => {
+    await openAsViewedMember([apiDrop('d0', 'u2')]);
+    expect(screen.queryByRole('button', { name: 'I got it' })).not.toBeInTheDocument();
+  });
+
+  it('still shows when the only drop is the admin\'s own', async () => {
+    await openAsViewedMember([apiDrop('d0', 'admin-1')]);
+    expect(screen.getByRole('button', { name: 'I got it' })).toBeInTheDocument();
   });
 });

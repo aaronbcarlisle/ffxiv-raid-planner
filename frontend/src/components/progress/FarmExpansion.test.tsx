@@ -10,6 +10,13 @@
  */
 import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// The panel loads its drops (S2a-3a·G3); none here.
+vi.mock('../../services/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../services/api')>()),
+  api: { get: vi.fn().mockResolvedValue([]), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+}));
+
 import { useToastStore } from '../../stores/toastStore';
 import type { MemberRole } from '../../types';
 import { buildColumns, splitFarmRows, type FarmRow } from '../../utils/progressModel';
@@ -200,10 +207,28 @@ describe('FarmExpansion Copy plan (R-S3-2, D-17)', () => {
     expect(within(screen.getByTestId('progress-expansion-actions')).getByRole('button', { name: 'Copy plan' })).toBeInTheDocument();
   });
 
-  it.each(['owner', 'lead', 'member', 'viewer'] as const)('is the only control on a finished row for %s', (userRole) => {
+  it.each(['owner', 'lead', 'member', 'viewer'] as const)('is the only control on a finished row for %s, once the drops have loaded', async (userRole) => {
     renderPanel({ userRole, finished: true });
+    await screen.findByText('No drops logged yet.');
     const buttons = within(screen.getByTestId('progress-expansion-actions')).getAllByRole('button');
     expect(buttons.map((b) => b.textContent)).toEqual(['Copy plan']);
+  });
+
+  it.each([
+    ['lead', ['Log drop for u1', 'More recipients', 'Copy plan']],
+    ['member', ['I got it', 'Copy plan']],
+  ] as const)('follows the drop action on an active row for a %s (design §3.4)', async (userRole, names) => {
+    // The fixture row's one cell is u1's own Need.
+    render(
+      <table>
+        <tbody>
+          <FarmExpansion row={wings} finished={false} canManage={userRole === 'lead'} userRole={userRole} currentUserId="u1" groupId="g1" onClose={vi.fn()} id="p" spanAll={3} />
+        </tbody>
+      </table>,
+    );
+    await screen.findByText('No drops logged yet.');
+    const buttons = within(screen.getByTestId('progress-expansion-actions')).getAllByRole('button');
+    expect(buttons.map((b) => b.getAttribute('aria-label') ?? b.textContent)).toEqual(names);
   });
 });
 

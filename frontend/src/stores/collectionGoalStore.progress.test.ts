@@ -492,3 +492,74 @@ describe('collectionGoalStore.markNeed (R-S2-12)', () => {
     expect(api.get).not.toHaveBeenCalled();
   });
 });
+
+// ── loadDrops and refreshGoalProgress (S2a-3a·G3 Task TG5; R-S3-5, vet I-8) ──
+
+describe('collectionGoalStore.loadDrops (R-S3-5, vet I-8)', () => {
+  const DROPS = '/api/static-groups/group-1/collection-goals/goal-1/drops';
+  const apiDrop = { id: 'd1', goal_id: 'goal-1', static_group_id: 'group-1', recipient_user_id: 'u1', created_by_id: 'u9', quantity: 1, dropped_at: '2026-10-01T00:00:00Z', notes: 'first clear', created_at: '2026-10-01T00:00:00Z', recipient_display_name: 'Aya', recipient_character_name: 'Aria Moon' };
+
+  afterEach(() => {
+    useCollectionGoalStore.setState({ drops: {}, dropsLoading: {} });
+    vi.clearAllMocks();
+  });
+
+  it('writes drops[goalId] and dropsLoading as fetchDrops does, and resolves { error: null }', async () => {
+    let answer = (_: unknown) => {};
+    vi.mocked(api.get).mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const pending = useCollectionGoalStore.getState().loadDrops('group-1', 'goal-1');
+    expect(api.get).toHaveBeenCalledWith(DROPS);
+    expect(useCollectionGoalStore.getState().dropsLoading['goal-1']).toBe(true);
+
+    answer([apiDrop]);
+    await expect(pending).resolves.toEqual({ error: null });
+    const { drops, dropsLoading } = useCollectionGoalStore.getState();
+    expect(dropsLoading['goal-1']).toBe(false);
+    expect(drops['goal-1']).toMatchObject([{ id: 'd1', recipientUserId: 'u1', notes: 'first clear', recipientCharacterName: 'Aria Moon' }]);
+  });
+
+  it('resolves { error } on a rejected request and leaves drops[goalId] as it was', async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([apiDrop]);
+    await useCollectionGoalStore.getState().loadDrops('group-1', 'goal-1');
+    const cached = useCollectionGoalStore.getState().drops['goal-1'];
+    const failure = new Error('down');
+    vi.mocked(api.get).mockRejectedValue(failure);
+
+    const result = await useCollectionGoalStore.getState().loadDrops('group-1', 'goal-1');
+    expect(result.error).toBe(failure);
+    expect(cached).toHaveLength(1);
+    expect(useCollectionGoalStore.getState().drops['goal-1']).toBe(cached);
+    expect(useCollectionGoalStore.getState().dropsLoading['goal-1']).toBe(false);
+  });
+
+  it('leaves fetchDrops swallowing the same failure', async () => {
+    vi.mocked(api.get).mockRejectedValue(new Error('down'));
+    await expect(useCollectionGoalStore.getState().fetchDrops('group-1', 'goal-1')).resolves.toBeUndefined();
+    expect(useCollectionGoalStore.getState().dropsLoading['goal-1']).toBe(false);
+  });
+});
+
+describe('collectionGoalStore.refreshGoalProgress (R-S3-5)', () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it('fetches the one goal\'s cells, and nothing else', async () => {
+    vi.mocked(api.get).mockResolvedValue([]);
+    await useCollectionGoalStore.getState().refreshGoalProgress('group-1', 'goal-1');
+    expect(vi.mocked(api.get).mock.calls).toEqual([['/api/static-groups/group-1/collection-participants?goal_id=goal-1']]);
+  });
+
+  it('with lists, also fetches the goals and every active goal\'s cells', async () => {
+    vi.mocked(api.get).mockResolvedValue([]);
+    await useCollectionGoalStore.getState().refreshGoalProgress('group-1', 'goal-1', { lists: true });
+    expect(vi.mocked(api.get).mock.calls.map(([url]) => url).sort()).toEqual([
+      '/api/static-groups/group-1/collection-goals',
+      '/api/static-groups/group-1/collection-participants',
+      '/api/static-groups/group-1/collection-participants?goal_id=goal-1',
+    ]);
+  });
+
+  it('never rejects: a failed fetch keeps its own error', async () => {
+    vi.mocked(api.get).mockRejectedValue(new Error('down'));
+    await expect(useCollectionGoalStore.getState().refreshGoalProgress('group-1', 'goal-1', { lists: true })).resolves.toBeUndefined();
+  });
+});

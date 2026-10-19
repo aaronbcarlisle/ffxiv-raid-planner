@@ -73,6 +73,10 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     (s) => tier != null && s.weekClockKey === weekClockKeyOf(group.id, tier.tierId),
   );
   const week = clockResolved && Number.isFinite(storeWeek) ? storeWeek : null;
+  // Week 1's start, behind the same gate (R-S3-9): the drops' "Week n" labels read both.
+  const storeWeekStart = useLootTrackingStore((s) => s.weekStartDate);
+  const weekStartDate = clockResolved ? storeWeekStart : null;
+  const clock = useMemo(() => ({ currentWeek: week, weekStartDate }), [week, weekStartDate]);
 
   const tierName = tier ? (getTierById(tier.tierId)?.name ?? tier.tierId) : null;
   const isMember = userRole != null;
@@ -304,6 +308,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
               onToggle={toggleRow}
               groupId={group.id}
               userRole={userRole}
+              clock={clock}
             />
           </>
         )}
