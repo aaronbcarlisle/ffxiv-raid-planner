@@ -9,7 +9,7 @@
  * active row the button is the grid's `'__name'` cell (`cellProps`), so Home, ArrowLeft and
  * the arrows reach it and Enter or Space toggles (a native button); on a Finished row it is a
  * plain tab stop. The open row renders its panel (`renderExpansion`) as the next `<tr>`, and
- * scrolls itself into view once per open (R-S3-3). When the panel asks to close (Escape),
+ * scrolls itself and the panel into view once per open (R-S3-3). When the panel asks to close (Escape),
  * focus returns to the name button, found by its id (the button may be anywhere the row
  * moved to). TG7 adds the row menu (R-S3-17).
  */
@@ -58,10 +58,14 @@ export function FarmRow({ row, canManage, provenance, keyboard, editFor, open, o
   const nameId = `${panelId}-name`;
   const rowRef = useRef<HTMLTableRowElement>(null);
 
-  // Once per open (R-S3-3): a deep link lands on the row; a click barely moves it (`nearest`).
+  // Once per open (R-S3-3): the row, then its panel (the next <tr>, committed before this effect),
+  // so a deep link to the last row shows both, and a click barely moves them (`nearest`).
   // (Optional: jsdom has no scrollIntoView.)
   useEffect(() => {
-    if (open) rowRef.current?.scrollIntoView?.({ block: 'nearest' });
+    if (!open) return;
+    const rowEl = rowRef.current;
+    rowEl?.scrollIntoView?.({ block: 'nearest' });
+    rowEl?.nextElementSibling?.scrollIntoView?.({ block: 'nearest' });
   }, [open]);
 
   const close = () => {

@@ -49,7 +49,6 @@ interface Seed {
   goals?: CollectionGoal[];
   participants?: Record<string, ParticipantStateEntry[]>;
   ready?: boolean;
-  isLoading?: boolean;
 }
 
 const GOALS = [
@@ -69,7 +68,7 @@ function seed(s: Seed = {}) {
     participants: s.participants ?? PARTICIPANTS,
     recordOnly: {},
     loadedGroupId: s.ready === false ? null : 'g1',
-    isLoading: s.isLoading ?? false,
+    isLoading: false,
     progressError: null,
     progressLoading: false,
     error: null,
@@ -142,7 +141,7 @@ afterEach(() => {
 });
 
 describe('ProgressPage ?track= on load', () => {
-  it('opens the active row it names and scrolls it into view once', async () => {
+  it('opens the active row it names and scrolls the row, then its panel, into view once', async () => {
     seed();
     renderAt('/group/DEVTST?shell=v2&tab=progress&track=calm');
     await screen.findByTestId('progress-matrix');
@@ -150,10 +149,16 @@ describe('ProgressPage ?track= on load', () => {
     expect(nameOf('calm')).toHaveAttribute('aria-expanded', 'true');
     expect(nameOf('hot')).toHaveAttribute('aria-expanded', 'false');
     expect(rowOf('calm').nextElementSibling).toBe(panel());
-    expect(scrollIntoView).toHaveBeenCalledTimes(1);
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
-    expect(scrollIntoView.mock.instances[0]).toBe(rowOf('calm'));
+    // Once per open: the row, then the panel under it, so both come into view at the fold.
+    expect(scrollIntoView.mock.calls).toEqual([[{ block: 'nearest' }], [{ block: 'nearest' }]]);
+    expect(scrollIntoView.mock.instances).toEqual([rowOf('calm'), panel()]);
     expect(trackOf()).toBe('calm');
+
+    // A re-render with the row still open scrolls nothing again.
+    await act(async () => {
+      useCollectionGoalStore.setState({ participants: { ...PARTICIPANTS } });
+    });
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
   });
 
   it('expands Finished (n) first for a finished id, fetches its cells, then opens that row', async () => {
@@ -201,18 +206,30 @@ describe('ProgressPage ?track= on load', () => {
     expect(screen.queryByRole('button', { expanded: true })).not.toBeInTheDocument();
   });
 
-  it('waits for an in-flight goals fetch before dropping an id the cached goals lack', async () => {
-    seed({ goals: [GOALS[0]], isLoading: true });
+  it('waits for this mount\'s goals fetch before dropping an id the cached goals lack (a warm cache)', async () => {
+    // The cache says loaded and idle, and lacks the farm; the mount's own refetch (which flips the
+    // store's isLoading only once it runs, after the first render) brings it.
+    seed({ goals: [GOALS[0]] });
+    let resolveGoals: () => void = () => {};
+    fetchGoals.mockImplementation(() => {
+      useCollectionGoalStore.setState({ isLoading: true });
+      return new Promise<void>((resolve) => {
+        resolveGoals = () => {
+          useCollectionGoalStore.setState({ goals: GOALS, isLoading: false, loadedGroupId: 'g1' });
+          resolve();
+        };
+      });
+    });
     renderAt('/group/DEVTST?shell=v2&tab=progress&track=calm');
     await screen.findByTestId('progress-matrix');
+    expect(fetchGoals).toHaveBeenCalledWith('g1');
     expect(trackOf()).toBe('calm');
     expect(panel()).toBeNull();
 
-    await act(async () => {
-      useCollectionGoalStore.setState({ goals: GOALS, isLoading: false });
-    });
+    await act(async () => resolveGoals());
     expect(trackOf()).toBe('calm');
     expect(nameOf('calm')).toHaveAttribute('aria-expanded', 'true');
+    expect(rowOf('calm').nextElementSibling).toBe(panel());
   });
 });
 

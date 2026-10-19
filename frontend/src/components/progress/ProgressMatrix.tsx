@@ -147,15 +147,13 @@ export function ProgressMatrix({
     nameOf: (userId) => columnNames.get(userId) ?? memberNames?.get(userId) ?? null,
   };
 
-  // The matrix renders for members only (the page's R-S2-19 gate), who always carry an id; the
-  // fallback is never reached and can match no recipient.
   const renderExpansion = (row: FarmRowModel, finishedRow: boolean, onClose: () => void, id: string) => (
     <FarmExpansion
       row={row}
       finished={finishedRow}
       canManage={canManage}
       userRole={userRole}
-      currentUserId={currentUserId ?? ''}
+      currentUserId={currentUserId}
       groupId={groupId}
       onClose={onClose}
       id={id}
