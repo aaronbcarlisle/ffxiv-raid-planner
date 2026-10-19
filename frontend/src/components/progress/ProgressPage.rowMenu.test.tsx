@@ -3,11 +3,10 @@
  * open row follows its goal when the menu or the action bar changes its status (into Finished,
  * which expands, and back out), and closes with `?track` cleared when the goal is deleted; an
  * Escape inside the Delete confirm closes only the confirm. The store is seeded as
- * `ProgressPage.track.test.tsx` does, with `updateGoal` and `deleteGoal` replaced by fakes that
+ * `__fixtures__/pageHarness.tsx` does, with `updateGoal` and `deleteGoal` replaced by fakes that
  * edit the seeded goals the way the real ones do (their requests are `FarmRowMenu.test.tsx`'s).
  */
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../services/api', async (importOriginal) => {
@@ -24,121 +23,36 @@ vi.mock('../../services/api', async (importOriginal) => {
   };
 });
 
-import { useCollectionGoalStore, type CollectionGoal, type ParticipantStateEntry } from '../../stores/collectionGoalStore';
 import { useToastStore } from '../../stores/toastStore';
-import type { StaticGroup, TierSnapshot } from '../../types';
 import { ToastContainer } from '../layout/ToastContainer';
+import {
+  DEFAULT_GOALS as GOALS,
+  EVERYONE,
+  NEEDY,
+  deleteGoal,
+  inFinished,
+  menuOf,
+  nameOf,
+  panel,
+  pick,
+  refreshGoalProgress,
+  renderAt,
+  rowOf,
+  seedPage as seed,
+  setUpPage,
+  tearDownPage,
+  trackOf,
+  updateGoal,
+} from './__fixtures__/pageHarness';
 import { goal, row } from './__fixtures__/progressFixtures';
-import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
-import { ProgressPage } from './ProgressPage';
-
-const group = { id: 'g1', name: 'Dev Test Static', shareCode: 'DEVTST', settings: {}, userRole: 'owner', members: [] } as unknown as StaticGroup;
-
-const player = (id: string, name: string, position: string, role: string, userId: string | null) => ({
-  id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId,
-});
-const tier = {
-  id: 't1',
-  staticGroupId: 'g1',
-  tierId: 'aac-cruiserweight',
-  players: [player('p1', 'Aya', 'T1', 'tank', 'u1'), player('p2', 'Bo', 'H1', 'healer', 'u2')],
-} as unknown as TierSnapshot;
-
-const fetchGoals = vi.fn();
-const fetchProgress = vi.fn();
-const refreshGoalProgress = vi.fn();
-const updateGoal = vi.fn();
-const deleteGoal = vi.fn();
-
-const GOALS = [goal('hot', { title: 'Hot Farm' }), goal('calm', { title: 'Calm Farm' })];
-const NEEDY = { hot: [row('hot', 'u1'), row('hot', 'u2')], calm: [row('calm', 'u1', { state: 'want' })] };
-const EVERYONE = { hot: [row('hot', 'u1', { state: 'have' }), row('hot', 'u2', { state: 'have' })], calm: NEEDY.calm };
-
-const real = useCollectionGoalStore.getState();
-
-function seed(participants: Record<string, ParticipantStateEntry[]> = NEEDY, goals: CollectionGoal[] = GOALS) {
-  useCollectionGoalStore.setState({
-    goals,
-    participants,
-    recordOnly: {},
-    loadedGroupId: 'g1',
-    isLoading: false,
-    progressError: null,
-    progressLoading: false,
-    error: null,
-    fetchGoals,
-    fetchProgress,
-    refreshGoalProgress,
-    updateGoal,
-    deleteGoal,
-  });
-}
-
-function LocationProbe() {
-  const { search } = useLocation();
-  return <output data-testid="location">{search}</output>;
-}
-
-function renderAt(url: string, props: Partial<Parameters<typeof ProgressPage>[0]> = {}) {
-  return render(
-    <MemoryRouter initialEntries={[url]}>
-      <ProgressPage
-        group={group}
-        tier={tier}
-        canManage={true}
-        userRole="owner"
-        currentUserId="u1"
-        isViewingAs={false}
-        onNavigate={vi.fn()}
-        {...props}
-      />
-      <LocationProbe />
-    </MemoryRouter>,
-    { wrapper: TooltipWrapper },
-  );
-}
-
-const trackOf = () => new URLSearchParams(screen.getByTestId('location').textContent ?? '').get('track');
-const rowOf = (id: string) => screen.getAllByTestId('progress-farm-row').find((r) => r.getAttribute('data-goal-id') === id)!;
-const nameOf = (id: string) => within(within(rowOf(id)).getByRole('rowheader')).getByRole('button');
-const panel = () => screen.queryByTestId('progress-expansion');
-const inFinished = (el: HTMLElement | null) => el !== null && el.closest('[data-testid="progress-finished"]') !== null;
-const menuOf = (title: string) => screen.getByRole('button', { name: `Actions for ${title}` });
-const pick = (name: string) => fireEvent.click(screen.getByRole('menuitem', { name }));
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  stubCanHover();
+  setUpPage();
+  // jsdom has none.
   Element.prototype.scrollIntoView = vi.fn();
-  fetchGoals.mockResolvedValue(undefined);
-  fetchProgress.mockResolvedValue({ error: null });
-  refreshGoalProgress.mockResolvedValue(undefined);
-  updateGoal.mockImplementation(async (_groupId: string, id: string, data: Partial<CollectionGoal>) => {
-    useCollectionGoalStore.setState((s) => ({
-      goals: s.goals.map((g) =>
-        g.id === id ? { ...g, ...data, completedAt: data.status === 'complete' ? '2026-10-10T00:00:00Z' : null } : g,
-      ),
-    }));
-  });
-  deleteGoal.mockImplementation(async (_groupId: string, id: string) => {
-    useCollectionGoalStore.setState((s) => ({ goals: s.goals.filter((g) => g.id !== id) }));
-  });
-  useToastStore.getState().clearAll();
 });
 
-afterEach(() => {
-  useCollectionGoalStore.setState({
-    fetchGoals: real.fetchGoals,
-    fetchProgress: real.fetchProgress,
-    refreshGoalProgress: real.refreshGoalProgress,
-    updateGoal: real.updateGoal,
-    deleteGoal: real.deleteGoal,
-    goals: [],
-    participants: {},
-    drops: {},
-    loadedGroupId: null,
-  });
-});
+afterEach(tearDownPage);
 
 describe('the open row follows its status (D-9, D-10)', () => {
   it('stays open as Mark finished moves it into Finished, which expands, and back out on Reopen', async () => {

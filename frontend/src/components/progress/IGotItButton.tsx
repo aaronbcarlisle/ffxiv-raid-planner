@@ -36,7 +36,7 @@ export function IGotItButton({ groupId, goalId, userId, onLeave }: IGotItButtonP
   return (
     <Button
       ref={ref}
-      variant="accent-subtle"
+      variant="primary"
       size="sm"
       className={BUSY_CLASS}
       leftIcon={<Check size={14} aria-hidden="true" />}

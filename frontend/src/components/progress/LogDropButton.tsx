@@ -148,10 +148,10 @@ export function LogDropButton({ row, groupId }: { row: FarmRow; groupId: string 
           isChecked ? 'border-accent bg-accent/10' : 'border-transparent hover:bg-surface-interactive'
         }`}
       >
-        <span aria-hidden="true" className={`h-3 w-3 shrink-0 rounded-full border-2 ${isChecked ? 'border-accent bg-accent' : 'border-border-default'}`} />
+        <span aria-hidden="true" className={`h-3 w-3 shrink-0 rounded-full border-2 ${isChecked ? 'border-accent bg-accent' : 'border-text-muted'}`} />
         {option.rank !== null && (
           <>
-            <span className="w-6 shrink-0 text-text-muted">{`#${option.rank}`}</span>
+            <span className="w-6 shrink-0 text-text-secondary">{`#${option.rank}`}</span>
             {/* A real space: the text keeps "#n" and the name apart (textContent, readers). */}
             {' '}
           </>
@@ -165,7 +165,7 @@ export function LogDropButton({ row, groupId }: { row: FarmRow; groupId: string 
     <div role="group" aria-label="Log a drop" className="inline-flex">
       <Button
         ref={mainRef}
-        variant="accent-subtle"
+        variant="secondary"
         size="sm"
         className={`rounded-r-none ${BUSY_CLASS}`}
         leftIcon={<Gift size={14} aria-hidden="true" />}
@@ -186,7 +186,7 @@ export function LogDropButton({ row, groupId }: { row: FarmRow; groupId: string 
             aria-label="More recipients"
             aria-haspopup="dialog"
             aria-disabled={busy || undefined}
-            variant="accent-subtle"
+            variant="default"
             size="sm"
             className={`h-auto! rounded-l-none border-l-0 ${BUSY_CLASS}`}
             icon={<ChevronDown size={14} aria-hidden="true" />}
