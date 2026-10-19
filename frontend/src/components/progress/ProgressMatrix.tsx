@@ -17,8 +17,9 @@
  *
  * S2a-3a·G2 (D-7, R-S3-3, R-S3-4): the grid's keys start with the name column (`NAME_KEY`),
  * whose cell is each row's disclosure Button, so the first row's name is the stop until a
- * cell is focused, and Home / ArrowLeft reach it. TG7 adds `'__menu'` after it for leads
- * (R-S3-17). The one open row (`openId`, the page's `?track`) renders its panel
+ * cell is focused, and Home / ArrowLeft reach it. For leads `MENU_KEY` follows it (S2a-3a·G4
+ * Task TG7, R-S3-17): a narrow "Actions" column holding each row's ⋯ menu, an arrow target, and
+ * one more column in `spanAll`; members and viewers have neither. The one open row (`openId`, the page's `?track`) renders its panel
  * (`FarmExpansion`) as the next `<tr>`, spanning every column (`spanAll`) and outside
  * `rowIds`, in whichever `<tbody>` holds the row.
  */
@@ -32,7 +33,7 @@ import type { WeekClock } from '../../utils/dropWeek';
 import type { FarmRow as FarmRowModel, ProgressColumn } from '../../utils/progressModel';
 import type { CellWriteResolver } from './editStatuses';
 import { FarmExpansion } from './FarmExpansion';
-import { FarmRow, NAME_KEY } from './FarmRow';
+import { FarmRow, MENU_KEY, NAME_KEY } from './FarmRow';
 import { FinishedFarms } from './FinishedFarms';
 import type { ProvenanceContext } from './progressProvenance';
 import { useMatrixKeyboard } from './useMatrixKeyboard';
@@ -131,12 +132,17 @@ export function ProgressMatrix({
   clock,
 }: ProgressMatrixProps) {
   const rowIds = useMemo(() => active.map((r) => r.goal.id), [active]);
-  // The name column leads (R-S3-4), then the players; TG7 puts '__menu' between them for leads.
-  const colKeys = useMemo(() => [NAME_KEY, ...columns.map((c) => c.key)], [columns]);
+  // Leads manage the farms (the ⋯ menu column, R-S3-17), as LogDropButton gates its split button.
+  const lead = canManage && userRole !== 'viewer';
+  // The name column leads (R-S3-4), then a lead's menu column, then the players.
+  const colKeys = useMemo(
+    () => [NAME_KEY, ...(lead ? [MENU_KEY] : []), ...columns.map((c) => c.key)],
+    [columns, lead],
+  );
   const keyboard = useMatrixKeyboard(rowIds, colKeys);
   // The open panel spans the table, which outgrows the view: it lays out at the scroller's width.
   const [scrollerRef, viewWidth] = useVisibleWidth<HTMLDivElement>();
-  // Every column of the table: the grid's keys plus Status, which is never a focus target.
+  // Every column of the table: the grid's keys (name, a lead's menu, the players) plus Status, which is never a focus target.
   const spanAll = colKeys.length + 1;
   // With an active row the grid's single Tab stop (its name button at least) is the keyboard's
   // way into the scroller; without one the scroller itself is the stop (axe
@@ -188,6 +194,11 @@ export function ProgressMatrix({
             <th role="columnheader" scope="col" className="px-3 py-2 text-left align-top text-xs font-medium text-text-secondary">
               Farm
             </th>
+            {lead && (
+              <th role="columnheader" scope="col" className="px-1 py-2 text-left align-top">
+                <VisuallyHidden>Actions</VisuallyHidden>
+              </th>
+            )}
             <th role="columnheader" scope="col" className="px-3 py-2 text-left align-top text-xs font-medium text-text-secondary">
               Status
             </th>
@@ -202,6 +213,8 @@ export function ProgressMatrix({
               key={row.goal.id}
               row={row}
               canManage={canManage}
+              lead={lead}
+              groupId={groupId}
               provenance={provenance}
               keyboard={keyboard}
               editFor={editFor}
@@ -215,6 +228,8 @@ export function ProgressMatrix({
           rows={finished}
           colSpan={spanAll}
           canManage={canManage}
+          lead={lead}
+          groupId={groupId}
           provenance={provenance}
           loading={finishedLoading}
           error={finishedError}

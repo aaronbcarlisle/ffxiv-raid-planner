@@ -11,7 +11,12 @@
  * plain tab stop. The open row renders its panel (`renderExpansion`) as the next `<tr>`, and
  * scrolls itself and the panel into view once per open (R-S3-3). When the panel asks to close (Escape),
  * focus returns to the name button, found by its id (the button may be anywhere the row
- * moved to). TG7 adds the row menu (R-S3-17).
+ * moved to).
+ *
+ * S2a-3a·G4 Task TG7 (D-22, R-S3-17): a lead's row has a second cell right after the name, the
+ * ⋯ menu (`FarmRowMenu`), which on an active row is the grid's `'__menu'` cell (`cellProps`) and
+ * on a Finished row a plain tab stop. The status cell reads only "Everyone has it"; Mark finished
+ * lives in the menu and the open panel's action bar. Members and viewers get no such cell.
  */
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Button } from '../primitives/Button';
@@ -19,17 +24,24 @@ import { Tag } from '../ui/Tag';
 import { GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from '../../utils/goalTypeMeta';
 import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
 import type { CellWriteResolver } from './editStatuses';
+import { FarmRowMenu } from './FarmRowMenu';
 import { ProgressCell } from './ProgressCell';
 import type { ProvenanceContext } from './progressProvenance';
+import { farmNameId } from './useGoalStatus';
 import type { MatrixKeyboard } from './useMatrixKeyboard';
 
-/** The roving grid's key for the name column (R-S3-4); TG7's `'__menu'` follows it (R-S3-17). */
+/** The roving grid's key for the name column (R-S3-4); a lead's `MENU_KEY` follows it (R-S3-17). */
 export const NAME_KEY = '__name';
+/** The roving grid's key for a lead's row menu column (R-S3-17). */
+export const MENU_KEY = '__menu';
 
 interface FarmRowProps {
   row: FarmRowModel;
   /** Leads read "Everyone has it" at n = m; everyone else reads the count. */
   canManage: boolean;
+  /** The reader is a lead (`canManage` and not a viewer): the row has the ⋯ menu cell (R-S3-17). */
+  lead: boolean;
+  groupId: string;
   /** Who is looking and how to name a writer, for each cell's provenance tooltip. */
   provenance: ProvenanceContext;
   /** The matrix's roving grid; absent for rows outside it (Finished), whose cells are not tab stops. */
@@ -50,12 +62,12 @@ function statusText(tally: FarmRowModel['tally'], canManage: boolean): string {
   return `${tally.n} of ${tally.m} have it`;
 }
 
-export function FarmRow({ row, canManage, provenance, keyboard, editFor, open, onToggle, renderExpansion }: FarmRowProps) {
+export function FarmRow({ row, canManage, lead, groupId, provenance, keyboard, editFor, open, onToggle, renderExpansion }: FarmRowProps) {
   const { goal } = row;
   const TypeIcon = GOAL_TYPE_ICONS[goal.goalType];
   const stateTag = goal.status === 'wanted' ? 'Wanted' : goal.status === 'scheduled' ? 'Scheduled' : null;
   const panelId = `progress-expansion-${goal.id}`;
-  const nameId = `${panelId}-name`;
+  const nameId = farmNameId(goal.id);
   const rowRef = useRef<HTMLTableRowElement>(null);
 
   // Once per open (R-S3-3): the row, then its panel (the next <tr>, committed before this effect),
@@ -96,6 +108,11 @@ export function FarmRow({ row, canManage, provenance, keyboard, editFor, open, o
             {stateTag !== null && <Tag variant="label">{stateTag}</Tag>}
           </div>
         </th>
+        {lead && (
+          <td role="gridcell" data-testid="progress-menu" className="px-1 py-1 align-middle">
+            <FarmRowMenu groupId={groupId} goal={goal} grid={keyboard?.cellProps(goal.id, MENU_KEY)} />
+          </td>
+        )}
         <td role="gridcell" data-testid="progress-status" className="whitespace-nowrap px-3 py-2 text-sm text-text-secondary">
           {statusText(row.tally, canManage)}
         </td>

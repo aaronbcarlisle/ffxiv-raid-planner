@@ -171,11 +171,11 @@ describe('ProgressPage matrix: order and Finished', () => {
       participants: { ...participants, done: [row('done', 'u1', { state: 'have' }), row('done', 'u-ghost', { displayName: 'Ghost', state: 'have' })] },
     });
     renderPage();
-    // Farm, Status and the six players: the finished goal's holder is already in the store.
-    expect(await screen.findAllByRole('columnheader')).toHaveLength(8);
+    // Farm, Actions (the lead's menu), Status and the six players: the finished goal's holder is already in the store.
+    expect(await screen.findAllByRole('columnheader')).toHaveLength(9);
     fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
     await screen.findByRole('button', { name: 'Done Farm' });
-    expect(screen.getAllByRole('columnheader')).toHaveLength(8);
+    expect(screen.getAllByRole('columnheader')).toHaveLength(9);
     expect(screen.queryByText('Ghost')).not.toBeInTheDocument();
   });
 

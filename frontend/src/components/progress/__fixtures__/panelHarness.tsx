@@ -97,4 +97,5 @@ export function restorePanelStore() {
 }
 
 export const posts = () => vi.mocked(api.post).mock.calls;
+export const puts = () => vi.mocked(api.put).mock.calls;
 export const toasts = () => useToastStore.getState().toasts.map((t) => [t.type, t.message, t.action?.label ?? null]);

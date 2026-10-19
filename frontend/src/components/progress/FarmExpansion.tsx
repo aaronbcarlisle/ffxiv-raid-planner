@@ -19,9 +19,13 @@
  *
  * Last drops' delete (S2a-3a·G4 Task TG6, D-14): a lead on every drop, a member on the drops
  * they logged (`createdById` is `currentUserId`), a viewer on none.
+ *
+ * Mark finished (S2a-3a·G4 Task TG7, D-22, R-S3-17): a lead's `Button` in the action bar on an
+ * active row everyone has (n = m > 0), doing what the row menu's item does. The status cell reads
+ * only "Everyone has it".
  */
 import { useCallback, useRef, type KeyboardEvent } from 'react';
-import { Copy } from 'lucide-react';
+import { CircleCheck, Copy } from 'lucide-react';
 import type { RewardDrop } from '../../stores/collectionGoalStore';
 import { toast } from '../../stores/toastStore';
 import type { MemberRole } from '../../types';
@@ -35,7 +39,8 @@ import { IGotItButton } from './IGotItButton';
 import { LogDropButton } from './LogDropButton';
 import { escapeClosesPanel } from './panelEscape';
 import { QueueList } from './QueueList';
-import { useGoalDrops } from './useDrops';
+import { BUSY_CLASS, useGoalDrops } from './useDrops';
+import { useGoalStatus } from './useGoalStatus';
 
 export interface FarmExpansionProps {
   row: FarmRowModel;
@@ -86,6 +91,7 @@ export function FarmExpansion({
   const viewer = userRole === 'viewer';
   const lead = canManage && !viewer;
   const { drops, status: dropsStatus, retry: retryDrops } = useGoalDrops(groupId, row.goal.id);
+  const { busy: statusBusy, markFinished } = useGoalStatus(groupId, row.goal);
 
   // D-14, as V1's history: a lead any drop, a member the ones they logged; a viewer none (the API refuses them).
   const canDeleteDrop = (drop: RewardDrop) => !viewer && (lead || drop.createdById === currentUserId);
@@ -135,10 +141,24 @@ export function FarmExpansion({
           style={viewWidth === null ? undefined : { width: viewWidth }}
           className="max-w-full px-4 py-3"
         >
-          {/* The action bar: the drop action, (TG7's Mark finished,) then Copy plan. */}
+          {/* The action bar: the drop action, Mark finished when everyone has it, then Copy plan. */}
           <div data-testid="progress-expansion-actions" className="mb-3 flex flex-wrap items-center gap-2">
             {!finished && lead && <LogDropButton row={row} groupId={groupId} />}
             {gotItShown && <IGotItButton groupId={groupId} goalId={row.goal.id} userId={ownUserId} onLeave={focusCopyPlan} />}
+            {!finished && lead && row.tally.everyone && (
+              <Button
+                variant="accent-subtle"
+                size="sm"
+                className={BUSY_CLASS}
+                leftIcon={<CircleCheck size={14} aria-hidden="true" />}
+                aria-disabled={statusBusy || undefined}
+                onClick={() => {
+                  if (!statusBusy) void markFinished();
+                }}
+              >
+                Mark finished
+              </Button>
+            )}
             <Button
               ref={copyRef}
               variant="secondary"

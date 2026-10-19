@@ -10,6 +10,9 @@
  * S2a-3a·G2 (R-S3-3, R-S3-4): a finished row opens like an active one (its name button is
  * a plain tab stop), and `?track=<finished id>` expands the section first, once per id's
  * arrival, so a later collapse by the button holds while that id stays in the URL.
+ *
+ * S2a-3a·G4 Task TG7 (D-10, R-S3-17): a lead's finished row has the ⋯ menu (Reopen · Delete) as a
+ * plain tab stop, like its name.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '../primitives/Button';
@@ -19,9 +22,12 @@ import type { ProvenanceContext } from './progressProvenance';
 
 interface FinishedFarmsProps {
   rows: FarmRowModel[];
-  /** Total columns of the matrix (farm + status + one per column), for the full-width rows. */
+  /** Total columns of the matrix (farm + status + one per column, + the lead's menu), for the full-width rows. */
   colSpan: number;
   canManage: boolean;
+  /** The reader is a lead: the rows carry the ⋯ menu cell. */
+  lead: boolean;
+  groupId: string;
   provenance: ProvenanceContext;
   /** The finished goals' cells are being fetched. */
   loading: boolean;
@@ -42,6 +48,8 @@ export function FinishedFarms({
   rows,
   colSpan,
   canManage,
+  lead,
+  groupId,
   provenance,
   loading,
   error,
@@ -112,6 +120,8 @@ export function FinishedFarms({
             key={row.goal.id}
             row={row}
             canManage={canManage}
+            lead={lead}
+            groupId={groupId}
             provenance={provenance}
             open={row.goal.id === openId}
             onToggle={() => onToggle(row.goal.id)}
