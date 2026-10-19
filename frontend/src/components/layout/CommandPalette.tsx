@@ -4,7 +4,8 @@
  * Scope: v2 shell only — mounted from NewShell.
  *
  * Navigate targets:
- *   - Go to Home / Roster / Loot / Schedule (via useGroupViewState().setPageMode)
+ *   - Go to Home / Roster / Loot / Schedule / Progress, plus the off-spine
+ *     Plugin / More (via useGroupViewState().setPageMode)
  *   - Open Settings (via useGroupViewState().setShowSettingsModal)
  *   - Switch static — one row per group (via useNavigate)
  *
@@ -137,7 +138,7 @@ export function CommandPalette({ isOpen, onClose, onSelectTab }: CommandPaletteP
       },
       {
         id: 'go-goals',
-        label: 'Go to Tracking',
+        label: 'Go to Progress',
         icon: <Target className="w-4 h-4" aria-hidden="true" />,
         onSelect: () => { setPageMode('goals'); handleClose(); },
       },

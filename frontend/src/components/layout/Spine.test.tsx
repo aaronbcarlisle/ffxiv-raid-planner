@@ -29,12 +29,23 @@ describe('Spine', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders exactly the 4 spine tabs and no retired ones', () => {
+  it('renders exactly the 5 spine tabs, in order, and no retired ones', () => {
     render(<Spine activeTab="overview" onTabChange={vi.fn()} />);
-    ['Home', 'Roster', 'Loot', 'Schedule'].forEach(l =>
-      expect(screen.getByRole('tab', { name: l })).toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(
+      ['Home', 'Roster', 'Loot', 'Schedule', 'Progress'],
     );
-    expect(screen.queryByRole('tab', { name: /Goals|More|Plugin|Gear/ })).toBeNull();
+    expect(screen.queryByRole('tab', { name: /Goals|Tracking|More|Plugin|Gear/ })).toBeNull();
+  });
+
+  it('maps the Progress tab to pageMode goals and marks it active for goals (S2a-2)', () => {
+    const onTabChange = vi.fn();
+    const { rerender } = render(<Spine activeTab="overview" onTabChange={onTabChange} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Progress' }));
+    expect(onTabChange).toHaveBeenCalledWith('goals');
+    rerender(<Spine activeTab="goals" onTabChange={onTabChange} />);
+    expect(screen.getByRole('tab', { name: 'Progress' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Progress' })).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('tab', { name: 'Home' })).toHaveAttribute('aria-selected', 'false');
   });
 
   it('maps Loot tab to pageMode gear and marks active', () => {
@@ -84,10 +95,10 @@ describe('Spine with activeTab=null (off-page, R-RH-G)', () => {
   it('selects no tab and keeps the first tab as the one Tab stop (M14)', () => {
     render(<Spine activeTab={null} onTabChange={vi.fn()} />);
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(4);
+    expect(tabs).toHaveLength(5);
     tabs.forEach((t) => expect(t).toHaveAttribute('aria-selected', 'false'));
     expect(screen.getByRole('tab', { name: 'Home' })).toHaveAttribute('tabindex', '0');
-    ['Roster', 'Loot', 'Schedule'].forEach((l) =>
+    ['Roster', 'Loot', 'Schedule', 'Progress'].forEach((l) =>
       expect(screen.getByRole('tab', { name: l })).toHaveAttribute('tabindex', '-1'),
     );
   });
@@ -116,11 +127,12 @@ describe('Spine with activeTab=null (off-page, R-RH-G)', () => {
     expect(onTabChange).toHaveBeenCalledWith('gear');
   });
 
-  it('End from a selected tab still goes to the last tab (unchanged)', () => {
+  it('End from Home still goes to the last tab, now Progress', () => {
     const onTabChange = vi.fn();
     render(<Spine activeTab="overview" onTabChange={onTabChange} />);
     fireEvent.keyDown(screen.getByRole('tablist'), { key: 'End' });
-    expect(onTabChange).toHaveBeenCalledWith('schedule');
+    expect(onTabChange).toHaveBeenCalledWith('goals');
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Progress' }));
   });
 });
 

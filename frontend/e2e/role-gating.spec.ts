@@ -1,6 +1,8 @@
 /**
  * ROLE-1 (W0): role-gated controls are HIDDEN for a member, never disabled
- * (R-R1-0, R-R1-13). DEVTST, V2 shell, plus the legacy Tracking catalog.
+ * (R-R1-0, R-R1-13). DEVTST, V2 shell, plus the legacy Goals & Farms catalog.
+ * V2's catalog is gone from this file: since S2a-2 the V2 `goals` tab is
+ * Progress, and the catalog is reached through the classic view (R-S2-20).
  *
  * CI has no Playwright job; run against dev-auth servers:
  *   E2E_API_URL=http://localhost:8001 E2E_FRONTEND_URL=http://localhost:5174 \
@@ -102,6 +104,7 @@ const homeReady = (p: Page) => p.getByRole('button', { name: /^(Log this week's 
 const rosterReady = (p: Page) => p.getByTestId('roster-card-header');
 const logReady = (p: Page) => p.getByRole('group', { name: 'Loot view' });
 const farmsReady = (p: Page) => p.getByRole('button', { name: 'Browse Catalog' });
+const progressReady = (p: Page) => p.getByTestId('progress-tier-row');
 
 async function openRoster(page: Page, density: 'compact' | 'expanded' | 'board'): Promise<void> {
   await openV2(page, density === 'board' ? 'tab=roster&rview=board' : 'tab=roster', density === 'board'
@@ -126,8 +129,6 @@ async function openCatalog(page: Page, openQuery: (p: Page) => Promise<void>): P
   await expect(page.getByRole('button', { name: /^All\s*\d+$/ })).toBeVisible();
   await page.waitForLoadState('networkidle');
 }
-
-const openCatalogV2 = (page: Page) => openCatalog(page, (p) => openV2(p, 'tab=goals&goal=farms', farmsReady));
 
 interface TierPlayer { id: string; name: string; userId: string | null }
 interface Seed { groupId: string; tierId: string; ownName: string; otherNames: string[] }
@@ -306,14 +307,9 @@ test.describe('Member (DevMember), V2', () => {
     });
   });
 
-  test.describe('Tracking', () => {
-    test('Farms catalog: no "Track"', async ({ page }) => {
-      await openCatalogV2(page);
-      await expect(trackButtons(page)).toHaveCount(0);
-    });
-
-    test('Farms catalog: sweep, no disabled control', async ({ page }) => {
-      await openCatalogV2(page);
+  test.describe('Progress', () => {
+    test('member: Progress sweep, no disabled control', async ({ page }) => {
+      await openV2(page, 'tab=progress', progressReady);
       await expectNoDisabledOutside(page, []);
     });
   });
@@ -350,11 +346,6 @@ test.describe('Owner pin (DevOwner), V2', () => {
     await openV2(page, 'tab=overview', homeReady);
     await expect(page.getByRole('button', { name: "Log this week's loot" })).toBeVisible();
     await expect(page.getByRole('button', { name: 'View loot priority' })).toHaveCount(0);
-  });
-
-  test('Tracking: the catalog shows "Track"', async ({ page }) => {
-    await openCatalogV2(page);
-    await expect(trackButtons(page).first()).toBeEnabled();
   });
 });
 

@@ -80,7 +80,7 @@ The old "data pages have no sidebar" rule is **retired**. The app now has a pers
 
 - **Rail** = Person layer (you, Player Hub, Static Finder, your statics). Always present. `72px`.
 - **Top bar** = static/track/week context + global actions. Present inside a static.
-- **Spine** = the 4 job tabs. Present inside a static. The Person layer has **no spine** (Player Hub/Finder are railed). The V2 Player Hub has an in-page tab bar under its identity header (`Tabs`, Overview · Characters & gear · Availability · Tracking · Sharing — PH1, spec H-3), not a spine. *(Amended 2026-09-30: the spine is five tabs. Progress, the tracks surface, is the fifth (F-03, reaffirmed HS-2 in `HOME_STRETCH.md`); the diagram above predates it. Stage 2 updates this section when it ships.)*
+- **Spine** = the 5 job tabs: Home · Roster · Loot · Schedule · Progress. Present inside a static. The Person layer has **no spine** (Player Hub/Finder are railed). The V2 Player Hub has an in-page tab bar under its identity header (`Tabs`, Overview · Characters & gear · Availability · Tracking · Sharing — PH1, spec H-3), not a spine. *(S2a-2, 2026-10-08: Progress, the tracks surface, is the fifth tab (F-03, reaffirmed HS-2 in `HOME_STRETCH.md`); the diagram above predates it.)*
 - **No fourth nav surface.** "More" is deleted. Settings is one place (top-bar gear).
 
 **Visual containment principle (kept, re-stated):** regions must read as defined zones, not elements floating on one identical background. Rail and top bar sit on `surface-raised`; content on `surface-base`; cards on `surface-card`. Depth = hierarchy.
@@ -281,17 +281,17 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   - Join-request fetch replicates `Header.tsx:107-113` because the legacy `Header` is suppressed for `?shell=v2`. When the legacy Header resumes (F6b+), this side-effect should be removed from this component.
   - Structure-only for F6a — `NotificationCenter` itself is the legacy component, unchanged.
 
-### 3.13 Spine (4-tab in-surface tab bar) — F6a
+### 3.13 Spine (5-tab in-surface tab bar) — F6a, Progress S2a-2
 
-- **Anatomy:** `div[role="tablist" aria-label="Main content sections"]` containing 4 fixed `button[role="tab"]` entries (Home · Roster · Loot · Schedule). Active tab has an accent bottom-border underline (`::after`); icon fades to 45% opacity when inactive.
-- **Tabs (fixed, non-dynamic):** `overview` → Home, `roster` → Roster, `gear` → Loot, `schedule` → Schedule. These map to `PageMode` ids.
+- **Anatomy:** `div[role="tablist" aria-label="Main content sections"]` containing 5 fixed `button[role="tab"]` entries (Home · Roster · Loot · Schedule · Progress). Active tab has an accent bottom-border underline (`::after`); icon fades to 45% opacity when inactive.
+- **Tabs (fixed, non-dynamic):** `overview` → Home, `roster` → Roster, `gear` → Loot, `schedule` → Schedule, `goals` → Progress. These map to `PageMode` ids. V2 writes the `goals` mode to the URL as `?tab=progress`; `progress`, `goals`, `mount-farms` and `collections` all open it (S2a-2, R-S2-3).
 - **States:** active (accent underline + full-opacity icon) | inactive (secondary text, 45% icon opacity, hover shifts to primary text) | focused (browser focus ring on the button).
 - **Keyboard navigation:** `ArrowLeft`/`ArrowRight` cycle; `Home`/`End` jump to first/last. Focus follows the newly activated tab (roving `tabIndex`).
 - **Analytics:** every tab switch fires `analytics.track('navigation', 'tab_switch', { tab, surface: 'spine' })`.
 - **Usage rules:**
   - In-surface view switch only — calls `setPageMode`, never `navigate()`. Same discriminated-union rule as the generic `Tabs` primitive (§2.4): tabs switch content, the rail/spine switches context.
   - Present inside a static only (below the top bar in the v2 shell). Not present on Person-layer screens.
-  - Do not add dynamic or role-conditional tabs — the tab set is locked per the redesign spec. *(2026-09-30: the locked set is five tabs — F-03 adds Progress, reaffirmed HS-2 in `HOME_STRETCH.md`; Stage 2 updates this contract when it ships.)*
+  - Do not add dynamic or role-conditional tabs — the tab set is locked per the redesign spec: five tabs since S2a-2 (F-03 adds Progress, reaffirmed HS-2 in `HOME_STRETCH.md`).
 
 ### 3.14 SettingsGear — F6a
 

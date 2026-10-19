@@ -74,8 +74,9 @@ import type { SnapshotPlayer, GearSlot, SortPreset, GearSubTab, PageMode, ViewMo
 const ROSTER_SUB_VIEWS = ['members', 'characters', 'split-planner'] as const;
 const SCHEDULE_VIEWS = ['upcoming', 'calendar'] as const;
 
-/** The 4 spine tabs that can be slot-overridden by a redesigned screen (F6b–F6e). */
-export type GroupTab = 'overview' | 'roster' | 'gear' | 'schedule';
+/** The 5 spine tabs that can be slot-overridden by a redesigned screen
+ *  (F6b–F6e; `goals` is V2's Progress, S2a-2). */
+export type GroupTab = 'overview' | 'roster' | 'gear' | 'schedule' | 'goals';
 
 export interface GroupActions {
   onTierChange: (tierId: string) => void;
@@ -1157,10 +1158,9 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
         ))}
 
         {/* Goals & Farms Tab */}
-        {pageMode === 'goals' && (
+        {pageMode === 'goals' && (slots?.goals ?? (
           <>
-            {/* V1 parity: legacy shows main's "Goals & Farms"; v2 keeps the Track-centric "Tracking". `slots` is undefined only in the legacy shell. */}
-            <PageHeader icon={<Trophy size={14} className="text-accent" />} title={slots ? 'Tracking' : 'Goals & Farms'} subtitle="Track objectives, farms, and weekly goals." />
+            <PageHeader icon={<Trophy size={14} className="text-accent" />} title="Goals & Farms" subtitle="Track objectives, farms, and weekly goals." />
             {currentGroup && (
               <GoalsPage
                 groupId={currentGroup.id}
@@ -1172,7 +1172,7 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
               />
             )}
           </>
-        )}
+        ))}
 
         {/* More Tab */}
         {pageMode === 'more' && (

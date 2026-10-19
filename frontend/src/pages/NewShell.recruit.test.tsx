@@ -68,9 +68,14 @@ vi.mock('./V2SettingsHost', () => ({ V2SettingsHost: () => null }));
 vi.mock('../components/layout/TopBar', () => ({ TopBar: () => null }));
 vi.mock('../components/layout/Spine', () => ({
   Spine: ({ activeTab, onTabChange }: { activeTab: PageMode | null; onTabChange: (t: PageMode) => void }) => (
-    <button type="button" data-testid="spine-stub" data-active={String(activeTab)} onClick={() => onTabChange('roster')}>
-      spine
-    </button>
+    <>
+      <button type="button" data-testid="spine-stub" data-active={String(activeTab)} onClick={() => onTabChange('roster')}>
+        spine
+      </button>
+      <button type="button" data-testid="spine-stub-progress" onClick={() => onTabChange('goals')}>
+        progress
+      </button>
+    </>
   ),
 }));
 vi.mock('../components/layout/CommandPalette', () => ({
@@ -86,10 +91,12 @@ vi.mock('../components/layout/CommandPalette', () => ({
   ),
 }));
 
-vi.mock('../hooks/useGroupViewState', async () => {
+vi.mock('../hooks/useGroupViewState', async (importOriginal) => {
   const { useSearchParams: realUseSearchParams } = await import('react-router-dom');
   const { makeGroupViewStateMock } = await import('./newShellTestScaffold');
   return {
+    // The real `tabParamFor`: the recruit path's tab change writes the V2 tab name.
+    ...(await importOriginal<typeof import('../hooks/useGroupViewState')>()),
     useGroupViewState: () => {
       const [searchParams, setSearchParams] = realUseSearchParams();
       return makeGroupViewStateMock({ searchParams, setSearchParams, pageMode: 'overview' });
@@ -264,6 +271,12 @@ describe('NewShell — the Recruiting sub-route body (R-RH-G)', () => {
     // Back on the group route the override is gone and the Spine has its tab.
     expect(screen.getByTestId('palette-stub')).toHaveAttribute('data-has-select-tab', 'false');
     expect(screen.getByTestId('spine-stub')).toHaveAttribute('data-active', 'overview');
+  });
+
+  it('Progress from the recruit path writes the V2 tab name, tab=progress (S2a-2, R-S2-3)', () => {
+    renderShell('/group/abc/recruit?rtab=listing&tier=t1');
+    fireEvent.click(screen.getByTestId('spine-stub-progress'));
+    expect(path()).toBe('/group/abc?tab=progress&tier=t1');
   });
 
   it('a tab change with no tier param carries none', () => {
