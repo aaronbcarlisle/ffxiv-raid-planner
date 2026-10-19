@@ -149,6 +149,8 @@ export const RELEASES: Release[] = [
         title: 'Progress: the queue, About and Copy plan',
         description:
           'V2 preview: the open farm row now shows who is next in line (the top four, with "Show all" when more are queued), the farm\'s content, priority mode and notes under About, and a Copy plan button that puts the farm plan on the clipboard in the queue\'s order. Viewers see who needs and wants the farm in one unranked line, with no order and no counts, and their plan has no "Can buy now". A finished farm keeps Copy plan. Logging drops and the last-drops list arrive in the next updates.',
+        pr: 379,
+        prTitle: 'feat(v2): S2a-3a·G2b — the queue, About and Copy plan',
         internal: true,
       },
     ],
