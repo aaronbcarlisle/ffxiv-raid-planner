@@ -15,6 +15,16 @@ export function goal(id: string, overrides: Partial<CollectionGoal> = {}): Colle
   };
 }
 
+/** A goal as the server sends it (snake_case), for a mocked `api.put`. */
+export function apiGoal(id: string, overrides: Record<string, unknown> = {}) {
+  return {
+    id, static_group_id: 'g1', created_by_id: null, goal_type: 'mount', content_type: null, content_key: null, title: id,
+    status: 'farming', priority_mode: null, summary: null, linked_duty_id: null, linked_reward_id: null, target_count: null,
+    current_count: null, note: null, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z',
+    completed_at: null, catalog_item_id: null, token_name: 'Tokens', token_cost: 99, participant_summary: null, ...overrides,
+  };
+}
+
 export function row(goalId: string, userId: string, overrides: Partial<ParticipantStateEntry> = {}): ParticipantStateEntry {
   return {
     id: `${goalId}:${userId}`, goalId, userId, staticGroupId: 'g1', state: 'need', tokenCount: null, priorityRank: null,
