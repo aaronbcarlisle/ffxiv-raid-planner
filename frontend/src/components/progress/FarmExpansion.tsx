@@ -16,9 +16,13 @@
  * Escape inside the panel closes it (TG8's Edit excepted), through `escapeClosesPanel`'s
  * filter (R-S3-4, vet I-2): never a key a layer handled already, never one from a portalled
  * node outside this row. Closing returns focus to the name button: the caller's `onClose`.
+ *
+ * Last drops' delete (S2a-3a·G4 Task TG6, D-14): a lead on every drop, a member on the drops
+ * they logged (`createdById` is `currentUserId`), a viewer on none.
  */
 import { useCallback, useRef, type KeyboardEvent } from 'react';
 import { Copy } from 'lucide-react';
+import type { RewardDrop } from '../../stores/collectionGoalStore';
 import { toast } from '../../stores/toastStore';
 import type { MemberRole } from '../../types';
 import { buildDiscordPlan, planEntriesFor, type DiscordPlanEntry } from '../../utils/discordPlan';
@@ -82,6 +86,9 @@ export function FarmExpansion({
   const viewer = userRole === 'viewer';
   const lead = canManage && !viewer;
   const { drops, status: dropsStatus, retry: retryDrops } = useGoalDrops(groupId, row.goal.id);
+
+  // D-14, as V1's history: a lead any drop, a member the ones they logged; a viewer none (the API refuses them).
+  const canDeleteDrop = (drop: RewardDrop) => !viewer && (lead || drop.createdById === currentUserId);
 
   const own = row.cells.find((cell) => cell.own) ?? null;
   const ownUserId = own?.column.userId ?? null;
@@ -156,7 +163,16 @@ export function FarmExpansion({
                 Last drops
               </h2>
               <div className="mt-2">
-                <DropList drops={drops} status={dropsStatus} onRetry={retryDrops} clock={clock} />
+                <DropList
+                  drops={drops}
+                  status={dropsStatus}
+                  onRetry={retryDrops}
+                  clock={clock}
+                  groupId={groupId}
+                  goalId={row.goal.id}
+                  canDelete={canDeleteDrop}
+                  onLeave={focusCopyPlan}
+                />
               </div>
             </section>
             <section aria-labelledby={`${id}-about`} data-testid="progress-expansion-about">

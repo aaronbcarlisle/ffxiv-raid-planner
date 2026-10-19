@@ -4,7 +4,7 @@
  * route); its legacy refetches after a log are stubbed and `refreshGoalProgress` is a spy (its
  * own requests are the store test's).
  */
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../services/api', async (importOriginal) => ({
@@ -17,9 +17,9 @@ import { useCollectionGoalStore, type CollectionGoal } from '../../stores/collec
 import { useToastStore } from '../../stores/toastStore';
 import { serveDrops } from './__fixtures__/dropServer';
 import { emulateFocusFixup } from './__fixtures__/focusFixup';
-import { farmRowOf, goal, type ColumnSpec } from './__fixtures__/progressFixtures';
+import { installPanelStore, posts, renderPanel as renderHarness, restorePanelStore, toasts } from './__fixtures__/panelHarness';
+import { goal, type ColumnSpec } from './__fixtures__/progressFixtures';
 import { stubCanHover } from './__fixtures__/tooltipEnv';
-import { FarmExpansion } from './FarmExpansion';
 
 const WINGS = goal('wings', { title: 'Wings' });
 const DROPS = '/api/static-groups/g1/collection-goals/wings/drops';
@@ -33,64 +33,32 @@ const ROSTER: ColumnSpec[] = [
   { id: 'Ranged' },
 ];
 
-const real = useCollectionGoalStore.getState();
 const refresh = vi.fn();
 let server: ReturnType<typeof serveDrops>;
 
 /** The panel, once its drops load has settled (none are served). */
 async function renderPanel(specs: ColumnSpec[] = ROSTER, g: CollectionGoal = WINGS, onClose = vi.fn()) {
-  const view = render(
-    <table>
-      <tbody>
-        <FarmExpansion
-          row={farmRowOf(specs, g, 'lead')}
-          finished={false}
-          canManage
-          userRole="lead"
-          currentUserId="me"
-          groupId="g1"
-          onClose={onClose}
-          id="progress-expansion-wings"
-          spanAll={7}
-        />
-      </tbody>
-    </table>,
-  );
+  const view = renderHarness({ specs, g, userRole: 'lead', canManage: true, onClose, spanAll: 7 });
   await screen.findByText('No drops logged yet.');
-  return { ...view, onClose };
+  return view;
 }
 
 const main = (name: RegExp | string = /^Log (drop for|a drop)/) => screen.getByRole('button', { name });
 const more = () => screen.getByRole('button', { name: 'More recipients' });
 const radios = () => within(screen.getByRole('radiogroup', { name: 'Recipient' })).getAllByRole('radio');
 const checkedName = () => radios().find((r) => r.getAttribute('aria-checked') === 'true')?.textContent;
-const posts = () => vi.mocked(api.post).mock.calls;
-const toasts = () => useToastStore.getState().toasts.map((t) => [t.type, t.message, t.action?.label ?? null]);
 const clickUndo = () => act(() => useToastStore.getState().toasts.find((t) => t.action?.label === 'Undo')?.action?.onClick());
 
 beforeEach(() => {
   vi.clearAllMocks();
   stubCanHover();
   server = serveDrops(api);
-  refresh.mockResolvedValue(undefined);
-  useCollectionGoalStore.setState({
-    drops: {},
-    dropsLoading: {},
-    fetchParticipants: vi.fn().mockResolvedValue(undefined),
-    fetchGoals: vi.fn().mockResolvedValue(undefined),
-    refreshGoalProgress: refresh,
-  });
-  useToastStore.getState().clearAll();
+  installPanelStore(refresh);
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  useCollectionGoalStore.setState({
-    fetchParticipants: real.fetchParticipants,
-    fetchGoals: real.fetchGoals,
-    refreshGoalProgress: real.refreshGoalProgress,
-    drops: {},
-  });
+  restorePanelStore();
 });
 
 describe('LogDropButton: one click for #1 (D-6)', () => {

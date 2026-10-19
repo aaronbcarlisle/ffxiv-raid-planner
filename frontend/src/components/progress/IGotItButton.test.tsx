@@ -3,7 +3,7 @@
  * decides who sees it. The REAL store runs over a mocked `api` (a fake drops route); its legacy
  * refetches after a log are stubbed and `refreshGoalProgress` is a spy. The reader is "me".
  */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../services/api', async (importOriginal) => ({
@@ -12,13 +12,12 @@ vi.mock('../../services/api', async (importOriginal) => ({
 }));
 
 import { api } from '../../services/api';
-import { useCollectionGoalStore, type CollectionGoal, type RewardDrop } from '../../stores/collectionGoalStore';
+import { useCollectionGoalStore, type RewardDrop } from '../../stores/collectionGoalStore';
 import { useToastStore } from '../../stores/toastStore';
-import type { MemberRole } from '../../types';
 import { serveDrops } from './__fixtures__/dropServer';
 import { emulateFocusFixup } from './__fixtures__/focusFixup';
-import { apiDrop, farmRowOf, goal, type ColumnSpec } from './__fixtures__/progressFixtures';
-import { FarmExpansion } from './FarmExpansion';
+import { installPanelStore, posts, renderPanel as renderHarness, restorePanelStore, toasts, type PanelOptions } from './__fixtures__/panelHarness';
+import { apiDrop, goal, type ColumnSpec } from './__fixtures__/progressFixtures';
 
 const WINGS = goal('wings', { title: 'Wings', catalogItemId: 'item-1' });
 const DROPS = '/api/static-groups/g1/collection-goals/wings/drops';
@@ -28,67 +27,22 @@ const mine = (cell: ColumnSpec['cell'], kind: ColumnSpec['kind'] = 'claimed'): C
   { id: 'me', kind, cell },
 ];
 
-const real = useCollectionGoalStore.getState();
 const refresh = vi.fn();
 let server: ReturnType<typeof serveDrops>;
 
-interface PanelOptions {
-  specs?: ColumnSpec[];
-  g?: CollectionGoal;
-  userRole?: MemberRole;
-  canManage?: boolean;
-  finished?: boolean;
-}
-
-function renderPanel({ specs = mine({ state: 'need' }), g = WINGS, userRole = 'member', canManage = false, finished = false }: PanelOptions = {}) {
-  return render(
-    <table>
-      <tbody>
-        <FarmExpansion
-          row={farmRowOf(specs, g, userRole)}
-          finished={finished}
-          canManage={canManage}
-          userRole={userRole}
-          currentUserId="me"
-          groupId="g1"
-          onClose={vi.fn()}
-          id="progress-expansion-wings"
-          spanAll={5}
-        />
-      </tbody>
-    </table>,
-  );
-}
+const renderPanel = (options: PanelOptions = {}) => renderHarness({ specs: mine({ state: 'need' }), g: WINGS, ...options });
 
 /** Waits for the panel's drops load to settle (Last drops leaves its loading line). */
 const settled = () => waitFor(() => expect(screen.queryByText('Loading drops…')).not.toBeInTheDocument());
 const gotIt = () => screen.queryByRole('button', { name: 'I got it' });
-const posts = () => vi.mocked(api.post).mock.calls;
-const toasts = () => useToastStore.getState().toasts.map((t) => [t.type, t.message, t.action?.label ?? null]);
 
 beforeEach(() => {
   vi.clearAllMocks();
   server = serveDrops(api);
-  refresh.mockResolvedValue(undefined);
-  useCollectionGoalStore.setState({
-    drops: {},
-    dropsLoading: {},
-    fetchParticipants: vi.fn().mockResolvedValue(undefined),
-    fetchGoals: vi.fn().mockResolvedValue(undefined),
-    refreshGoalProgress: refresh,
-  });
-  useToastStore.getState().clearAll();
+  installPanelStore(refresh);
 });
 
-afterEach(() => {
-  useCollectionGoalStore.setState({
-    fetchParticipants: real.fetchParticipants,
-    fetchGoals: real.fetchGoals,
-    refreshGoalProgress: real.refreshGoalProgress,
-    logDrop: real.logDrop,
-    drops: {},
-  });
-});
+afterEach(restorePanelStore);
 
 describe('I got it: who sees it (D-5, R-S3-7)', () => {
   it.each([['Need', { state: 'need' }], ['Want', { state: 'want' }], ['Pass', { state: 'pass' }], ['blank', null]] as const)(
