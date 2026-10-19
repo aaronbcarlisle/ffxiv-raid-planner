@@ -3,9 +3,10 @@
  * ProgressCell and FinishedFarms. Props-driven: the model builds the columns and rows
  * from fixtures, so these tests read exactly what the page would render.
  */
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CollectionGoal } from '../../stores/collectionGoalStore';
+import { useCollectionGoalStore, type CollectionGoal } from '../../stores/collectionGoalStore';
+import { useToastStore } from '../../stores/toastStore';
 import type { SnapshotPlayer } from '../../types';
 import {
   buildColumns,
@@ -15,6 +16,7 @@ import {
 } from '../../utils/progressModel';
 import { goal, row } from './__fixtures__/progressFixtures';
 import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
+import type { CellWriteTarget } from './CellPicker';
 import { ProgressMatrix } from './ProgressMatrix';
 
 beforeEach(() => stubCanHover());
@@ -46,6 +48,8 @@ interface RenderOptions {
   finishedLoading?: boolean;
   finishedError?: string | null;
   onExpandFinished?: () => void;
+  /** How the reader's own cells write (F5); absent = read-only, as a viewer sees it. */
+  edit?: CellWriteTarget;
 }
 
 function matrixElement(o: RenderOptions, onExpandFinished: () => void) {
@@ -64,6 +68,7 @@ function matrixElement(o: RenderOptions, onExpandFinished: () => void) {
         canManage={o.canManage ?? true}
         currentUserId={(o.reader ?? LEAD).currentUserId}
         memberNames={o.memberNames}
+        edit={o.edit}
         finishedLoading={o.finishedLoading ?? false}
         finishedError={o.finishedError ?? null}
         onExpandFinished={onExpandFinished}
@@ -638,5 +643,236 @@ describe('ProgressMatrix provenance tooltip', () => {
     focusCell(blank);
     expect(blank).toHaveFocus();
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+});
+
+// ── The reader's own cell (S2a-2·F5 Task TF7; R-S2-10) ──────────────────────
+
+const EDIT: CellWriteTarget = { groupId: 'g1' };
+/** Every Tab stop inside the grid, whether a cell or the control inside one. */
+const gridStops = () => Array.from(screen.getByRole('grid').querySelectorAll<HTMLElement>('[tabindex="0"]'));
+const ownButton = (name: RegExp | string) => screen.getByRole('button', { name });
+
+describe('ProgressMatrix own cell', () => {
+  it('makes the reader\'s own cells buttons named "…, {state} — change your status", and no one else\'s', () => {
+    renderMatrix({
+      participants: { wings: [row('wings', 'u1', { state: 'need', tokenCount: 62 }), row('wings', 'u2', { state: 'have' })] },
+      reader: MEMBER,
+      edit: EDIT,
+    });
+    const own = ownButton('Aya, Wings of Resolve, Need, 62 of 99 Tokens — change your status');
+    expect(own.closest('[role="gridcell"]')).toHaveAttribute('aria-label', 'Aya, Wings of Resolve, Need, 62 of 99 Tokens');
+    expect(within(own).getByText('Need 62/99')).toHaveClass('text-status-error');
+    for (const cell of allCells()) {
+      if (cell.contains(own)) continue;
+      expect(within(cell).queryByRole('button')).not.toBeInTheDocument();
+    }
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
+
+  it('shows a muted text-xs "Set status" in an own blank cell, named "…, no status — set your status"; another member\'s blank cell stays empty', () => {
+    renderMatrix({ participants: { wings: [row('wings', 'u4', { state: 'have' })] }, reader: MEMBER, edit: EDIT });
+    const own = ownButton('Aya, Wings of Resolve, no status — set your status');
+    const hint = within(own).getByText('Set status');
+    expect(hint).toHaveClass('text-xs');
+    expect(hint).toHaveClass('text-text-muted');
+    expect(screen.getByRole('gridcell', { name: 'Bo, Wings of Resolve, no status' })).toHaveTextContent('');
+  });
+
+  it('makes no cell a button when no edit prop is passed', () => {
+    renderMatrix({ participants: { wings: [row('wings', 'u1', { state: 'need' })] }, reader: { currentUserId: 'u1', userRole: 'viewer' } });
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('makes a Not-on-the-roster own cell a button too, and leaves Finished rows read-only', () => {
+    renderMatrix({
+      goals: [goal('wings', { title: 'Wings of Resolve' }), goal('done', { title: 'Done', status: 'complete', completedAt: '2026-10-01T00:00:00Z' })],
+      participants: { wings: [row('wings', 'u-zed', { displayName: 'Zed', state: 'want' })], done: [row('done', 'u-zed', { displayName: 'Zed', state: 'have' })] },
+      reader: { currentUserId: 'u-zed', userRole: 'member' },
+      edit: EDIT,
+    });
+    expect(ownButton('Zed, Wings of Resolve, Want — change your status')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
+    const doneRow = farmRows().find((r) => r.getAttribute('data-goal-id') === 'done')!;
+    expect(within(doneRow).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(doneRow).getByRole('gridcell', { name: 'Zed, Done, Have' })).toBeInTheDocument();
+  });
+});
+
+// ── One roving stop with a control in the cell (TF7 rulings 1 and 2) ─────────
+
+describe('ProgressMatrix keyboard grid with own-cell buttons', () => {
+  const two = [goal('hot', { title: 'Hot' }), goal('calm', { title: 'Calm' })];
+  const mixed = { hot: [row('hot', 'u1', { state: 'need', tokenCount: 62 }), row('hot', 'u2', { state: 'have' })], calm: [row('calm', 'u1', { state: 'want' })] };
+  const realSetCell = useCollectionGoalStore.getState().setCell;
+
+  afterEach(() => {
+    useCollectionGoalStore.setState({ setCell: realSetCell });
+    useToastStore.getState().clearAll();
+  });
+
+  it('has exactly one Tab stop, the own cell\'s button, with the td around it no stop of its own', () => {
+    renderMatrix({ goals: two, participants: mixed, reader: MEMBER, edit: EDIT });
+    const stops = gridStops();
+    expect(stops).toHaveLength(1);
+    expect(stops[0]).toBe(ownButton('Aya, Hot, Need, 62 of 99 Tokens — change your status'));
+    expect(stops[0].closest('td')).not.toHaveAttribute('tabindex');
+    // Every other cell is in the grid at -1.
+    expect(allCells().filter((c) => c.getAttribute('tabindex') === '-1')).toHaveLength(allCells().length - 2);
+  });
+
+  it('moves with the arrows from the button to a plain cell and back onto the button', () => {
+    renderMatrix({ goals: two, participants: mixed, reader: MEMBER, edit: EDIT });
+    const own = ownButton('Aya, Hot, Need, 62 of 99 Tokens — change your status');
+    const bo = screen.getByRole('gridcell', { name: 'Bo, Hot, Have' });
+    focusCell(own);
+
+    expect(key(own, 'ArrowRight')).toBe(false);
+    expect(bo).toHaveFocus();
+    expect(key(bo, 'ArrowLeft')).toBe(false);
+    expect(own).toHaveFocus();
+    key(own, 'ArrowDown');
+    expect(ownButton('Aya, Calm, Want — change your status')).toHaveFocus();
+    expect(gridStops()).toEqual([ownButton('Aya, Calm, Want — change your status')]);
+  });
+
+  it('keeps focus and the stop on the cell through a pick that moves its row down (review I-1, I-2)', async () => {
+    const setCell = vi.fn().mockResolvedValue({ entry: row('hot', 'u1', { state: 'have' }), undoToken: null });
+    useCollectionGoalStore.setState({ setCell });
+    const { rerender } = renderMatrix({ goals: two, participants: mixed, reader: MEMBER, edit: EDIT });
+    expect(farmRows().map((r) => r.getAttribute('data-goal-id'))).toEqual(['hot', 'calm']);
+    const own = ownButton('Aya, Hot, Need, 62 of 99 Tokens — change your status');
+    focusCell(own);
+    fireEvent.click(own);
+    fireEvent.click(within(screen.getByRole('group', { name: 'Status' })).getByRole('button', { name: '✓ Have' }));
+    expect(setCell).toHaveBeenCalledWith('g1', 'hot', { state: 'have' });
+    await waitFor(() => expect(own).toHaveFocus());
+
+    // The response merges: Hot has no Need left, so Calm (one Want) sorts above it and React
+    // moves the focused row. The DOM's focus fixup drops focus to <body> on that move (jsdom
+    // does it too), and React DOM refocuses the moved button in the same commit; the stop
+    // must stay on Hot's cell, second row now, not fall back to the first cell.
+    const refocus = vi.spyOn(own, 'focus');
+    try {
+      rerender({
+        goals: two,
+        participants: { ...mixed, hot: [row('hot', 'u1', { state: 'have' }), row('hot', 'u2', { state: 'have' })] },
+        reader: MEMBER,
+        edit: EDIT,
+      });
+      expect(refocus).toHaveBeenCalled();
+    } finally {
+      refocus.mockRestore();
+    }
+
+    expect(farmRows().map((r) => r.getAttribute('data-goal-id'))).toEqual(['calm', 'hot']);
+    const after = ownButton('Aya, Hot, Have — change your status');
+    expect(after).toBe(own);
+    expect(after.closest('tr')).toBe(farmRows()[1]);
+    expect(gridStops()).toEqual([after]);
+    expect(after).toHaveFocus();
+  });
+
+  it('moves focus to the fallback stop when the focused row is gone, where React cannot restore it', () => {
+    const { rerender } = renderMatrix({ goals: two, participants: mixed, reader: MEMBER, edit: EDIT });
+    const own = ownButton('Aya, Calm, Want — change your status');
+    focusCell(own);
+    expect(own).toHaveFocus();
+
+    rerender({ goals: [two[0]], participants: mixed, reader: MEMBER, edit: EDIT });
+
+    const first = ownButton('Aya, Hot, Need, 62 of 99 Tokens — change your status');
+    expect(gridStops()).toEqual([first]);
+    expect(first).toHaveFocus();
+  });
+
+  it('forgets a tooltip wish the cell could not show, so a later provenance does not open it unprompted (review M-a)', async () => {
+    // A blank own cell has no provenance: Radix still asks to open on focus, and, with the
+    // controlled value already false, never asks to close.
+    const { rerender } = renderMatrix({ participants: {}, reader: MEMBER, edit: EDIT });
+    const own = ownButton('Aya, Wings of Resolve, no status — set your status');
+    focusCell(own);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    act(() => own.blur());
+
+    rerender({
+      participants: { wings: [row('wings', 'u1', { state: 'need', updatedByUserId: 'u1', updatedVia: 'web' })] },
+      reader: MEMBER,
+      edit: EDIT,
+    });
+    await act(async () => {});
+    expect(screen.queryByRole('tooltip')).toBeNull();
+
+    // A fresh focus still opens it.
+    focusCell(ownButton('Aya, Wings of Resolve, Need — change your status'));
+    expect((await screen.findAllByText('you')).length).toBeGreaterThan(0);
+  });
+
+  it('puts the provenance tooltip to sleep while the picker is open, and wakes it after (review M3)', async () => {
+    renderMatrix({
+      participants: { wings: [row('wings', 'u1', { state: 'need', updatedByUserId: 'u1', updatedVia: 'web' })] },
+      reader: MEMBER,
+      edit: EDIT,
+    });
+    const own = ownButton('Aya, Wings of Resolve, Need — change your status');
+    focusCell(own);
+    expect((await screen.findAllByText('you')).length).toBeGreaterThan(0);
+
+    fireEvent.click(own);
+    expect(screen.getByRole('group', { name: 'Status' })).toBeInTheDocument();
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    // Focus moving inside the popover bubbles through the Popover root to the cell, and the
+    // pointer can cross the cell itself: neither wakes the tooltip while the picker is open.
+    focusCell(within(screen.getByRole('group', { name: 'Status' })).getByRole('button', { name: '★ Want' }));
+    fireEvent.pointerMove(own.closest('td')!);
+    await act(async () => {});
+    expect(screen.queryByRole('tooltip')).toBeNull();
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    await waitFor(() => expect(own).toHaveFocus());
+    expect((await screen.findAllByText('you')).length).toBeGreaterThan(0);
+  });
+
+  it('never flips the tooltip between controlled and uncontrolled as the picker opens and closes (browser B)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      renderMatrix({
+        participants: { wings: [row('wings', 'u1', { state: 'need', updatedByUserId: 'u1', updatedVia: 'web' })] },
+        reader: MEMBER,
+        edit: EDIT,
+      });
+      const own = ownButton('Aya, Wings of Resolve, Need — change your status');
+      focusCell(own);
+      await screen.findAllByText('you');
+      fireEvent.click(own);
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+      await waitFor(() => expect(own).toHaveFocus());
+      await screen.findAllByText('you');
+
+      const flips = [...warn.mock.calls, ...error.mock.calls].filter((c) => c.some((a) => typeof a === 'string' && /controlled/.test(a)));
+      expect(flips).toEqual([]);
+    } finally {
+      warn.mockRestore();
+      error.mockRestore();
+    }
+  });
+
+  it('lets no key typed in the open picker\'s count field move the grid or its stop (the portal leak)', () => {
+    renderMatrix({ goals: two, participants: mixed, reader: MEMBER, edit: EDIT });
+    const own = ownButton('Aya, Hot, Need, 62 of 99 Tokens — change your status');
+    focusCell(own);
+    fireEvent.click(own);
+    const input = screen.getByLabelText('Tokens');
+    act(() => input.focus());
+
+    expect(fireEvent.keyDown(input, { key: 'ArrowDown' })).toBe(true);
+    expect(input).toHaveFocus();
+    expect(fireEvent.keyDown(input, { key: 'Home' })).toBe(true);
+    expect(input).toHaveFocus();
+    expect(gridStops()).toEqual([own]);
+    // Focus inside the popover did not make another cell the stop either.
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    expect(gridStops()).toEqual([own]);
   });
 });

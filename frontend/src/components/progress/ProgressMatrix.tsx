@@ -10,7 +10,9 @@
  * S2a-2·F4: the active rows and their columns are one `role="grid"` with a single roving
  * Tab stop (`useMatrixKeyboard`), and each cell says where its value came from on hover
  * and focus. The Finished rows are outside that grid (their cells are not focus targets).
- * Still read-only.
+ *
+ * S2a-2·F5 (R-S2-10): with an `edit` context the reader's own cells on the active rows
+ * are pickers; the picker's Button is then that cell's stop. Everything else is read-only.
  */
 import { useMemo } from 'react';
 import { VisuallyHidden } from '../primitives/VisuallyHidden';
@@ -18,6 +20,7 @@ import { JobIcon } from '../ui/JobIcon';
 import { Tag } from '../ui/Tag';
 import { getValidRole } from '../../gamedata';
 import type { FarmRow as FarmRowModel, ProgressColumn } from '../../utils/progressModel';
+import type { CellWriteTarget } from './CellPicker';
 import { FarmRow } from './FarmRow';
 import { FinishedFarms } from './FinishedFarms';
 import type { ProvenanceContext } from './progressProvenance';
@@ -73,10 +76,14 @@ interface ProgressMatrixProps {
   /** The effective viewer (View As aware): the provenance tooltip's "you". */
   currentUserId: string | null;
   /**
-   * Display names of the static's members by user id, for "set by {name}" when the writer
-   * has no column in this tier (a lead without a card, a past tier, the View As admin).
+   * Display names by user id, for "set by {name}" when the writer has no column in this
+   * tier: the static's members (a lead without a card, a past tier) and, since a View As
+   * admin who is no member writes the viewed user's row, the signed-in user, which the
+   * page adds below the members (TF7 ruling 8).
    */
   memberNames?: ReadonlyMap<string, string>;
+  /** How the reader's own cells write (R-S2-10); absent when they edit nothing (a viewer). */
+  edit?: CellWriteTarget;
   /** The finished goals' cells are being fetched. */
   finishedLoading: boolean;
   /** Fetching the finished goals' cells failed. */
@@ -92,6 +99,7 @@ export function ProgressMatrix({
   canManage,
   currentUserId,
   memberNames,
+  edit,
   finishedLoading,
   finishedError = null,
   onExpandFinished,
@@ -141,7 +149,7 @@ export function ProgressMatrix({
         </thead>
         <tbody>
           {active.map((row) => (
-            <FarmRow key={row.goal.id} row={row} canManage={canManage} provenance={provenance} keyboard={keyboard} />
+            <FarmRow key={row.goal.id} row={row} canManage={canManage} provenance={provenance} keyboard={keyboard} edit={edit} />
           ))}
         </tbody>
         <FinishedFarms

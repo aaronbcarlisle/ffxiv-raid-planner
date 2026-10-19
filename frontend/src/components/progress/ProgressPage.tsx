@@ -1,10 +1,11 @@
 /**
  * ProgressPage — the V2 Progress tab (S2a-2). The header, the tier row, the farm
- * matrix (F3, read-only) and the members-only card for outsiders.
+ * matrix and the members-only card for outsiders.
  *
- * `canManage` decides whether the status column reads "Everyone has it"; the
- * remaining `isViewingAs` is part of the slot contract (R-S2-4) and is consumed by
- * the cell controls in later tasks.
+ * `canManage` decides whether the status column reads "Everyone has it". A member
+ * (owner, lead or member role) edits their own cells (F5, R-S2-10): under View As the
+ * "own" cells are the viewed user's, and a write goes through the lead route aimed at
+ * them (`isViewingAs`, the slot contract's R-S2-4), never at the admin's own row.
  *
  * Data: the page fetches the static's goals on mount and the cells of every active
  * goal (`fetchProgress`) whenever the SET of active goal ids changes, keyed on the
@@ -22,10 +23,12 @@ import { PageHeader } from '../layout/PageHeader';
 import { Button } from '../primitives/Button';
 import { useRosterSortPreset } from '../roster/useRosterSortPreset';
 import { getTierById } from '../../gamedata';
+import { useAuthStore } from '../../stores/authStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
 import type { MemberRole, PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
 import { buildColumns, splitFarmRows } from '../../utils/progressModel';
+import type { CellWriteTarget } from './CellPicker';
 import { ProgressMatrix } from './ProgressMatrix';
 import { TierRow } from './TierRow';
 
@@ -45,7 +48,7 @@ interface ProgressPageProps {
   onNavigate: (tab: PageMode, extra?: Record<string, string>) => void;
 }
 
-export function ProgressPage({ group, tier, canManage, userRole, currentUserId, onNavigate }: ProgressPageProps) {
+export function ProgressPage({ group, tier, canManage, userRole, currentUserId, isViewingAs, onNavigate }: ProgressPageProps) {
   // The shared week clock (Home/Schedule precedent). The store holds a number
   // from the first render, so "known" means a server response has written it for
   // THIS tier (RosterCard's `clockResolved`).
@@ -154,16 +157,27 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     return { columns, ...rows };
   }, [players, preset, activeGoals, groupGoals, participants, recordOnly, currentUserId, userRole]);
 
-  const memberNames = useMemo(
-    () =>
-      new Map(
-        (group.members ?? []).flatMap((m) => {
-          const name = m.user?.displayName ?? m.user?.discordUsername;
-          return name ? [[m.userId, name] as const] : [];
-        }),
-      ),
-    [group.members],
-  );
+  // Names for "set by {name}": the signed-in user first, so a member's entry below wins. The
+  // signed-in user is there for View As: the admin writes the viewed user's row, and an
+  // admin who is no member of this static has no other name here (TF7 ruling 8).
+  const authUserId = useAuthStore((s) => s.user?.id ?? null);
+  const authUserName = useAuthStore((s) => s.user?.displayName ?? s.user?.discordUsername ?? null);
+  const memberNames = useMemo(() => {
+    const names = new Map<string, string>();
+    if (authUserId !== null && authUserName) names.set(authUserId, authUserName);
+    for (const m of group.members ?? []) {
+      const name = m.user?.displayName ?? m.user?.discordUsername;
+      if (name) names.set(m.userId, name);
+    }
+    return names;
+  }, [group.members, authUserId, authUserName]);
+
+  // Who may edit their own cells (R-S2-10): any member role but viewer. Under View As the
+  // write goes through the lead route aimed at the viewed user (`currentUserId` is theirs).
+  const edit = useMemo<CellWriteTarget | undefined>(() => {
+    if (!isMember || userRole === 'viewer' || currentUserId === null) return undefined;
+    return isViewingAs ? { groupId: group.id, targetUserId: currentUserId } : { groupId: group.id };
+  }, [isMember, userRole, currentUserId, isViewingAs, group.id]);
 
   const retry = () => {
     // Behind a mounted matrix the stale cells stay on screen while the retry runs.
@@ -212,6 +226,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
             canManage={canManage}
             currentUserId={currentUserId}
             memberNames={memberNames}
+            edit={edit}
             finishedLoading={finishedLoading}
             finishedError={finishedError}
             onExpandFinished={expandFinished}
