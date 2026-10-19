@@ -17,6 +17,9 @@ export const farmNameId = (goalId: string) => `progress-expansion-${goalId}-name
 /** The row's ⋯ menu button id (where focus returns when Edit ends). */
 export const farmMenuId = (goalId: string) => `progress-expansion-${goalId}-menu`;
 
+/** The Edit block's Title input id (where focus goes when Edit starts, or when a discard is kept). */
+export const farmEditTitleId = (goalId: string) => `progress-expansion-${goalId}-edit-title`;
+
 /** The "Finished (n)" disclosure's id. */
 export const FINISHED_TOGGLE_ID = 'progress-finished-toggle';
 

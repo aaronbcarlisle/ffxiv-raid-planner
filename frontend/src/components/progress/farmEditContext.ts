@@ -18,8 +18,16 @@ export const FarmEditContext = createContext({
   finish: NOOP as (goalId: string) => void,
   /** The block reports whether it holds unsaved changes. */
   setDirty: NOOP as (dirty: boolean) => void,
-  /** Runs `proceed`, after "Discard changes?" when this goal's block is dirty and `proceed` would drop it. */
-  guard: ((_goalId: string, proceed: () => void) => proceed()) as (goalId: string, proceed: () => void) => void,
+  /**
+   * Runs `proceed`, after "Discard changes?" when this goal's block is dirty and `proceed` would drop
+   * it. `opener` is the control Keep editing gives focus back to when the focused one is about to go
+   * (a menu item): by default the focused element.
+   */
+  guard: ((_goalId: string, proceed: () => void) => proceed()) as (
+    goalId: string,
+    proceed: () => void,
+    opener?: HTMLElement | null,
+  ) => void,
 });
 
 export const useFarmEdit = () => useContext(FarmEditContext);

@@ -273,6 +273,16 @@ describe('FarmEditBlock: telling the page whether it is dirty', () => {
     expect(onDirtyChange).toHaveBeenLastCalledWith(false);
   });
 
+  it('opens clean for a stored title with whitespace on its edges, and saves only what changed', async () => {
+    renderBlock(goal('wings', { title: ' Wings ', summary: null }));
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+    expect(save()).toBeDisabled();
+    fireEvent.change(box('Notes'), { target: { value: 'Different' } });
+    fireEvent.click(save());
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(puts()).toEqual([[GOAL_URL, { summary: 'Different' }]]);
+  });
+
   it('keeps its fields in a form named for the farm', () => {
     renderBlock();
     const form = screen.getByRole('form', { name: 'Edit Wings' });

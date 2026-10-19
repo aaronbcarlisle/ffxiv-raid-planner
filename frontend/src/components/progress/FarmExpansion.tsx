@@ -100,7 +100,7 @@ export function FarmExpansion({
   const { drops, status: dropsStatus, retry: retryDrops } = useGoalDrops(groupId, row.goal.id);
   const { busy: statusBusy, markFinished } = useGoalStatus(groupId, row.goal);
   const edit = useFarmEdit();
-  const editing = !finished && edit.editingId === row.goal.id;
+  const editing = lead && !finished && edit.editingId === row.goal.id;
 
   // D-14, as V1's history: a lead any drop, a member the ones they logged; a viewer none (the API refuses them).
   const canDeleteDrop = (drop: RewardDrop) => !viewer && (lead || drop.createdById === currentUserId);
