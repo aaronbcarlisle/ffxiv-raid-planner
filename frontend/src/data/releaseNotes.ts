@@ -60,7 +60,7 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
-    version: '2.1.76',
+    version: '2.1.77',
     date: '2026-10-20T00:00:00Z',
     title: 'Progress: the tier\'s BiS model',
     items: [
