@@ -20,7 +20,7 @@
  * renders next), and the grid's props move onto it, the cell's one focus target, as a farm's name
  * button holds them. Otherwise the name stays a plain cell. Each open scrolls the row into view.
  */
-import { Fragment, useEffect, useId, useRef } from 'react';
+import { Fragment, useEffect, useId, useLayoutEffect, useRef } from 'react';
 import { Button } from '../primitives/Button';
 import { VisuallyHidden } from '../primitives/VisuallyHidden';
 import { useAltHeld } from '../../hooks/useAltHeld';
@@ -76,6 +76,12 @@ export function TierRow({ tier, columns, lead, keyboard, disclosure }: TierRowPr
   useEffect(() => {
     if (open) rowRef.current?.scrollIntoView?.({ block: 'nearest' });
   }, [open]);
+  // The name turns into the disclosure when the split result settles: the plain cell loses its
+  // tabindex, so a focused one would drop focus to <body>. It hands its focus to the new button.
+  const openable = disclosure !== undefined;
+  useLayoutEffect(() => {
+    if (openable && document.activeElement === rowRef.current?.firstElementChild) document.getElementById(tierNameId)?.focus();
+  }, [openable]);
   return (
     <tr ref={rowRef} role="row" data-testid="progress-tier-row" className="border-t border-border-subtle">
       <th
