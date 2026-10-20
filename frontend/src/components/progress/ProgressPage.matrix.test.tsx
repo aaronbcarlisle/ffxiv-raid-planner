@@ -29,6 +29,7 @@ import {
   type ParticipantStateEntry,
 } from '../../stores/collectionGoalStore';
 import type { StaticGroup, TierSnapshot } from '../../types';
+import { loadedMatrix } from './__fixtures__/pageHarness';
 import { goal, row } from './__fixtures__/progressFixtures';
 import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
 import { ProgressPage } from './ProgressPage';
@@ -124,7 +125,7 @@ describe('ProgressPage matrix: order and Finished', () => {
     seed({ goals, participants });
     renderPage();
 
-    expect(await screen.findByTestId('progress-matrix')).toBeInTheDocument();
+    expect(await loadedMatrix()).toBeInTheDocument();
     // S2a-3b·H3 (R-T-3): the tier row is the matrix's first body row, above the farm rows.
     const matrix = screen.getByTestId('progress-matrix');
     const tierRow = within(matrix).getByTestId('progress-tier-row');
@@ -202,7 +203,7 @@ describe('ProgressPage matrix: order and Finished', () => {
   it('shows a finished-fetch failure on its own line and keeps the active rows (TF5 review)', async () => {
     seed({ goals, participants });
     renderPage();
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     fetchProgress.mockImplementation(async (_group: string, ids?: string[]) => {
       // The real store writes its one shared slot too; the page must read its own call's result.
       if (ids) useCollectionGoalStore.setState({ progressError: 'boom' });
@@ -251,7 +252,7 @@ describe('ProgressPage matrix: status and counts by role', () => {
       participants: { wings: [row('wings', 'u2', { state: 'need', tokenCount: 62 }), row('wings', 'u3', { state: 'want', tokenCount: 30 })] },
     });
     renderPage({ userRole: 'viewer', canManage: false, currentUserId: 'u2' });
-    const matrix = await screen.findByTestId('progress-matrix');
+    const matrix = await loadedMatrix();
     expect(within(matrix).getByText('Need')).toBeInTheDocument();
     expect(matrix.textContent).not.toMatch(/62|30|\d+\/\d+/);
   });
@@ -269,7 +270,7 @@ describe('ProgressPage matrix: fetching (R-S2-17, vet M-8)', () => {
   it('loads the goals and the active cells on mount', async () => {
     seed({ goals, participants: { a: [row('a', 'u1')] } });
     renderPage();
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(fetchGoals).toHaveBeenCalledWith('g1');
     expect(fetchProgress).toHaveBeenCalledTimes(1);
     expect(fetchProgress).toHaveBeenCalledWith('g1');
@@ -278,20 +279,20 @@ describe('ProgressPage matrix: fetching (R-S2-17, vet M-8)', () => {
   it('refetches progress once when a goal is added to the store', async () => {
     seed({ goals });
     renderPage();
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(fetchProgress).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       useCollectionGoalStore.setState({ goals: [...goals, goal('c')] });
     });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(fetchProgress).toHaveBeenCalledTimes(2);
   });
 
   it('refetches nothing when the goals come back as a new array with the same ids', async () => {
     seed({ goals });
     renderPage();
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
 
     await act(async () => {
       useCollectionGoalStore.setState({ goals: goals.map((g) => ({ ...g, title: `${g.title}!` })).reverse() });
@@ -306,18 +307,18 @@ describe('ProgressPage matrix: fetching (R-S2-17, vet M-8)', () => {
   it('refetches once when a goal finishes, because the active set changed', async () => {
     seed({ goals });
     renderPage();
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     await act(async () => {
       useCollectionGoalStore.setState({ goals: [goals[0], { ...goals[1], status: 'complete' }] });
     });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(fetchProgress).toHaveBeenCalledTimes(2);
   });
 
   it('ignores another static\'s goals', async () => {
     seed({ goals: [goal('a'), goal('other', { staticGroupId: 'g2' })] });
     renderPage();
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(farmIds()).toEqual(['a']);
   });
 
@@ -401,7 +402,7 @@ describe('ProgressPage matrix: loading and error (TF5 ruling 3)', () => {
   it('does not show an active failure on the Finished section (one store slot, two callers)', async () => {
     seed({ goals: [goal('wings'), goal('done', { status: 'complete', completedAt: '2026-10-01T00:00:00Z' })], participants });
     renderPage();
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
 
     // An active refetch fails, and the shared slot says so; then Finished loads fine.
     fetchProgress.mockImplementationOnce(async () => {
@@ -422,7 +423,7 @@ describe('ProgressPage matrix: loading and error (TF5 ruling 3)', () => {
   it('keeps the matrix, stale, behind the error line when a later active fetch fails, and through the retry', async () => {
     seed({ goals, participants });
     renderPage();
-    const matrix = await screen.findByTestId('progress-matrix');
+    const matrix = await loadedMatrix();
 
     fetchProgress.mockResolvedValueOnce({ error: 'boom' });
     await act(async () => {
@@ -431,6 +432,7 @@ describe('ProgressPage matrix: loading and error (TF5 ruling 3)', () => {
     const alert = await screen.findByTestId('progress-error');
     expect(alert).toHaveTextContent('boom');
     expect(screen.getByTestId('progress-matrix')).toBe(matrix);
+    expect(farmIds()).toEqual(expect.arrayContaining(['wings']));
     expect(screen.queryByTestId('progress-loading')).not.toBeInTheDocument();
 
     // The retry runs behind the same matrix, which a pending fetch does not unmount.
@@ -438,6 +440,7 @@ describe('ProgressPage matrix: loading and error (TF5 ruling 3)', () => {
     fetchProgress.mockReturnValueOnce(new Promise((resolve) => { settle = () => resolve({ error: null }); }));
     fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
     expect(screen.getByTestId('progress-matrix')).toBe(matrix);
+    expect(farmIds()).toEqual(expect.arrayContaining(['wings']));
     await act(async () => settle());
     expect(screen.queryByTestId('progress-error')).not.toBeInTheDocument();
     expect(screen.getByTestId('progress-matrix')).toBe(matrix);
@@ -449,7 +452,8 @@ describe('ProgressPage matrix: loading and error (TF5 ruling 3)', () => {
       progressError: 'boom',
     });
     renderPage();
-    expect(await screen.findByTestId('progress-matrix')).toBeInTheDocument();
+    // No active row to wait for: Finished (1) is the sign the first load has settled.
+    await screen.findByRole('button', { name: 'Finished (1)' });
     expect(screen.queryByTestId('progress-error')).not.toBeInTheDocument();
     expect(fetchProgress).not.toHaveBeenCalled();
   });

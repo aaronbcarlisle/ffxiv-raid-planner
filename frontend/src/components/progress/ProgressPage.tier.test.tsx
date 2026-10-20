@@ -31,8 +31,8 @@ import { getTierById } from '../../gamedata';
 import { useCollectionGoalStore, type CollectionGoal, type ParticipantStateEntry } from '../../stores/collectionGoalStore';
 import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
 import { useToastStore } from '../../stores/toastStore';
-import type { GearSlot, GearSlotStatus, PageLedgerEntry, StaticGroup, TierSnapshot, TransactionType } from '../../types';
-import { goal, row } from './__fixtures__/progressFixtures';
+import type { GearSlotStatus, PageLedgerEntry, StaticGroup, TierSnapshot, TransactionType } from '../../types';
+import { gearOf, goal, row, SLOTS } from './__fixtures__/progressFixtures';
 import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
 import { ProgressPage } from './ProgressPage';
 
@@ -41,14 +41,6 @@ import { ProgressPage } from './ProgressPage';
 const group = { id: 'g1', name: 'Dev Test Static', shareCode: 'DEVTST', settings: {}, userRole: 'owner', members: [] } as unknown as StaticGroup;
 const otherGroup = { ...group, id: 'g2', name: 'Other Static', shareCode: 'OTHER1' } as unknown as StaticGroup;
 
-const SLOTS: GearSlot[] = ['weapon', 'head', 'body', 'hands', 'legs', 'feet', 'earring', 'necklace', 'bracelet', 'ring1', 'ring2'];
-function gearOf(done: number, augment = 0): GearSlotStatus[] {
-  return SLOTS.map((slot, i) => {
-    if (i < done) return { slot, bisSource: 'raid', hasItem: true, isAugmented: false } as GearSlotStatus;
-    if (i < done + augment) return { slot, bisSource: 'tome', hasItem: true, isAugmented: false } as GearSlotStatus;
-    return { slot, bisSource: 'raid', hasItem: false, isAugmented: false } as GearSlotStatus;
-  });
-}
 const noTargets = () => SLOTS.map((slot) => ({ slot, bisSource: null, hasItem: true, isAugmented: false }) as GearSlotStatus);
 
 const player = (id: string, name: string, job: string, role: string, position: string | null, userId: string | null, gear: GearSlotStatus[], isSubstitute = false) => ({
@@ -322,6 +314,45 @@ describe('ProgressPage tier row: the floors part', () => {
     expect(statusLine()).toBe('14/33 BiS slots · Week 11');
     await b.resolve([entry(floorsB[3], 11)]);
     await waitFor(() => expect(statusLine()).toBe('14/33 BiS slots · Week 11 · 1 of 4 floors cleared'));
+  });
+
+  it('drops the floors part once the tier changes, while the new tier\'s ledger is pending', async () => {
+    ledgerReturns([entry(floorsA[0], 11)]);
+    const { update } = renderPage();
+    await waitFor(() => expect(statusLine()).toBe('14/33 BiS slots · Week 11 · 1 of 4 floors cleared'));
+    const b = deferredLedger();
+    fetchPageLedger.mockImplementation(() => b.promise);
+    seedWeek(11, HEAVY);
+    update({ tier: tierB });
+    await waitFor(() => expect(fetchPageLedger).toHaveBeenCalledTimes(2));
+    // Tier A's copy is still held; it must not count on B's floors.
+    expect(statusLine()).toBe('14/33 BiS slots · Week 11');
+    await b.resolve([entry(floorsB[0], 11), entry(floorsB[1], 11)]);
+    await waitFor(() => expect(statusLine()).toBe('14/33 BiS slots · Week 11 · 2 of 4 floors cleared'));
+  });
+
+  it('drops the floors part once the static changes on the same tier, while the new static\'s ledger is pending', async () => {
+    ledgerReturns([entry(floorsA[0], 11)]);
+    const { update } = renderPage();
+    await waitFor(() => expect(statusLine()).toBe('14/33 BiS slots · Week 11 · 1 of 4 floors cleared'));
+    const g2 = deferredLedger();
+    fetchPageLedger.mockImplementation(() => g2.promise);
+    seedWeek(11, CRUISER, 'g2');
+    update({ group: otherGroup, tier: { ...tierA, staticGroupId: 'g2' } as TierSnapshot });
+    await waitFor(() => expect(fetchPageLedger).toHaveBeenCalledTimes(2));
+    // g1's copy is for the same tier id; only the static in the key tells it apart.
+    expect(statusLine()).toBe('14/33 BiS slots · Week 11');
+    await g2.resolve([]);
+    await waitFor(() => expect(statusLine()).toBe('14/33 BiS slots · Week 11 · 0 of 4 floors cleared'));
+  });
+
+  it('omits the floors part for a tier the game data does not know, never "0 of 0"', async () => {
+    seedWeek(11, 'unknown-tier');
+    ledgerReturns([entry(floorsA[0], 11)]);
+    renderPage({ tier: { ...tierA, tierId: 'unknown-tier' } as TierSnapshot });
+    await waitFor(() => expect(fetchPageLedger).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(statusLine()).toBe('14/33 BiS slots · Week 11');
   });
 });
 

@@ -131,6 +131,8 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   const floors = useMemo(() => {
     if (ledgerKey === null || tierId === null || ledger?.key !== ledgerKey || week === null) return null;
     const tierFloors = getTierById(tierId)?.floors ?? [];
+    // A tier the game data doesn't know has no floors to count: the part stays out, never "0 of 0".
+    if (tierFloors.length === 0) return null;
     const cleared = computeWeeklyLootSummary(tierFloors, NO_LOOT, ledger.entries, week).filter((f) => f.cleared).length;
     return { cleared, of: tierFloors.length };
   }, [ledgerKey, tierId, ledger, week]);

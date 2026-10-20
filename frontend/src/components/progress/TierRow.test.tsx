@@ -18,10 +18,10 @@ vi.mock('../../services/api', async (importOriginal) => ({
   api: { get: vi.fn().mockResolvedValue([]), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
-import type { GearSlot, GearSlotStatus, SnapshotPlayer } from '../../types';
+import type { GearSlotStatus, SnapshotPlayer } from '../../types';
 import { tierBisCell, type TierBisCell } from '../../utils/tierBis';
 import { buildColumns, splitFarmRows, type ProgressColumn, type ProgressData } from '../../utils/progressModel';
-import { goal, row } from './__fixtures__/progressFixtures';
+import { gearOf, goal, row, SLOTS } from './__fixtures__/progressFixtures';
 import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
 import { ProgressMatrix } from './ProgressMatrix';
 import { TierBisCellButton } from './TierBisCellButton';
@@ -31,16 +31,6 @@ afterEach(() => vi.unstubAllGlobals());
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
-const SLOTS: GearSlot[] = ['weapon', 'head', 'body', 'hands', 'legs', 'feet', 'earring', 'necklace', 'bracelet', 'ring1', 'ring2'];
-
-/** Eleven slots: `done` raid slots had, then `augment` tome slots had but not augmented, then the rest raid and not had. */
-function gearOf(done: number, augment: number): GearSlotStatus[] {
-  return SLOTS.map((slot, i) => {
-    if (i < done) return { slot, bisSource: 'raid', hasItem: true, isAugmented: false } as GearSlotStatus;
-    if (i < done + augment) return { slot, bisSource: 'tome', hasItem: true, isAugmented: false } as GearSlotStatus;
-    return { slot, bisSource: 'raid', hasItem: false, isAugmented: false } as GearSlotStatus;
-  });
-}
 /** Eleven slots, some had, none with a BiS source. */
 const noTargets = (): GearSlotStatus[] =>
   SLOTS.map((slot, i) => ({ slot, bisSource: null, hasItem: i % 2 === 0, isAugmented: false }) as GearSlotStatus);
@@ -283,6 +273,9 @@ describe('TierBisCellButton', () => {
     const [done, augment] = Array.from(bar.querySelectorAll('[data-segment]'));
     expect(done.className).toMatch(/\bbg-role-healer\b/);
     expect(augment.className).toMatch(/role-healer/);
+    // Needs augment is striped as well as tinted, so it never reads by colour alone; done is solid.
+    expect(augment.className).toMatch(/repeating-linear-gradient/);
+    expect(done.className).not.toMatch(/repeating-linear-gradient/);
     expect(bar.outerHTML).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i);
     expect(bar.outerHTML).not.toMatch(/role-(tank|melee|ranged|caster)/);
   });

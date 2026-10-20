@@ -88,6 +88,9 @@ export function tierBisTotals(
   return { done, total, anySet };
 }
 
+/** What `tierStatusText` joins its parts with; the tier row wraps the line only here. */
+export const TIER_STATUS_SEPARATOR = ' · ';
+
 /** "23/77 BiS slots · Week 11 · 0 of 4 floors cleared" */
 export function tierStatusText({
   totals,
@@ -101,5 +104,5 @@ export function tierStatusText({
   const parts = [totals.anySet ? `${totals.done}/${totals.total} BiS slots` : 'No BiS set'];
   if (week !== null) parts.push(`Week ${week}`);
   if (floors !== null && week !== null) parts.push(`${floors.cleared} of ${floors.of} floors cleared`);
-  return parts.join(' · ');
+  return parts.join(TIER_STATUS_SEPARATOR);
 }
