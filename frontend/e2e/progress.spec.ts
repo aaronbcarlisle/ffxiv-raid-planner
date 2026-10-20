@@ -210,10 +210,12 @@ test.describe.serial('Progress matrix', () => {
     await loginAsOwner(page);
     await openProgress(page);
 
-    const screenRoot = page.getByTestId('progress-screen');
-    const tierBox = await screenRoot.getByTestId('progress-tier-row').boundingBox();
-    const matrixBox = await screenRoot.getByTestId('progress-matrix').boundingBox();
-    expect(tierBox!.y).toBeLessThan(matrixBox!.y);
+    // S2a-3b·H3 (R-T-3): the tier row is the matrix's first body row, above every farm row.
+    const matrix = page.getByTestId('progress-screen').getByTestId('progress-matrix');
+    await expect(matrix.locator('tbody tr').first()).toHaveAttribute('data-testid', 'progress-tier-row');
+    const tierBox = await matrix.getByTestId('progress-tier-row').boundingBox();
+    const firstFarmBox = await page.getByTestId('progress-farm-row').first().boundingBox();
+    expect(tierBox!.y).toBeLessThan(firstFarmBox!.y);
 
     expect(await seededOrder(page)).toEqual([seeded.mountId, seeded.customId]);
     const mount = page.locator(`[data-goal-id="${seeded.mountId}"]`);
@@ -225,8 +227,16 @@ test.describe.serial('Progress matrix', () => {
     // The controls in the matrix body: each farm's name and Finished (disclosures, S2a-3a), the
     // owner's row menus (a lead's ⋯ column, G4: they also carry aria-expanded, so they are told
     // apart by aria-haspopup) and the owner's own cells (F5). A menu is named "Actions for {title}",
-    // a cell button "… your status"; the disclosures are exempt.
-    const bodyButtons = await page.getByTestId('progress-matrix').locator('tbody button').evaluateAll((els) =>
+    // a cell button "… your status"; the disclosures are exempt. The tier row's controls (S2a-3b·H3)
+    // are its BiS cells, named with their numbers, and Open board; they are checked on their own.
+    const tierButtons = await matrix.getByTestId('progress-tier-row').locator('button').evaluateAll((els) =>
+      els.map((el) => el.getAttribute('aria-label') ?? el.textContent ?? ''),
+    );
+    expect(tierButtons).toContain('Open board');
+    for (const label of tierButtons.filter((l) => l !== 'Open board')) {
+      expect(label).toMatch(/, \d+ of \d+ BiS slots done(, \d+ need augment)?$|, no BiS set$/);
+    }
+    const bodyButtons = await matrix.locator('tbody tr:not([data-testid="progress-tier-row"]) button').evaluateAll((els) =>
       els.map((el) => ({
         label: el.getAttribute('aria-label') ?? el.textContent ?? '',
         menu: el.getAttribute('aria-haspopup') === 'menu',
