@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   storeState: {
     markFloorCleared: undefined as unknown,
     pageLedger: [] as unknown[],
+    fetchPageLedger: async () => {},
     loadingStates: { lootLog: false, materialLog: false, pageLedger: false },
   },
 }));

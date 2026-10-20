@@ -123,6 +123,25 @@ export function LogWeekWizard({
   // rows carry the tier SNAPSHOT id; `tierId` here may be the tier's slug, so
   // the open tier's snapshot id is accepted too.
   const pageLedger = useLootTrackingStore((s) => s.pageLedger);
+  const fetchPageLedger = useLootTrackingStore((s) => s.fetchPageLedger);
+  // No mount loads the ledger for the wizard (the Gear/Priority doors never
+  // open History), so the wizard fetches it itself: on open and after a submit.
+  // While it is in flight or failed, "nothing is credited" can't be trusted, so
+  // submit is gated exactly like an unknown loot log.
+  const ledgerLoading = useLootTrackingStore((s) => s.loadingStates.pageLedger === true);
+  const [ledgerFailed, setLedgerFailed] = useState(false);
+  const ledgerUnknown = ledgerLoading || ledgerFailed;
+  const refreshLedger = useCallback(async () => {
+    setLedgerFailed(false);
+    try {
+      await fetchPageLedger(groupId, tierId);
+    } catch {
+      setLedgerFailed(true);
+    }
+  }, [fetchPageLedger, groupId, tierId]);
+  useEffect(() => {
+    if (isOpen) void refreshLedger();
+  }, [isOpen, refreshLedger]);
   const openTierSnapshotId = useTierStore((s) =>
     s.currentTier && (s.currentTier.tierId === tierId || s.currentTier.id === tierId) ? s.currentTier.id : null,
   );
@@ -718,7 +737,7 @@ export function LogWeekWizard({
   // Submit all entries
   const handleSubmit = async () => {
     // Belt and braces: the button is disabled while the logs are unknown.
-    if (logsUnknown) return;
+    if (logsUnknown || ledgerUnknown) return;
     setIsSubmitting(true);
     setError(null);
 
@@ -806,6 +825,9 @@ export function LogWeekWizard({
         .map((r, i) => (r.status === 'rejected' ? tracked[i].label : null))
         .filter((label): label is string => label !== null);
       const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+      // Books just credited must read as locked the next time the wizard opens
+      // (or on a retry), so reload the ledger after anything landed.
+      if (succeeded > 0) await refreshLedger();
 
       if (failed.length === 0) {
         const toastMsg = singleFloorMode
@@ -986,6 +1008,16 @@ export function LogWeekWizard({
           </div>
         )}
 
+        {/* Ledger unknown: a submit now could re-credit books the week already holds */}
+        {ledgerUnknown && (
+          <div role="status" className="p-3 bg-status-warning/10 border border-status-warning/30 rounded text-text-primary text-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-status-warning" aria-hidden="true" />
+            {ledgerFailed
+              ? 'Couldn\'t load the book ledger, so Log Week can\'t tell which books are already logged. Reload the page to try again.'
+              : 'Loading the book ledger. You can submit once it has loaded.'}
+          </div>
+        )}
+
         {/* Step content - min-height only for input steps, not confirm */}
         <div className={step !== 'confirm' ? 'min-h-[350px]' : ''}>
           {step === 'gear' && (
@@ -1055,7 +1087,7 @@ export function LogWeekWizard({
               <Button
                 variant="primary"
                 onClick={handleSubmit}
-                disabled={isSubmitting || summary.total === 0 || logsUnknown}
+                disabled={isSubmitting || summary.total === 0 || logsUnknown || ledgerUnknown}
               >
                 {isSubmitting ? (
                   <>
