@@ -27,6 +27,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCollectionGoalStore, type ParticipantStateEntry } from '../../stores/collectionGoalStore';
 import { useToastStore } from '../../stores/toastStore';
 import type { StaticGroup, TierSnapshot, User } from '../../types';
+import { loadedMatrix } from './__fixtures__/pageHarness';
 import { apiDrop, goal, row } from './__fixtures__/progressFixtures';
 import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
 import { ProgressPage } from './ProgressPage';
@@ -45,7 +46,7 @@ const group = {
 } as unknown as StaticGroup;
 
 const player = (id: string, name: string, position: string, role: string, userId: string | null) => ({
-  id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId,
+  id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId, gear: [],
 });
 const tier = {
   id: 't1',
@@ -113,26 +114,28 @@ describe('ProgressPage own cell: who gets the picker', () => {
   it('gives a member their own cell as a button and no one else\'s', async () => {
     seed({ wings: [row('wings', 'u1', { state: 'need' }), row('wings', 'u2', { state: 'have' })] });
     renderPage({ userRole: 'member', canManage: false, currentUserId: 'u2' });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
 
     expect(screen.getByRole('button', { name: 'Bo, Wings of Resolve, Have — change your status' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Aya,/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Aya, Wings of Resolve,/ })).not.toBeInTheDocument();
   });
 
   it('gives a viewer no button, their own cell included', async () => {
     seed({ wings: [row('wings', 'u2', { state: 'need' })] });
     renderPage({ userRole: 'viewer', canManage: false, currentUserId: 'u2' });
-    const matrix = await screen.findByTestId('progress-matrix');
+    const matrix = await loadedMatrix();
 
-    // The row's name button (S2a-3a) is the matrix's only control for a viewer.
-    expect(within(matrix).getAllByRole('button').map((b) => b.textContent)).toEqual(['Wings of Resolve']);
+    // The row's name button (S2a-3a) is the matrix's only control for a viewer, past the tier row's
+    // own (S2a-3b: Open board and the BiS cells).
+    const tierRow = within(matrix).getByTestId('progress-tier-row');
+    expect(within(matrix).getAllByRole('button').filter((b) => !tierRow.contains(b)).map((b) => b.textContent)).toEqual(['Wings of Resolve']);
     expect(within(matrix).getByRole('gridcell', { name: 'Bo, Wings of Resolve, Need' })).toBeInTheDocument();
   });
 
   it('sends a pick through setCell with no target when not under View As', async () => {
     seed({ wings: [row('wings', 'u1', { state: 'want' })] });
     renderPage({ userRole: 'owner', currentUserId: 'u1' });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
 
     fireEvent.click(screen.getByRole('button', { name: 'Aya, Wings of Resolve, Want — change your status' }));
     pickNeed();
@@ -143,7 +146,7 @@ describe('ProgressPage own cell: who gets the picker', () => {
   it('under View As, aims a pick on "their own" cell at the viewed user (the lead route), never the admin\'s row', async () => {
     seed({ wings: [row('wings', 'u2', { state: 'want' })] });
     renderPage({ userRole: 'owner', currentUserId: 'u2', isViewingAs: true });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
 
     fireEvent.click(screen.getByRole('button', { name: 'Bo, Wings of Resolve, Want — change your status' }));
     pickNeed();
@@ -159,7 +162,7 @@ describe('ProgressPage own cell: the View As admin\'s name', () => {
     useAuthStore.setState({ user: admin });
     seed({ wings: [row('wings', 'u2', { state: 'need', updatedByUserId: 'admin-1', updatedVia: 'web' })] });
     renderPage({ userRole: 'owner', currentUserId: 'u2', isViewingAs: true });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
 
     act(() => screen.getByRole('button', { name: 'Bo, Wings of Resolve, Need — change your status' }).focus());
 
@@ -171,7 +174,7 @@ describe('ProgressPage own cell: the View As admin\'s name', () => {
     useAuthStore.setState({ user: { ...admin, id: 'u9', displayName: 'Stale Name' } });
     seed({ wings: [row('wings', 'u2', { state: 'need', updatedByUserId: 'u9', updatedVia: 'web' })] });
     renderPage({ userRole: 'member', canManage: false, currentUserId: 'u2' });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
 
     act(() => screen.getByRole('button', { name: 'Bo, Wings of Resolve, Need — change your status' }).focus());
 
@@ -189,7 +192,7 @@ describe('ProgressPage open row: I got it under View As (S2a-3a·G3; R-S3-7, R-S
     seed({ wings: [row('wings', 'u2', { state: 'need' })] });
     vi.mocked(api.get).mockImplementation((url: string) => Promise.resolve((url === DROPS ? drops : []) as never));
     renderPage({ userRole: 'member', canManage: false, currentUserId: 'u2', isViewingAs: true });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     fireEvent.click(screen.getByRole('button', { name: 'Wings of Resolve' }));
     await within(screen.getByTestId('progress-expansion-drops')).findByText(drops.length > 0 ? /×1$/ : 'No drops logged yet.');
   }

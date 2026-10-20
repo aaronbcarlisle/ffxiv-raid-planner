@@ -28,6 +28,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCollectionGoalStore, type CollectionGoal, type ParticipantStateEntry, type RecordOnlyCell } from '../../stores/collectionGoalStore';
 import { useToastStore } from '../../stores/toastStore';
 import type { StaticGroup, TierSnapshot, User } from '../../types';
+import { loadedMatrix } from './__fixtures__/pageHarness';
 import { goal, row } from './__fixtures__/progressFixtures';
 import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
 import { ProgressPage } from './ProgressPage';
@@ -53,7 +54,7 @@ const viewerCardGroup = {
 } as unknown as StaticGroup;
 
 const player = (id: string, name: string, position: string, role: string, userId: string | null) => ({
-  id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId,
+  id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId, gear: [],
 });
 const tier = {
   id: 't1',
@@ -113,7 +114,7 @@ const cellNamed = (name: string) => screen.getByRole('gridcell', { name });
 const pick = (name: string) => fireEvent.click(within(screen.getByRole('group', { name: 'Status' })).getByRole('button', { name }));
 
 async function enterMode() {
-  await screen.findByTestId('progress-matrix');
+  await loadedMatrix();
   const edit = editButton()!;
   act(() => edit.focus());
   fireEvent.click(edit);
@@ -142,7 +143,7 @@ describe('ProgressPage Edit statuses: who sees it (ruling 1)', () => {
   ] as const)('shows "Edit statuses" to %s as the one toolbar control', async (_who, userRole, canManage) => {
     seed({ wings: [row('wings', 'u1')] });
     renderPage({ userRole, canManage });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(toolbarButtons().map((b) => b.textContent)).toEqual(['Edit statuses']);
     expect(editButton()).toHaveClass('bg-surface-elevated');
   });
@@ -153,7 +154,7 @@ describe('ProgressPage Edit statuses: who sees it (ruling 1)', () => {
   ] as const)('gives %s no toolbar at all: hidden, not disabled', async (_who, userRole) => {
     seed({ wings: [row('wings', 'u1')] });
     renderPage({ userRole, canManage: false });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(editButton()).not.toBeInTheDocument();
     expect(screen.queryByTestId('progress-toolbar')).not.toBeInTheDocument();
   });
@@ -161,7 +162,8 @@ describe('ProgressPage Edit statuses: who sees it (ruling 1)', () => {
   it('shows no toolbar without an active farm, Finished alone included', async () => {
     seed({ done: [row('done', 'u1', { state: 'have' })] }, [DONE]);
     renderPage();
-    await screen.findByTestId('progress-matrix');
+    // No active row to wait for: Finished (1) is the sign the farms are in.
+    await screen.findByRole('button', { name: 'Finished (1)' });
     expect(editButton()).not.toBeInTheDocument();
   });
 });
@@ -192,7 +194,7 @@ describe('ProgressPage Edit statuses: the mode (rulings 2, 3, 4)', () => {
   it('outside the mode keeps F5: only the own cell is a Button, and another\'s blank cell stays empty', async () => {
     seed(mixed);
     renderPage();
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     // The cells' buttons only: the row's name button (S2a-3a) is named "Wings of Resolve" too.
     expect(screen.getAllByRole('button', { name: /, Wings of Resolve,/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Aya, Wings of Resolve, Need — change your status']);
     expect(cellNamed('Dee, Wings of Resolve, no status')).toHaveTextContent('');
@@ -221,32 +223,32 @@ describe('ProgressPage Edit statuses: the mode (rulings 2, 3, 4)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(editButton()).toHaveFocus();
-    expect(screen.queryByRole('button', { name: /^Bo,/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Bo, Wings of Resolve,/ })).not.toBeInTheDocument();
 
     fireEvent.click(editButton()!);
-    expect(screen.getByRole('button', { name: /^Bo,/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Bo, Wings of Resolve,/ })).toBeInTheDocument();
     unmount();
     renderPage();
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(editButton()).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Bo,/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Bo, Wings of Resolve,/ })).not.toBeInTheDocument();
   });
 
   it('forgets the mode when the reader may no longer manage, so it does not resume when they may again', async () => {
     seed(mixed);
     const { rerender } = renderPage();
     await enterMode();
-    expect(screen.getByRole('button', { name: /^Bo,/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Bo, Wings of Resolve,/ })).toBeInTheDocument();
 
     rerender({ canManage: false, userRole: 'member' });
     expect(screen.queryByTestId('progress-toolbar')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Bo,/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Bo, Wings of Resolve,/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Aya, Wings of Resolve, Need — change your status' })).toBeInTheDocument();
 
     rerender({ canManage: true, userRole: 'owner' });
     expect(editButton()).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Bo,/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Bo, Wings of Resolve,/ })).not.toBeInTheDocument();
   });
 
   it('forgets the mode when the last active farm finishes, so it does not resume when one is active again', async () => {
@@ -260,7 +262,7 @@ describe('ProgressPage Edit statuses: the mode (rulings 2, 3, 4)', () => {
     act(() => useCollectionGoalStore.setState({ goals: [WINGS] }));
     await screen.findByRole('button', { name: 'Edit statuses' });
     expect(screen.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Bo,/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Bo, Wings of Resolve,/ })).not.toBeInTheDocument();
   });
 });
 
@@ -343,7 +345,7 @@ describe('ProgressPage Edit statuses: a viewer-role card holder', () => {
     renderPage({ group: viewerCardGroup });
     await enterMode();
     expect(screen.getByRole('button', { name: 'Bo, Wings of Resolve, Have — change status' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Dee,/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Dee, Wings of Resolve,/ })).not.toBeInTheDocument();
   });
 
   it('does not send their blank cells, and disables the bulk Need once only their blanks remain', async () => {
@@ -376,7 +378,7 @@ describe('ProgressPage Edit statuses: the roving stop (ruling 9)', () => {
   it('keeps exactly one stop through entering and leaving the mode, on the cell last focused', async () => {
     seed(rows);
     renderPage();
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     const bo = cellNamed('Bo, Wings of Resolve, Have');
     act(() => bo.focus());
     expect(gridStops()).toEqual([bo]);
