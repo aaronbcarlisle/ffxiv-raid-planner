@@ -105,6 +105,8 @@ export const RELEASES: Release[] = [
         title: 'Progress: the tier row opens into the split plan',
         description:
           'V2 preview: the tier row\'s name opens the split planner in a panel below it, and a ?track=tier link opens it on load. With split clears on, everyone in the static gets it (members and viewers read-only); with them off, a lead gets Turn on split clears and nobody else can open the row. A draft survives closing the row, opening a farm and a return to the tab, and a failed load offers Retry. Only the active tier opens.',
+        pr: 402,
+        prTitle: 'feat(v2): S2a-3b·H4 — the tier row opens into the split plan',
         internal: true,
       },
     ],
