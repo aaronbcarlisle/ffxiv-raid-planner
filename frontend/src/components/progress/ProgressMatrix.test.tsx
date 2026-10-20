@@ -634,11 +634,11 @@ describe('ProgressMatrix disclosure', () => {
     expect(nameButton(calm)).toHaveFocus();
     key(nameButton(calm), 'ArrowUp');
     expect(nameButton(hot)).toHaveFocus();
-    // The panel holds the slots TG4 and TG5 fill, under their headings, and the empty action bar.
+    // The panel holds its three columns under their headings, and the action bar with Copy plan.
     expect(within(open).getByRole('heading', { name: 'Next in line' })).toBeInTheDocument();
     expect(within(open).getByRole('heading', { name: 'Last drops' })).toBeInTheDocument();
     expect(within(open).getByRole('heading', { name: 'About' })).toBeInTheDocument();
-    expect(within(open).getByTestId('progress-expansion-actions')).toBeEmptyDOMElement();
+    expect(within(within(open).getByTestId('progress-expansion-actions')).getByRole('button', { name: 'Copy plan' })).toBeInTheDocument();
   });
 
   it('reaches the name with Home and with ArrowLeft from the first player cell, and moves between names with ArrowDown', () => {
@@ -673,18 +673,46 @@ describe('ProgressMatrix disclosure', () => {
     expect(name).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('puts the panel next in Tab order after the open row, with no roving tabindex of its own', () => {
+  it('puts the panel next in DOM order after the open row, with no roving tabindex of its own', () => {
     renderMatrix({ goals: two, participants: needy, openId: 'hot' });
     const [hot, calm] = farmRows();
     const open = panel()!;
     expect(hot.nextElementSibling).toBe(open);
     expect(open.nextElementSibling).toBe(calm);
-    // Nothing in the panel is pulled into the grid's roving order, so a control inside it (TG4–TG5)
-    // is the natural stop right after the row's; the shell itself adds no stop.
+    // The panel's controls are plain tab stops: nothing in it joins the grid's roving order.
     expect(open.querySelectorAll('[tabindex]')).toHaveLength(0);
-    const stops = tabStops();
-    expect(stops.filter((el) => open.contains(el))).toEqual([]);
-    expect(stops.indexOf(nameButton(hot))).toBeGreaterThanOrEqual(0);
+  });
+
+  describe('Tab from the open row into the panel (carried from G2)', () => {
+    /**
+     * One Tab press as a browser does it: the key event first (a handler may take it), then focus
+     * moves to the next element in document order that is a tab stop. jsdom has no Tab key, and
+     * `@testing-library/user-event` is not a dependency, so this follows the same order.
+     */
+    const pressTab = () => {
+      const from = document.activeElement as HTMLElement;
+      if (!fireEvent.keyDown(from, { key: 'Tab' })) return;
+      const stops = tabStops();
+      stops[stops.indexOf(from) + 1]?.focus();
+    };
+
+    it('reaches Copy plan, the panel\'s first control, from the open row\'s roving cell', () => {
+      renderMatrix({ goals: two, participants: needy, openId: 'hot' });
+      const [hot] = farmRows();
+      focusCell(nameButton(hot));
+      expect(gridStops()).toEqual([nameButton(hot)]);
+      pressTab();
+      expect(within(panel()!).getByRole('button', { name: 'Copy plan' })).toHaveFocus();
+    });
+
+    it('reaches the open row\'s Copy plan from the first row\'s stop when a later row is open', () => {
+      renderMatrix({ goals: two, participants: needy, openId: 'calm' });
+      const [hot, calm] = farmRows();
+      focusCell(nameButton(hot));
+      pressTab();
+      expect(calm.nextElementSibling).toBe(panel());
+      expect(within(panel()!).getByRole('button', { name: 'Copy plan' })).toHaveFocus();
+    });
   });
 
   it('closes on Escape inside the panel and returns focus to the name button', () => {
@@ -713,6 +741,70 @@ describe('ProgressMatrix disclosure', () => {
     const calmCell = cellsOf(farmRows()[1])[1];
     expect(fireEvent.keyDown(calmCell, { key: 'Escape' })).toBe(true);
     expect(panel()).not.toBeNull();
+  });
+});
+
+// ── The open panel's width (G2b fix) ────────────────────────────────────────
+
+describe('ProgressMatrix open panel width', () => {
+  const two = [goal('hot', { title: 'Hot' }), goal('calm', { title: 'Calm' })];
+  const needy = { hot: [row('hot', 'u1', { state: 'need' })], calm: [row('calm', 'u1', { state: 'want' })] };
+  const TABLE_WIDTH = 1902;
+  let scrollerWidth = 1290;
+  let notify: (() => void) | null = null;
+  const WIDTH_PROPS = ['clientWidth', 'scrollWidth', 'offsetWidth'];
+  const originals = WIDTH_PROPS.map((prop) => Object.getOwnPropertyDescriptor(Element.prototype, prop));
+
+  beforeEach(() => {
+    scrollerWidth = 1290;
+    notify = null;
+    // jsdom has no layout: the scroller is 1290 wide, the table inside it (and anything else) 1902.
+    for (const prop of WIDTH_PROPS) {
+      Object.defineProperty(Element.prototype, prop, {
+        configurable: true,
+        get(this: Element) {
+          return this.getAttribute('data-testid') === 'progress-matrix' ? scrollerWidth : TABLE_WIDTH;
+        },
+      });
+    }
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(cb: () => void) {
+          notify = cb;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+  });
+  afterEach(() => {
+    WIDTH_PROPS.forEach((prop, i) => {
+      const descriptor = originals[i];
+      if (descriptor) Object.defineProperty(Element.prototype, prop, descriptor);
+      else delete (Element.prototype as unknown as Record<string, unknown>)[prop];
+    });
+  });
+
+  const body = () => within(panel()!).getByTestId('progress-expansion-body');
+
+  it('lays the panel out at the scroller\'s visible width, not the table\'s', () => {
+    renderMatrix({ goals: two, participants: needy, openId: 'hot' });
+    expect(body()).toHaveStyle({ width: `${scrollerWidth}px` });
+    expect(body().style.width).not.toBe(`${TABLE_WIDTH}px`);
+  });
+
+  it('follows the scroller when it resizes', () => {
+    renderMatrix({ goals: two, participants: needy, openId: 'hot' });
+    scrollerWidth = 980;
+    act(() => notify?.());
+    expect(body()).toHaveStyle({ width: '980px' });
+  });
+
+  it('applies to the panel of a row opened after the first render too', () => {
+    renderMatrix({ goals: two, participants: needy });
+    fireEvent.click(nameButton(farmRows()[1]));
+    expect(body()).toHaveStyle({ width: `${scrollerWidth}px` });
   });
 });
 

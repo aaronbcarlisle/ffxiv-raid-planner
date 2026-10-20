@@ -35,6 +35,7 @@ import { FarmRow, NAME_KEY } from './FarmRow';
 import { FinishedFarms } from './FinishedFarms';
 import type { ProvenanceContext } from './progressProvenance';
 import { useMatrixKeyboard } from './useMatrixKeyboard';
+import { useVisibleWidth } from './useVisibleWidth';
 
 /** Literal classes, so Tailwind's scanner sees every one. */
 const ROLE_TEXT = {
@@ -129,6 +130,8 @@ export function ProgressMatrix({
   // The name column leads (R-S3-4), then the players; TG7 puts '__menu' between them for leads.
   const colKeys = useMemo(() => [NAME_KEY, ...columns.map((c) => c.key)], [columns]);
   const keyboard = useMatrixKeyboard(rowIds, colKeys);
+  // The open panel spans the table, which outgrows the view: it lays out at the scroller's width.
+  const [scrollerRef, viewWidth] = useVisibleWidth<HTMLDivElement>();
   // Every column of the table: the grid's keys plus Status, which is never a focus target.
   const spanAll = colKeys.length + 1;
   // With an active row the grid's single Tab stop (its name button at least) is the keyboard's
@@ -158,11 +161,13 @@ export function ProgressMatrix({
       onClose={onClose}
       id={id}
       spanAll={spanAll}
+      viewWidth={viewWidth}
     />
   );
 
   return (
     <div
+      ref={scrollerRef}
       data-testid="progress-matrix"
       role="region"
       aria-label="Farms by player"

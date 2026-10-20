@@ -3,6 +3,8 @@
  * participant row, with every field set and the usual ones overridable.
  */
 import type { CollectionGoal, ParticipantStateEntry } from '../../../stores/collectionGoalStore';
+import type { MemberRole, SnapshotPlayer } from '../../../types';
+import { cellFor, type FarmRow, type ProgressColumn } from '../../../utils/progressModel';
 
 export function goal(id: string, overrides: Partial<CollectionGoal> = {}): CollectionGoal {
   return {
@@ -19,4 +21,29 @@ export function row(goalId: string, userId: string, overrides: Partial<Participa
     source: 'manual', lastSyncedAt: null, notes: null, updatedAt: '2026-10-01T00:00:00Z', displayName: userId,
     memberRole: 'member', countHidden: false, record: null, ...overrides,
   };
+}
+
+type ColumnKind = 'claimed' | 'unclaimed' | 'unconfigured' | 'notOnRoster';
+
+/** A column of the given kind; `userId` is the id unless the kind has none. */
+function columnOf(id: string, kind: ColumnKind): ProgressColumn {
+  if (kind === 'claimed') return { kind, key: id, name: id, userId: id, player: {} as SnapshotPlayer };
+  if (kind === 'unclaimed') return { kind, key: id, name: id, userId: null, player: {} as SnapshotPlayer };
+  return { kind: 'notOnRoster', key: `user:${id}`, name: id, userId: id, player: null, reason: kind };
+}
+
+export interface ColumnSpec {
+  id: string;
+  kind?: ColumnKind;
+  /** The participant row; null or absent is a blank cell. */
+  cell?: Partial<ParticipantStateEntry> | null;
+}
+
+/** A farm row built the way the matrix builds it: `cellFor` over store-shaped participant rows. */
+export function farmRowOf(columns: ColumnSpec[], g: CollectionGoal, userRole: MemberRole = 'lead'): FarmRow {
+  const participants = columns.flatMap((c) => (c.cell ? [row(g.id, c.id, c.cell)] : []));
+  const cells = columns.map((c) =>
+    cellFor(columnOf(c.id, c.kind ?? 'claimed'), { participants }, { currentUserId: 'me', userRole }),
+  );
+  return { goal: g, cells, need: 0, want: 0, tally: { n: 0, m: 0, everyone: false } };
 }

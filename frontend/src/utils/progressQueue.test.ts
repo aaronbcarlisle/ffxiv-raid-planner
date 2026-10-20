@@ -4,35 +4,14 @@
  * store-shaped fixtures, so a hidden count is whatever `cellFor` makes of it.
  */
 import { describe, expect, it } from 'vitest';
-import { goal, row } from '../components/progress/__fixtures__/progressFixtures';
+import { farmRowOf, goal, type ColumnSpec } from '../components/progress/__fixtures__/progressFixtures';
 import type { CollectionPriorityMode, ParticipantStateEntry } from '../stores/collectionGoalStore';
-import type { SnapshotPlayer } from '../types';
-import { cellFor, type FarmRow, type ProgressColumn } from './progressModel';
+import type { FarmRow } from './progressModel';
 import { queueEntryText, queueFor, type QueueEntry } from './progressQueue';
 
 type Spec = Partial<ParticipantStateEntry> | null;
-type Kind = 'claimed' | 'unclaimed' | 'unconfigured' | 'notOnRoster';
 
-/** A column of the given kind; `userId` is the id unless the kind has none. */
-function columnOf(id: string, kind: Kind): ProgressColumn {
-  if (kind === 'claimed') return { kind, key: id, name: id, userId: id, player: {} as SnapshotPlayer };
-  if (kind === 'unclaimed') return { kind, key: id, name: id, userId: null, player: {} as SnapshotPlayer };
-  return { kind: 'notOnRoster', key: `user:${id}`, name: id, userId: id, player: null, reason: kind };
-}
-
-interface ColumnSpec {
-  id: string;
-  kind?: Kind;
-  /** The participant row; null or absent is a blank cell. */
-  cell?: Spec;
-}
-
-function farm(columns: ColumnSpec[], tokenCost: number | null = 99): FarmRow {
-  const g = goal('g1', { tokenCost });
-  const participants = columns.flatMap((c) => (c.cell ? [row('g1', c.id, c.cell)] : []));
-  const cells = columns.map((c) => cellFor(columnOf(c.id, c.kind ?? 'claimed'), { participants }, { currentUserId: 'me', userRole: 'lead' }));
-  return { goal: g, cells, need: 0, want: 0, tally: { n: 0, m: 0, everyone: false } };
-}
+const farm = (columns: ColumnSpec[], tokenCost: number | null = 99): FarmRow => farmRowOf(columns, goal('g1', { tokenCost }));
 
 const need = (tokenCount: number | null, extra: Partial<ParticipantStateEntry> = {}): Spec => ({ state: 'need', tokenCount, ...extra });
 const want = (tokenCount: number | null, extra: Partial<ParticipantStateEntry> = {}): Spec => ({ state: 'want', tokenCount, ...extra });
