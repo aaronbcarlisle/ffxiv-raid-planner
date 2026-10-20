@@ -225,7 +225,12 @@ function renderRosterAtUrl(tier: TierSnapshot | null, initialEntries: string[]) 
   );
 }
 
+// jsdom implements no scrollIntoView; the jump scrolls (gearRowScroll.ts) now call it unguarded.
+let realScrollIntoView: typeof Element.prototype.scrollIntoView;
+
 beforeEach(() => {
+  realScrollIntoView = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = vi.fn();
   groupActionsOnAddPlayer.mockClear();
   playerActions.handleAddPlayer.mockClear();
   playerActions.handleConfigurePlayer.mockClear();
@@ -249,6 +254,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  Element.prototype.scrollIntoView = realScrollIntoView;
 });
 
 /** A gear array with a single raid BiS-target `body` slot still needed. */
@@ -765,13 +771,11 @@ describe('Roster — D12 the ?slot= deep link', () => {
     // absence below is a real absence and not a missing gear table.
     expect(container.querySelector('#gear-row-p1-head')).not.toBeNull();
     expect(container.querySelector('.highlight-pulse[id^="gear-row-"]')).toBeNull();
-    // Validation is what makes this a no-op rather than a lookup. A cast in
-    // place of `isJumpAnchorSlot` would leave the pulse absent all the same
-    // (no row equals "__proto__"), so the pulse alone cannot tell the two
-    // apart — but the scroll can: an unvalidated slot still reaches
-    // `scrollToGearRow`, misses the row, and scrolls the CARD from here, a
-    // second scroll competing with `GroupViewContent`'s own.
-    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    // Validation is what makes this a no-op rather than a lookup. H4b c1: a player-only landing now
+    // scrolls the CARD too (`scrollToPlayerRow`, both views), so the scroll no longer tells a
+    // validated slot from a cast one (both end on the card, once); it pins that exactly one scroll
+    // runs and none is a row.
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
   });
 
   it('applies the slot pulse to the named player only', async () => {
@@ -904,6 +908,13 @@ describe('Roster — S2a-3b·H3b the Board landing', () => {
     expect(container.querySelectorAll('[id="player-card-p1"]')).toHaveLength(1);
     // Roster never writes the URL: GroupViewContent owns the strip.
     expect(screen.getByTestId('loc').dataset.search).toContain('player=p2');
+  });
+
+  // H4b: after a keyboard jump the button that held focus is gone, so focus is on <body>; the landing
+  // hands it to the Board row, not to the top of the page.
+  it('moves focus from <body> to the jumped-to Board row', async () => {
+    const { container } = renderRosterAtUrl(makeTier(players), ['/group/DEVTST?tab=roster&rview=board&player=p2']);
+    await waitFor(() => expect(container.querySelector('tr[id="player-card-p2"]')).toHaveFocus());
   });
 
   it('renders the anchor once in each view: a card on Cards, a row on the Board', async () => {
