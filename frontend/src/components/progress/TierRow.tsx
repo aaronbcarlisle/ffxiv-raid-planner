@@ -14,16 +14,23 @@
  * cell's one control), each BiS cell's `Button`, and a no-card column's empty `<td>`, named
  * "{name}, {tier}, no card" ("…, card not set up" for a Card-not-set-up column). So until a cell
  * is focused the tier's name is the grid's one stop.
+ *
+ * S2a-3b·H4 (R-T-6, design §3.5): when the row can open (`disclosure`), the name is a disclosure
+ * `Button` named "{tier}" with a chevron, `aria-expanded` and `aria-controls` (the panel the matrix
+ * renders next), and the grid's props move onto it, the cell's one focus target, as a farm's name
+ * button holds them. Otherwise the name stays a plain cell. Each open scrolls the row into view.
  */
-import { Fragment, useId } from 'react';
+import { Fragment, useEffect, useId, useRef } from 'react';
 import { Button } from '../primitives/Button';
 import { VisuallyHidden } from '../primitives/VisuallyHidden';
 import { useAltHeld } from '../../hooks/useAltHeld';
 import type { ProgressColumn } from '../../utils/progressModel';
 import { TIER_STATUS_SEPARATOR, type TierBisCell } from '../../utils/tierBis';
 import { CELL_FOCUS_RING } from './cellFocusRing';
+import { tierNameId } from './farmFocus';
 import { MENU_KEY, NAME_KEY, STATUS_KEY } from './FarmRow';
 import { TierBisCellButton } from './TierBisCellButton';
+import { TIER_PANEL_ID, type TierPanelModel } from './TierExpansion';
 import type { MatrixKeyboard } from './useMatrixKeyboard';
 
 /** The tier row's id in the roving grid's rows (R-T-4): never a goal id. */
@@ -41,11 +48,10 @@ export interface TierRowModel {
   cells: TierColumnCell[];
   statusText: string;
   onOpenBoard: () => void;
-  /**
-   * Jump to a card's row on Roster ▸ Board (D-5, E-9): Alt+Click on a cell and the breakdown's
-   * Open on board. Absent, the cells open their breakdown only and it has no link.
-   */
-  onJump?: (playerId: string) => void;
+  /** Jump to a card's row on Roster ▸ Board (D-5, E-9): Alt+Click on a cell and the breakdown's Open on board. */
+  onJump: (playerId: string) => void;
+  /** The row opens into the split plan (R-T-6, R-T-8); absent when it can't, and the name is a plain cell. */
+  panel?: TierPanelModel;
 }
 
 interface TierRowProps {
@@ -55,22 +61,46 @@ interface TierRowProps {
   lead: boolean;
   /** The matrix's roving grid, which this row leads (R-T-4). */
   keyboard: MatrixKeyboard;
+  /** The row can open: whether it is the open row, and its name button's toggle. */
+  disclosure?: { open: boolean; onToggle: () => void };
 }
 
-export function TierRow({ tier, columns, lead, keyboard }: TierRowProps) {
+export function TierRow({ tier, columns, lead, keyboard, disclosure }: TierRowProps) {
   const statusId = useId();
   // One Alt listener for the row, not one per cell (the cursor shows only while Alt is held).
   const altHeld = useAltHeld();
   const grid = (colKey: string) => keyboard.cellProps(TIER_ROW_ID, colKey);
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  const open = disclosure?.open === true;
+  // Once per open (S2-9), a deep link's included. (Optional: jsdom has no scrollIntoView.)
+  useEffect(() => {
+    if (open) rowRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [open]);
   return (
-    <tr role="row" data-testid="progress-tier-row" className="border-t border-border-subtle">
+    <tr ref={rowRef} role="row" data-testid="progress-tier-row" className="border-t border-border-subtle">
       <th
         role="rowheader"
         scope="row"
-        className={`whitespace-nowrap px-3 py-2 text-left align-middle text-sm font-medium text-text-primary ${CELL_FOCUS_RING}`}
-        {...grid(NAME_KEY)}
+        className={`whitespace-nowrap text-left align-middle ${disclosure ? 'py-1 pl-0 pr-3 font-normal' : `px-3 py-2 text-sm font-medium text-text-primary ${CELL_FOCUS_RING}`}`}
+        {...(disclosure ? undefined : grid(NAME_KEY))}
       >
-        {tier.name}
+        {disclosure ? (
+          <Button
+            id={tierNameId}
+            variant="ghost"
+            size="sm"
+            trailing="chevron"
+            aria-expanded={disclosure.open}
+            aria-controls={TIER_PANEL_ID}
+            onClick={disclosure.onToggle}
+            className={`[&>svg:last-child]:transition-transform ${disclosure.open ? '[&>svg:last-child]:rotate-180' : ''}`}
+            {...grid(NAME_KEY)}
+          >
+            {tier.name}
+          </Button>
+        ) : (
+          tier.name
+        )}
       </th>
       {lead && (
         <td role="gridcell" className={`px-1 py-2 ${CELL_FOCUS_RING}`} {...grid(MENU_KEY)}>
