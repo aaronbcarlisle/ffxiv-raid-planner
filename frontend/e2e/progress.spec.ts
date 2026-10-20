@@ -26,6 +26,16 @@ import {
   loginAsOwner,
   ownerApiContext,
 } from './helpers/auth';
+import {
+  type ApiHeaders,
+  currentUserId,
+  ownerSession,
+  setRole,
+  setSplit,
+  splitEnabled,
+  withSplit,
+  withoutSplitPlannerDebt,
+} from './helpers/owner';
 
 const PREFIX = 'E2E Progress';
 const THEMES = ['dark', 'light'] as const;
@@ -65,29 +75,6 @@ let seeded: Seeded;
 let priorRecord: { catalogItemId: string; ownership_state: string; token_count: number | null } | null = null;
 /** DevMember's id, once the viewer test has demoted them (afterAll restores the role). */
 let demotedUserId: string | null = null;
-
-type ApiHeaders = { 'X-CSRF-Token': string };
-
-async function ownerSession(browser: Browser) {
-  const context = await freshContext(browser);
-  const page = await context.newPage();
-  await loginAsOwner(page);
-  const { groupId, csrfToken } = await ownerApiContext(page);
-  const headers: ApiHeaders = { 'X-CSRF-Token': csrfToken };
-  return { context, page, groupId, headers };
-}
-
-/** The signed-in user's id (DEVTST has other members, so the role change must target this one). */
-async function currentUserId(page: Page): Promise<string> {
-  const res = await page.request.get(`${API_BASE}/api/auth/me`);
-  if (!res.ok()) throw new Error(`auth/me returned ${res.status()}`);
-  return ((await res.json()) as { id: string }).id;
-}
-
-async function setMemberRole(page: Page, groupId: string, headers: ApiHeaders, userId: string, role: 'member' | 'viewer') {
-  const res = await page.request.put(`${API_BASE}/api/static-groups/${groupId}/members/${userId}`, { headers, data: { role } });
-  if (!res.ok()) throw new Error(`setting the member's role to ${role} returned ${res.status()}`);
-}
 
 async function deleteSeededFarms(page: Page, groupId: string, headers: ApiHeaders, ids: string[] = []) {
   const list = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/collection-goals`);
@@ -174,7 +161,7 @@ test.describe.serial('Progress matrix', () => {
   test.afterAll(async ({ browser }) => {
     const { context, page, groupId, headers } = await ownerSession(browser);
     try {
-      if (demotedUserId) await setMemberRole(page, groupId, headers, demotedUserId, 'member');
+      if (demotedUserId) await setRole({ page, groupId, headers }, demotedUserId, 'member');
       await deleteSeededFarms(page, groupId, headers, seeded ? [seeded.mountId, seeded.customId] : []);
       if (priorRecord) {
         const res = await page.request.put(`${API_BASE}/api/me/collection-snapshot/${priorRecord.catalogItemId}`, {
@@ -424,7 +411,7 @@ test.describe.serial('Progress matrix', () => {
       // Dev login re-seats DevMember as a member, so demote after logging in.
       await loginAsMember(page);
       demotedUserId = await currentUserId(page);
-      await setMemberRole(owner.page, owner.groupId, owner.headers, demotedUserId, 'viewer');
+      await setRole(owner, demotedUserId, 'viewer');
       await openProgress(page);
 
       expect(await seededOrder(page)).toEqual([seeded.mountId, seeded.customId]);
@@ -434,7 +421,7 @@ test.describe.serial('Progress matrix', () => {
       expect(cellText.filter((t) => /\d/.test(t))).toEqual([]);
       await context.close();
     } finally {
-      if (demotedUserId) await setMemberRole(owner.page, owner.groupId, owner.headers, demotedUserId, 'member');
+      if (demotedUserId) await setRole(owner, demotedUserId, 'member');
       demotedUserId = null;
       await owner.context.close();
     }
@@ -1118,9 +1105,366 @@ test.describe.serial('Progress: row expansion', () => {
   });
 });
 
-async function blockingIn(page: Page, includes: string[]) {
+/**
+ * S2a-3b·H4b (TH6): the tier row end to end on DEVTST, as the owner (criteria 5, 10 and 11; design
+ * §4). The row's cells and status line against the Board's own counts; a breakdown opened by
+ * keyboard, its Open on board and Alt+Click, each landing on Roster ▸ Board with the row
+ * highlighted; `?track=tier` into the split planner (on, also on a fresh load) and the lead's
+ * off-state ("Turn on split clears", then the planner); a draft across a collapse and re-open; the
+ * keyboard's way out of the breakdown and after a jump; axe in both themes with no role-colour
+ * exclusion (P0, #388).
+ *
+ * Split clears are set through the owner's API (`PUT …/split-clear/settings`); DEVTST's setting
+ * is read first and put back in afterAll (and in `finally` where a test flips it). Nothing else
+ * is written: the planner's draft is component state, and the breakdown has no write.
+ */
+const BIS_LABEL = /^(.+), (.+), (\d+) of (\d+) BiS slots done(?:, (\d+) need augment)?$|^(.+), (.+), no BiS set$/;
+const STATUS_LINE = /^\d+\/\d+ BiS slots · Week \d+ · \d+ of \d+ floors cleared$/;
+
+interface RosterPlayer {
+  id: string;
+  name: string;
+  configured: boolean;
+  isSubstitute: boolean;
+}
+
+/** DEVTST's active-tier players, through the owner's API. */
+async function activePlayers(page: Page, groupId: string): Promise<RosterPlayer[]> {
+  const tiers = (await (await page.request.get(`${API_BASE}/api/static-groups/${groupId}/tiers`)).json()) as Array<{ id: string; isActive?: boolean }>;
+  const snapshotId = (tiers.find((t) => t.isActive) ?? tiers[0]).id;
+  const res = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/tiers/${snapshotId}/players`);
+  if (!res.ok()) throw new Error(`the player list returned ${res.status()}`);
+  return (await res.json()) as RosterPlayer[];
+}
+
+/**
+ * Where focus is, in words, so a failure names it: `body`, `row` (inside the landed Board row),
+ * `heading` (a heading inside the Roster screen), `popover`, `tier-row`, `grid`, or the element.
+ */
+function focusWhere(page: Page, rowId: string | null = null): Promise<string> {
+  return page.evaluate((id) => {
+    const a = document.activeElement;
+    if (!a || a === document.body || a === document.documentElement) return 'body';
+    if (id && a.closest(`[id="player-card-${id}"]`)) return 'row';
+    if (/^H[1-6]$/.test(a.tagName) && a.closest('[data-testid="roster-screen"]')) return 'heading';
+    if (a.closest('[role="dialog"]')) return 'popover';
+    if (a.closest('[data-testid="progress-tier-row"]')) return 'tier-row';
+    if (a.closest('[data-testid="progress-matrix"]')) return 'grid';
+    return `${a.tagName.toLowerCase()}: ${(a.getAttribute('aria-label') ?? a.textContent ?? '').trim().slice(0, 50)}`;
+  }, rowId);
+}
+
+// Not serial: every test stands alone (each opens its own context and sets split clears itself), so
+// one failure does not skip the rest.
+test.describe('Progress: the tier row (S2a-3b)', () => {
+  let priorSplit: boolean | null = null;
+  let players: RosterPlayer[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    const { context, page, groupId } = await ownerSession(browser);
+    try {
+      priorSplit = await splitEnabled({ page, groupId });
+      players = await activePlayers(page, groupId);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { context, page, groupId, headers } = await ownerSession(browser);
+    try {
+      if (priorSplit !== null) await setSplit({ page, groupId, headers }, priorSplit);
+    } finally {
+      await context.close();
+    }
+  });
+
+  const tierRowOf = (page: Page) => page.getByTestId('progress-tier-row');
+  const tierCells = (page: Page) => tierRowOf(page).locator('button[aria-label*=" BiS slots done"], button[aria-label$=", no BiS set"]');
+  const disclosureOf = (page: Page) => tierRowOf(page).locator('[aria-controls="progress-tier-expansion"]');
+  const tierPanelOf = (page: Page) => page.getByTestId('progress-tier-expansion');
+  const composerIn = (page: Page) => tierPanelOf(page).getByRole('heading', { name: 'Split Clear Composer' });
+  const idOf = (name: string) => {
+    const p = players.find((x) => x.name === name);
+    if (!p) throw new Error(`no DEVTST player named ${name}`);
+    return p.id;
+  };
+
+  /** Sign in as the owner and open Progress (optionally `?track=tier`), waiting for the tier row. */
+  async function openTierRow(page: Page, opts: { track?: boolean; theme?: 'dark' | 'light' } = {}) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    if (opts.theme) await page.addInitScript((t) => window.localStorage.setItem('theme', t), opts.theme);
+    await loginAsOwner(page);
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=progress${opts.track ? '&track=tier' : ''}`);
+    await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
+    await expect(tierRowOf(page)).toBeVisible({ timeout: 15_000 });
+    await expect(tierCells(page).first()).toBeVisible({ timeout: 15_000 });
+    await page.waitForLoadState('networkidle');
+  }
+
+  /** The first column's BiS cell, focused by keyboard: the tier's name, then right past the menu and Open board. */
+  async function focusFirstCellByKeyboard(page: Page): Promise<string> {
+    await disclosureOf(page).focus();
+    for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+    const label = await page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? '');
+    expect(label, 'ArrowRight from the tier name reaches the first BiS cell').toMatch(BIS_LABEL);
+    return label.split(', ')[0];
+  }
+
+  async function expectBoardLanding(page: Page, name: string) {
+    const id = idOf(name);
+    await expect(page).toHaveURL(/[?&]tab=roster(&|$)/);
+    await expect(page).toHaveURL(new RegExp(`[?&]player=${id}(&|$)`));
+    const row = page.locator(`tr[id="player-card-${id}"]`);
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await expect(row).toHaveClass(/highlight-pulse/);
+    await expect(row).toBeInViewport();
+    await expect(page.locator('tr.highlight-pulse')).toHaveCount(1);
+  }
+
+  test('owner: the tier row reads each column\'s BiS cell and the status line, and the numbers agree with the Board\'s (criterion 10)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await openTierRow(page);
+
+    // One cell per roster card, each named "{player}, {tier}, {done} of {total} BiS slots done[, n need augment]".
+    const labels = await tierCells(page).evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''));
+    const counted = players.filter((p) => p.configured);
+    expect(labels.length).toBe(counted.length);
+    const cells = new Map<string, { done: number; total: number }>();
+    for (const label of labels) {
+      const m = BIS_LABEL.exec(label);
+      expect(m, label).not.toBeNull();
+      if (m![1]) cells.set(m![1], { done: Number(m![3]), total: Number(m![4]) });
+    }
+    // Each cell reads "done/total" on screen, over its bar.
+    for (const [name, { done, total }] of cells) {
+      await expect(tierRowOf(page).locator(`button[aria-label^="${name}, "]`)).toContainText(`${done}/${total}`);
+    }
+
+    // The status line: the non-substitute cells' sum (D-7), the week, the floors; Open board is described by it.
+    const openBoard = tierRowOf(page).getByRole('button', { name: 'Open board' });
+    const sum = counted.filter((p) => !p.isSubstitute).reduce(
+      (acc, p) => ({ done: acc.done + (cells.get(p.name)?.done ?? 0), total: acc.total + (cells.get(p.name)?.total ?? 0) }),
+      { done: 0, total: 0 },
+    );
+    await expect(openBoard).toHaveAccessibleDescription(STATUS_LINE);
+    await expect(openBoard).toHaveAccessibleDescription(new RegExp(`^${sum.done}/${sum.total} BiS slots · `));
+
+    // The Board's per-row "completed/total" (playerBisProgress) is the same pair for every card (criterion 2).
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=roster&rview=board`);
+    await expect(page.locator('tr[id^="player-card-"]').first()).toBeVisible({ timeout: 15_000 });
+    for (const [name, { done, total }] of cells) {
+      const onBoard = await page.locator(`tr[id="player-card-${idOf(name)}"]`).evaluate((row) => {
+        const cell = [...row.querySelectorAll('td')].find((td) => /^\s*\d+\s*\/\s*\d+\s*$/.test(td.textContent ?? ''));
+        return (cell?.textContent ?? '').replace(/\s+/g, '');
+      });
+      expect(onBoard, `${name} on the Board`).toBe(`${done}/${total}`);
+    }
+    await context.close();
+  });
+
+  test('owner: a breakdown opens by keyboard, and its Open on board lands on Roster ▸ Board with the row highlighted (D-8, E-9)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await openTierRow(page);
+
+    const name = await focusFirstCellByKeyboard(page);
+    await page.keyboard.press('Enter');
+    const breakdown = page.getByRole('dialog', { name: `${name} · BiS slots` });
+    await expect(breakdown).toBeVisible();
+    await expect(breakdown).toContainText(/\d+\/\d+ done|No BiS set\./);
+    const link = breakdown.getByRole('button', { name: 'Open on board' });
+    await expect(link).toBeFocused();
+    await expect(page).toHaveURL(/[?&]tab=progress(&|$)/);
+
+    await page.keyboard.press('Enter');
+    await expectBoardLanding(page, name);
+    await expect(breakdown).toHaveCount(0);
+    await context.close();
+  });
+
+  test('owner: Alt+Click on a cell jumps to its Board row with no breakdown; a plain click opens the breakdown and never jumps (D-5)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await openTierRow(page);
+
+    const cell = tierCells(page).first();
+    const name = ((await cell.getAttribute('aria-label')) ?? '').split(', ')[0];
+    await cell.click();
+    await expect(page.getByRole('dialog', { name: `${name} · BiS slots` })).toBeVisible();
+    await expect(page).toHaveURL(/[?&]tab=progress(&|$)/);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: `${name} · BiS slots` })).toHaveCount(0);
+    await expect(cell).toBeFocused();
+
+    await cell.click({ modifiers: ['Alt'] });
+    await expectBoardLanding(page, name);
+    await expect(page.getByRole('dialog', { name: /· BiS slots$/ })).toHaveCount(0);
+    await context.close();
+  });
+
+  test('keyboard: Tab from Open on board, the last control in the breakdown popover, keeps focus on it', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await openTierRow(page);
+
+    const name = await focusFirstCellByKeyboard(page);
+    await page.keyboard.press('Enter');
+    const breakdown = page.getByRole('dialog', { name: `${name} · BiS slots` });
+    const openOnBoard = breakdown.getByRole('button', { name: 'Open on board' });
+    await expect(openOnBoard).toBeFocused();
+
+    // Open on board is the popover's only and last control: Tab stays on it (the popover keeps
+    // focus inside) and the popover stays open; Escape is the way out. Two frames, not a fixed
+    // sleep, so a dismissal or a commit would have landed.
+    await page.keyboard.press('Tab');
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    expect(await focusWhere(page), 'focus after Tab from Open on board').toBe('popover');
+    await expect(openOnBoard).toBeFocused();
+    await expect(breakdown).toBeVisible();
+    await context.close();
+  });
+
+  test('keyboard: after Open on board by keyboard, focus is on the landed Board row or the Roster heading, never on <body>', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await openTierRow(page);
+
+    const name = await focusFirstCellByKeyboard(page);
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: `${name} · BiS slots` }).getByRole('button', { name: 'Open on board' })).toBeFocused();
+    await page.keyboard.press('Enter');
+    const id = idOf(name);
+    await expect(page.locator(`tr[id="player-card-${id}"]`)).toBeVisible({ timeout: 15_000 });
+
+    await expect
+      .poll(() => focusWhere(page, id), { message: 'focus after a keyboard jump to the Board', timeout: 5_000 })
+      .toMatch(/^(row|heading)$/);
+    await context.close();
+  });
+
+  test('owner: ?track=tier with split clears on opens the planner, in view, also on a fresh load (criterion 5)', async ({ browser }) => {
+    await withSplit(browser, true, async () => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await openTierRow(page, { track: true });
+
+      for (const pass of ['deep link', 'fresh load'] as const) {
+        await expect(disclosureOf(page), pass).toHaveAttribute('aria-expanded', 'true', { timeout: 15_000 });
+        await expect(tierPanelOf(page), pass).toBeVisible();
+        expect(await tierPanelOf(page).evaluate((el) => el.previousElementSibling?.getAttribute('data-testid') ?? null), pass).toBe('progress-tier-row');
+        await expect(composerIn(page), pass).toBeVisible();
+        await expect(tierPanelOf(page), pass).toBeInViewport();
+        await expect(page, pass).toHaveURL(/[?&]track=tier(&|$)/);
+        if (pass === 'deep link') {
+          await page.reload();
+          await expect(tierRowOf(page)).toBeVisible({ timeout: 15_000 });
+        }
+      }
+      await context.close();
+    });
+  });
+
+  test('owner: ?track=tier with split clears off shows "Turn on split clears"; it turns them on and the planner mounts in place (P-111)', async ({ browser }) => {
+    await withSplit(browser, false, async () => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await openTierRow(page, { track: true });
+
+      await expect(disclosureOf(page)).toHaveAttribute('aria-expanded', 'true', { timeout: 15_000 });
+      const panel = tierPanelOf(page);
+      await expect(panel.getByText(/^Split clears are off\./)).toBeVisible();
+      const turnOn = panel.getByRole('button', { name: 'Turn on split clears' });
+      await expect(turnOn).toBeEnabled();
+      await expect(composerIn(page)).toHaveCount(0);
+      // V1's own Enable card never shows in V2 (D-3).
+      await expect(page.getByRole('button', { name: 'Enable split planning' })).toHaveCount(0);
+
+      await turnOn.click();
+      await expect(page.getByText('Split clears on', { exact: true })).toBeVisible();
+      await expect(composerIn(page)).toBeVisible();
+      await expect(panel.getByRole('button', { name: 'Turn on split clears' })).toHaveCount(0);
+      await expect(page).toHaveURL(/[?&]track=tier(&|$)/);
+      const { groupId } = await ownerApiContext(page);
+      expect(await splitEnabled({ page, groupId })).toBe(true);
+      await context.close();
+    });
+  });
+
+  test('owner: a planner draft survives a collapse and a re-open (D-10)', async ({ browser }) => {
+    await withSplit(browser, true, async () => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await openTierRow(page, { track: true });
+      await expect(composerIn(page)).toBeVisible({ timeout: 15_000 });
+
+      await tierPanelOf(page).getByRole('button', { name: 'Generate draft plan' }).click();
+      const draft = tierPanelOf(page).getByRole('heading', { name: 'Suggested Split Plan' });
+      await expect(draft).toBeVisible();
+
+      await disclosureOf(page).click();
+      await expect(disclosureOf(page)).toHaveAttribute('aria-expanded', 'false');
+      await expect(tierPanelOf(page)).toBeHidden();
+      await expect(page).not.toHaveURL(/[?&]track=tier/);
+
+      await disclosureOf(page).click();
+      await expect(tierPanelOf(page)).toBeVisible();
+      await expect(draft).toBeVisible();
+      await context.close();
+    });
+  });
+
+  for (const theme of THEMES) {
+    test(`owner: axe reports no critical or serious violation with the tier row, a breakdown and the tier panel open, on and off (${theme}, 1440 x 900)`, async ({ browser }) => {
+      // No role-colour exclusion anywhere in these scans (P0 lifted the light healer, #388).
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await openTierRow(page, { theme });
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(300);
+      const atRest = await blockingIn(page, ['[data-testid="progress-screen"]']);
+      // Soft, so every state is scanned and reported even when an earlier one fails.
+      expect.soft(atRest, `at rest: ${JSON.stringify(atRest, null, 2)}`).toEqual([]);
+
+      // A breakdown: portalled, so it is tagged and scanned beside the screen.
+      const cell = tierCells(page).first();
+      const name = ((await cell.getAttribute('aria-label')) ?? '').split(', ')[0];
+      await cell.click();
+      const breakdown = page.getByRole('dialog', { name: `${name} · BiS slots` });
+      await expect(breakdown).toBeVisible();
+      await breakdown.evaluate((el) => el.setAttribute('data-e2e-breakdown', '1'));
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(300);
+      const open = await blockingIn(page, ['[data-testid="progress-screen"]', '[data-e2e-breakdown="1"]']);
+      expect.soft(open, `a breakdown open: ${JSON.stringify(open, null, 2)}`).toEqual([]);
+      await context.close();
+
+      for (const enabled of [true, false]) {
+        await withSplit(browser, enabled, async () => {
+          const ctx = await freshContext(browser);
+          const p = await ctx.newPage();
+          await openTierRow(p, { theme, track: true });
+          await expect(tierPanelOf(p)).toBeVisible({ timeout: 15_000 });
+          if (enabled) await expect(composerIn(p)).toBeVisible();
+          else await expect(tierPanelOf(p).getByRole('button', { name: 'Turn on split clears' })).toBeVisible();
+          await p.mouse.move(0, 0);
+          await p.waitForTimeout(300);
+          const panel = await blockingIn(p, ['[data-testid="progress-screen"]'], { splitPlannerLightDebt: theme === 'light' });
+          expect.soft(panel, `the tier panel ${enabled ? 'on' : 'off'}: ${JSON.stringify(panel, null, 2)}`).toEqual([]);
+          await ctx.close();
+        });
+      }
+    });
+  }
+});
+
+async function blockingIn(page: Page, includes: string[], opts: { splitPlannerLightDebt?: boolean } = {}) {
   let builder = new AxeBuilder({ page });
   for (const selector of includes) builder = builder.include(selector);
   const results = await builder.analyze();
-  return results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+  const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+  // Light only, in the tier panel: the V1 planner's contrast debt (helpers/owner.ts) leaves the
+  // color-contrast rule alone; every other rule still sees those nodes.
+  return opts.splitPlannerLightDebt ? withoutSplitPlannerDebt(page, blocking) : blocking;
 }

@@ -152,6 +152,7 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { API_BASE, FRONTEND_BASE, loginAsOwner, ownerApiContext, DEV_SHARE_CODE } from './helpers/auth'
+import { setSplit, splitEnabled, withoutSplitPlannerDebt } from './helpers/owner'
 
 const THEMES = ['dark', 'light'] as const
 
@@ -383,7 +384,7 @@ for (const theme of THEMES) {
 
       // Edit statuses: a lead's mode shows "Set status" on every blank claimed cell.
       await page.getByRole('button', { name: 'Edit statuses' }).click()
-      await expect(page.getByRole('button', { name: 'Done' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Done', exact: true })).toBeVisible()
       await expect(page.getByText('Set status').first()).toBeVisible()
       await page.waitForTimeout(300)
       const editing = await scan()
@@ -474,6 +475,51 @@ for (const theme of THEMES) {
       for (const ratio of ratios) expect(ratio).toBeGreaterThanOrEqual(3)
     } finally {
       if (id) await page.request.delete(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${id}`, { headers })
+    }
+  })
+}
+
+// ── Risk view: v2 Progress with the tier row and its panel open (S2a-3b·H4b) ──
+// The tier row (its BiS cells over the role-coloured bars, the status line, Open board) and the
+// tier panel opened by `?track=tier`: the split planner with split clears on, and the lead's
+// off-state ("Turn on split clears") with them off. No role-colour exclusion (#388). DEVTST's
+// split-clear setting is read first and put back in `finally` (the owner's settings PUT).
+for (const theme of THEMES) {
+  test(`v2 progress with the tier row and the tier panel open has zero contrast violations (${theme})`, async ({ page }) => {
+    await forceTheme(page, theme)
+    await loginAsOwner(page)
+    const { groupId, csrfToken } = await ownerApiContext(page)
+    const headers = { 'X-CSRF-Token': csrfToken }
+    const owner = { page, groupId, headers }
+    const before = await splitEnabled(owner)
+    try {
+      for (const enabled of [true, false]) {
+        await setSplit(owner, enabled)
+        await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=progress&track=tier`)
+        const panel = page.getByTestId('progress-tier-expansion')
+        await expect(page.getByTestId('progress-tier-row').locator('button[aria-label*=" BiS slots done"]').first()).toBeVisible({ timeout: 15_000 })
+        await expect(panel).toBeVisible({ timeout: 15_000 })
+        if (enabled) await expect(panel.getByRole('heading', { name: 'Split Clear Composer' })).toBeVisible()
+        else await expect(panel.getByRole('button', { name: 'Turn on split clears' })).toBeVisible()
+        await page.waitForLoadState('networkidle')
+        await page.mouse.move(0, 0)
+        // Settle CSS transitions (Button uses `transition-all duration-fast` = 150ms).
+        await page.waitForTimeout(300)
+
+        const scan = await new AxeBuilder({ page })
+          .include('[data-testid="progress-screen"]')
+          .withRules(['color-contrast'])
+          .analyze()
+        // Light only: the V1 split planner's contrast debt (components/split-clear/**, not edited in
+        // S2a-3b) is dropped from this rule alone, by node. The success chips ('Roster N/N',
+        // 'Priority N/N', 4.21:1) are tracked in #403; 'Generate draft plan' (Button accent-subtle,
+        // 3.79:1) in #394. Selectors and trackers: helpers/owner.ts.
+        const violations = theme === 'light' ? await withoutSplitPlannerDebt(page, scan.violations) : scan.violations
+        // Soft, so the off-state is scanned and reported even when the planner's scan fails.
+        expect.soft(violations, `split clears ${enabled ? 'on' : 'off'}: ${JSON.stringify(violations, null, 2)}`).toEqual([])
+      }
+    } finally {
+      await setSplit(owner, before)
     }
   })
 }

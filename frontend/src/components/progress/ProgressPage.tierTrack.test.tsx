@@ -14,7 +14,7 @@
  *     `data-testid="progress-tier-expansion-body"` with `style.width = viewWidth px`;
  *   - failed: "Couldn't load the split plan" + Button "Retry"; off for a lead: text starting
  *     "Split clears are off." + Button "Turn on split clears"; toasts "Split clears on" / the
- *     error's message; never the text "Loading the split plan…" during a visibility refetch;
+ *     error's message;
  *   - an open that waited on the data scrolls into view with one `scrollIntoView` call.
  */
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -394,6 +394,23 @@ describe('ProgressPage tier row with split clears off', () => {
     expect(disclosure()).not.toBeInTheDocument();
     expect(within(tierRow()).getByRole('rowheader')).toHaveTextContent(TIER);
     expect(tierPanel()).toBeNull();
+  });
+
+  // S2a-3b·H4b c3 (H4 re-review), a regression pin: a refetch that finds split clears off unmounts the
+  // focused disclosure; the plain name cell (the grid's stop) takes focus, never <body>.
+  it.each([['member', MEMBER], ['viewer', VIEWER]])('the focused disclosure of a %s hands its focus to the plain name when a refetch finds split clears off', async (_who, reader) => {
+    renderAt('/?tab=progress', { tier: activeTier, ...reader });
+    const button = await findDisclosure();
+    act(() => button.focus());
+    expect(button).toHaveFocus();
+
+    split.set('g1', false);
+    await returnToTab();
+    await waitFor(() => expect(disclosure()).not.toBeInTheDocument());
+    const name = within(tierRow()).getByRole('rowheader');
+    expect(name).toHaveTextContent(TIER);
+    await waitFor(() => expect(name).toHaveFocus());
+    expect(document.activeElement).not.toBe(document.body);
   });
 });
 

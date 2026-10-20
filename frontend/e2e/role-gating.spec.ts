@@ -29,6 +29,7 @@
 
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import { API_BASE, DEV_SHARE_CODE, freshContext, loginAsMember, loginAsOwner, ownerApiContext, pinShell } from './helpers/auth';
+import { currentUserId, ownerSession, setRole, setSplit, splitEnabled, withSplit } from './helpers/owner';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -437,28 +438,6 @@ test.describe.serial('Progress row expansion, by role (S2a-3a)', () => {
   const menuColumn = (page: Page) => page.getByRole('columnheader', { name: 'Actions', exact: true });
   const rowMenus = (page: Page) => page.getByRole('button', { name: /^Actions for / });
 
-  async function setRole(owner: { page: Page; groupId: string; headers: { 'X-CSRF-Token': string } }, userId: string, role: 'member' | 'viewer') {
-    const res = await owner.page.request.put(`${API_BASE}/api/static-groups/${owner.groupId}/members/${userId}`, {
-      headers: owner.headers,
-      data: { role },
-    });
-    if (!res.ok()) throw new Error(`setting the role to ${role} returned ${res.status()}`);
-  }
-
-  async function ownerSession(browser: Browser) {
-    const context = await freshContext(browser);
-    const page = await context.newPage();
-    await loginAsOwner(page);
-    const { groupId, csrfToken } = await ownerApiContext(page);
-    return { context, page, groupId, headers: { 'X-CSRF-Token': csrfToken } };
-  }
-
-  async function userIdOf(page: Page): Promise<string> {
-    const res = await page.request.get(`${API_BASE}/api/auth/me`);
-    if (!res.ok()) throw new Error(`auth/me returned ${res.status()}`);
-    return ((await res.json()) as { id: string }).id;
-  }
-
   test.beforeAll(async ({ browser }) => {
     const owner = await ownerSession(browser);
     try {
@@ -481,7 +460,7 @@ test.describe.serial('Progress row expansion, by role (S2a-3a)', () => {
       const memberId = members.find((m) => m.user?.discordUsername === 'DevMember')?.userId;
       if (!memberId) throw new Error('DevMember is not in DEVTST');
       for (const [userId, state] of [
-        [await userIdOf(page), 'need'],
+        [await currentUserId(page), 'need'],
         [memberId, 'want'],
       ] as const) {
         const set = await page.request.patch(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${farmId}/participants/${userId}`, {
@@ -539,7 +518,7 @@ test.describe.serial('Progress row expansion, by role (S2a-3a)', () => {
       const page = await context.newPage();
       // Dev login re-seats DevMember as a member, so demote after logging in.
       await loginAsMember(page);
-      demoted = await userIdOf(page);
+      demoted = await currentUserId(page);
       await setRole(owner, demoted, 'viewer');
       await openV2(page, track(), progressReady);
 
@@ -566,5 +545,118 @@ test.describe.serial('Progress row expansion, by role (S2a-3a)', () => {
       demoted = null;
       await owner.context.close();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Progress tier row (S2a-3b·H4b): split clears by role (R-T-11, P-111)
+// ---------------------------------------------------------------------------
+
+/**
+ * The tier row's split-clear controls by role, each opened with `?track=tier`. A lead with split
+ * clears off gets the disclosure and "Turn on split clears" (the pin); a member gets neither while
+ * they are off (the param is cleared) and the planner read-only while they are on; a viewer reads
+ * the cells and the status line and gets no disclosure while off. Hidden, never disabled.
+ *
+ * Split clears are set through the owner's API and DEVTST's setting is read first and put back in
+ * `finally` and afterAll; DevMember is demoted for the viewer test and restored the same way.
+ */
+test.describe('Progress tier row, by role (S2a-3b)', () => {
+  const BIS_CELL = 'button[aria-label*=" BiS slots done"], button[aria-label$=", no BiS set"]';
+  let priorSplit: boolean | null = null;
+  let demoted: string | null = null;
+
+  const tierRow = (page: Page) => page.getByTestId('progress-tier-row');
+  const disclosure = (page: Page) => tierRow(page).locator('[aria-controls="progress-tier-expansion"]');
+  const turnOn = (page: Page) => page.getByRole('button', { name: 'Turn on split clears' });
+  const composer = (page: Page) => page.getByTestId('progress-tier-expansion').getByRole('heading', { name: 'Split Clear Composer' });
+
+  /** The tier cells are on screen (non-vacuous: the row is S2a-3b's, not a bare name). */
+  async function expectTierCells(page: Page) {
+    await expect(tierRow(page).locator(BIS_CELL).first()).toBeVisible({ timeout: 15_000 });
+    expect(await tierRow(page).locator(BIS_CELL).count()).toBeGreaterThan(0);
+  }
+
+  test.beforeAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      priorSplit = await splitEnabled(owner);
+    } finally {
+      await owner.context.close();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      if (demoted) await setRole(owner, demoted, 'member');
+      if (priorSplit !== null) await setSplit(owner, priorSplit);
+    } finally {
+      await owner.context.close();
+    }
+  });
+
+  test('owner pin: with split clears off the tier name is a disclosure and the panel offers "Turn on split clears", so the checks below are not vacuous', async ({ page, browser }) => {
+    await withSplit(browser, false, async () => {
+      await loginAsOwner(page);
+      await openV2(page, 'tab=progress&track=tier', progressReady);
+      await expectTierCells(page);
+      await expect(disclosure(page)).toHaveAttribute('aria-expanded', 'true', { timeout: 15_000 });
+      await expect(turnOn(page)).toBeEnabled();
+    });
+  });
+
+  test('member: split clears off: the tier cells, no disclosure, no "Turn on split clears", and ?track=tier is cleared (hidden, not disabled)', async ({ page, browser }) => {
+    await withSplit(browser, false, async () => {
+      await loginAsMember(page);
+      await openV2(page, 'tab=progress&track=tier', progressReady);
+      await expectTierCells(page);
+      await expect(page).not.toHaveURL(/[?&]track=tier/, { timeout: 15_000 });
+      await expect(disclosure(page)).toHaveCount(0);
+      await expect(tierRow(page).getByRole('rowheader')).toBeVisible();
+      await expect(turnOn(page)).toHaveCount(0);
+      await expect(page.getByTestId('progress-tier-expansion')).toHaveCount(0);
+      await expectNoDisabledOutside(page, []);
+    });
+  });
+
+  test('member: split clears on: the planner, read-only (no "Generate draft plan"), and no "Turn on split clears"', async ({ page, browser }) => {
+    await withSplit(browser, true, async () => {
+      await loginAsMember(page);
+      await openV2(page, 'tab=progress&track=tier', progressReady);
+      await expectTierCells(page);
+      await expect(disclosure(page)).toHaveAttribute('aria-expanded', 'true', { timeout: 15_000 });
+      await expect(composer(page)).toBeVisible();
+      await expect(page.getByTestId('progress-tier-expansion').getByRole('button', { name: 'Generate draft plan' })).toHaveCount(0);
+      await expect(turnOn(page)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Enable split planning' })).toHaveCount(0);
+    });
+  });
+
+  test('viewer: the tier cells and the status line; split clears off: no disclosure, no "Turn on split clears"', async ({ browser }) => {
+    await withSplit(browser, false, async (owner) => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      try {
+        // Dev login re-seats DevMember as a member, so demote after logging in.
+        await loginAsMember(page);
+        const me = await page.request.get(`${API_BASE}/api/auth/me`);
+        demoted = ((await me.json()) as { id: string }).id;
+        await setRole(owner, demoted, 'viewer');
+        await openV2(page, 'tab=progress&track=tier', progressReady);
+
+        await expectTierCells(page);
+        await expect(tierRow(page).getByRole('button', { name: 'Open board' })).toHaveAccessibleDescription(/^\d+\/\d+ BiS slots · Week \d+/);
+        await expect(page).not.toHaveURL(/[?&]track=tier/, { timeout: 15_000 });
+        await expect(disclosure(page)).toHaveCount(0);
+        await expect(turnOn(page)).toHaveCount(0);
+        await expect(page.getByTestId('progress-tier-expansion')).toHaveCount(0);
+        await expectNoDisabledOutside(page, []);
+      } finally {
+        if (demoted) await setRole(owner, demoted, 'member');
+        demoted = null;
+        await context.close();
+      }
+    });
   });
 });

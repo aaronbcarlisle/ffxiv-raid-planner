@@ -394,6 +394,7 @@ export function RosterCards({
     <div
       key={player.id}
       id={`player-card-${player.id}`}
+      tabIndex={-1}
       className={`h-full${player.id === highlightedPlayerId ? ' highlight-pulse rounded-lg' : ''}`}
     >
       <RosterCard
@@ -429,7 +430,7 @@ export function RosterCards({
       // spawn yet another blank slot elsewhere.
       const seatActions = actionsForPlayer(player);
       return (
-        <div key={player.id} id={`player-card-${player.id}`} className={`relative h-full${highlightClass}`}>
+        <div key={player.id} id={`player-card-${player.id}`} tabIndex={-1} className={`relative h-full${highlightClass}`}>
           <OpenSeatCard
             player={player}
             canManage={canManage}

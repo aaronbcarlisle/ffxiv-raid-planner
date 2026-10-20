@@ -398,14 +398,15 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     return scrollToGearRow(highlightedPlayerId, highlightedSlot);
   }, [highlightedPlayerId, highlightedSlot]);
 
-  // S2a-3b·H3b (E-9, R-T-9): the Progress jump's landing on the Board. `GroupViewContent`'s 100 ms
-  // card scroll fires before a jump from another tab has mounted this Roster, so it finds no
-  // row; this polls for it (no slot: the slot case above already lands on the row by its card
-  // fallback). The Cards view keeps `GroupViewContent`'s scroll alone.
+  // S2a-3b·H3b (E-9, R-T-9): the Progress jump's landing on the Board or the Cards. `GroupViewContent`'s
+  // 100 ms card scroll fires before a jump from another tab has mounted this Roster, so it finds no
+  // anchor; this polls for it (no slot: the slot case above already lands on the row by its card
+  // fallback). Both views carry `player-card-{id}`, so a jump that lands on Cards (D-9's reset mode,
+  // V2 Loot's jump) scrolls too (H4b c1).
   useEffect(() => {
-    if (!highlightedPlayerId || highlightedSlot || rosterView !== 'board') return;
+    if (!highlightedPlayerId || highlightedSlot) return;
     return scrollToPlayerRow(highlightedPlayerId);
-  }, [highlightedPlayerId, highlightedSlot, rosterView]);
+  }, [highlightedPlayerId, highlightedSlot]);
 
   // Highlight clears 2500ms after it is set, via its OWN effect keyed on the
   // highlight itself (F6e timer-ownership lesson — never in the resolving

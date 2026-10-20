@@ -242,6 +242,7 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                   <tr
                     key={player.id}
                     id={`player-card-${player.id}`}
+                    tabIndex={-1}
                     className={`hover:bg-accent/5${player.id === highlightedPlayerId ? ' highlight-pulse' : ''}`}
                   >
                     <td
