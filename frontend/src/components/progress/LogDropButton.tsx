@@ -188,7 +188,7 @@ export function LogDropButton({ row, groupId }: { row: FarmRow; groupId: string 
             aria-disabled={busy || undefined}
             variant="accent-subtle"
             size="sm"
-            className={`rounded-l-none border-l-0 ${BUSY_CLASS}`}
+            className={`h-auto! rounded-l-none border-l-0 ${BUSY_CLASS}`}
             icon={<ChevronDown size={14} aria-hidden="true" />}
             // Radix skips its toggle for a click whose default is prevented.
             onClick={(event) => {

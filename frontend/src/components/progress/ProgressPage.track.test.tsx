@@ -319,6 +319,30 @@ describe('ProgressPage open row: Escape in the Log a drop picker (R-S3-4, vet I-
   });
 });
 
+describe('ProgressPage open row: Escape in the delete-drop confirm (R-S3-4, vet I-2; S2a-3a·G4 TG6)', () => {
+  it('closes only the portalled confirm: the panel stays open, ?track is unchanged and focus returns to the delete button', async () => {
+    vi.mocked(api.get).mockImplementation((url: string) =>
+      Promise.resolve((url.endsWith('/drops') ? [apiDrop('d1', 'u1', { goal_id: 'hot', recipient_display_name: 'Aya' })] : []) as never),
+    );
+    seed();
+    renderAt('/group/DEVTST?shell=v2&tab=progress&track=hot');
+    await screen.findByTestId('progress-matrix');
+    const trash = await within(panel()!).findByRole('button', { name: /^Delete drop for Aya, / });
+    act(() => trash.focus());
+    fireEvent.click(trash);
+    const confirm = await screen.findByRole('dialog', { name: 'Delete Drop' });
+    // The confirm renders through a portal: outside the panel row in the DOM.
+    expect(panel()!.contains(confirm)).toBe(false);
+
+    fireEvent.keyDown(confirm, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(panel()).not.toBeNull();
+    expect(nameOf('hot')).toHaveAttribute('aria-expanded', 'true');
+    expect(trackOf()).toBe('hot');
+    await waitFor(() => expect(trash).toHaveFocus());
+  });
+});
+
 describe('ProgressPage: a drop\'s Undo after a static switch (G3 fix wave)', () => {
   const G2_GOALS = [goal('far', { title: 'Far Farm', staticGroupId: 'g2' })];
 
@@ -362,7 +386,8 @@ describe('ProgressPage open row: the drops\' week labels follow the week clock (
     seed();
     renderAt('/group/DEVTST?shell=v2&tab=progress&track=hot');
     await screen.findByTestId('progress-matrix');
-    return (await within(screen.getByTestId('progress-expansion-drops')).findByRole('listitem')).textContent;
+    // The line itself: the row also holds the delete button's hidden name.
+    return (await within(screen.getByTestId('progress-expansion-drops')).findByRole('listitem')).firstElementChild?.textContent;
   }
 
   it('reads "Week n" when THIS tier\'s clock is resolved', async () => {

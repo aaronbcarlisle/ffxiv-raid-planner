@@ -150,8 +150,8 @@ describe('ProgressMatrix columns', () => {
       participants: { wings: [row('wings', 'u-zed', { displayName: 'Zed' }), row('wings', 'u-abe', { displayName: 'Abe' })] },
     });
     const headers = screen.getAllByRole('columnheader');
-    // Farm, Status, four players, then the two off-roster members.
-    expect(headers).toHaveLength(2 + columns.length);
+    // Farm, Actions (a lead's menu column), Status, four players, then the two off-roster members.
+    expect(headers).toHaveLength(3 + columns.length);
     expect(headers.slice(-2).map((h) => h.textContent)).toEqual(['AbeNot on the roster', 'ZedNot on the roster']);
   });
 
@@ -564,6 +564,140 @@ describe('ProgressMatrix keyboard grid', () => {
   });
 });
 
+// ── The lead's row-menu column (S2a-3a·G4 Task TG7; D-22, R-S3-17) ──
+
+/** A row's ⋯ menu button (a lead's second cell). */
+const menuButton = (r: HTMLElement) => within(r).getByRole('button', { name: /^Actions for / });
+const hasMenu = (r: HTMLElement) => within(r).queryAllByRole('button', { name: /^Actions for / }).length > 0;
+
+describe('ProgressMatrix row menu column', () => {
+  const two = [goal('hot', { title: 'Hot' }), goal('calm', { title: 'Calm' })];
+  const needy = { hot: [row('hot', 'u1', { state: 'need' })], calm: [row('calm', 'u1', { state: 'want' })] };
+  const done = goal('done', { title: 'Done', status: 'complete', completedAt: '2026-10-01T00:00:00Z' });
+  const VIEWER: ProgressReader = { currentUserId: 'u1', userRole: 'viewer' };
+
+  it('gives a lead an "Actions" column and an "Actions for {title}" menu button on every farm row', () => {
+    const { columns } = renderMatrix({ goals: two, participants: needy });
+    expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
+    const [hot, calm] = farmRows();
+    expect(menuButton(hot)).toHaveAccessibleName('Actions for Hot');
+    expect(menuButton(hot)).toHaveAttribute('aria-haspopup', 'menu');
+    expect(menuButton(calm)).toHaveAccessibleName('Actions for Calm');
+    // Farm, Actions, Status and one per column.
+    expect(screen.getAllByRole('columnheader')).toHaveLength(3 + columns.length);
+  });
+
+  it.each([
+    ['a member', MEMBER, false],
+    ['a viewer', VIEWER, false],
+    ['a viewer with manage access', VIEWER, true],
+  ] as const)('gives %s no menu column and no button (hidden, not disabled)', (_label, reader, canManage) => {
+    const { columns } = renderMatrix({ goals: [...two, done], participants: needy, reader, canManage, openId: 'hot' });
+    expect(screen.queryByRole('columnheader', { name: 'Actions' })).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: /^Actions for / })).toHaveLength(0);
+    expect(screen.getAllByRole('columnheader')).toHaveLength(2 + columns.length);
+    // Their panel spans one column less than a lead's.
+    expect((within(panel()!).getByRole('gridcell') as HTMLTableCellElement).colSpan).toBe(columns.length + 2);
+    fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
+    expect(screen.queryAllByRole('button', { name: /^Actions for / })).toHaveLength(0);
+    for (const r of farmRows()) expect(within(r).queryAllByTestId('progress-menu')).toHaveLength(0);
+  });
+
+  it("gives a lead's panel the extra column in its span", () => {
+    const { columns } = renderMatrix({ goals: two, participants: needy, openId: 'hot' });
+    expect((within(panel()!).getByRole('gridcell') as HTMLTableCellElement).colSpan).toBe(columns.length + 3);
+  });
+
+  it('opens Mark finished · Delete on an active row, and Reopen · Delete on a finished one', () => {
+    renderMatrix({ goals: [...two, done], participants: { ...needy, done: [row('done', 'u1', { state: 'have' })] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
+    const rows = farmRows();
+    fireEvent.click(menuButton(rows[0]));
+    expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual(['Mark finished', 'Delete']);
+    fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Mark finished' }), { key: 'Escape' });
+    fireEvent.click(menuButton(rows[2]));
+    expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual(['Reopen', 'Delete']);
+  });
+
+  it('reads "Everyone has it" alone in the status cell at n = m, with no link or button in it', () => {
+    renderMatrix({ goals: two, participants: { hot: ['u1', 'u2', 'u4'].map((u) => row('hot', u, { state: 'have' })) } });
+    const hot = farmRows().find((r) => r.getAttribute('data-goal-id') === 'hot')!;
+    const status = within(hot).getByTestId('progress-status');
+    expect(status.textContent).toBe('Everyone has it');
+    expect(within(status).queryAllByRole('button')).toHaveLength(0);
+    expect(within(status).queryAllByRole('link')).toHaveLength(0);
+  });
+
+  describe('in the grid (R-S3-17)', () => {
+    it("is the lead's second cell: ArrowRight from the name focuses it, again the first player cell", () => {
+      renderMatrix({ goals: two, participants: needy });
+      const hot = farmRows()[0];
+      focusCell(nameButton(hot));
+      expect(key(nameButton(hot), 'ArrowRight')).toBe(false);
+      expect(menuButton(hot)).toHaveFocus();
+      expect(key(menuButton(hot), 'ArrowRight')).toBe(false);
+      expect(cellsOf(hot)[0]).toHaveFocus();
+    });
+
+    it('is reached back through the menu: ArrowLeft from the first player cell, then the name', () => {
+      renderMatrix({ goals: two, participants: needy });
+      const hot = farmRows()[0];
+      focusCell(cellsOf(hot)[0]);
+      expect(key(cellsOf(hot)[0], 'ArrowLeft')).toBe(false);
+      expect(menuButton(hot)).toHaveFocus();
+      expect(key(menuButton(hot), 'ArrowLeft')).toBe(false);
+      expect(nameButton(hot)).toHaveFocus();
+    });
+
+    it('lands Home on the name from the menu and from a cell, and moves down the menu column with ArrowDown', () => {
+      renderMatrix({ goals: two, participants: needy });
+      const [hot, calm] = farmRows();
+      focusCell(menuButton(hot));
+      expect(key(menuButton(hot), 'ArrowDown')).toBe(false);
+      expect(menuButton(calm)).toHaveFocus();
+      expect(key(menuButton(calm), 'Home')).toBe(false);
+      expect(nameButton(calm)).toHaveFocus();
+      focusCell(cellsOf(calm)[2]);
+      key(cellsOf(calm)[2], 'Home');
+      expect(nameButton(calm)).toHaveFocus();
+    });
+
+    it('stays one Tab stop: the name until a cell is focused, every menu button -1', () => {
+      renderMatrix({ goals: two, participants: needy });
+      const [hot, calm] = farmRows();
+      expect(gridStops()).toEqual([nameButton(hot)]);
+      expect(menuButton(hot)).toHaveAttribute('tabindex', '-1');
+      expect(menuButton(calm)).toHaveAttribute('tabindex', '-1');
+      // The stop follows focus onto the menu button, and stays singular.
+      focusCell(menuButton(calm));
+      expect(gridStops()).toEqual([menuButton(calm)]);
+    });
+
+    it("sends a member's name ArrowRight straight to the first player cell", () => {
+      renderMatrix({ goals: two, participants: needy, reader: MEMBER, canManage: false });
+      const hot = farmRows()[0];
+      focusCell(nameButton(hot));
+      expect(key(nameButton(hot), 'ArrowRight')).toBe(false);
+      expect(cellsOf(hot)[0]).toHaveFocus();
+    });
+
+    it("makes a Finished row's menu button a plain tab stop, not an arrow target", () => {
+      renderMatrix({ goals: [...two, done], participants: { ...needy, done: [row('done', 'u1', { state: 'have' })] } });
+      fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
+      const doneRow = farmRows().find((r) => r.getAttribute('data-goal-id') === 'done')!;
+      expect(hasMenu(doneRow)).toBe(true);
+      expect(menuButton(doneRow)).not.toHaveAttribute('tabindex');
+      expect(menuButton(doneRow).tabIndex).toBe(0);
+      // The grid is still the one stop, and no arrow from an active row reaches the finished one.
+      expect(gridStops()).toEqual([nameButton(farmRows()[0])]);
+      const lastMenu = menuButton(farmRows()[1]);
+      focusCell(lastMenu);
+      expect(key(lastMenu, 'ArrowDown')).toBe(true);
+      expect(lastMenu).toHaveFocus();
+    });
+  });
+});
+
 // ── The disclosure, the panel row and the grid (S2a-3a·G2 Task TG3; D-7, R-S3-3, R-S3-4) ──
 
 const panel = () => screen.queryByTestId('progress-expansion');
@@ -631,7 +765,8 @@ describe('ProgressMatrix disclosure', () => {
     expect(open).toHaveAttribute('role', 'row');
     const cells = within(open).getAllByRole('gridcell');
     expect(cells).toHaveLength(1);
-    expect((cells[0] as HTMLTableCellElement).colSpan).toBe(columns.length + 2);
+    // Farm, a lead's Actions, Status and one per column.
+    expect((cells[0] as HTMLTableCellElement).colSpan).toBe(columns.length + 3);
     expect(cells[0]).not.toHaveAttribute('tabindex');
     expect(within(open).queryAllByTestId('progress-cell')).toHaveLength(0);
     // The grid's rows are the farm rows alone: ArrowDown from the open row skips the panel.
@@ -648,8 +783,8 @@ describe('ProgressMatrix disclosure', () => {
     expect(within(within(open).getByTestId('progress-expansion-actions')).getByRole('button', { name: 'Copy plan' })).toBeInTheDocument();
   });
 
-  it('reaches the name with Home and with ArrowLeft from the first player cell, and moves between names with ArrowDown', () => {
-    renderMatrix({ goals: two, participants: needy });
+  it('reaches the name with Home, and with ArrowLeft from the first player cell for a member, and moves between names with ArrowDown', () => {
+    renderMatrix({ goals: two, participants: needy, reader: MEMBER, canManage: false });
     const [hot, calm] = farmRows();
     const a = cellsOf(hot);
     focusCell(a[2]);
