@@ -12,8 +12,12 @@ const NOOP = () => {};
 export const FarmEditContext = createContext({
   /** The goal whose Edit block is on, or null. It is on screen only while that row is the open one. */
   editingId: null as string | null,
-  /** The row menu's Edit: open this row and enter the block, asking first if another row's edit is dirty. */
-  start: NOOP as (goalId: string) => void,
+  /**
+   * The row menu's Edit: open this row and enter the block, asking first if another row's edit is
+   * dirty. `opener` is the menu's button, which Keep editing gives focus back to (the menu item the
+   * lead chose is gone by then).
+   */
+  start: NOOP as (goalId: string, opener?: HTMLElement | null) => void,
   /** The block ended (saved or discarded); focus returns to the row's menu button. */
   finish: NOOP as (goalId: string) => void,
   /** The block reports whether it holds unsaved changes. */

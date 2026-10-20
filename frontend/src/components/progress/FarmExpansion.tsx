@@ -159,7 +159,7 @@ export function FarmExpansion({
             {gotItShown && <IGotItButton groupId={groupId} goalId={row.goal.id} userId={ownUserId} onLeave={focusCopyPlan} />}
             {!finished && lead && row.tally.everyone && (
               <Button
-                variant="accent-subtle"
+                variant="primary"
                 size="sm"
                 className={BUSY_CLASS}
                 leftIcon={<CircleCheck size={14} aria-hidden="true" />}

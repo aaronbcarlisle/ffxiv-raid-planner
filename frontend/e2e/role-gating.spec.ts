@@ -416,3 +416,155 @@ test.describe('Legacy shell, Goals & Farms catalog', () => {
     await expect(trackButtons(page).first()).toBeEnabled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Progress row expansion (S2a-3a·G5b): the open row's controls by role
+// ---------------------------------------------------------------------------
+
+/**
+ * One farm on DEVTST where the owner Needs and DevMember Wants, so the panel has a queue of two and
+ * a viewer's unranked line has both parts. Each role opens it by `?track=`: a lead sees the row
+ * menu column and Log a drop; a member neither, and "I got it" (R-S3-7); a viewer (R-S3-15) the
+ * panel with Copy plan as its one action and "Need: … · Want: …" in place of the ranked queue.
+ * DevMember is demoted for the viewer test and restored in `finally` and in afterAll.
+ */
+test.describe.serial('Progress row expansion, by role (S2a-3a)', () => {
+  const TITLE = 'E2E Progress Gating Row';
+  let farmId = '';
+  let demoted: string | null = null;
+
+  const track = () => `tab=progress&track=${farmId}`;
+  const menuColumn = (page: Page) => page.getByRole('columnheader', { name: 'Actions', exact: true });
+  const rowMenus = (page: Page) => page.getByRole('button', { name: /^Actions for / });
+
+  async function setRole(owner: { page: Page; groupId: string; headers: { 'X-CSRF-Token': string } }, userId: string, role: 'member' | 'viewer') {
+    const res = await owner.page.request.put(`${API_BASE}/api/static-groups/${owner.groupId}/members/${userId}`, {
+      headers: owner.headers,
+      data: { role },
+    });
+    if (!res.ok()) throw new Error(`setting the role to ${role} returned ${res.status()}`);
+  }
+
+  async function ownerSession(browser: Browser) {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await loginAsOwner(page);
+    const { groupId, csrfToken } = await ownerApiContext(page);
+    return { context, page, groupId, headers: { 'X-CSRF-Token': csrfToken } };
+  }
+
+  async function userIdOf(page: Page): Promise<string> {
+    const res = await page.request.get(`${API_BASE}/api/auth/me`);
+    if (!res.ok()) throw new Error(`auth/me returned ${res.status()}`);
+    return ((await res.json()) as { id: string }).id;
+  }
+
+  test.beforeAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      const { page, groupId, headers } = owner;
+      const list = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/collection-goals`);
+      for (const g of (await list.json()) as Array<{ id: string; title: string }>) {
+        if (g.title === TITLE) await page.request.delete(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${g.id}`, { headers });
+      }
+      const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals`, {
+        headers,
+        data: { goal_type: 'custom_reward', title: TITLE, status: 'farming' },
+      });
+      if (!res.ok()) throw new Error(`seeding the gating row farm returned ${res.status()}`);
+      farmId = ((await res.json()) as { id: string }).id;
+
+      const members = (await (await page.request.get(`${API_BASE}/api/static-groups/${groupId}/members`)).json()) as Array<{
+        userId: string;
+        user?: { discordUsername?: string };
+      }>;
+      const memberId = members.find((m) => m.user?.discordUsername === 'DevMember')?.userId;
+      if (!memberId) throw new Error('DevMember is not in DEVTST');
+      for (const [userId, state] of [
+        [await userIdOf(page), 'need'],
+        [memberId, 'want'],
+      ] as const) {
+        const set = await page.request.patch(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${farmId}/participants/${userId}`, {
+          headers,
+          data: { state },
+        });
+        if (!set.ok()) throw new Error(`setting ${state} returned ${set.status()}`);
+      }
+    } finally {
+      await owner.context.close();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      if (demoted) await setRole(owner, demoted, 'member');
+      if (farmId) {
+        const del = await owner.page.request.delete(`${API_BASE}/api/static-groups/${owner.groupId}/collection-goals/${farmId}`, { headers: owner.headers });
+        if (!del.ok() && del.status() !== 404) throw new Error(`deleting the gating row farm returned ${del.status()}`);
+      }
+    } finally {
+      await owner.context.close();
+    }
+  });
+
+  test('owner pin: the menu column, the row menu and Log a drop are there, so the checks below are not vacuous', async ({ page }) => {
+    await loginAsOwner(page);
+    await openV2(page, track(), progressReady);
+    const panel = page.getByTestId('progress-expansion');
+    await expect(panel).toBeVisible();
+    await expect(menuColumn(page)).toHaveCount(1);
+    await expect(page.getByRole('button', { name: `Actions for ${TITLE}` })).toBeVisible();
+    await expect(panel.getByRole('group', { name: 'Log a drop' })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'I got it' })).toHaveCount(0);
+  });
+
+  test('member: no row menu column, no Log a drop, "I got it" present (hidden, not disabled)', async ({ page }) => {
+    await loginAsMember(page);
+    await openV2(page, track(), progressReady);
+    const panel = page.getByTestId('progress-expansion');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'I got it' })).toBeVisible();
+    await expect(menuColumn(page)).toHaveCount(0);
+    await expect(rowMenus(page)).toHaveCount(0);
+    await expect(panel.getByRole('group', { name: 'Log a drop' })).toHaveCount(0);
+    await expect(panel.getByRole('button', { name: /Log (a )?drop/ })).toHaveCount(0);
+    await expectNoDisabledOutside(page, []);
+  });
+
+  test('viewer: Copy plan only, no Actions column, and the queue is the unranked line with no # and no counts (R-S3-15)', async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      // Dev login re-seats DevMember as a member, so demote after logging in.
+      await loginAsMember(page);
+      demoted = await userIdOf(page);
+      await setRole(owner, demoted, 'viewer');
+      await openV2(page, track(), progressReady);
+
+      const panel = page.getByTestId('progress-expansion');
+      await expect(panel).toBeVisible();
+      const actions = panel.getByTestId('progress-expansion-actions').getByRole('button');
+      await expect(actions).toHaveCount(1);
+      await expect(actions.first()).toHaveAccessibleName('Copy plan');
+      await expect(menuColumn(page)).toHaveCount(0);
+      await expect(rowMenus(page)).toHaveCount(0);
+      await expect(panel.getByRole('button', { name: 'I got it' })).toHaveCount(0);
+      await expect(panel.getByRole('button', { name: /^Delete drop/ })).toHaveCount(0);
+
+      const queue = panel.getByTestId('progress-expansion-queue');
+      await expect(queue.getByRole('list')).toHaveCount(0);
+      await expect(queue.getByRole('button')).toHaveCount(0);
+      const line = (await queue.locator('p').innerText()).trim();
+      expect(line).toMatch(/^Need: [^#\d]+ · Want: [^#\d]+$/);
+      expect(line).not.toContain('#');
+      await expectNoDisabledOutside(page, []);
+      await context.close();
+    } finally {
+      if (demoted) await setRole(owner, demoted, 'member');
+      demoted = null;
+      await owner.context.close();
+    }
+  });
+});

@@ -4,11 +4,11 @@
  * block; Escape in the block (or in one of its selects) never closes the panel; and a block with
  * unsaved changes is never dropped silently: opening another row, closing the row and Mark
  * finished (menu and action bar) each ask "Discard changes?" first. The store is seeded as
- * `ProgressPage.rowMenu.test.tsx` does, with `updateGoal` replaced by a fake that edits the seeded
+ * `__fixtures__/pageHarness.tsx` does, with `updateGoal` replaced by a fake that edits the seeded
  * goals the way the real one does (the request itself is `FarmEditBlock.test.tsx`'s).
  */
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { useNavigate } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../services/api', async (importOriginal) => {
@@ -25,87 +25,32 @@ vi.mock('../../services/api', async (importOriginal) => {
   };
 });
 
-import { useCollectionGoalStore, type CollectionGoal, type ParticipantStateEntry } from '../../stores/collectionGoalStore';
 import { useToastStore } from '../../stores/toastStore';
-import type { StaticGroup, TierSnapshot } from '../../types';
+import {
+  NEEDY,
+  EVERYONE,
+  menuOf,
+  nameOf,
+  otherGroup,
+  panel,
+  pick,
+  refreshGoalProgress,
+  renderAt,
+  seedPage,
+  setUpPage,
+  tearDownPage,
+  trackOf,
+  updateGoal,
+} from './__fixtures__/pageHarness';
 import { goal, row } from './__fixtures__/progressFixtures';
-import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
-import { ProgressPage } from './ProgressPage';
-
-const group = { id: 'g1', name: 'Dev Test Static', shareCode: 'DEVTST', settings: {}, userRole: 'owner', members: [] } as unknown as StaticGroup;
-
-const player = (id: string, name: string, position: string, role: string, userId: string | null) => ({
-  id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId,
-});
-const tier = {
-  id: 't1',
-  staticGroupId: 'g1',
-  tierId: 'aac-cruiserweight',
-  players: [player('p1', 'Aya', 'T1', 'tank', 'u1'), player('p2', 'Bo', 'H1', 'healer', 'u2')],
-} as unknown as TierSnapshot;
-
-const fetchGoals = vi.fn();
-const fetchProgress = vi.fn();
-const refreshGoalProgress = vi.fn();
-const updateGoal = vi.fn();
 
 const GOALS = [
   goal('hot', { title: 'Hot Farm', summary: 'Original notes' }),
   goal('calm', { title: 'Calm Farm' }),
 ];
-const NEEDY = { hot: [row('hot', 'u1'), row('hot', 'u2')], calm: [row('calm', 'u1', { state: 'want' })] };
-const EVERYONE = { hot: [row('hot', 'u1', { state: 'have' }), row('hot', 'u2', { state: 'have' })], calm: NEEDY.calm };
+const seed = (participants = NEEDY, goals = GOALS) => seedPage(participants, goals);
 
-const real = useCollectionGoalStore.getState();
-
-function seed(participants: Record<string, ParticipantStateEntry[]> = NEEDY, goals: CollectionGoal[] = GOALS) {
-  useCollectionGoalStore.setState({
-    goals,
-    participants,
-    recordOnly: {},
-    loadedGroupId: 'g1',
-    isLoading: false,
-    progressError: null,
-    progressLoading: false,
-    error: null,
-    fetchGoals,
-    fetchProgress,
-    refreshGoalProgress,
-    updateGoal,
-  });
-}
-
-function LocationProbe() {
-  const { search } = useLocation();
-  return <output data-testid="location">{search}</output>;
-}
-
-function renderAt(url: string, props: Partial<Parameters<typeof ProgressPage>[0]> = {}) {
-  return render(
-    <MemoryRouter initialEntries={[url]}>
-      <ProgressPage
-        group={group}
-        tier={tier}
-        canManage={true}
-        userRole="owner"
-        currentUserId="u1"
-        isViewingAs={false}
-        onNavigate={vi.fn()}
-        {...props}
-      />
-      <LocationProbe />
-    </MemoryRouter>,
-    { wrapper: TooltipWrapper },
-  );
-}
-
-const trackOf = () => new URLSearchParams(screen.getByTestId('location').textContent ?? '').get('track');
-const rowOf = (id: string) => screen.getAllByTestId('progress-farm-row').find((r) => r.getAttribute('data-goal-id') === id)!;
-const nameOf = (id: string) => within(within(rowOf(id)).getByRole('rowheader')).getByRole('button');
-const panel = () => screen.queryByTestId('progress-expansion');
 const block = () => screen.queryByTestId('progress-edit-block');
-const menuOf = (title: string) => screen.getByRole('button', { name: `Actions for ${title}` });
-const pick = (name: string) => fireEvent.click(screen.getByRole('menuitem', { name }));
 const field = (name: string) => within(block()!).getByRole('textbox', { name });
 const dirty = (value = 'Edited notes') => fireEvent.change(field('Notes'), { target: { value } });
 const discardDialog = () => screen.queryByRole('dialog', { name: 'Discard changes?' });
@@ -121,35 +66,12 @@ async function startEditing(id: string, title: string) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  stubCanHover();
+  setUpPage();
+  // jsdom has none.
   Element.prototype.scrollIntoView = vi.fn();
-  fetchGoals.mockResolvedValue(undefined);
-  fetchProgress.mockResolvedValue({ error: null });
-  refreshGoalProgress.mockResolvedValue(undefined);
-  updateGoal.mockImplementation(async (_groupId: string, id: string, data: Partial<CollectionGoal>) => {
-    useCollectionGoalStore.setState((s) => ({
-      goals: s.goals.map((g) =>
-        g.id === id ? { ...g, ...data, completedAt: data.status === 'complete' ? '2026-10-10T00:00:00Z' : null } : g,
-      ),
-    }));
-  });
-  useToastStore.getState().clearAll();
 });
 
-afterEach(() => {
-  useCollectionGoalStore.setState({
-    fetchGoals: real.fetchGoals,
-    fetchProgress: real.fetchProgress,
-    refreshGoalProgress: real.refreshGoalProgress,
-    updateGoal: real.updateGoal,
-    goals: [],
-    participants: {},
-    drops: {},
-    loadedGroupId: null,
-  });
-  document.body.removeAttribute('style');
-});
+afterEach(tearDownPage);
 
 describe('the menu\'s Edit (vet M-1)', () => {
   it('reads Edit · Mark finished · Delete on an active row and Reopen · Delete on a finished one', async () => {
@@ -585,5 +507,103 @@ describe('focus after "Discard changes?"', () => {
     expect(discardDialog()).not.toBeInTheDocument();
     expect(nameOf('calm')).toHaveFocus();
     expect(field('Notes')).toHaveValue('Edited notes');
+  });
+
+  /** The menu as a browser leaves it: the item chosen holds the focus until the menu closes. */
+  const chooseFrom = (title: string, item: string) => {
+    press(menuOf(title));
+    screen.getByRole('menuitem', { name: item }).focus();
+    pick(item);
+  };
+
+  it("Edit chosen from another row's menu while dirty: Keep editing returns to that row's ⋯ button, not the Title", async () => {
+    seed();
+    await startEditing('hot', 'Hot Farm');
+    dirty();
+    chooseFrom('Calm Farm', 'Edit');
+    await confirmHasFocus();
+    keepEditing();
+    expect(menuOf('Calm Farm')).toHaveFocus();
+    expect(field('Notes')).toHaveValue('Edited notes');
+    expect(trackOf()).toBe('hot');
+
+    // Discard opens the other row's block, with its Title focused (the block's own mount).
+    chooseFrom('Calm Farm', 'Edit');
+    await confirmHasFocus();
+    discard();
+    await waitFor(() => expect(trackOf()).toBe('calm'));
+    await waitFor(() => expect(field('Title')).toHaveFocus());
+  });
+
+  it("the menu's Mark finished: Discard keeps focus on the ⋯ button while the write runs, and when it fails", async () => {
+    seed();
+    await startEditing('hot', 'Hot Farm');
+    dirty();
+    let fail: (reason: Error) => void = () => {};
+    updateGoal.mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject; }));
+    chooseMarkFinished();
+    await confirmHasFocus();
+    discard();
+    await waitFor(() => expect(updateGoal).toHaveBeenCalledTimes(1));
+    expect(menuOf('Hot Farm')).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+
+    await act(async () => fail(new Error('boom')));
+    await waitFor(() => expect(useToastStore.getState().toasts.some((t) => t.type === 'error')).toBe(true));
+    expect(menuOf('Hot Farm')).toHaveFocus();
+    // The block went with the discard; the row stays where it was.
+    expect(block()).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Finished \(/ })).toBeNull();
+  });
+
+  it("the action bar's Mark finished: Discard keeps focus on the button when the write fails", async () => {
+    seed(EVERYONE);
+    await startEditing('hot', 'Hot Farm');
+    dirty();
+    updateGoal.mockRejectedValueOnce(new Error('boom'));
+    press(actionBarMarkFinished());
+    await confirmHasFocus();
+    discard();
+    await waitFor(() => expect(useToastStore.getState().toasts.some((t) => t.type === 'error')).toBe(true));
+    expect(actionBarMarkFinished()).toHaveFocus();
+  });
+});
+
+describe('a static switch under a dirty edit', () => {
+  /** A way to put `?track` back without the row's name button, which clears the edit on its own. */
+  function Jump({ to }: { to: string }) {
+    const navigate = useNavigate();
+    return (
+      <button type="button" onClick={() => navigate(to)}>
+        jump
+      </button>
+    );
+  }
+
+  it('drops the edit: back on the first static, the same id opens with no block and asks nothing', async () => {
+    seed();
+    // The page stays mounted across the switch (as under a static switch in the shell).
+    const { rerender } = renderAt('/?track=hot', {}, <Jump to="/?track=hot" />);
+    await screen.findByTestId('progress-expansion');
+    fireEvent.click(menuOf('Hot Farm'));
+    pick('Edit');
+    await screen.findByTestId('progress-edit-block');
+    dirty();
+
+    rerender({ group: otherGroup });
+    await waitFor(() => expect(trackOf()).toBeNull());
+    expect(panel()).not.toBeInTheDocument();
+    rerender({});
+    await screen.findAllByTestId('progress-farm-row');
+
+    // The id comes back by the URL (a Back step, a remembered tab), not through the row's own toggle.
+    fireEvent.click(screen.getByRole('button', { name: 'jump' }));
+    await waitFor(() => expect(nameOf('hot')).toHaveAttribute('aria-expanded', 'true'));
+    expect(panel()).toBeInTheDocument();
+    expect(block()).not.toBeInTheDocument();
+
+    fireEvent.click(nameOf('hot'));
+    expect(discardDialog()).not.toBeInTheDocument();
+    await waitFor(() => expect(panel()).not.toBeInTheDocument());
   });
 });
