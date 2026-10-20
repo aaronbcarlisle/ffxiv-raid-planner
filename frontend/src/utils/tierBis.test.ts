@@ -71,6 +71,11 @@ function emptyGear(): P {
   return { job: 'DRG', gear: [] };
 }
 
+/** The week-1 state: every slot has a raid target, nothing is had yet. */
+function targetsNothingDone(): P {
+  return { job: 'DRG', gear: BASE.map((s) => slot({ slot: s, bisSource: 'raid', hasItem: false })) };
+}
+
 /** Classes interleaved in gear order (PLD so the off-hand is relevant). */
 function pldInterleaved(): P {
   return {
@@ -93,6 +98,7 @@ const FIXTURES: Record<string, () => P> = {
   noTargets,
   emptyGear,
   pldInterleaved,
+  targetsNothingDone,
 };
 
 function cell(partial: Partial<TierBisCell>): TierBisCell {
@@ -127,6 +133,10 @@ describe('tierBisCell (R-T-1)', () => {
 
   it('no targets at all: hasTargets false, done 0, every slot to go', () => {
     expect(tierBisCell(noTargets())).toEqual({ done: 0, needsAugment: 0, toGo: 11, total: 11, hasTargets: false });
+  });
+
+  it('targets set but nothing done (week 1): hasTargets true, every slot to go', () => {
+    expect(tierBisCell(targetsNothingDone())).toEqual({ done: 0, needsAugment: 0, toGo: 11, total: 11, hasTargets: true });
   });
 
   it('empty gear: total 11 and toGo 11, computed directly while the breakdown lists are empty', () => {
@@ -202,6 +212,11 @@ describe('tierBisTotals (R-T-2, D-7)', () => {
       cell({ done: 3, toGo: 9, total: 12 }),
     ];
     expect(tierBisTotals(cells)).toEqual({ done: 9, total: 23, anySet: true });
+  });
+
+  it('a counted cell with nothing done still counts its total and sets anySet', () => {
+    expect(tierBisTotals([cell({ done: 0, toGo: 11, total: 11 })]))
+      .toEqual({ done: 0, total: 11, anySet: true });
   });
 
   it('anySet false when no cell has targets', () => {
