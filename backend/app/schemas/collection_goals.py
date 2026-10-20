@@ -256,6 +256,8 @@ class RewardDropResponse(BaseModel):
     notes: str | None
     created_at: str
     recipient_display_name: str | None = None
+    # The recipient character's name at write time (S2a-3a, R-S3-12); None for Nobody or no character.
+    recipient_character_name: str | None = None
     # The state the drop flipped the recipient out of (need/want); None when it caused no flip.
     recipient_prior_state: str | None = None
 

@@ -227,6 +227,7 @@ def _drop_to_response(
         notes=drop.notes,
         created_at=drop.created_at,
         recipient_display_name=recipient_display_name,
+        recipient_character_name=drop.recipient_character_name,
         recipient_prior_state=drop.recipient_prior_state,
     )
 

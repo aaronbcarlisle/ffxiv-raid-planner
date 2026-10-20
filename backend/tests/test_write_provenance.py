@@ -854,7 +854,7 @@ async def test_material_update_response_keys_unchanged(client, auth_headers, wor
 # log_drop (PV-3): a farm drop records only the channel and the key (B11)
 # ---------------------------------------------------------------------------
 
-# Copied from RewardDropResponse at HEAD (vet M-6): no field is added or removed.
+# Copied from RewardDropResponse (vet M-6). S2a-3a R-S3-12 added recipient_character_name, additively.
 DROP_KEYS = {
     "id",
     "goal_id",
@@ -866,6 +866,7 @@ DROP_KEYS = {
     "notes",
     "created_at",
     "recipient_display_name",
+    "recipient_character_name",
     "recipient_prior_state",
 }
 
