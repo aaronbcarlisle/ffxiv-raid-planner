@@ -33,6 +33,7 @@ import { wasToastedByApi } from '../../services/api';
 import { useCollectionGoalStore, type CellWrite, type CollectionGoal, type ParticipantState } from '../../stores/collectionGoalStore';
 import { toast } from '../../stores/toastStore';
 import type { ProgressCell as ProgressCellModel } from '../../utils/progressModel';
+import { messageOf, undoWithToasts } from './undoToasts';
 import type { MatrixCellProps } from './useMatrixKeyboard';
 
 /** Where a cell's write goes (R-S2-10). */
@@ -66,11 +67,9 @@ const OPTIONS: readonly Option[] = [
  */
 const focusOnMount = (el: HTMLButtonElement | null) => el?.focus();
 
-const messageOf = (err: unknown) => (err instanceof Error ? err.message : 'something went wrong');
-
 interface CellPickerProps {
   cell: ProgressCellModel;
-  goal: Pick<CollectionGoal, 'id' | 'tokenCost' | 'tokenName'>;
+  goal: Pick<CollectionGoal, 'id' | 'title' | 'tokenCost' | 'tokenName'>;
   write: CellWriteTarget;
   /** The trigger's accessible name. */
   label: string;
@@ -121,15 +120,7 @@ export function CellPicker({ cell, goal, write, label, grid, onOpenChange, child
     onOpenChange?.(next);
   };
 
-  const undo = async (token: string) => {
-    try {
-      const { skipped } = await undoCells(write.groupId, token);
-      if (skipped > 0) toast.warning('Couldn\'t undo: it changed since');
-      else toast.success('Undone');
-    } catch (err) {
-      if (!wasToastedByApi(err)) toast.error(`Couldn't undo: ${messageOf(err)}`);
-    }
-  };
+  const undo = (token: string) => undoWithToasts(() => undoCells(write.groupId, token));
 
   const save = (next: ParticipantState, tokenCount: number | undefined, message: string) => {
     const body: CellWrite = { state: next };
@@ -184,7 +175,7 @@ export function CellPicker({ cell, goal, write, label, grid, onOpenChange, child
           {children}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="p-2">
+      <PopoverContent align="start" className="p-2" aria-label={`Status for ${cell.column.name}, ${goal.title}`}>
         {/* A pointer press here keeps focus where it is (no blur of the count field), so the
             pick it starts carries a typed count as one write. Keyboard focus moves are not
             picks: leaving the field by Tab commits the count on its blur. */}

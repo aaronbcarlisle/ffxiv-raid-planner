@@ -69,6 +69,9 @@ interface PopoverContentProps {
   /** Collision padding from viewport edges */
   collisionPadding?: number;
   className?: string;
+  /** The dialog's accessible name; Radix gives the content role="dialog" and no name of its own */
+  'aria-label'?: string;
+  'aria-labelledby'?: string;
 }
 
 export const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
@@ -81,6 +84,8 @@ export const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
       alignOffset = 0,
       collisionPadding = 8,
       className = '',
+      'aria-label': ariaLabel,
+      'aria-labelledby': ariaLabelledBy,
     },
     ref
   ) => {
@@ -88,6 +93,8 @@ export const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
           ref={ref}
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
           align={align}
           side={side}
           sideOffset={sideOffset}

@@ -245,8 +245,9 @@ test.describe.serial('Progress matrix', () => {
     await expect(stops).toHaveCount(1);
 
     // A real Tab in from the element before the matrix lands inside that one gridcell; the
-    // next Tab leaves every gridcell (not onto the scroller, not onto another cell).
-    await page.getByTestId('progress-tier-row').getByText('Open board').focus();
+    // next Tab leaves every gridcell (not onto the scroller, not onto another cell). Since F6
+    // the owner's toolbar ("Edit statuses") is the last control before the matrix.
+    await page.getByRole('button', { name: 'Edit statuses' }).focus();
     await page.keyboard.press('Tab');
     expect(await page.evaluate(() => document.activeElement?.closest('[role="gridcell"]') !== null)).toBe(true);
     expect(await matrix.evaluate((m) => m.contains(document.activeElement))).toBe(true);
@@ -350,6 +351,253 @@ test.describe.serial('Progress matrix', () => {
         .exclude('[data-testid="progress-column"] [class*="text-role-"]')
         .analyze();
       const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+      expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+      await context.close();
+    });
+  }
+});
+
+/**
+ * S2a-2·F6: Edit statuses. The owner is a lead, so the mode corrects another member's cell, sets
+ * their first count, and fills every blank claimed cell with Need in one go (then Undoes it).
+ *
+ * Two farms (the first carries the "E2E Progress" prefix, the second a catalog title, so the ledger
+ * covers it): a custom mount with a token cost, whose rows the corrections touch (no catalog item,
+ * so nothing reaches a member's record), and a farm tracked from the catalog through
+ * `from-suggestion` for an item that no seeded member has any signal for (B5: the members stay
+ * blank). Settings' Add Farm seeds nothing, so it would prove nothing about B5.
+ */
+const CLAIMED = ['Healer Two', 'Melee One', 'Caster One'] as const; // DevOwner, DevMember, Lloyd
+const EDIT_TITLE = `${PREFIX} Edit Mount`;
+
+/** A claimed cell's gridcell on one farm's row, by the column's name. */
+const cellOf = (page: Page, goalId: string, column: string) =>
+  page.locator(`[data-goal-id="${goalId}"] td[data-testid="progress-cell"][aria-label^="${column}, "]`);
+
+interface ParticipantsRead {
+  participants: Array<{ user_id: string; state: string; token_count: number | null; updated_by_user_id: string | null }>;
+  record_only?: unknown[];
+}
+
+async function readParticipants(page: Page, groupId: string, goalId: string): Promise<ParticipantsRead> {
+  const res = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/collection-participants?goal_id=${goalId}`);
+  if (!res.ok()) throw new Error(`reading the participants returned ${res.status()}`);
+  return ((await res.json()) as ParticipantsRead[])[0];
+}
+
+/**
+ * Track a catalog item through `from-suggestion` and keep it only if the static's members have no
+ * signal for it (no row, no record): tries the catalog's items in turn and deletes the ones that
+ * have one. The dev DB's seeded records decide which item wins, so it is chosen at run time.
+ */
+async function trackBlankCatalogFarm(page: Page, groupId: string, headers: ApiHeaders): Promise<{ id: string; title: string }> {
+  const catalog = await page.request.get(`${API_BASE}/api/collection-catalog`);
+  if (!catalog.ok()) throw new Error(`the catalog returned ${catalog.status()}`);
+  const items = (await catalog.json()) as Array<{ id: string; name: string }>;
+  for (const item of items.slice(0, 40)) {
+    const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals/from-suggestion`, {
+      headers,
+      data: { catalog_item_id: item.id, status: 'wanted' },
+    });
+    if (!res.ok()) continue; // already tracked by someone's goal, or not suggestible
+    const id = ((await res.json()) as { id: string }).id;
+    recordSeeded(id);
+    const read = await readParticipants(page, groupId, id);
+    if (read.participants.length === 0 && (read.record_only ?? []).length === 0) return { id, title: item.name };
+    const del = await page.request.delete(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${id}`, { headers });
+    if (!del.ok()) throw new Error(`deleting the candidate returned ${del.status()}`);
+  }
+  throw new Error('no catalog item in the first 40 is free of every member signal: the B5 farm cannot be built');
+}
+
+test.describe.serial('Progress: Edit statuses', () => {
+  let editId = '';
+  let blank = { id: '', title: '' };
+
+  test.beforeAll(async ({ browser }) => {
+    const { context, page, groupId, headers } = await ownerSession(browser);
+    try {
+      await deleteSeededFarms(page, groupId, headers);
+      const mount = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals`, {
+        headers,
+        data: { goal_type: 'mount', title: EDIT_TITLE, status: 'farming', token_name: 'Tokens', token_cost: 99 },
+      });
+      if (!mount.ok()) throw new Error(`seeding the edit mount returned ${mount.status()}`);
+      editId = ((await mount.json()) as { id: string }).id;
+      recordSeeded(editId);
+      blank = await trackBlankCatalogFarm(page, groupId, headers);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { context, page, groupId, headers } = await ownerSession(browser);
+    try {
+      await deleteSeededFarms(page, groupId, headers, [editId, blank.id].filter(Boolean));
+    } finally {
+      await context.close();
+    }
+  });
+
+  async function openEditable(page: Page, theme?: 'dark' | 'light') {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    if (theme) await page.addInitScript((t) => window.localStorage.setItem('theme', t), theme);
+    await loginAsOwner(page);
+    await page.goto(`/group/${DEV_SHARE_CODE}?shell=v2&tab=progress`);
+    await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
+    await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(`[data-goal-id="${editId}"]`)).toBeVisible();
+    await page.waitForLoadState('networkidle');
+  }
+
+  test('owner: Edit statuses corrects a member\'s cell and sets their first count', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await openEditable(page);
+
+    // Outside the mode only the owner's own cell is a control.
+    const memberCell = cellOf(page, editId, 'Melee One');
+    await expect(memberCell).toHaveAttribute('aria-label', `Melee One, ${EDIT_TITLE}, no status`);
+    await expect(memberCell.getByRole('button')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Edit statuses' }).click();
+    await expect(page.getByRole('button', { name: 'Done' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Mark everyone without a status as Need' })).toBeEnabled();
+
+    // A correction: a blank cell of another member says "set status", the pick lands on their row.
+    await memberCell.getByRole('button', { name: `Melee One, ${EDIT_TITLE}, no status — set status` }).click();
+    await page.getByRole('group', { name: 'Status' }).getByRole('button', { name: 'Need', exact: true }).click();
+    await expect(memberCell).toHaveAttribute('aria-label', `Melee One, ${EDIT_TITLE}, Need`);
+
+    // Their first count, through the same cell (the field shows for a token farm they have not hidden).
+    await memberCell.getByRole('button', { name: `Melee One, ${EDIT_TITLE}, Need — change status` }).click();
+    const count = page.getByRole('spinbutton', { name: 'Tokens' });
+    await count.fill('7');
+    await count.press('Enter');
+    await expect(memberCell).toHaveAttribute('aria-label', `Melee One, ${EDIT_TITLE}, Need, 7 of 99 Tokens`);
+    await page.keyboard.press('Escape');
+
+    // The owner's own cell in the mode is still "your" status.
+    await expect(cellOf(page, editId, 'Healer Two').getByRole('button')).toHaveAccessibleName(/ — set your status$/);
+
+    // The row on the server: DevMember's Need/7, written by someone else.
+    const { groupId } = await ownerApiContext(page);
+    const rows = (await readParticipants(page, groupId, editId)).participants;
+    const memberId = (await (await page.request.get(`${API_BASE}/api/static-groups/${groupId}/members`)).json() as Array<{ userId: string; user?: { discordUsername: string } }>)
+      .find((m) => m.user?.discordUsername === 'DevMember')?.userId;
+    const row = rows.find((r) => r.user_id === memberId);
+    expect(row).toMatchObject({ state: 'need', token_count: 7 });
+    expect(row!.updated_by_user_id).not.toBe(memberId);
+    await context.close();
+  });
+
+  test('member: the corrected cell\'s tooltip reads "set by" the owner', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await loginAsMember(page);
+    await page.goto(`/group/${DEV_SHARE_CODE}?shell=v2&tab=progress`);
+    await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
+    await page.waitForLoadState('networkidle');
+
+    // DevMember's own cell (their column is Melee One) holds the owner's correction.
+    const cell = cellOf(page, editId, 'Melee One');
+    await expect(cell).toHaveAttribute('aria-label', `Melee One, ${EDIT_TITLE}, Need, 7 of 99 Tokens`);
+    await cell.getByRole('button').focus();
+    // The writer is named by their column first (ProgressMatrix's nameOf): DevOwner's claimed player.
+    await expect(page.getByRole('tooltip').first()).toContainText(/set by (Healer Two|Dev ?Owner)/);
+    // No lead control for a member.
+    await expect(page.getByRole('button', { name: 'Edit statuses' })).toHaveCount(0);
+    await context.close();
+  });
+
+  test('owner: a farm tracked from the catalog leaves members blank (B5); the bulk Need fills them and Undo empties them', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await openEditable(page);
+    const { groupId } = await ownerApiContext(page);
+
+    // B5: the tracked item carries no signal for any member, so every claimed cell is blank.
+    const before = await readParticipants(page, groupId, blank.id);
+    expect(before.participants).toEqual([]);
+    for (const column of CLAIMED) {
+      await expect(cellOf(page, blank.id, column)).toHaveAttribute('aria-label', `${column}, ${blank.title}, no status`);
+    }
+
+    await page.getByRole('button', { name: 'Edit statuses' }).click();
+    const blanks = await page.getByTestId('progress-matrix').locator('td[data-testid="progress-cell"][aria-label$=", no status"]').count();
+    expect(blanks, 'the B5 farm alone has three blank claimed cells').toBeGreaterThanOrEqual(3);
+
+    await page.getByRole('button', { name: 'Mark everyone without a status as Need' }).click();
+    await expect(page.getByText(`Marked ${blanks} ${blanks === 1 ? 'cell' : 'cells'} Need`)).toBeVisible();
+    // The trigger was disabled while it ran, which drops focus to the body: it lands on Done.
+    await expect(page.getByRole('button', { name: 'Done' })).toBeFocused();
+    for (const column of CLAIMED) {
+      await expect(cellOf(page, blank.id, column)).toHaveAttribute('aria-label', `${column}, ${blank.title}, Need`);
+    }
+    expect((await readParticipants(page, groupId, blank.id)).participants.map((r) => r.state)).toEqual(['need', 'need', 'need']);
+    // The member's corrected cell was not blank, so the bulk left it alone.
+    await expect(cellOf(page, editId, 'Melee One')).toHaveAttribute('aria-label', `Melee One, ${EDIT_TITLE}, Need, 7 of 99 Tokens`);
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(page.getByText('Undone', { exact: true })).toBeVisible();
+    for (const column of CLAIMED) {
+      await expect(cellOf(page, blank.id, column)).toHaveAttribute('aria-label', `${column}, ${blank.title}, no status`);
+    }
+    expect((await readParticipants(page, groupId, blank.id)).participants).toEqual([]);
+    await expect(cellOf(page, editId, 'Melee One')).toHaveAttribute('aria-label', `Melee One, ${EDIT_TITLE}, Need, 7 of 99 Tokens`);
+
+    // Done leaves the mode: the bulk is gone, "Edit statuses" is back.
+    await page.getByRole('button', { name: 'Done' }).click();
+    await expect(page.getByRole('button', { name: 'Edit statuses' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Mark everyone without a status as Need' })).toHaveCount(0);
+    await context.close();
+  });
+
+  /** The same known role-token debt as the matrix test above is excluded; every other node is scanned. */
+  async function blockingViolations(page: Page, includes: string[]) {
+    let builder = new AxeBuilder({ page }).exclude('[data-testid="progress-column"] [class*="text-role-"]');
+    for (const selector of includes) builder = builder.include(selector);
+    const results = await builder.analyze();
+    return results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+  }
+
+  for (const theme of THEMES) {
+    test(`owner: axe reports no critical or serious violation in Edit statuses (${theme}, 1440 x 900)`, async ({ browser }) => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await openEditable(page, theme);
+      await page.getByRole('button', { name: 'Edit statuses' }).click();
+      await expect(page.getByRole('button', { name: 'Done' })).toBeVisible();
+      await page.waitForTimeout(300);
+
+      const blocking = await blockingViolations(page, ['[data-testid="progress-screen"]']);
+      expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+      await context.close();
+    });
+
+    test(`owner: axe reports no critical or serious violation with the picker open (${theme}, 1440 x 900)`, async ({ browser }) => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await openEditable(page, theme);
+      await page.getByRole('button', { name: 'Edit statuses' }).click();
+      await cellOf(page, editId, 'Melee One').getByRole('button').click();
+      const status = page.getByRole('group', { name: 'Status' });
+      await expect(status).toBeVisible();
+      await expect(page.getByRole('spinbutton', { name: 'Tokens' })).toBeVisible();
+      // The picker is portalled out of the screen: tag it so the scan includes it.
+      const tagged = await status.evaluate((el) => {
+        const popover = el.closest('[role="dialog"]');
+        popover?.setAttribute('data-e2e-picker', '1');
+        return popover !== null;
+      });
+      expect(tagged, 'the picker is a dialog').toBe(true);
+      // The click left the pointer on the trigger: its ghost hover tint (bg-accent/10) puts a Need
+      // count at 4.49:1 in dark, a hover-only reading. Park the pointer so the scan is of the rest state.
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(300);
+
+      const blocking = await blockingViolations(page, ['[data-testid="progress-screen"]', '[data-e2e-picker="1"]']);
       expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
       await context.close();
     });

@@ -4,20 +4,23 @@
  * whose accessible name is the model's ("{player}, {track}, {state}[, {count} of
  * {cost} {token}]"). Hover or focus tells where the value came from (R-S2-9).
  *
- * S2a-2·F5 (R-S2-10): given an `edit` context, the reader's own cell holds a `CellPicker`,
+ * S2a-2·F5 (R-S2-10): a cell that `editFor` gives a write target holds a `CellPicker`,
  * whose trigger Button is the cell's focus element and its roving stop (`grid` goes on the
- * Button; the `<td>` takes no tabIndex). A blank own cell reads a muted "Set status". The
- * provenance tooltip is controlled here for its whole life (never flipping Radix between
- * controlled and uncontrolled) and sleeps while the picker is open, so focus and pointer
- * events from the portalled popover (which React bubbles up to this `<td>`) cannot wake it
- * over the picker. Every other cell stays what F4 built: the `<td>` is the stop and never
- * a control.
+ * Button; the `<td>` takes no tabIndex). A blank editable cell reads a muted "Set status",
+ * so a lead can see where to click. The reader's own cell is named "… — change your
+ * status" / "… — set your status"; another member's (a lead's correction in Edit statuses,
+ * S2a-2·F6) "… — change status" / "… — set status". The provenance tooltip is controlled
+ * here for its whole life (never flipping Radix between controlled and uncontrolled) and
+ * sleeps while the picker is open, so focus and pointer events from the portalled popover
+ * (which React bubbles up to this `<td>`) cannot wake it over the picker. Every other cell
+ * stays what F4 built: the `<td>` is the stop and never a control.
  */
 import { useState } from 'react';
 import { Tooltip } from '../primitives/Tooltip';
 import type { CollectionGoal, ParticipantState } from '../../stores/collectionGoalStore';
 import { cellAccessibleName, cellText, type ProgressCell as ProgressCellModel } from '../../utils/progressModel';
-import { CellPicker, type CellWriteTarget } from './CellPicker';
+import { CellPicker } from './CellPicker';
+import type { CellWriteResolver } from './editStatuses';
 import { cellProvenance, type ProvenanceContext } from './progressProvenance';
 import type { MatrixCellProps } from './useMatrixKeyboard';
 
@@ -36,11 +39,11 @@ interface ProgressCellProps {
   provenance: ProvenanceContext;
   /** The roving-grid props; absent where the cell is not part of the keyboard grid (Finished). */
   grid?: MatrixCellProps;
-  /** How the reader's own cell writes (R-S2-10); absent where cells are read-only (a viewer; Finished). */
-  edit?: CellWriteTarget;
+  /** Where a cell writes (R-S2-10), undefined for one this reader may not; absent where every cell is read-only (Finished). */
+  editFor?: CellWriteResolver;
 }
 
-export function ProgressCell({ cell, goal, provenance, grid, edit }: ProgressCellProps) {
+export function ProgressCell({ cell, goal, provenance, grid, editFor }: ProgressCellProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   // What Radix last asked for; shown only while the cell has provenance and the picker is shut.
   // Radix never asks to close a tooltip whose controlled value is already false, so a wish the
@@ -51,7 +54,7 @@ export function ProgressCell({ cell, goal, provenance, grid, edit }: ProgressCel
   const text = cellText(cell, goal);
   const origin = cellProvenance(cell, provenance);
   const name = cellAccessibleName(cell, goal);
-  const write = cell.own ? edit : undefined;
+  const write = editFor?.(cell);
   // The state span sets its own weight: inside the picker's Button it would inherit semibold.
   const content =
     cell.state !== null && text !== '' ? (
@@ -102,7 +105,7 @@ export function ProgressCell({ cell, goal, provenance, grid, edit }: ProgressCel
               // on a fresh focus or hover, never stale after an outside-click close.
               setTipWanted(false);
             }}
-            label={`${name} — ${cell.state === null ? 'set your status' : 'change your status'}`}
+            label={`${name} — ${cell.state === null ? 'set' : 'change'}${cell.own ? ' your' : ''} status`}
           >
             {content}
           </CellPicker>
