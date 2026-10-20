@@ -276,13 +276,18 @@ test.describe.serial('Progress matrix', () => {
     await expect(page).toHaveURL(new RegExp(`[?&]track=${seeded.customId}(&|$)`));
 
     // Keyboard: the owner is a lead, so ArrowRight leaves the name for the row menu (R-S3-17),
-    // again for the first player cell; ArrowLeft goes back through the menu, Home lands on the
-    // name, and Enter toggles.
+    // then the status cell (S2a-3b·H3a, R-T-4), then the first player cell; ArrowLeft goes back
+    // through the status and the menu, Home lands on the name, and Enter toggles.
+    const onStatus = () => page.evaluate(() => document.activeElement?.getAttribute('data-testid') === 'progress-status');
     await nameOf(seeded.customId).focus();
     await page.keyboard.press('ArrowRight');
     await expect(page.getByRole('button', { name: /^Actions for / }).and(page.locator(':focus'))).toHaveCount(1);
     await page.keyboard.press('ArrowRight');
+    expect(await onStatus()).toBe(true);
+    await page.keyboard.press('ArrowRight');
     expect(await page.evaluate(() => document.activeElement?.closest('[data-testid="progress-cell"]') !== null)).toBe(true);
+    await page.keyboard.press('ArrowLeft');
+    expect(await onStatus()).toBe(true);
     await page.keyboard.press('ArrowLeft');
     expect(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')?.startsWith('Actions for '))).toBe(true);
     await page.keyboard.press('ArrowRight');
@@ -311,26 +316,45 @@ test.describe.serial('Progress matrix', () => {
     await openProgress(page);
 
     const matrix = page.getByTestId('progress-matrix');
-    // The scroller is not a stop of its own; the grid has exactly one: since S2a-3a the first
-    // row's name button inside its rowheader until a cell is focused, then that cell, or, for
-    // the owner's own cell (F5), the picker button inside it.
-    const stops = matrix.locator('[role="gridcell"][tabindex="0"], [role="gridcell"] [tabindex="0"], [role="rowheader"] [tabindex="0"]');
+    // The scroller is not a stop of its own; the grid has exactly one: since S2a-3b·H3a (R-T-4)
+    // the tier row's name cell until a cell is focused, then that cell, or, for the owner's own
+    // cell (F5), the picker button inside it. The tier row's menu cell, Open board and BiS cells
+    // are grid cells at -1, no plain tab stops.
+    const stops = matrix.locator(
+      '[role="gridcell"][tabindex="0"], [role="gridcell"] [tabindex="0"], [role="rowheader"][tabindex="0"], [role="rowheader"] [tabindex="0"]',
+    );
+    const tierRow = page.getByTestId('progress-tier-row');
     await expect(matrix).not.toHaveAttribute('tabindex', /.*/);
     await expect(stops).toHaveCount(1);
-    await expect(stops).toHaveAttribute('aria-expanded', 'false');
+    await expect(tierRow.locator('[role="rowheader"][tabindex="0"], [role="rowheader"] [tabindex="0"]')).toHaveCount(1);
+    for (const button of await tierRow.locator('button').all()) await expect(button).toHaveAttribute('tabindex', '-1');
 
-    // A real Tab in from the element before the matrix lands on that one stop, the first row's
-    // name; the next Tab leaves the grid's rows (not onto the scroller, not onto a cell, not onto
-    // another name). Since F6 the owner's toolbar ("Edit statuses") is the last control before
-    // the matrix.
-    // S2a-3b·H3 (R-T-3): the tier row's buttons are plain tab stops ahead of the grid until H3a, so the walk starts from its last one.
-    await page.getByTestId('progress-tier-row').locator('button').last().focus();
+    // A real Tab in from the element before the matrix lands on that one stop, the tier's name;
+    // the next Tab leaves the grid's rows (not onto the scroller, not onto a cell, not onto
+    // another name, not onto a tier button). Since F6 the owner's toolbar ("Edit statuses") is
+    // the last control before the matrix.
+    await page.getByRole('button', { name: 'Edit statuses' }).focus();
     await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => document.activeElement?.closest('[role="rowheader"]') !== null)).toBe(true);
+    expect(
+      await page.evaluate(
+        () => document.activeElement?.closest('[role="rowheader"]')?.closest('[data-testid="progress-tier-row"]') != null,
+      ),
+    ).toBe(true);
     expect(await matrix.evaluate((m) => m.contains(document.activeElement))).toBe(true);
     await page.keyboard.press('Tab');
     expect(await page.evaluate(() => document.activeElement?.closest('[role="gridcell"], [role="rowheader"]') ?? null)).toBeNull();
     expect(await matrix.evaluate((m) => m === document.activeElement)).toBe(false);
+
+    // ArrowDown from the tier's name reaches the first farm's name (R-T-4), ArrowUp comes back.
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('ArrowDown');
+    expect(
+      await page.evaluate(() => document.activeElement?.closest('[role="rowheader"]')?.closest('[data-testid="progress-farm-row"]') != null),
+    ).toBe(true);
+    await page.keyboard.press('ArrowUp');
+    expect(
+      await page.evaluate(() => document.activeElement?.closest('[role="rowheader"]')?.closest('[data-testid="progress-tier-row"]') != null),
+    ).toBe(true);
 
     // The owner's Need cell is their own, so its focus element is the picker button (F5).
     const needCell = page.locator(`[data-goal-id="${seeded.mountId}"] [data-testid="progress-cell"][aria-label*=", Need, "]`).first();
@@ -836,23 +860,32 @@ test.describe.serial('Progress: row expansion', () => {
       page.evaluate(() => ({
         inPanel: document.activeElement?.closest('[data-testid="progress-expansion"]') !== null,
         row: document.activeElement?.closest('[data-testid="progress-farm-row"]')?.getAttribute('data-goal-id') ?? null,
+        tier: document.activeElement?.closest('[data-testid="progress-tier-row"]') != null,
         menu: document.activeElement?.getAttribute('aria-label')?.startsWith('Actions for ') ?? false,
-        name: document.activeElement?.closest('[role="rowheader"]') !== null,
+        tierMenu: document.activeElement?.textContent === 'No actions',
+        status: document.activeElement?.getAttribute('data-testid') === 'progress-status',
+        openBoard: document.activeElement?.textContent === 'Open board',
+        bis: / BiS slots done| no BiS set$/.test(document.activeElement?.getAttribute('aria-label') ?? ''),
+        name: document.activeElement?.closest('[role="rowheader"]') != null,
       }));
 
-    // Name, then the menu column, then the first player cell, all of the open row.
+    // Name, then the menu column, then the status cell (S2a-3b·H3a, R-T-4), then the first player cell, all of the open row.
     await nameOf(page, firstId).focus();
     await page.keyboard.press('ArrowRight');
     expect(await where()).toMatchObject({ row: firstId, menu: true, inPanel: false });
     await page.keyboard.press('ArrowRight');
-    expect(await where()).toMatchObject({ row: firstId, menu: false, inPanel: false });
+    expect(await where()).toMatchObject({ row: firstId, status: true, inPanel: false });
+    await page.keyboard.press('ArrowRight');
+    expect(await where()).toMatchObject({ row: firstId, menu: false, status: false, inPanel: false });
     // Down from the open row's cell lands on the next farm's cell, past the panel.
     await page.keyboard.press('ArrowDown');
     expect(await where()).toMatchObject({ row: nextId, inPanel: false });
     // Back up: the open row's cell, never the panel.
     await page.keyboard.press('ArrowUp');
     expect(await where()).toMatchObject({ row: firstId, inPanel: false });
-    // Left twice: the menu, then the name.
+    // Left three times: the status, the menu, then the name.
+    await page.keyboard.press('ArrowLeft');
+    expect(await where()).toMatchObject({ row: firstId, status: true });
     await page.keyboard.press('ArrowLeft');
     expect(await where()).toMatchObject({ row: firstId, menu: true });
     await page.keyboard.press('ArrowLeft');
@@ -862,6 +895,24 @@ test.describe.serial('Progress: row expansion', () => {
     expect(await where()).toMatchObject({ row: nextId, name: true, inPanel: false });
     await page.keyboard.press('ArrowUp');
     expect(await where()).toMatchObject({ row: firstId, name: true, inPanel: false });
+
+    // Up again: the tier row's name, the grid's top row (R-T-4). Across it a lead steps through
+    // the empty menu cell, Open board, then the first BiS cell; Home comes back to the name.
+    await page.keyboard.press('ArrowUp');
+    expect(await where()).toMatchObject({ tier: true, name: true, row: null });
+    await page.keyboard.press('ArrowRight');
+    expect(await where()).toMatchObject({ tier: true, tierMenu: true });
+    await page.keyboard.press('ArrowRight');
+    expect(await where()).toMatchObject({ tier: true, openBoard: true });
+    await page.keyboard.press('ArrowRight');
+    expect(await where()).toMatchObject({ tier: true, bis: true });
+    await page.keyboard.press('Home');
+    expect(await where()).toMatchObject({ tier: true, name: true });
+    // Down from Open board is the first farm's status cell, the same column.
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowDown');
+    expect(await where()).toMatchObject({ row: firstId, status: true });
     await context.close();
   });
 

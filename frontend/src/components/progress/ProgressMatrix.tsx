@@ -8,9 +8,11 @@
  * sticky (CLAUDE.md § Product rules).
  *
  * S2a-3b·H3 (R-T-3, E-5): the tier row (`tier`, `TierRow`) is the first row of the active `<tbody>`,
- * above every farm, with a cell under every column. It sits outside the grid's rows (`rowIds`), its
- * buttons plain tab stops as Finished rows' are, until H3a joins it to the grid. The first column
- * is headed "Track" (the tier is a track too).
+ * above every farm, with a cell under every column. The first column is headed "Track" (the tier
+ * is a track too). S2a-3b·H3a (E-6, R-T-4): the tier row is the grid's first row (`TIER_ROW_ID`),
+ * so its name is the stop until a cell is focused, and the status column is a grid column
+ * (`STATUS_KEY`) between the name (or a lead's menu) and the players. With no tier selected the
+ * grid starts at the first farm, as before.
  *
  * S2a-2·F4: the active rows and their columns are one `role="grid"` with a single roving
  * Tab stop (`useMatrixKeyboard`), and each cell says where its value came from on hover
@@ -21,9 +23,8 @@
  * picker's Button is then that cell's stop. Everything else is read-only.
  *
  * S2a-3a·G2 (D-7, R-S3-3, R-S3-4): the grid's keys start with the name column (`NAME_KEY`),
- * whose cell is each row's disclosure Button, so the first row's name is the stop until a
- * cell is focused, and Home / ArrowLeft reach it. For leads `MENU_KEY` follows it (S2a-3a·G4
- * Task TG7, R-S3-17): a narrow "Actions" column holding each row's ⋯ menu, an arrow target, and
+ * whose cell is each farm row's disclosure Button, so Home / ArrowLeft reach it. For leads
+ * `MENU_KEY` follows it (S2a-3a·G4 Task TG7, R-S3-17): a narrow "Actions" column holding each row's ⋯ menu, an arrow target, and
  * one more column in `spanAll`; members and viewers have neither. The one open row (`openId`, the page's `?track`) renders its panel
  * (`FarmExpansion`) as the next `<tr>`, spanning every column (`spanAll`) and outside
  * `rowIds`, in whichever `<tbody>` holds the row.
@@ -38,9 +39,9 @@ import type { WeekClock } from '../../utils/dropWeek';
 import type { FarmRow as FarmRowModel, ProgressColumn } from '../../utils/progressModel';
 import type { CellWriteResolver } from './editStatuses';
 import { FarmExpansion } from './FarmExpansion';
-import { FarmRow, MENU_KEY, NAME_KEY } from './FarmRow';
+import { FarmRow, MENU_KEY, NAME_KEY, STATUS_KEY } from './FarmRow';
 import { FinishedFarms } from './FinishedFarms';
-import { TierRow, type TierRowModel } from './TierRow';
+import { TIER_ROW_ID, TierRow, type TierRowModel } from './TierRow';
 import type { ProvenanceContext } from './progressProvenance';
 import { useMatrixKeyboard } from './useMatrixKeyboard';
 import { useVisibleWidth } from './useVisibleWidth';
@@ -140,23 +141,25 @@ export function ProgressMatrix({
   clock,
   tier,
 }: ProgressMatrixProps) {
-  const rowIds = useMemo(() => active.map((r) => r.goal.id), [active]);
+  // The tier row leads the grid's rows when a tier is selected (R-T-4), then the active farms;
+  // Finished rows stay outside.
+  const hasTier = tier !== undefined;
+  const rowIds = useMemo(() => [...(hasTier ? [TIER_ROW_ID] : []), ...active.map((r) => r.goal.id)], [active, hasTier]);
   // Leads manage the farms (the ⋯ menu column, R-S3-17), as LogDropButton gates its split button.
   const lead = canManage && userRole !== 'viewer';
-  // The name column leads (R-S3-4), then a lead's menu column, then the players.
+  // The name column leads (R-S3-4), then a lead's menu column, the status column (R-T-4), then the players.
   const colKeys = useMemo(
-    () => [NAME_KEY, ...(lead ? [MENU_KEY] : []), ...columns.map((c) => c.key)],
+    () => [NAME_KEY, ...(lead ? [MENU_KEY] : []), STATUS_KEY, ...columns.map((c) => c.key)],
     [columns, lead],
   );
   const keyboard = useMatrixKeyboard(rowIds, colKeys);
   // The open panel spans the table, which outgrows the view: it lays out at the scroller's width.
   const [scrollerRef, viewWidth] = useVisibleWidth<HTMLDivElement>();
-  // Every column of the table: the grid's keys (name, a lead's menu, the players) plus Status, which is never a focus target.
-  const spanAll = colKeys.length + 1;
-  // With an active row the grid's single Tab stop (its name button at least) is the keyboard's
-  // way into the scroller, as the tier row's Open board is; without either the scroller itself is
-  // the stop (axe scrollable-region-focusable).
-  const hasCells = rowIds.length > 0 || tier !== undefined;
+  // Every column of the table is a grid key (name, a lead's menu, status, the players).
+  const spanAll = colKeys.length;
+  // With a row in the grid (the tier's, or an active farm's) its single Tab stop is the keyboard's
+  // way into the scroller; without one the scroller itself is the stop (axe scrollable-region-focusable).
+  const hasCells = rowIds.length > 0;
 
   // Names for "set by {name}": a writer's column first, then the static's members.
   const columnNames = useMemo(() => {
@@ -217,7 +220,7 @@ export function ProgressMatrix({
           </tr>
         </thead>
         <tbody>
-          {tier !== undefined && <TierRow tier={tier} columns={columns} lead={lead} />}
+          {tier !== undefined && <TierRow tier={tier} columns={columns} lead={lead} keyboard={keyboard} />}
           {active.map((row) => (
             <FarmRow
               key={row.goal.id}
