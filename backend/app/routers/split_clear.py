@@ -1,6 +1,7 @@
 """Split Clear Planner endpoints"""
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -183,6 +184,28 @@ async def _load_player_characters(
     return out
 
 
+async def _active_tier_assignments(
+    session: AsyncSession, group_id: str
+) -> Sequence[SplitClearAssignment]:
+    """Return the static's assignments whose player sits in its active tier.
+
+    Mirrors the active-tier join in `_load_player_characters`. Assignments are
+    keyed per static, so rows for players of older tiers stay in the table
+    (reset-week and mark-run-cleared still write them) but are not listed.
+    """
+    result = await session.execute(
+        select(SplitClearAssignment)
+        .join(SnapshotPlayer, SplitClearAssignment.snapshot_player_id == SnapshotPlayer.id)
+        .join(TierSnapshot, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
+        .where(
+            SplitClearAssignment.static_group_id == group_id,
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.is_active == True,  # noqa: E712
+        )
+    )
+    return result.scalars().all()
+
+
 async def _validate_character_ownership(
     session: AsyncSession,
     player: SnapshotPlayer,
@@ -223,10 +246,7 @@ async def get_split_clear(
     group = await get_static_group(session, group_id)
     await check_view_permission(session, group, current_user)
 
-    result = await session.execute(
-        select(SplitClearAssignment).where(SplitClearAssignment.static_group_id == group_id)
-    )
-    assignments = result.scalars().all()
+    assignments = await _active_tier_assignments(session, group_id)
 
     player_characters = await _load_player_characters(session, group_id)
 
@@ -256,10 +276,7 @@ async def update_split_clear_settings(
     await session.flush()
     await session.commit()
 
-    result = await session.execute(
-        select(SplitClearAssignment).where(SplitClearAssignment.static_group_id == group_id)
-    )
-    assignments = result.scalars().all()
+    assignments = await _active_tier_assignments(session, group_id)
     player_characters = await _load_player_characters(session, group_id)
 
     return SplitClearResponse(
