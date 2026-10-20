@@ -115,3 +115,47 @@ describe('scrollToPlayerRow', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+// S2a-3b·H4b: a keyboard jump (Enter on Open on board) unmounts the button that held focus, so focus
+// is on <body> when the Board row mounts; the landing hands it to the row.
+describe('scrollToPlayerRow focus', () => {
+  beforeEach(() => { vi.useFakeTimers(); document.body.innerHTML = ''; });
+  afterEach(() => { vi.useRealTimers(); });
+
+  function mountRow(id: string) {
+    const row = document.createElement('tr');
+    row.id = id;
+    row.tabIndex = -1;
+    row.scrollIntoView = vi.fn();
+    document.body.appendChild(row);
+    return row;
+  }
+
+  it('focuses the landed row when nothing holds focus, once it mounts', () => {
+    scrollToPlayerRow('p1');
+    vi.advanceTimersByTime(120);
+    const row = mountRow('player-card-p1');
+    expect(document.activeElement).toBe(document.body);
+    vi.advanceTimersByTime(40);
+    expect(row).toHaveFocus();
+  });
+
+  it("never takes a focus the user holds elsewhere, and never focuses another player's row", () => {
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    const row = mountRow('player-card-p1');
+    const other = mountRow('player-card-p2');
+    scrollToPlayerRow('p1');
+    expect(input).toHaveFocus();
+    expect(row.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(other).not.toHaveFocus();
+  });
+
+  it('scrollToGearRow never moves focus', () => {
+    const row = mountRow('gear-row-p1-head');
+    scrollToGearRow('p1', 'head');
+    expect(row.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(row).not.toHaveFocus();
+  });
+});

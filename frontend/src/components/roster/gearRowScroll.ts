@@ -55,6 +55,8 @@ const CENTER: ScrollIntoViewOptions = { behavior: 'smooth', block: 'center' };
 interface PollOptions {
   attempts?: number;
   interval?: number;
+  /** Also move focus to the found element when nothing holds it (see `scrollToPlayerRow`). */
+  focusWhenIdle?: boolean;
 }
 
 export function scrollToGearRow(playerId: string, slot: JumpAnchorSlot, options: PollOptions = {}): () => void {
@@ -69,21 +71,26 @@ export function scrollToGearRow(playerId: string, slot: JumpAnchorSlot, options:
  * for a Progress jump (S2a-3b·H3b). `GroupViewContent`'s own scroll runs 100 ms after the URL
  * changes, and a jump from another tab has not mounted the Roster by then (measured live: the row
  * lands ~300 ms in), so that scroll finds nothing and this one is the one that lands.
+ *
+ * H4b: it also hands focus to the landed element when focus is on `<body>` (the button that
+ * started a keyboard jump has unmounted by then), so a keyboard user lands on the Board row (a
+ * focusable `<tr tabIndex=-1>`) and not at the top of the page. A focus the user holds elsewhere
+ * is never taken, and an element that cannot take focus (a card) ignores the call.
  */
 export function scrollToPlayerRow(playerId: string, options: PollOptions = {}): () => void {
-  return pollAndCenter(() => document.getElementById(`player-card-${playerId}`), options);
+  return pollAndCenter(() => document.getElementById(`player-card-${playerId}`), { focusWhenIdle: true, ...options });
 }
 
-function pollAndCenter(find: () => HTMLElement | null, { attempts = 24, interval = 40 }: PollOptions): () => void {
+function pollAndCenter(find: () => HTMLElement | null, { attempts = 24, interval = 40, focusWhenIdle = false }: PollOptions): () => void {
   let tries = 0;
   // Only ever one timer is pending at a time (the next poll, or the re-center).
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   const tick = () => {
     const el = find();
-    // jsdom has no scrollIntoView (a test that renders the Board without stubbing it); real browsers all do.
-    if (el && typeof el.scrollIntoView !== 'function') return;
     if (el) {
+      const active = document.activeElement;
+      if (focusWhenIdle && (!active || active === document.body)) el.focus({ preventScroll: true });
       el.scrollIntoView(CENTER);
       timer = setTimeout(() => el.scrollIntoView(CENTER), 220);
       return;

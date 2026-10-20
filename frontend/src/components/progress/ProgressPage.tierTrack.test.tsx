@@ -395,6 +395,23 @@ describe('ProgressPage tier row with split clears off', () => {
     expect(within(tierRow()).getByRole('rowheader')).toHaveTextContent(TIER);
     expect(tierPanel()).toBeNull();
   });
+
+  // S2a-3b·H4b c3 (H4 re-review), a regression pin: a refetch that finds split clears off unmounts the
+  // focused disclosure; the plain name cell (the grid's stop) takes focus, never <body>.
+  it.each([['member', MEMBER], ['viewer', VIEWER]])('the focused disclosure of a %s hands its focus to the plain name when a refetch finds split clears off', async (_who, reader) => {
+    renderAt('/?tab=progress', { tier: activeTier, ...reader });
+    const button = await findDisclosure();
+    act(() => button.focus());
+    expect(button).toHaveFocus();
+
+    split.set('g1', false);
+    await returnToTab();
+    await waitFor(() => expect(disclosure()).not.toBeInTheDocument());
+    const name = within(tierRow()).getByRole('rowheader');
+    expect(name).toHaveTextContent(TIER);
+    await waitFor(() => expect(name).toHaveFocus());
+    expect(document.activeElement).not.toBe(document.body);
+  });
 });
 
 // ── ?track=tier before the data, past tiers, the goal-id drop (R-T-6, E-3, E-8) ──

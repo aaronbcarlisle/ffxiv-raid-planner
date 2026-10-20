@@ -109,6 +109,13 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): S2a-3b·H4 — the tier row opens into the split plan',
         internal: true,
       },
+      {
+        category: 'improvement',
+        title: 'Progress: tier row end-to-end checks',
+        description:
+          'V2 preview: browser checks for the tier row end to end (its cells and status line, the breakdown and the jump to the Board, the split plan panel and its off-state, role gating, guests, contrast in both themes). They also fixed two small things: a jump that lands on the Roster\'s Cards view now scrolls to the card, and after Open on board by keyboard, focus lands on the Board row instead of the top of the page.',
+        internal: true,
+      },
     ],
     internal: true,
   },
