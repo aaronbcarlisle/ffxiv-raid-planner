@@ -229,13 +229,17 @@ test.describe.serial('Progress matrix', () => {
     // apart by aria-haspopup) and the owner's own cells (F5). A menu is named "Actions for {title}",
     // a cell button "… your status"; the disclosures are exempt. The tier row's controls (S2a-3b·H3)
     // are its BiS cells, named with their numbers, and Open board; they are checked on their own.
-    const tierButtons = await matrix.getByTestId('progress-tier-row').locator('button').evaluateAll((els) =>
+    const tierButtons = await matrix.getByTestId('progress-tier-row').locator('button:not([aria-controls="progress-tier-expansion"])').evaluateAll((els) =>
       els.map((el) => el.getAttribute('aria-label') ?? el.textContent ?? ''),
     );
     expect(tierButtons).toContain('Open board');
     for (const label of tierButtons.filter((l) => l !== 'Open board')) {
       expect(label).toMatch(/, \d+ of \d+ BiS slots done(, \d+ need augment)?$|, no BiS set$/);
     }
+    // S2a-3b·H4 (R-T-6): the owner's tier name is the split-clear disclosure, and the grid's one stop.
+    await expect(
+      matrix.locator('[role="gridcell"][tabindex="0"], [role="gridcell"] [tabindex="0"], [role="rowheader"][tabindex="0"], [role="rowheader"] [tabindex="0"]'),
+    ).toHaveAttribute('aria-controls', 'progress-tier-expansion');
     const bodyButtons = await matrix.locator('tbody tr:not([data-testid="progress-tier-row"]) button').evaluateAll((els) =>
       els.map((el) => ({
         label: el.getAttribute('aria-label') ?? el.textContent ?? '',
@@ -327,7 +331,9 @@ test.describe.serial('Progress matrix', () => {
     await expect(matrix).not.toHaveAttribute('tabindex', /.*/);
     await expect(stops).toHaveCount(1);
     await expect(tierRow.locator('[role="rowheader"][tabindex="0"], [role="rowheader"] [tabindex="0"]')).toHaveCount(1);
-    for (const button of await tierRow.locator('button').all()) await expect(button).toHaveAttribute('tabindex', '-1');
+    for (const button of await tierRow.locator('button:not([aria-controls="progress-tier-expansion"])').all()) await expect(button).toHaveAttribute('tabindex', '-1');
+    // S2a-3b·H4 (R-T-6): the owner's tier name is the split-clear disclosure, and it is the one stop.
+    await expect(stops).toHaveAttribute('aria-controls', 'progress-tier-expansion');
 
     // A real Tab in from the element before the matrix lands on that one stop, the tier's name;
     // the next Tab leaves the grid's rows (not onto the scroller, not onto a cell, not onto
