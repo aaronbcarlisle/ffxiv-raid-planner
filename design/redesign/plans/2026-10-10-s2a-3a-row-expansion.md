@@ -330,7 +330,7 @@ export function queueEntryText(e: QueueEntry, tokenCost: number | null): string;
 
 ## Write-backs (once, after the stack merges)
 
-**Applied (2026-10-20):** the design note §9 into the parent spec (S2-5, S2-8, S2-9, §6, §7), the S2a-2 plan's write-backs, `PRODUCT_MODEL.md` §6 and `HOME_STRETCH.md` (S2a-2 #366 #368 #369 #370-#375; S2a-3a #377-#383, merged 2026-10-19/20, main `cc0d96ee`; next S2a-3b), and the two amendments the implementation made (R-S3-10's `'__none'` sentinel; the action bar's button variants, R-S3-17), recorded here and in the design note. The memory line is the controller's.
+**Applied (2026-10-19):** the design note §9 into the parent spec (S2-5, S2-8, S2-9, §6, §7), the S2a-2 plan's write-backs, `PRODUCT_MODEL.md` §6 and `HOME_STRETCH.md` (S2a-2 #366 #368 #369 #370-#375; S2a-3a #377-#383, merged 2026-10-19, main `cc0d96ee`; next S2a-3b), and the two amendments the implementation made (R-S3-10's `'__none'` sentinel; the action bar's button variants, R-S3-17), recorded here and in the design note. The memory line is the controller's.
 
 - [x] The design note §9's write-backs to the parent spec, plus the S2a-2 plan's (:518-523), in one docs PR. They include the plan-vet's: D-15 corrected (week 1's start, vet C-1); D-9 amended by D-22 (S2-5 :32 loses the inline "· Mark finished" link; Mark finished lives in the row menu and, when everyone has it, the panel's action bar); D-19…D-22 into S2-8 and S2-9.
 - [x] `PRODUCT_MODEL.md` §6 and `HOME_STRETCH.md`'s S2a row: S2a-2 and S2a-3a shipped, with PR numbers.
