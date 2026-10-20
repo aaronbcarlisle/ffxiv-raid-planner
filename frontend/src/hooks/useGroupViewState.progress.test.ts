@@ -10,14 +10,29 @@
  * resolves from `?shell=` or the stored preference, as in the app. New cases
  * live here so `useGroupViewState.test.ts` stays unedited (R-S2-2, vet M-2).
  */
-import { createElement, type ReactNode } from 'react';
-import { act, renderHook } from '@testing-library/react';
+import { createElement, useEffect, type ReactNode } from 'react';
+import { act, fireEvent, render, renderHook, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// The D-9 jump renders Progress as a guest, which makes no request; any stray one resolves empty.
+vi.mock('../services/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/api')>()),
+  api: {
+    get: vi.fn().mockResolvedValue([]),
+    post: vi.fn().mockResolvedValue({}),
+    put: vi.fn().mockResolvedValue({}),
+    patch: vi.fn().mockResolvedValue({}),
+    delete: vi.fn().mockResolvedValue({}),
+  },
+}));
+
 import { pageModeFromTabParam, tabParamFor, useGroupViewState } from './useGroupViewState';
+import { stubCanHover, TooltipWrapper } from '../components/progress/__fixtures__/tooltipEnv';
+import { ProgressPage } from '../components/progress/ProgressPage';
 import { useShellPreferenceStore } from '../lib/shellPreference';
 import { useAuthStore } from '../stores/authStore';
-import type { User } from '../types';
+import type { StaticGroup, TierSnapshot, User } from '../types';
 
 const TAB_KEY = 'group-view-tab:ABC';
 
@@ -131,6 +146,85 @@ describe('useGroupViewState and ?track', () => {
     act(() => r.result.current.gv.setPageMode('goals'));
     expect(tabOf(r)).toBe('progress');
     expect(trackOf(r)).toBeNull();
+  });
+});
+
+// S2a-3b·H3b (D-9, E-9, R-T-9): the tier cell's jump, through the real hook. NewShell hands
+// Progress `gv.setPageMode` as `onNavigate` (`pages/NewShell.tsx`), so an Alt+Click on a tier cell
+// writes `tab=roster&rview=board&player=<id>`. GroupViewContent's `?player=` effect then calls
+// `setPageMode('roster')` once more (`pages/GroupViewContent.tsx`, the deep-link effect); that
+// second call is made by hand below. Under 'reset' tab memory it clears `rview`, so the jump lands
+// on Cards (where `?player=` highlights the card, pinned in Roster.test.tsx): D-9's named residual,
+// pinned here, not hidden. Under the default memory it lands on the Board.
+describe('the Progress tier jump through useGroupViewState (D-9)', () => {
+  const group = { id: 'g1', name: 'Dev Test Static', shareCode: 'ABC', settings: {}, userRole: null, members: [] } as unknown as StaticGroup;
+  const tier = {
+    id: 't1', staticGroupId: 'g1', tierId: 'aac-cruiserweight', isActive: true,
+    players: [{ id: 'p1', name: 'Aya', job: 'WAR', role: 'tank', position: 'T1', configured: true, isSubstitute: false, sortOrder: 0, userId: 'u1', gear: [] }],
+  } as unknown as TierSnapshot;
+
+  function renderJumpAt(url: string) {
+    const latest: { gv: ReturnType<typeof useGroupViewState> | null; search: string } = { gv: null, search: '' };
+    function Page() {
+      const gv = useGroupViewState();
+      const { search } = useLocation();
+      useEffect(() => {
+        latest.gv = gv;
+        latest.search = search;
+      });
+      // A guest's Progress: it makes no request (D-11), and still gets the jump.
+      return createElement(ProgressPage, {
+        group, tier, canManage: false, userRole: null, currentUserId: null, isViewingAs: false, onNavigate: gv.setPageMode,
+      });
+    }
+    render(
+      createElement(
+        TooltipWrapper,
+        null,
+        createElement(
+          MemoryRouter,
+          { initialEntries: [url] },
+          createElement(Routes, null, createElement(Route, { path: '/group/:shareCode', element: createElement(Page) })),
+        ),
+      ),
+    );
+    const params = () => new URLSearchParams(latest.search);
+    const altClickAya = () => {
+      const row = screen.getByTestId('progress-tier-row');
+      fireEvent.click(within(row).getByRole('button', { name: /^Aya, / }), { altKey: true });
+    };
+    /** GroupViewContent's `?player=` effect, by hand: it switches to Roster again. */
+    const deepLinkEffect = () => act(() => latest.gv!.setPageMode('roster'));
+    return { params, altClickAya, deepLinkEffect };
+  }
+
+  beforeEach(() => stubCanHover());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("lands on Roster ▸ Board with ?player under the default tab memory", () => {
+    const r = renderJumpAt('/group/ABC?shell=v2&tab=progress');
+    r.altClickAya();
+    expect(r.params().get('tab')).toBe('roster');
+    expect(r.params().get('rview')).toBe('board');
+    expect(r.params().get('player')).toBe('p1');
+    r.deepLinkEffect();
+    expect(r.params().get('tab')).toBe('roster');
+    expect(r.params().get('rview')).toBe('board');
+    expect(r.params().get('player')).toBe('p1');
+  });
+
+  it("lands on Roster ▸ Cards with ?player kept under the 'reset' tab memory (D-9)", () => {
+    useAuthStore.setState({ user: { tabPersistence: 'reset' } as unknown as User });
+    const r = renderJumpAt('/group/ABC?shell=v2&tab=progress');
+    r.altClickAya();
+    expect(r.params().get('tab')).toBe('roster');
+    expect(r.params().get('player')).toBe('p1');
+    r.deepLinkEffect();
+    expect(r.params().get('tab')).toBe('roster');
+    // The second switch resets the sub-tabs: no rview, so Roster opens on Cards (its default)…
+    expect(r.params().get('rview')).toBeNull();
+    // …with ?player kept, which Roster highlights on the card.
+    expect(r.params().get('player')).toBe('p1');
   });
 });
 

@@ -778,6 +778,22 @@ describe('ProgressMatrix keyboard grid with the tier row', () => {
     expect(below).toHaveFocus();
     expect(below.getAttribute('aria-label')?.startsWith(`${odd}, Hot, `)).toBe(true);
   });
+
+  // S2a-3b·H3b (H3a review M1): a "Card not set up" column says so, not "no card".
+  it('names a Card-not-set-up tier cell "{name}, {tier}, card not set up", an empty focus target', () => {
+    renderMatrix({
+      goals: two,
+      players: [...PLAYERS, player('p5', { name: 'Draft', configured: false, userId: 'u-draft' })],
+      participants: { ...needy, hot: [...needy.hot, row('hot', 'u-draft', { displayName: 'Dru' })] },
+      tier: true,
+    });
+    expect(within(screen.getByRole('columnheader', { name: /Dru/ })).getByText('Card not set up')).toBeInTheDocument();
+    const cell = within(tierRow()).getByRole('gridcell', { name: `Dru, ${TIER_NAME}, card not set up` });
+    expect(cell.textContent?.trim()).toBe('');
+    expect(within(cell).queryAllByRole('button')).toHaveLength(0);
+    expect(cell).toHaveAttribute('tabindex', '-1');
+    expect(within(tierRow()).queryByRole('gridcell', { name: `Dru, ${TIER_NAME}, no card` })).not.toBeInTheDocument();
+  });
 });
 
 // ── The lead's row-menu column (S2a-3a·G4 Task TG7; D-22, R-S3-17) ──

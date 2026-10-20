@@ -871,3 +871,44 @@ describe('Roster — D12 a card link is a card target', () => {
     expect(copied).not.toContain('slot=');
   });
 });
+
+// S2a-3b·H3b (E-9, R-T-9): a Progress jump writes `?rview=board&player=<id>`, so the Board must
+// carry the card anchor and the highlight. Cards and Board never render together, so the id is
+// unique in either view.
+describe('Roster — S2a-3b·H3b the Board landing', () => {
+  const players = [
+    makePlayer({ id: 'p1', name: 'Tank One', position: 'T1', gear: bodyNeededGear() }),
+    makePlayer({ id: 'p2', name: 'Healer One', job: 'WHM', role: 'healer', position: 'H1', gear: bodyNeededGear() }),
+  ];
+
+  // C6's fold tests persist a collapsed Light Party 1 for this group and tier; start unfolded.
+  beforeEach(() => localStorage.clear());
+
+  it('anchors and highlights the jumped-to player on the Board, once, and nothing else', async () => {
+    const { container } = renderRosterAtUrl(makeTier(players), ['/group/DEVTST?tab=roster&rview=board&player=p2']);
+    await waitFor(() => expect(container.querySelector('#player-card-p2')).not.toBeNull());
+    const anchors = container.querySelectorAll('[id="player-card-p2"]');
+    expect(anchors).toHaveLength(1);
+    expect(anchors[0].tagName).toBe('TR');
+    expect(anchors[0]).toHaveClass('highlight-pulse');
+    expect(container.querySelectorAll('.highlight-pulse')).toHaveLength(1);
+    expect(container.querySelectorAll('[id="player-card-p1"]')).toHaveLength(1);
+    // Roster never writes the URL: GroupViewContent owns the strip.
+    expect(screen.getByTestId('loc').dataset.search).toContain('player=p2');
+  });
+
+  it('renders the anchor once in each view: a card on Cards, a row on the Board', async () => {
+    const cards = renderRosterAtUrl(makeTier(players), ['/group/DEVTST?tab=roster&player=p2']);
+    const card = cards.container.querySelectorAll('[id="player-card-p2"]');
+    expect(card).toHaveLength(1);
+    expect(card[0].tagName).not.toBe('TR');
+    expect(card[0]).toHaveClass('highlight-pulse');
+    cards.unmount();
+
+    const board = renderRosterAtUrl(makeTier(players), ['/group/DEVTST?tab=roster&rview=board&player=p2']);
+    await waitFor(() => expect(board.container.querySelector('table')).not.toBeNull());
+    const row = board.container.querySelectorAll('[id="player-card-p2"]');
+    expect(row).toHaveLength(1);
+    expect(row[0].tagName).toBe('TR');
+  });
+});
