@@ -560,7 +560,7 @@ describe('ProgressMatrix keyboard grid', () => {
     focusCell(tierName());
     expect(key(tierName(), 'End')).toBe(false);
     expect(t[t.length - 1]).toHaveFocus();
-    expect(t[t.length - 1]).toHaveAccessibleName(`Dee, ${TIER_NAME}, 6 of 11 BiS slots done, 2 need augment`);
+    expect(t[t.length - 1]).toHaveAccessibleName(`Cy, ${TIER_NAME}, 6 of 11 BiS slots done, 2 need augment`);
     focusCell(openBoard());
     expect(key(openBoard(), 'Home')).toBe(false);
     expect(tierName()).toHaveFocus();
@@ -736,7 +736,7 @@ describe('ProgressMatrix keyboard grid with the tier row', () => {
     expect(farmStatus(hot)).toHaveFocus();
     expect(key(farmStatus(hot), 'ArrowUp')).toBe(false);
     expect(openBoard()).toHaveFocus();
-    const dee = cellsOf(hot)[3];
+    const dee = cellsOf(hot)[2];
     focusCell(dee);
     expect(key(dee, 'ArrowUp')).toBe(false);
     expect(tierButton('Dee')).toHaveFocus();

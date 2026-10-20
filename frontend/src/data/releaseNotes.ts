@@ -82,6 +82,13 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): S2a-3b·H3 — the tier row in the matrix',
         internal: true,
       },
+      {
+        category: 'improvement',
+        title: 'Progress: the tier row joins the keyboard grid',
+        description:
+          'V2 preview: the tier row is now the first row of the Progress keyboard grid. Its name is the grid\'s one Tab stop until a cell is focused, and the arrow keys, Home and End move across it (a lead\'s empty actions cell, Open board, each card\'s BiS cell) and down into the farms. The status column joins the grid on every row, so a farm\'s status can be focused and read.',
+        internal: true,
+      },
     ],
     internal: true,
   },

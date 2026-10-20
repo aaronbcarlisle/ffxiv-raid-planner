@@ -17,6 +17,9 @@
  * ⋯ menu (`FarmRowMenu`), which on an active row is the grid's `'__menu'` cell (`cellProps`) and
  * on a Finished row a plain tab stop. The status cell reads only "Everyone has it"; Mark finished
  * lives in the menu and the open panel's action bar. Members and viewers get no such cell.
+ *
+ * S2a-3b·H3a (E-6, R-T-4): on an active row the status `<td>` is the grid's `'__status'` cell
+ * (`STATUS_KEY`), a read-only focus target as a blank cell is, so the arrows cross it.
  */
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Button } from '../primitives/Button';
@@ -35,6 +38,8 @@ import type { MatrixKeyboard } from './useMatrixKeyboard';
 export const NAME_KEY = '__name';
 /** The roving grid's key for a lead's row menu column (R-S3-17). */
 export const MENU_KEY = '__menu';
+/** The roving grid's key for the status column, after the name (or a lead's menu) and before the players (R-T-4). */
+export const STATUS_KEY = '__status';
 
 interface FarmRowProps {
   row: FarmRowModel;
@@ -123,7 +128,12 @@ export function FarmRow({ row, canManage, userRole, groupId, provenance, keyboar
             <FarmRowMenu groupId={groupId} goal={goal} grid={keyboard?.cellProps(goal.id, MENU_KEY)} />
           </td>
         )}
-        <td role="gridcell" data-testid="progress-status" className="whitespace-nowrap px-3 py-2 text-sm text-text-secondary">
+        <td
+          role="gridcell"
+          data-testid="progress-status"
+          className="whitespace-nowrap px-3 py-2 text-sm text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+          {...keyboard?.cellProps(goal.id, STATUS_KEY)}
+        >
           {statusText(row.tally, canManage)}
         </td>
         {row.cells.map((cell) => (
