@@ -36,7 +36,7 @@ import { ProgressPage } from './ProgressPage';
 const group = { id: 'g1', name: 'Dev Test Static', shareCode: 'DEVTST', settings: {}, userRole: 'owner', members: [] } as unknown as StaticGroup;
 
 const player = (id: string, name: string, position: string, role: string, userId: string | null) => ({
-  id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId,
+  id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId, gear: [],
 });
 const tier = {
   id: 't1',
@@ -125,9 +125,11 @@ describe('ProgressPage matrix: order and Finished', () => {
     renderPage();
 
     expect(await screen.findByTestId('progress-matrix')).toBeInTheDocument();
-    const tierRow = screen.getByTestId('progress-tier-row');
+    // S2a-3b·H3 (R-T-3): the tier row is the matrix's first body row, above the farm rows.
     const matrix = screen.getByTestId('progress-matrix');
-    expect(tierRow.compareDocumentPosition(matrix) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const tierRow = within(matrix).getByTestId('progress-tier-row');
+    expect(matrix.querySelector('tbody > tr')).toBe(tierRow);
+    expect(tierRow.compareDocumentPosition(rowOf('hot')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(farmIds()).toEqual(['hot', 'calm']);
     const finished = screen.getByRole('button', { name: 'Finished (1)' });
     expect(finished).toHaveAttribute('aria-expanded', 'false');
@@ -323,7 +325,9 @@ describe('ProgressPage matrix: fetching (R-S2-17, vet M-8)', () => {
     seed({ goals });
     renderPage({ userRole: null, canManage: false });
     expect(screen.getByTestId('members-only-card')).toBeInTheDocument();
-    expect(screen.queryByTestId('progress-matrix')).not.toBeInTheDocument();
+    // S2a-3b·H3 (D-11): a guest gets the matrix, holding the tier row alone, and no farm row.
+    expect(within(screen.getByTestId('progress-matrix')).getByTestId('progress-tier-row')).toBeInTheDocument();
+    expect(farmIds()).toEqual([]);
     expect(fetchGoals).not.toHaveBeenCalled();
     expect(fetchProgress).not.toHaveBeenCalled();
     const requested = [api.get, api.post, api.put, api.patch, api.delete].flatMap((fn) =>
@@ -335,8 +339,10 @@ describe('ProgressPage matrix: fetching (R-S2-17, vet M-8)', () => {
   it('shows no empty state for a static with no farms', async () => {
     seed({ goals: [] });
     renderPage();
-    expect(await screen.findByTestId('progress-tier-row')).toBeInTheDocument();
-    expect(screen.queryByTestId('progress-matrix')).not.toBeInTheDocument();
+    // S2a-3b·H3 (R-T-3): the matrix shows with no farms, holding the tier row alone.
+    const matrix = await screen.findByTestId('progress-matrix');
+    expect(within(matrix).getByTestId('progress-tier-row')).toBeInTheDocument();
+    expect(farmIds()).toEqual([]);
     expect(fetchProgress).not.toHaveBeenCalled();
   });
 });
@@ -363,8 +369,13 @@ describe('ProgressPage matrix: loading and error (TF5 ruling 3)', () => {
   it('waits for the goals too, and shows no tally meanwhile', () => {
     seed({ goals, participants, ready: false });
     renderPage();
-    expect(screen.getByTestId('progress-loading')).toBeInTheDocument();
-    expect(screen.queryByTestId('progress-matrix')).not.toBeInTheDocument();
+    const loading = screen.getByTestId('progress-loading');
+    // S2a-3b·H3 (R-T-3): the matrix shows the tier row while farms load; the loading line sits below it.
+    const matrix = screen.getByTestId('progress-matrix');
+    expect(within(matrix).getByTestId('progress-tier-row')).toBeInTheDocument();
+    expect(matrix.compareDocumentPosition(loading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(farmIds()).toEqual([]);
+    expect(screen.queryByText(/ of \d+ have it|Everyone has it/)).not.toBeInTheDocument();
   });
 
   it('shows the error with a Retry that fetches again', async () => {
@@ -374,11 +385,15 @@ describe('ProgressPage matrix: loading and error (TF5 ruling 3)', () => {
 
     const alert = await screen.findByTestId('progress-error');
     expect(alert).toHaveTextContent('boom');
-    expect(screen.queryByTestId('progress-matrix')).not.toBeInTheDocument();
+    // S2a-3b·H3 (R-T-3): after a first-load failure the matrix holds the tier row alone, the error below it.
+    const matrix = screen.getByTestId('progress-matrix');
+    expect(within(matrix).getByTestId('progress-tier-row')).toBeInTheDocument();
+    expect(matrix.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(farmIds()).toEqual([]);
 
     const before = fetchProgress.mock.calls.length;
     fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
-    expect(await screen.findByTestId('progress-matrix')).toBeInTheDocument();
+    expect(await screen.findAllByTestId('progress-farm-row')).toHaveLength(1);
     expect(fetchProgress.mock.calls.length).toBe(before + 1);
     expect(screen.queryByTestId('progress-error')).not.toBeInTheDocument();
   });
