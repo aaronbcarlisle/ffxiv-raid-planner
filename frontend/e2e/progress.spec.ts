@@ -408,13 +408,8 @@ test.describe.serial('Progress matrix', () => {
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(300);
 
-      // KNOWN TOKEN DEBT (excluded, as contrast.spec.ts excludes the role badges): the plan
-      // sets each column header's name in text-role-{role}, and the light-theme healer
-      // token (#1a8a4a on white) measures 4.39:1, just under AA. Fixing it is a change to
-      // the shared role tokens, which render in both shells; every other node is scanned.
       const results = await new AxeBuilder({ page })
         .include('[data-testid="progress-screen"]')
-        .exclude('[data-testid="progress-column"] [class*="text-role-"]')
         .analyze();
       const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
       expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
@@ -434,10 +429,8 @@ test.describe.serial('Progress matrix', () => {
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(300);
 
-      // The same known role-token debt as above is excluded; every other node is scanned.
       const results = await new AxeBuilder({ page })
         .include('[data-testid="progress-screen"]')
-        .exclude('[data-testid="progress-column"] [class*="text-role-"]')
         .analyze();
       const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
       expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
@@ -643,9 +636,8 @@ test.describe.serial('Progress: Edit statuses', () => {
     await context.close();
   });
 
-  /** The same known role-token debt as the matrix test above is excluded; every other node is scanned. */
   async function blockingViolations(page: Page, includes: string[]) {
-    let builder = new AxeBuilder({ page }).exclude('[data-testid="progress-column"] [class*="text-role-"]');
+    let builder = new AxeBuilder({ page });
     for (const selector of includes) builder = builder.include(selector);
     const results = await builder.analyze();
     return results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
@@ -1055,9 +1047,8 @@ test.describe.serial('Progress: row expansion', () => {
   });
 });
 
-/** The same known role-token debt as the matrix tests above is excluded; every other node is scanned. */
 async function blockingIn(page: Page, includes: string[]) {
-  let builder = new AxeBuilder({ page }).exclude('[data-testid="progress-column"] [class*="text-role-"]');
+  let builder = new AxeBuilder({ page });
   for (const selector of includes) builder = builder.include(selector);
   const results = await builder.analyze();
   return results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');

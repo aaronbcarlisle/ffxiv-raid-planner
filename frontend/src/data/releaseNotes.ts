@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.73';
+export const CURRENT_VERSION = '2.1.74';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.74',
+    date: '2026-10-20T00:00:00Z',
+    title: 'Healer names are easier to read in the light theme',
+    items: [
+      {
+        category: 'fix',
+        title: 'Healer names are easier to read in the light theme',
+        description:
+          'The healer green is a little darker in the light theme, so healer names and badges meet the contrast guideline on every surface.',
+        pr: 394,
+        prTitle: 'fix(tokens): light healer role colour meets AA (#388)',
+      },
+    ],
+  },
   {
     version: '2.1.73',
     date: '2026-10-20T00:00:00Z',

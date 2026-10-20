@@ -46,7 +46,7 @@
       },
       "role": {
         "tank": { "$type": "color", "$value": "#2e7ab4" },
-        "healer": { "$type": "color", "$value": "#1a8a4a" },
+        "healer": { "$type": "color", "$value": "#14783f", "$description": "#388 AA-lift: darkened from #1a8a4a (4.39:1 on card #ffffff, 4.04 on base #f5f5f8, 3.77 on raised #ededf2, 3.60 on elevated #e8e8ef). #14783f measures 5.54:1 on card, 5.09 on base, 4.75 on raised and 4.55 on elevated (all AA at normal weight). Hue preserved." },
         "melee": { "$type": "color", "$value": "#c0392b" },
         "ranged": { "$type": "color", "$value": "#a06020" },
         "caster": { "$type": "color", "$value": "#8b34b8" }
