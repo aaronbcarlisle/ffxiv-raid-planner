@@ -245,8 +245,11 @@ describe('TierRow status cell (E-6, R-T-12)', () => {
 describe('TierBisCellButton', () => {
   const column = claimedColumn(HEALER);
 
-  function renderCell(cell: TierBisCell | null, col: ProgressColumn = column) {
-    return render(<TierBisCellButton column={col} cell={cell} tierName={TIER_NAME} />, { wrapper: TooltipWrapper });
+  // `grid` is required now (M2): a bare stand-in for the roving grid's cell props.
+  const grid = { ref: () => {}, tabIndex: -1, onFocus: () => {}, onBlur: () => {}, onKeyDown: () => {} } as const;
+
+  function renderCell(cell: TierBisCell, col: ProgressColumn = column) {
+    return render(<TierBisCellButton column={col} cell={cell} tierName={TIER_NAME} grid={grid} />, { wrapper: TooltipWrapper });
   }
 
   it('is a button named "{player}, {tier}, {done} of {total} BiS slots done, {n} need augment" reading "6/11"', () => {
@@ -295,9 +298,9 @@ describe('TierBisCellButton', () => {
     expect(button).toHaveTextContent('No BiS set');
   });
 
-  it('renders no button for a column with no cell', () => {
+  it('renders no button for a column with no card', () => {
     const off: ProgressColumn = { kind: 'notOnRoster', key: 'user:u9', name: 'Nia', userId: 'u9', player: null, reason: 'notOnRoster' };
-    renderCell(null, off);
+    renderCell(tierBisCell(HEALER), off);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByText(/BiS/)).not.toBeInTheDocument();
   });

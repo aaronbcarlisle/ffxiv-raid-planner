@@ -48,7 +48,7 @@ import { GearBoard } from './GearBoard';
 import { CharacterManageBridge } from './CharacterManageBridge';
 
 import { isJumpAnchorSlot, type JumpAnchorSlot } from './rosterLedgerJumps';
-import { scrollToGearRow } from './gearRowScroll';
+import { scrollToGearRow, scrollToPlayerRow } from './gearRowScroll';
 import { useRosterDensity } from './useRosterDensity';
 import { useRosterSortPreset } from './useRosterSortPreset';
 import { useRosterHideSubs } from './useRosterHideSubs';
@@ -398,6 +398,15 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     return scrollToGearRow(highlightedPlayerId, highlightedSlot);
   }, [highlightedPlayerId, highlightedSlot]);
 
+  // S2a-3b·H3b (E-9, R-T-9): the Progress jump's landing on the Board. `GroupViewContent`'s 100 ms
+  // card scroll fires before a jump from another tab has mounted this Roster, so it finds no
+  // row; this polls for it (no slot: the slot case above already lands on the row by its card
+  // fallback). The Cards view keeps `GroupViewContent`'s scroll alone.
+  useEffect(() => {
+    if (!highlightedPlayerId || highlightedSlot || rosterView !== 'board') return;
+    return scrollToPlayerRow(highlightedPlayerId);
+  }, [highlightedPlayerId, highlightedSlot, rosterView]);
+
   // Highlight clears 2500ms after it is set, via its OWN effect keyed on the
   // highlight itself (F6e timer-ownership lesson — never in the resolving
   // effect's cleanup, so unrelated `players`/`playerLinkParams` identity churn
@@ -575,6 +584,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           isAdminAccess={isAdminAccess}
           actionsForPlayer={actionsForPlayer}
           priorities={priorities}
+          highlightedPlayerId={highlightedPlayerId}
         />
       ) : (
         <RosterCards

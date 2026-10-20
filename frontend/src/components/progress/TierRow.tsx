@@ -12,22 +12,22 @@
  * column key has a focus target on it, since the grid stops at a cell with none: the rowheader
  * itself (`NAME_KEY`), the empty menu `<td>` (`MENU_KEY`), Open board (`STATUS_KEY`, the status
  * cell's one control), each BiS cell's `Button`, and a no-card column's empty `<td>`, named
- * "{name}, {tier}, no card". So until a cell is focused the tier's name is the grid's one stop.
+ * "{name}, {tier}, no card" ("…, card not set up" for a Card-not-set-up column). So until a cell
+ * is focused the tier's name is the grid's one stop.
  */
 import { Fragment, useId } from 'react';
 import { Button } from '../primitives/Button';
 import { VisuallyHidden } from '../primitives/VisuallyHidden';
+import { useAltHeld } from '../../hooks/useAltHeld';
 import type { ProgressColumn } from '../../utils/progressModel';
 import { TIER_STATUS_SEPARATOR, type TierBisCell } from '../../utils/tierBis';
+import { CELL_FOCUS_RING } from './cellFocusRing';
 import { MENU_KEY, NAME_KEY, STATUS_KEY } from './FarmRow';
 import { TierBisCellButton } from './TierBisCellButton';
 import type { MatrixKeyboard } from './useMatrixKeyboard';
 
 /** The tier row's id in the roving grid's rows (R-T-4): never a goal id. */
 export const TIER_ROW_ID = '__tier';
-
-/** A focused read-only cell's ring, as `ProgressCell`'s. */
-const FOCUS_RING = 'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent';
 
 /** One column's tier cell: null for a column with no card; `counted` says whether it adds to the total (D-4, D-7). */
 export interface TierColumnCell {
@@ -41,6 +41,11 @@ export interface TierRowModel {
   cells: TierColumnCell[];
   statusText: string;
   onOpenBoard: () => void;
+  /**
+   * Jump to a card's row on Roster ▸ Board (D-5, E-9): Alt+Click on a cell and the breakdown's
+   * Open on board. Absent, the cells open their breakdown only and it has no link.
+   */
+  onJump?: (playerId: string) => void;
 }
 
 interface TierRowProps {
@@ -54,19 +59,21 @@ interface TierRowProps {
 
 export function TierRow({ tier, columns, lead, keyboard }: TierRowProps) {
   const statusId = useId();
+  // One Alt listener for the row, not one per cell (the cursor shows only while Alt is held).
+  const altHeld = useAltHeld();
   const grid = (colKey: string) => keyboard.cellProps(TIER_ROW_ID, colKey);
   return (
     <tr role="row" data-testid="progress-tier-row" className="border-t border-border-subtle">
       <th
         role="rowheader"
         scope="row"
-        className={`whitespace-nowrap px-3 py-2 text-left align-middle text-sm font-medium text-text-primary ${FOCUS_RING}`}
+        className={`whitespace-nowrap px-3 py-2 text-left align-middle text-sm font-medium text-text-primary ${CELL_FOCUS_RING}`}
         {...grid(NAME_KEY)}
       >
         {tier.name}
       </th>
       {lead && (
-        <td role="gridcell" className={`px-1 py-2 ${FOCUS_RING}`} {...grid(MENU_KEY)}>
+        <td role="gridcell" className={`px-1 py-2 ${CELL_FOCUS_RING}`} {...grid(MENU_KEY)}>
           <VisuallyHidden>No actions</VisuallyHidden>
         </td>
       )}
@@ -90,19 +97,27 @@ export function TierRow({ tier, columns, lead, keyboard }: TierRowProps) {
         const cell = tier.cells[i]?.cell ?? null;
         // A column with no card (Not on the roster, Card not set up) is an empty focus target.
         if (cell === null || column.player === null) {
+          const unset = column.kind === 'notOnRoster' && column.reason === 'unconfigured';
           return (
             <td
               key={column.key}
               role="gridcell"
-              aria-label={`${column.name}, ${tier.name}, no card`}
-              className={`px-1 py-1 align-middle ${FOCUS_RING}`}
+              aria-label={`${column.name}, ${tier.name}, ${unset ? 'card not set up' : 'no card'}`}
+              className={`px-1 py-1 align-middle ${CELL_FOCUS_RING}`}
               {...grid(column.key)}
             />
           );
         }
         return (
           <td key={column.key} role="gridcell" className="px-1 py-1 align-middle">
-            <TierBisCellButton column={column} cell={cell} tierName={tier.name} grid={grid(column.key)} />
+            <TierBisCellButton
+              column={column}
+              cell={cell}
+              tierName={tier.name}
+              grid={grid(column.key)}
+              altHeld={altHeld}
+              onJump={tier.onJump}
+            />
           </td>
         );
       })}

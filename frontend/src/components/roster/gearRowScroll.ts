@@ -35,11 +35,12 @@
  * legacy's own fallback (`useViewNavigation.ts:135-138`), already pulsing
  * from `?player=`.
  *
- * Board view is NOT one of them. It is R-D12-F's fourth cause and a
- * user-ruled named residual: `GearBoard` renders no anchor at all, not even
- * `player-card-{playerId}`, so here it is the neither-exists case — the poll
- * spends its budget and goes silent, which is the honest outcome when there
- * is nothing on screen to point at.
+ * Board view is not one of them either, for the SLOT half: it is R-D12-F's
+ * fourth cause and a user-ruled named residual, since the Board has no per-slot
+ * rows. Its PLAYER half closed in S2a-3b·H3b (R-T-9): the Board's row carries
+ * `player-card-{playerId}`, so a slot jump there lands on the player's row via
+ * the card fallback, and `scrollToPlayerRow` (below) is the Progress jump's own
+ * scroll to it (no slot).
  *
  * Interaction with `GroupViewContent`'s own 100 ms `player-card-{id}` scroll:
  * both use `block: 'center'` and the row is INSIDE the card, so whichever
@@ -51,19 +52,37 @@ import { gearRowDomId, type JumpAnchorSlot } from './rosterLedgerJumps';
 
 const CENTER: ScrollIntoViewOptions = { behavior: 'smooth', block: 'center' };
 
-export function scrollToGearRow(
-  playerId: string,
-  slot: JumpAnchorSlot,
-  { attempts = 24, interval = 40 }: { attempts?: number; interval?: number } = {},
-): () => void {
+interface PollOptions {
+  attempts?: number;
+  interval?: number;
+}
+
+export function scrollToGearRow(playerId: string, slot: JumpAnchorSlot, options: PollOptions = {}): () => void {
+  return pollAndCenter(
+    () => document.getElementById(gearRowDomId(playerId, slot)) ?? document.getElementById(`player-card-${playerId}`),
+    options,
+  );
+}
+
+/**
+ * Bring a player's `player-card-{id}` anchor into view, polling until it mounts: the Board's row
+ * for a Progress jump (S2a-3b·H3b). `GroupViewContent`'s own scroll runs 100 ms after the URL
+ * changes, and a jump from another tab has not mounted the Roster by then (measured live: the row
+ * lands ~300 ms in), so that scroll finds nothing and this one is the one that lands.
+ */
+export function scrollToPlayerRow(playerId: string, options: PollOptions = {}): () => void {
+  return pollAndCenter(() => document.getElementById(`player-card-${playerId}`), options);
+}
+
+function pollAndCenter(find: () => HTMLElement | null, { attempts = 24, interval = 40 }: PollOptions): () => void {
   let tries = 0;
   // Only ever one timer is pending at a time (the next poll, or the re-center).
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   const tick = () => {
-    const el =
-      document.getElementById(gearRowDomId(playerId, slot)) ??
-      document.getElementById(`player-card-${playerId}`);
+    const el = find();
+    // jsdom has no scrollIntoView (a test that renders the Board without stubbing it); real browsers all do.
+    if (el && typeof el.scrollIntoView !== 'function') return;
     if (el) {
       el.scrollIntoView(CENTER);
       timer = setTimeout(() => el.scrollIntoView(CENTER), 220);

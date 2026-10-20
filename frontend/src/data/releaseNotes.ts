@@ -91,6 +91,15 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): S2a-3b·H3a — the tier row joins the keyboard grid',
         internal: true,
       },
+      {
+        category: 'improvement',
+        title: 'Progress: the tier cell\'s slot breakdown and jump',
+        description:
+          'V2 preview: a card\'s BiS cell on the tier row opens a read-only breakdown with its count and the slots that are done, need the tome augment and are still to go, ending in Open on board. Alt+Click on the cell goes straight to that card on Roster, Board view, where its row is scrolled to and highlighted (with the "reset" tab memory the jump lands on Cards instead). Everyone who can see Progress, guests included, gets both. A Card-not-set-up column\'s empty cell now says so.',
+        pr: 401,
+        prTitle: 'feat(v2): S2a-3b·H3b — the tier cell\'s breakdown and jump',
+        internal: true,
+      },
     ],
     internal: true,
   },

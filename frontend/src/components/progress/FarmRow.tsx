@@ -27,6 +27,7 @@ import { Tag } from '../ui/Tag';
 import { GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from '../../utils/goalTypeMeta';
 import type { MemberRole } from '../../types';
 import type { FarmRow as FarmRowModel } from '../../utils/progressModel';
+import { CELL_FOCUS_RING } from './cellFocusRing';
 import type { CellWriteResolver } from './editStatuses';
 import { claimFarmFocus, farmNameId } from './farmFocus';
 import { FarmRowMenu } from './FarmRowMenu';
@@ -131,7 +132,7 @@ export function FarmRow({ row, canManage, userRole, groupId, provenance, keyboar
         <td
           role="gridcell"
           data-testid="progress-status"
-          className="whitespace-nowrap px-3 py-2 text-sm text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+          className={`whitespace-nowrap px-3 py-2 text-sm text-text-secondary ${CELL_FOCUS_RING}`}
           {...keyboard?.cellProps(goal.id, STATUS_KEY)}
         >
           {statusText(row.tally, canManage)}

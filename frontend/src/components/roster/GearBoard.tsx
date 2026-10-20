@@ -80,6 +80,12 @@ export interface GearBoardProps {
   };
   /** F6d next-upgrade highlight: playerId → set of slots marked as the next upgrade. */
   priorities?: Map<string, Set<GearSlot>>;
+  /**
+   * The Progress jump's landing (S2a-3b·H3b, E-9, R-T-9): that player's row takes the Cards'
+   * highlight (`highlight-pulse`). Every row is anchored `player-card-{id}` either way, the id the
+   * `?player=` scroll looks up; Cards and Board never render together, so it stays unique.
+   */
+  highlightedPlayerId?: string | null;
 }
 
 /** A cell's identity across renders (R-E1-E) — never a row/col index. */
@@ -116,7 +122,7 @@ function summaryColor(obtained: number, total: number): string {
   return 'text-text-primary';
 }
 
-export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAccess, actionsForPlayer, priorities }: GearBoardProps) {
+export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAccess, actionsForPlayer, priorities, highlightedPlayerId }: GearBoardProps) {
   // Only players that actually render rows drive the column set — an
   // unconfigured PLD must not summon an all-empty OFFH column.
   const showOffhand = players.some((p) => p.configured && isOffhandRelevant(p.job, p.gear));
@@ -233,7 +239,11 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                 const iLvl = equippedIlv > 0 ? equippedIlv : calculateAverageItemLevel(player.gear, tierId ?? '', player.job);
                 const subtitle = `${player.position ?? player.tankRole ?? role} · ${iLvl > 0 ? iLvl : '—'}`;
                 return (
-                  <tr key={player.id} className="hover:bg-accent/5">
+                  <tr
+                    key={player.id}
+                    id={`player-card-${player.id}`}
+                    className={`hover:bg-accent/5${player.id === highlightedPlayerId ? ' highlight-pulse' : ''}`}
+                  >
                     <td
                       className="border-b border-border-subtle py-2 pl-3 pr-2 text-left"
                       style={{ borderLeft: `3px solid var(--color-role-${role}, var(--color-text-muted))` }}

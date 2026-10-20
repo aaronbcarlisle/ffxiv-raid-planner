@@ -351,3 +351,54 @@ describe('GearBoard keyboard (R-E1-E)', () => {
     expect(screen.getByRole('table')).toHaveAccessibleDescription('Use arrow keys to move between gear cells.');
   });
 });
+
+// S2a-3b·H3b (E-9, R-T-9): the Board is where a Progress jump lands, so each player's row
+// carries the card anchor `player-card-{id}` (the id the `?player=` scroll looks up) and the
+// Cards' highlight treatment (`highlight-pulse`) for the `highlightedPlayerId` Roster passes.
+describe('GearBoard landing (S2a-3b·H3b)', () => {
+  // Typed loosely so this file compiles before the prop exists; the prop is `highlightedPlayerId?: string | null`.
+  type LandingProps = Parameters<typeof GearBoard>[0] & { highlightedPlayerId?: string | null };
+  const Board = (props: LandingProps) => <GearBoard {...props} />;
+  const noBis = () => SLOTS.map((slot) => ({ slot, bisSource: null, hasItem: false, isAugmented: false })) as GearSlotStatus[];
+  const players = () => [
+    player({ id: 'a', name: 'Tank One', position: 'T1' }),
+    player({ id: 'b', name: 'Healer One', job: 'WHM', role: 'healer', position: 'H1', gear: gear(4) }),
+    player({ id: 'c', name: 'Caster One', job: 'BLM', role: 'caster', position: 'R1', gear: noBis() }),
+  ];
+
+  it('anchors every player row as player-card-{id}, one per player', () => {
+    const { container } = render(<Board players={players()} {...OWNER_GATE} actionsForPlayer={noop} />);
+    for (const id of ['a', 'b', 'c']) {
+      const rows = container.querySelectorAll(`[id="player-card-${id}"]`);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].tagName).toBe('TR');
+    }
+    // The anchor is the row that holds that player's name.
+    expect(container.querySelector('#player-card-b')).toContainElement(screen.getByText('Healer One'));
+  });
+
+  it('highlights the highlighted player\'s row only', () => {
+    const { container } = render(<Board players={players()} {...OWNER_GATE} actionsForPlayer={noop} highlightedPlayerId="b" />);
+    expect(container.querySelector('#player-card-b')).toHaveClass('highlight-pulse');
+    expect(container.querySelectorAll('.highlight-pulse')).toHaveLength(1);
+  });
+
+  it('highlights a no-BiS row too (its spanning row is still that player\'s row)', () => {
+    const { container } = render(<Board players={players()} {...OWNER_GATE} actionsForPlayer={noop} highlightedPlayerId="c" />);
+    const target = container.querySelector('#player-card-c');
+    expect(target).toHaveClass('highlight-pulse');
+    expect(target).toHaveTextContent(/No BiS imported/i);
+    expect(container.querySelectorAll('.highlight-pulse')).toHaveLength(1);
+  });
+
+  it('highlights nothing without a highlighted player, or for an id not on the Board, and keeps the anchors', () => {
+    const { container, rerender } = render(<Board players={players()} {...OWNER_GATE} actionsForPlayer={noop} />);
+    expect(container.querySelector('#player-card-a')).not.toBeNull();
+    expect(container.querySelectorAll('.highlight-pulse')).toHaveLength(0);
+    rerender(<Board players={players()} {...OWNER_GATE} actionsForPlayer={noop} highlightedPlayerId="nope" />);
+    expect(container.querySelector('#player-card-a')).not.toBeNull();
+    expect(container.querySelectorAll('.highlight-pulse')).toHaveLength(0);
+    rerender(<Board players={players()} {...OWNER_GATE} actionsForPlayer={noop} highlightedPlayerId={null} />);
+    expect(container.querySelectorAll('.highlight-pulse')).toHaveLength(0);
+  });
+});
