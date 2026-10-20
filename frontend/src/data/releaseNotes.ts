@@ -68,8 +68,8 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'The Split Planner and the plugin\'s split overlay now show only the current tier\'s assignments',
         description:
-          'The Split Planner and the plugin\'s split overlay now show only the current tier\'s assignments. Assignments left over from an earlier tier no longer appear, and turning split clears on or off shows the same list. Nothing is deleted, and resetting the week and marking runs cleared work as before.',
-        pr: 395,
+          'Assignments left over from an earlier tier no longer appear, and turning split clears on or off shows the same list. Nothing is deleted, and resetting the week and marking runs cleared work as before.',
+        pr: 396,
         prTitle: 'feat(split-clear): S2a-3b H1 — list only the active tier\'s assignments',
       },
     ],
