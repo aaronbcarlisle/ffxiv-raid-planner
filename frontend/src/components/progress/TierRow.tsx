@@ -14,11 +14,8 @@
 import { Fragment, useId } from 'react';
 import { Button } from '../primitives/Button';
 import type { ProgressColumn } from '../../utils/progressModel';
-import type { TierBisCell } from '../../utils/tierBis';
+import { TIER_STATUS_SEPARATOR, type TierBisCell } from '../../utils/tierBis';
 import { TierBisCellButton } from './TierBisCellButton';
-
-/** `tierStatusText` joins its parts with this. */
-const STATUS_SEPARATOR = ' · ';
 
 /** One column's tier cell: null for a column with no card; `counted` says whether it adds to the total (D-4, D-7). */
 export interface TierColumnCell {
@@ -53,9 +50,9 @@ export function TierRow({ tier, columns, lead }: TierRowProps) {
         <div className="flex max-w-52 flex-col items-start gap-0.5">
           {/* The line wraps between its parts only, so the column stays narrow. */}
           <span id={statusId} className="text-sm text-text-secondary">
-            {tier.statusText.split(STATUS_SEPARATOR).map((part, i) => (
+            {tier.statusText.split(TIER_STATUS_SEPARATOR).map((part, i) => (
               <Fragment key={part}>
-                {i > 0 && STATUS_SEPARATOR}
+                {i > 0 && TIER_STATUS_SEPARATOR}
                 <span className="whitespace-nowrap">{part}</span>
               </Fragment>
             ))}

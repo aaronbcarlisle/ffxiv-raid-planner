@@ -3,8 +3,20 @@
  * participant row, with every field set and the usual ones overridable.
  */
 import type { CollectionGoal, ParticipantStateEntry } from '../../../stores/collectionGoalStore';
-import type { MemberRole, SnapshotPlayer } from '../../../types';
+import type { GearSlot, GearSlotStatus, MemberRole, SnapshotPlayer } from '../../../types';
 import { cellFor, type FarmRow, type ProgressColumn } from '../../../utils/progressModel';
+
+/** Eleven gear slots, no off-hand: a card's whole BiS for the tier row's tests. */
+export const SLOTS: GearSlot[] = ['weapon', 'head', 'body', 'hands', 'legs', 'feet', 'earring', 'necklace', 'bracelet', 'ring1', 'ring2'];
+
+/** Eleven slots: `done` raid slots had, then `augment` tome slots had but not augmented, then the rest raid and not had. */
+export function gearOf(done: number, augment = 0): GearSlotStatus[] {
+  return SLOTS.map((slot, i) => {
+    if (i < done) return { slot, bisSource: 'raid', hasItem: true, isAugmented: false } as GearSlotStatus;
+    if (i < done + augment) return { slot, bisSource: 'tome', hasItem: true, isAugmented: false } as GearSlotStatus;
+    return { slot, bisSource: 'raid', hasItem: false, isAugmented: false } as GearSlotStatus;
+  });
+}
 
 export function goal(id: string, overrides: Partial<CollectionGoal> = {}): CollectionGoal {
   return {
