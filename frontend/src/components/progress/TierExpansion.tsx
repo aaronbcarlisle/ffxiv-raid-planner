@@ -10,12 +10,15 @@
  *   - on: the existing `SplitClearPlanner` (D-3, unchanged), read-only unless `canEdit`;
  *   - off, which only a lead can open: Turn on split clears, the store's settings PUT. The
  *     planner mounts only while on, so its own "Enable split planning" card never shows here.
+ * Once the planner has mounted, a failed refetch puts the error above it and leaves it mounted in
+ * place (it renders nothing while the store has no data), so Retry brings the draft back. A first
+ * load that fails shows the error alone.
  *
  * The matrix mounts it on the first open and keeps it mounted, `hidden` while the tier row is
  * closed, so the planner's draft (its component state) survives a collapse or a farm opened in
  * between (D-10). Escape inside it closes it, through the farm panel's filter (`escapeClosesPanel`).
  */
-import { useRef, type KeyboardEvent } from 'react';
+import { useRef, useState, type KeyboardEvent } from 'react';
 import { Button } from '../primitives/Button';
 import { SplitClearPlanner } from '../split-clear/SplitClearPlanner';
 import { useSplitClearStore } from '../../stores/splitClearStore';
@@ -57,6 +60,11 @@ export function TierExpansion({ panel, hidden, spanAll, viewWidth, onClose }: Ti
   const rowRef = useRef<HTMLTableRowElement>(null);
   const isSaving = useSplitClearStore((s) => s.isSaving);
   const isLoading = useSplitClearStore((s) => s.isLoading);
+  // The planner stays mounted through a failed refetch (its draft is its own state), and goes with
+  // the off-state, which only a refetch that finds split clears off brings back.
+  const [plannerMounted, setPlannerMounted] = useState(false);
+  const showPlanner = panel.state === 'on' || (panel.state === 'failed' && plannerMounted);
+  if (showPlanner !== plannerMounted) setPlannerMounted(showPlanner);
 
   const onKeyDown = (event: KeyboardEvent<HTMLTableRowElement>) => {
     if (!escapeClosesPanel(event, rowRef.current)) return;
@@ -78,9 +86,10 @@ export function TierExpansion({ panel, hidden, spanAll, viewWidth, onClose }: Ti
         <div
           data-testid="progress-tier-expansion-body"
           style={viewWidth === null ? undefined : { width: viewWidth }}
-          className="max-w-full px-4 py-3"
+          className="max-w-full space-y-3 px-4 py-3"
         >
-          {panel.state === 'failed' ? (
+          {/* Three fixed slots, so the planner keeps its place (and its state) under the error. */}
+          {panel.state === 'failed' && (
             <div
               role="alert"
               className="flex flex-wrap items-center gap-3 rounded-lg border border-status-error/30 bg-status-error/10 px-4 py-3 text-sm text-text-primary"
@@ -90,9 +99,8 @@ export function TierExpansion({ panel, hidden, spanAll, viewWidth, onClose }: Ti
                 Retry
               </Button>
             </div>
-          ) : panel.state === 'on' ? (
-            <SplitClearPlanner groupId={panel.groupId} players={panel.players} canEdit={panel.canEdit} />
-          ) : (
+          )}
+          {panel.state === 'off' && (
             <div className="flex flex-wrap items-center gap-3">
               <p className="text-sm text-text-secondary">Split clears are off. Plan a main and alt run for each card.</p>
               <Button variant="primary" size="sm" disabled={isSaving} onClick={panel.onTurnOn}>
@@ -100,6 +108,7 @@ export function TierExpansion({ panel, hidden, spanAll, viewWidth, onClose }: Ti
               </Button>
             </div>
           )}
+          {showPlanner && <SplitClearPlanner groupId={panel.groupId} players={panel.players} canEdit={panel.canEdit} />}
         </div>
       </td>
     </tr>

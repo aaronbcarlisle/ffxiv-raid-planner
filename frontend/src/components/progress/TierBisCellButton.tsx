@@ -14,9 +14,10 @@
  * Board and opens nothing. A plain click never jumps. There is no context menu (D-8). The
  * pointer cursor shows only while Alt is held (`altHeld`, one listener for the row), since a
  * persistent pointer would advertise a plain click the jump does not honour. The popover's
- * content is portalled, and React bubbles its events through the Popover root, which does reach
- * the `<td>` and `<tr>`. The grid misses them only because its `cellProps` sit on the trigger,
- * the Popover root's sibling, so they must never move onto the `<td>`.
+ * content is portalled, but React still bubbles its events up the component tree, through the
+ * Popover root to the `<td>` and `<tr>`. The trigger is the root's child and the content's
+ * sibling, so the grid, whose `cellProps` sit on the trigger, never sees them; on the `<td>` the
+ * props would, so they must not move there.
  */
 import { useState } from 'react';
 import { Button } from '../primitives/Button';

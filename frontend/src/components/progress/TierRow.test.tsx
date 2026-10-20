@@ -303,7 +303,7 @@ describe('TierBisCellButton', () => {
   });
 
   it('takes no column without a card (a type error; TierRow draws an empty cell for it)', () => {
-    const off: ProgressColumn = { kind: 'notOnRoster', key: 'user:u9', name: 'Nia', userId: 'u9', player: null, reason: 'notOnRoster' };
+    const off: Extract<ProgressColumn, { kind: 'notOnRoster' }> = { kind: 'notOnRoster', key: 'user:u9', name: 'Nia', userId: 'u9', player: null, reason: 'notOnRoster' };
     // @ts-expect-error -- a Not-on-the-roster column has no card, so no BiS cell.
     const props: CardColumn = off;
     expect(props.player).toBeNull();

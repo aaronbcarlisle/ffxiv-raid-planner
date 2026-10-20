@@ -64,9 +64,11 @@ const TIER = getTierById(TIER_ID)!.name;
 const player = (id: string, name: string, position: string, role: string, userId: string) => ({
   id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId, gear: [],
 });
+/** A substitute: a column of its own, never one of the planner's players (R-T-8; review m-a). */
+const SUB = { ...player('p3', 'Cy', 'R1', 'caster', 'u3'), isSubstitute: true };
 const activeTier = {
   id: 't1', staticGroupId: 'g1', tierId: TIER_ID, isActive: true,
-  players: [player('p1', 'Aya', 'T1', 'tank', 'u1'), player('p2', 'Bo', 'H1', 'healer', 'u2')],
+  players: [player('p1', 'Aya', 'T1', 'tank', 'u1'), player('p2', 'Bo', 'H1', 'healer', 'u2'), SUB],
 } as unknown as TierSnapshot;
 const pastTier = { ...activeTier, isActive: false } as unknown as TierSnapshot;
 const g2Tier = { ...activeTier, id: 't9', staticGroupId: 'g2' } as unknown as TierSnapshot;
@@ -245,6 +247,14 @@ describe('ProgressPage tier row with split clears on', () => {
     expect(tierPanel()).toHaveAttribute('hidden');
   });
 
+  it('hands the planner the configured, non-substitute cards only (review m-a)', async () => {
+    await openTier();
+    expect(inPanel().getByText('Roster 2/2')).toBeInTheDocument();
+    startDraft();
+    expect(inPanel().getByText(/^Aya: Run A character not set/)).toBeInTheDocument();
+    expect(inPanel().queryByText(/^Cy: /)).not.toBeInTheDocument();
+  });
+
   it.each([['member', MEMBER], ['viewer', VIEWER]])('a %s gets the planner read-only (canEdit false)', async (_who, reader) => {
     await openTier(reader);
     expect(composer()).toBeInTheDocument();
@@ -295,11 +305,22 @@ describe('ProgressPage tier panel keeps the planner mounted (D-10)', () => {
     expect(trackOf()).toBe('tier');
     expect(disclosure()).toHaveAttribute('aria-expanded', 'true');
     expect(tierPanel()).not.toHaveAttribute('hidden');
-    expect(screen.queryByText(/Loading the split plan/)).not.toBeInTheDocument();
 
     await release();
     await waitFor(() => expect(draftHeading()).toBeInTheDocument());
-    expect(screen.queryByText(/Loading the split plan/)).not.toBeInTheDocument();
+  });
+
+  it('a failed refetch keeps the planner mounted under the error, so Retry brings the draft back (review I1)', async () => {
+    await openTier();
+    startDraft();
+    split.failGet();
+    await returnToTab();
+    expect(await inPanel().findByText("Couldn't load the split plan")).toBeInTheDocument();
+    expect(tierPanel()).not.toHaveAttribute('hidden');
+
+    fireEvent.click(inPanel().getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(draftHeading()).toBeInTheDocument());
+    expect(inPanel().queryByText("Couldn't load the split plan")).not.toBeInTheDocument();
   });
 });
 
@@ -395,6 +416,19 @@ describe('ProgressPage ?track=tier before the data', () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
     await act(async () => useCollectionGoalStore.setState({ participants: { ...NEEDY } }));
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it('a focused plain name hands its focus to the disclosure once the result settles (review m-d)', async () => {
+    const release = split.holdGet();
+    renderAt('/?tab=progress', { tier: activeTier });
+    await loadedMatrix();
+    const name = within(tierRow()).getByRole('rowheader');
+    expect(disclosure()).not.toBeInTheDocument();
+    act(() => name.focus());
+    expect(name).toHaveFocus();
+
+    await release();
+    await waitFor(() => expect(disclosure()).toHaveFocus());
   });
 
   it('is removed on a known past tier (E-8), with no disclosure and no fetch', async () => {
