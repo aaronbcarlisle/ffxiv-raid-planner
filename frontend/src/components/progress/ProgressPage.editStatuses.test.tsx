@@ -46,6 +46,12 @@ const group = {
   ],
 } as unknown as StaticGroup;
 
+/** Dee (u4) was demoted to viewer but still holds a roster card: a claimed column the lead route rejects. */
+const viewerCardGroup = {
+  ...group,
+  members: (group.members ?? []).map((m) => (m.userId === 'u4' ? { ...m, role: 'viewer' } : m)),
+} as unknown as StaticGroup;
+
 const player = (id: string, name: string, position: string, role: string, userId: string | null) => ({
   id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId,
 });
@@ -324,6 +330,39 @@ describe('ProgressPage Edit statuses: the bulk Need (rulings 7, 8)', () => {
   it('is disabled with "No blank cells" when every claimed cell has a status', async () => {
     seed({ wings: [row('wings', 'u1', { state: 'need' }), row('wings', 'u2', { state: 'have' }), row('wings', 'u4', { state: 'pass' })] });
     renderPage();
+    await enterMode();
+    expect(bulk()).toBeDisabled();
+    expect(screen.getByText('No blank cells')).toBeInTheDocument();
+  });
+});
+
+describe('ProgressPage Edit statuses: a viewer-role card holder', () => {
+  it('leaves their claimed cell read-only in the mode while the other members\' cells stay Buttons', async () => {
+    seed({ wings: [row('wings', 'u1', { state: 'need' }), row('wings', 'u2', { state: 'have' })] });
+    renderPage({ group: viewerCardGroup });
+    await enterMode();
+    expect(screen.getByRole('button', { name: 'Bo, Wings of Resolve, Have — change status' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Dee,/ })).not.toBeInTheDocument();
+  });
+
+  it('does not send their blank cells, and disables the bulk Need once only their blanks remain', async () => {
+    // Bo is blank on wings; Dee (a viewer) is blank on wings and tomes.
+    const TOMES = goal('tomes', { title: 'Tomes' });
+    seed({ wings: [row('wings', 'u1', { state: 'need' })], tomes: [row('tomes', 'u1', { state: 'need' }), row('tomes', 'u2', { state: 'have' })] }, [WINGS, TOMES]);
+    vi.mocked(api.post).mockResolvedValueOnce({ created: [written('u2')], skipped: 0, undo_token: 'bulk-tok' });
+    renderPage({ group: viewerCardGroup });
+    await enterMode();
+
+    fireEvent.click(bulk());
+    await waitFor(() => expect(toasts()).toHaveLength(1));
+    expect(api.post).toHaveBeenCalledWith('/api/static-groups/g1/collection-participants/mark-need', {
+      cells: [{ goal_id: 'wings', user_id: 'u2' }],
+    });
+  });
+
+  it('is disabled with "No blank cells" when only the viewer\'s cells are blank', async () => {
+    seed({ wings: [row('wings', 'u1', { state: 'need' }), row('wings', 'u2', { state: 'have' })] });
+    renderPage({ group: viewerCardGroup });
     await enterMode();
     expect(bulk()).toBeDisabled();
     expect(screen.getByText('No blank cells')).toBeInTheDocument();

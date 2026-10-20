@@ -25,8 +25,9 @@ const unclaimed: ProgressColumn = { kind: 'unclaimed', key: 'p3', name: 'Cy', us
 const offRoster = (userId: string): ProgressColumn => ({ kind: 'notOnRoster', key: `user:${userId}`, name: userId, userId, player: null, reason: 'notOnRoster' });
 const cell = (column: ProgressColumn, own: boolean, state: ParticipantState | null = null): ProgressCell =>
   ({ column, state, count: null, countHidden: false, own, entry: null, recordOnly: null, record: null });
+const TRACKABLE: ReadonlySet<string> = new Set(['u1', 'u2', 'u4']);
 const ctx = (over: Partial<EditContext> = {}): EditContext =>
-  ({ groupId: 'g1', currentUserId: 'u1', userRole: 'lead', canManage: true, isViewingAs: false, editing: false, ...over });
+  ({ groupId: 'g1', currentUserId: 'u1', userRole: 'lead', canManage: true, isViewingAs: false, editing: false, trackableUserIds: TRACKABLE, ...over });
 
 describe('cellWriteTarget (R-S2-10)', () => {
   it('outside the mode: the own cell goes through the self route, Not on the roster included', () => {
@@ -70,6 +71,16 @@ describe('cellWriteTarget (R-S2-10)', () => {
     expect(cellWriteTarget(cell(offRoster('u1'), true), ctx({ editing: true }))).toEqual({ groupId: 'g1' });
   });
 
+  it('in the mode: a viewer-role card holder\'s claimed cell is not written (the server rejects viewers), blank or not', () => {
+    // u4 holds a roster card but was demoted to viewer: not trackable.
+    const noU4 = ctx({ editing: true, trackableUserIds: new Set(['u1', 'u2']) });
+    expect(cellWriteTarget(cell(claimed('u4'), false), noU4)).toBeUndefined();
+    expect(cellWriteTarget(cell(claimed('u4'), false, 'have'), noU4)).toBeUndefined();
+    // The others stay writable, and the own cell keeps its branch even when the set omits the reader.
+    expect(cellWriteTarget(cell(claimed('u2'), false), noU4)).toEqual({ groupId: 'g1', targetUserId: 'u2' });
+    expect(cellWriteTarget(cell(claimed('u1'), true), ctx({ editing: true, trackableUserIds: new Set() }))).toEqual({ groupId: 'g1' });
+  });
+
   it('in the mode: others\' Not-on-the-roster cells and unclaimed cells stay read-only', () => {
     expect(cellWriteTarget(cell(offRoster('u9'), false, 'want'), ctx({ editing: true }))).toBeUndefined();
     expect(cellWriteTarget(cell(unclaimed, false), ctx({ editing: true }))).toBeUndefined();
@@ -104,17 +115,28 @@ describe('blankClaimedCells (R-S2-12, Q1, Q2)', () => {
       { wings: [recordHave] },
     );
     expect(active.map((r) => r.goal.id)).toEqual(['wings', 'tomes']);
-    expect(blankClaimedCells(active)).toEqual([
+    expect(blankClaimedCells(active, TRACKABLE)).toEqual([
       { goalId: 'wings', userId: 'u4' },
       { goalId: 'tomes', userId: 'u1' },
       { goalId: 'tomes', userId: 'u4' },
     ]);
   });
 
+  it('skips a viewer-role card holder\'s blank cells: only trackable members are sent', () => {
+    const { active } = activeRows({ wings: [row('wings', 'u1', { state: 'need' })], tomes: [] });
+    // u4 is a viewer: their blank cells on wings and tomes are not sent; u2 and u1 (tomes) are.
+    expect(blankClaimedCells(active, new Set(['u1', 'u2']))).toEqual([
+      { goalId: 'wings', userId: 'u2' },
+      { goalId: 'tomes', userId: 'u1' },
+      { goalId: 'tomes', userId: 'u2' },
+    ]);
+    expect(blankClaimedCells(active, new Set())).toEqual([]);
+  });
+
   it('is empty when every claimed cell has a state, Finished rows aside', () => {
     const states = (goalId: string) => ['u1', 'u2', 'u4'].map((u) => row(goalId, u, { state: 'pass' }));
     const { active, finished } = activeRows({ wings: states('wings'), tomes: states('tomes'), done: [] });
-    expect(blankClaimedCells(active)).toEqual([]);
+    expect(blankClaimedCells(active, TRACKABLE)).toEqual([]);
     // The finished row's cells are all blank, and the caller never passes it.
     expect(finished.map((r) => r.goal.id)).toEqual(['done']);
   });

@@ -179,6 +179,13 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     return names;
   }, [group.members, authUserId, authUserName]);
 
+  // Members the lead route can aim at: the server rejects a viewer, and a member demoted to
+  // viewer keeps their roster card (a claimed column), so Edit statuses and the bulk Need skip them.
+  const trackableUserIds = useMemo(
+    () => new Set((group.members ?? []).filter((m) => m.role !== 'viewer').map((m) => m.userId)),
+    [group.members],
+  );
+
   // ── Edit statuses (F6, R-S2-10) ──
   // Who gets the mode: NewShell's canManage (owner, lead, admin access), never a viewer, and
   // only while there is an active farm to edit (the bar renders under the same condition).
@@ -193,10 +200,10 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   // Where each active cell writes (R-S2-10): one's own (View As: the lead route aimed at the
   // viewed user), and in the mode every claimed cell, aimed at its member.
   const editFor = useCallback(
-    (cell: ProgressCellModel) => cellWriteTarget(cell, { groupId: group.id, currentUserId, userRole, canManage, isViewingAs, editing }),
-    [group.id, currentUserId, userRole, canManage, isViewingAs, editing],
+    (cell: ProgressCellModel) => cellWriteTarget(cell, { groupId: group.id, currentUserId, userRole, canManage, isViewingAs, editing, trackableUserIds }),
+    [group.id, currentUserId, userRole, canManage, isViewingAs, editing, trackableUserIds],
   );
-  const blankCells = useMemo(() => blankClaimedCells(active), [active]);
+  const blankCells = useMemo(() => blankClaimedCells(active, trackableUserIds), [active, trackableUserIds]);
 
   const retry = () => {
     // Behind a mounted matrix the stale cells stay on screen while the retry runs.
