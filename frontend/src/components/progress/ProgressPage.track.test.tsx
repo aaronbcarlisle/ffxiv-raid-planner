@@ -30,6 +30,7 @@ import {
   actionOf,
   fetchGoals,
   fetchProgress,
+  loadedMatrix,
   nameOf,
   otherGroup,
   panel,
@@ -82,7 +83,7 @@ describe('ProgressPage ?track= on load', () => {
   it('opens the active row it names and scrolls the row, then its panel, into view once', async () => {
     seed();
     renderAt('/group/DEVTST?shell=v2&tab=progress&track=calm');
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
 
     expect(nameOf('calm')).toHaveAttribute('aria-expanded', 'true');
     expect(nameOf('hot')).toHaveAttribute('aria-expanded', 'false');
@@ -102,7 +103,7 @@ describe('ProgressPage ?track= on load', () => {
   it('expands Finished (n) first for a finished id, fetches its cells, then opens that row', async () => {
     seed();
     renderAt('/group/DEVTST?shell=v2&tab=progress&track=done');
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
 
     expect(screen.getByRole('button', { name: 'Finished (1)' })).toHaveAttribute('aria-expanded', 'true');
     expect(fetchProgress).toHaveBeenCalledWith('g1', ['done']);
@@ -123,7 +124,7 @@ describe('ProgressPage ?track= on load', () => {
     await act(async () => {
       useCollectionGoalStore.setState({ loadedGroupId: 'g1' });
     });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(nameOf('hot')).toHaveAttribute('aria-expanded', 'true');
     expect(rowOf('hot').nextElementSibling).toBe(panel());
   });
@@ -137,7 +138,7 @@ describe('ProgressPage ?track= on load', () => {
     await act(async () => {
       useCollectionGoalStore.setState({ loadedGroupId: 'g1' });
     });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(trackOf()).toBeNull();
     expect(search().get('tab')).toBe('progress');
     expect(panel()).toBeNull();
@@ -159,7 +160,7 @@ describe('ProgressPage ?track= on load', () => {
       });
     });
     renderAt('/group/DEVTST?shell=v2&tab=progress&track=calm');
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(fetchGoals).toHaveBeenCalledWith('g1');
     expect(trackOf()).toBe('calm');
     expect(panel()).toBeNull();
@@ -175,7 +176,7 @@ describe('ProgressPage ?track= writes', () => {
   it('writes the opened row in place and removes it on close', async () => {
     seed();
     renderAt('/group/DEVTST?shell=v2&tab=progress');
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(trackOf()).toBeNull();
 
     fireEvent.click(nameOf('hot'));
@@ -197,7 +198,7 @@ describe('ProgressPage ?track= writes', () => {
   it('removes it on Escape in the panel too, and focus returns to the name', async () => {
     seed();
     renderAt('/group/DEVTST?shell=v2&tab=progress&track=hot');
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     fireEvent.keyDown(within(panel()!).getByRole('heading', { name: 'About' }), { key: 'Escape' });
     expect(trackOf()).toBeNull();
     expect(panel()).toBeNull();
@@ -209,7 +210,7 @@ describe('ProgressPage ?track= across a static switch (R-S3-3)', () => {
   it('clears the id at once when the static changes under the page, opening nothing while the new goals load', async () => {
     seed();
     const { rerender } = renderAt('/group/DEVTST?shell=v2&tab=progress&track=hot');
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(nameOf('hot')).toHaveAttribute('aria-expanded', 'true');
 
     // The store still holds g1's goals (loadedGroupId 'g1'): g2's are loading.
@@ -224,7 +225,7 @@ describe('ProgressPage ?track= across a static switch (R-S3-3)', () => {
     await act(async () => {
       useCollectionGoalStore.setState({ goals: [goal('hot', { title: 'Hot Farm', staticGroupId: 'g2' })], loadedGroupId: 'g2' });
     });
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     expect(panel()).toBeNull();
     expect(trackOf()).toBeNull();
   });
@@ -236,7 +237,7 @@ describe('ProgressPage open row: Escape in the Log a drop picker (R-S3-4, vet I-
   it('closes only the portalled picker: the panel stays open, ?track is unchanged and focus returns to the ▾', async () => {
     seed();
     renderAt('/group/DEVTST?shell=v2&tab=progress&track=hot');
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     const more = within(panel()!).getByRole('button', { name: 'More recipients' });
     fireEvent.click(more);
     const picker = screen.getByRole('dialog', { name: 'Log a drop for Hot Farm' });
@@ -261,7 +262,7 @@ describe('ProgressPage open row: Escape in the delete-drop confirm (R-S3-4, vet 
     );
     seed();
     renderAt('/group/DEVTST?shell=v2&tab=progress&track=hot');
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     const trash = await within(panel()!).findByRole('button', { name: /^Delete drop for Aya, / });
     act(() => trash.focus());
     fireEvent.click(trash);
@@ -290,7 +291,7 @@ describe('ProgressPage: a drop\'s Undo after a static switch (G3 fix wave)', () 
     useToastStore.getState().clearAll();
     seed();
     const { rerender } = renderAt('/group/DEVTST?shell=v2&tab=progress&track=hot');
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     fireEvent.click(await within(panel()!).findByRole('button', { name: 'Log drop for Aya' }));
     await waitFor(() => expect(useToastStore.getState().toasts.map((t) => t.action?.label)).toContain('Undo'));
 
@@ -320,7 +321,7 @@ describe('ProgressPage open row: the drops\' week labels follow the week clock (
     vi.mocked(api.get).mockResolvedValue([apiDrop('d1', 'u1', { recipient_display_name: 'Aya', dropped_at: '2026-09-09T10:00:00Z' })]);
     seed();
     renderAt('/group/DEVTST?shell=v2&tab=progress&track=hot');
-    await screen.findByTestId('progress-matrix');
+    await loadedMatrix();
     // The line itself: the row also holds the delete button's hidden name.
     return (await within(screen.getByTestId('progress-expansion-drops')).findByRole('listitem')).firstElementChild?.textContent;
   }

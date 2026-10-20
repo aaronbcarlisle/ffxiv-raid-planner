@@ -210,10 +210,12 @@ test.describe.serial('Progress matrix', () => {
     await loginAsOwner(page);
     await openProgress(page);
 
-    const screenRoot = page.getByTestId('progress-screen');
-    const tierBox = await screenRoot.getByTestId('progress-tier-row').boundingBox();
-    const matrixBox = await screenRoot.getByTestId('progress-matrix').boundingBox();
-    expect(tierBox!.y).toBeLessThan(matrixBox!.y);
+    // S2a-3b·H3 (R-T-3): the tier row is the matrix's first body row, above every farm row.
+    const matrix = page.getByTestId('progress-screen').getByTestId('progress-matrix');
+    await expect(matrix.locator('tbody tr').first()).toHaveAttribute('data-testid', 'progress-tier-row');
+    const tierBox = await matrix.getByTestId('progress-tier-row').boundingBox();
+    const firstFarmBox = await page.getByTestId('progress-farm-row').first().boundingBox();
+    expect(tierBox!.y).toBeLessThan(firstFarmBox!.y);
 
     expect(await seededOrder(page)).toEqual([seeded.mountId, seeded.customId]);
     const mount = page.locator(`[data-goal-id="${seeded.mountId}"]`);
@@ -225,8 +227,16 @@ test.describe.serial('Progress matrix', () => {
     // The controls in the matrix body: each farm's name and Finished (disclosures, S2a-3a), the
     // owner's row menus (a lead's ⋯ column, G4: they also carry aria-expanded, so they are told
     // apart by aria-haspopup) and the owner's own cells (F5). A menu is named "Actions for {title}",
-    // a cell button "… your status"; the disclosures are exempt.
-    const bodyButtons = await page.getByTestId('progress-matrix').locator('tbody button').evaluateAll((els) =>
+    // a cell button "… your status"; the disclosures are exempt. The tier row's controls (S2a-3b·H3)
+    // are its BiS cells, named with their numbers, and Open board; they are checked on their own.
+    const tierButtons = await matrix.getByTestId('progress-tier-row').locator('button').evaluateAll((els) =>
+      els.map((el) => el.getAttribute('aria-label') ?? el.textContent ?? ''),
+    );
+    expect(tierButtons).toContain('Open board');
+    for (const label of tierButtons.filter((l) => l !== 'Open board')) {
+      expect(label).toMatch(/, \d+ of \d+ BiS slots done(, \d+ need augment)?$|, no BiS set$/);
+    }
+    const bodyButtons = await matrix.locator('tbody tr:not([data-testid="progress-tier-row"]) button').evaluateAll((els) =>
       els.map((el) => ({
         label: el.getAttribute('aria-label') ?? el.textContent ?? '',
         menu: el.getAttribute('aria-haspopup') === 'menu',
@@ -313,7 +323,8 @@ test.describe.serial('Progress matrix', () => {
     // name; the next Tab leaves the grid's rows (not onto the scroller, not onto a cell, not onto
     // another name). Since F6 the owner's toolbar ("Edit statuses") is the last control before
     // the matrix.
-    await page.getByRole('button', { name: 'Edit statuses' }).focus();
+    // S2a-3b·H3 (R-T-3): the tier row's buttons are plain tab stops ahead of the grid until H3a, so the walk starts from its last one.
+    await page.getByTestId('progress-tier-row').locator('button').last().focus();
     await page.keyboard.press('Tab');
     expect(await page.evaluate(() => document.activeElement?.closest('[role="rowheader"]') !== null)).toBe(true);
     expect(await matrix.evaluate((m) => m.contains(document.activeElement))).toBe(true);
@@ -323,6 +334,9 @@ test.describe.serial('Progress matrix', () => {
 
     // The owner's Need cell is their own, so its focus element is the picker button (F5).
     const needCell = page.locator(`[data-goal-id="${seeded.mountId}"] [data-testid="progress-cell"][aria-label*=", Need, "]`).first();
+    // The cell sits past the scroller's edge, and Radix closes a tooltip when its scroller scrolls: scroll first, let that land, then focus.
+    await needCell.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(200);
     await needCell.locator('button').focus();
     // The owner wrote their own status, so the tooltip reads "you" to them.
     await expect(page.getByRole('tooltip').first()).toContainText('you');
@@ -544,7 +558,7 @@ test.describe.serial('Progress: Edit statuses', () => {
     await expect(memberCell.getByRole('button')).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Edit statuses' }).click();
-    await expect(page.getByRole('button', { name: 'Done' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Done', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Mark everyone without a status as Need' })).toBeEnabled();
 
     // A correction: a blank cell of another member says "set status", the pick lands on their row.
@@ -613,7 +627,7 @@ test.describe.serial('Progress: Edit statuses', () => {
     await page.getByRole('button', { name: 'Mark everyone without a status as Need' }).click();
     await expect(page.getByText(`Marked ${blanks} ${blanks === 1 ? 'cell' : 'cells'} Need`)).toBeVisible();
     // The trigger was disabled while it ran, which drops focus to the body: it lands on Done.
-    await expect(page.getByRole('button', { name: 'Done' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Done', exact: true })).toBeFocused();
     for (const column of CLAIMED) {
       await expect(cellOf(page, blank.id, column)).toHaveAttribute('aria-label', `${column}, ${blank.title}, Need`);
     }
@@ -630,7 +644,7 @@ test.describe.serial('Progress: Edit statuses', () => {
     await expect(cellOf(page, editId, 'Melee One')).toHaveAttribute('aria-label', `Melee One, ${EDIT_TITLE}, Need, 7 of 99 Tokens`);
 
     // Done leaves the mode: the bulk is gone, "Edit statuses" is back.
-    await page.getByRole('button', { name: 'Done' }).click();
+    await page.getByRole('button', { name: 'Done', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Edit statuses' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Mark everyone without a status as Need' })).toHaveCount(0);
     await context.close();
@@ -649,7 +663,7 @@ test.describe.serial('Progress: Edit statuses', () => {
       const page = await context.newPage();
       await openEditable(page, theme);
       await page.getByRole('button', { name: 'Edit statuses' }).click();
-      await expect(page.getByRole('button', { name: 'Done' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Done', exact: true })).toBeVisible();
       await page.waitForTimeout(300);
 
       const blocking = await blockingViolations(page, ['[data-testid="progress-screen"]']);

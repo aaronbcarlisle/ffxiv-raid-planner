@@ -1,6 +1,6 @@
 /**
- * ProgressPage — the V2 Progress tab (S2a-2). The header, the tier row, the farm
- * matrix and the members-only card for outsiders.
+ * ProgressPage — the V2 Progress tab (S2a-2). The header, the matrix (the tier row first,
+ * then the farms) and the members-only card for outsiders.
  *
  * `canManage` decides whether the status column reads "Everyone has it". A member
  * (owner, lead or member role) edits their own cells (F5, R-S2-10): under View As the
@@ -19,8 +19,16 @@
  * `NewShell.tsx` documents). Finished goals fetch on their first expand, at most 50
  * ids per request (the route 422s above that).
  *
- * R-S2-19: a viewer with no role (guest or outsider) sees the tier row and the
- * members-only card in place of the matrix, and no `collection-` request fires.
+ * R-S2-19, D-11: a viewer with no role (guest or outsider) sees the matrix holding the tier row
+ * alone (the roster's BiS cells and "x/y BiS slots · Week n", no floors), above the members-only
+ * card, and no `collection-`, `page-ledger` or `split-clear` request fires.
+ *
+ * The tier row (S2a-3b·H3, R-T-3, R-T-5, D-4, D-7, E-7): the matrix renders whenever a tier is
+ * selected, farms or not, with the "Loading farms…" and error lines below it; the farm rows (and
+ * the members they add as columns) wait for the first load, members only. Each column's BiS cell
+ * comes from `tierBisCell`; the status line sums the counted ones (claimed and unclaimed cards,
+ * never a substitute) and, for members, adds the week's cleared floors from the page ledger,
+ * fetched here and copied locally keyed by (static, tier).
  *
  * The open row (S2a-3a·G2, R-S3-3, D-7, D-8): `?track=<goal id>` through `useTrackParam`,
  * one row at a time. A row is open only while its id names a goal of THIS static whose
@@ -44,22 +52,28 @@ import { ConfirmModal } from '../ui/ConfirmModal';
 import { useRosterSortPreset } from '../roster/useRosterSortPreset';
 import { getTierById } from '../../gamedata';
 import { useTrackParam } from '../../hooks/useTrackParam';
+import { computeWeeklyLootSummary } from '../../hooks/useWeeklyLootSummary';
 import { useAuthStore } from '../../stores/authStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
-import type { MemberRole, PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
-import { buildColumns, splitFarmRows, type ProgressCell as ProgressCellModel } from '../../utils/progressModel';
+import type { LootLogEntry, MemberRole, PageLedgerEntry, PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
+import { buildColumns, splitFarmRows, type ProgressCell as ProgressCellModel, type ProgressData } from '../../utils/progressModel';
+import { tierBisCell, tierBisTotals, tierStatusText } from '../../utils/tierBis';
 import { blankClaimedCells, cellWriteTarget } from './editStatuses';
 import { FarmEditContext } from './farmEditContext';
 import { farmEditTitleId, farmMenuId, farmNameId } from './farmFocus';
 import { EditStatusesBar } from './EditStatusesBar';
 import { ProgressMatrix } from './ProgressMatrix';
-import { TierRow } from './TierRow';
+import type { TierColumnCell, TierRowModel } from './TierRow';
 
 /** The route 422s above this many `goal_id` params. */
 const FINISHED_GOALS_PER_REQUEST = 50;
 
 const NO_PLAYERS: SnapshotPlayer[] = [];
+/** The weekly summary's loot log: the floors part reads only the ledger (R-T-5). */
+const NO_LOOT: LootLogEntry[] = [];
+/** The farm data while the farms are not shown (a guest, or before the first load). */
+const NO_FARMS: ProgressData = { goals: [], participants: {}, recordOnly: {} };
 
 interface ProgressPageProps {
   group: StaticGroup;
@@ -87,7 +101,41 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   const clock = useMemo(() => ({ currentWeek: week, weekStartDate }), [week, weekStartDate]);
 
   const tierName = tier ? (getTierById(tier.tierId)?.name ?? tier.tierId) : null;
+  const tierId = tier?.tierId ?? null;
   const isMember = userRole != null;
+
+  // ── The tier's floors (R-T-5, E-7) ──
+  // Members (viewers too) fetch the page ledger for (static, tier) on mount and when either changes.
+  // The store's `pageLedger` is one unkeyed slot any response may write, so this mount copies it on
+  // resolve, keyed by (static, tier); a resolve for a key no longer current is dropped. A failure
+  // leaves no copy, so the floors part stays out, with no toast. Guests never fetch (D-11).
+  const ledgerKey = isMember && tierId !== null ? `${group.id}:${tierId}` : null;
+  const [ledger, setLedger] = useState<{ key: string; entries: PageLedgerEntry[] } | null>(null);
+  useEffect(() => {
+    if (!isMember || tierId === null) return;
+    const key = `${group.id}:${tierId}`;
+    let cancelled = false;
+    void useLootTrackingStore
+      .getState()
+      .fetchPageLedger(group.id, tierId)
+      .then(
+        () => {
+          if (!cancelled) setLedger({ key, entries: useLootTrackingStore.getState().pageLedger });
+        },
+        () => undefined,
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [isMember, group.id, tierId]);
+  const floors = useMemo(() => {
+    if (ledgerKey === null || tierId === null || ledger?.key !== ledgerKey || week === null) return null;
+    const tierFloors = getTierById(tierId)?.floors ?? [];
+    // A tier the game data doesn't know has no floors to count: the part stays out, never "0 of 0".
+    if (tierFloors.length === 0) return null;
+    const cleared = computeWeeklyLootSummary(tierFloors, NO_LOOT, ledger.entries, week).filter((f) => f.cleared).length;
+    return { cleared, of: tierFloors.length };
+  }, [ledgerKey, tierId, ledger, week]);
 
   // ── Data ──
   const goals = useCollectionGoalStore((s) => s.goals);
@@ -161,6 +209,9 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   const loading = isMember && !goalsFailed && (!goalsReady || !settledHere);
   const error = !isMember || loading ? null : goalsFailed ? goalsError : activeKey !== '' ? (settled?.error ?? null) : null;
   const matrixLoaded = loadedOnce === group.id;
+  // The farm rows, and the members they add as columns: members only, once the first load is in
+  // (a failed refetch keeps them, stale, beside the error line).
+  const farmsShown = isMember && !loading && (error === null || matrixLoaded);
 
   // ── Finished: fetch the finished goals' cells on the first expand ──
   const [finishedLoading, setFinishedLoading] = useState(false);
@@ -190,11 +241,28 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
 
   const players = tier?.players ?? NO_PLAYERS;
   const { columns, active, finished } = useMemo(() => {
-    // Columns come from the ACTIVE goals only: Finished never adds or shifts one.
-    const columns = buildColumns(players, preset, { goals: activeGoals, participants, recordOnly });
-    const rows = splitFarmRows({ goals: groupGoals, participants, recordOnly }, columns, { currentUserId, userRole });
+    // Columns come from the ACTIVE goals only: Finished never adds or shifts one. Until the farms
+    // show, the columns are the roster's alone.
+    const columns = buildColumns(players, preset, farmsShown ? { goals: activeGoals, participants, recordOnly } : NO_FARMS);
+    const rows = splitFarmRows(farmsShown ? { goals: groupGoals, participants, recordOnly } : NO_FARMS, columns, { currentUserId, userRole });
     return { columns, ...rows };
-  }, [players, preset, activeGoals, groupGoals, participants, recordOnly, currentUserId, userRole]);
+  }, [players, preset, farmsShown, activeGoals, groupGoals, participants, recordOnly, currentUserId, userRole]);
+
+  // ── The tier row (R-T-3, D-4, D-7, E-7) ──
+  // A card's column has its BiS cell; a column with no card has none. Substitutes show theirs but
+  // stay out of the total, as Home's `bisSlotTotals` leaves them out.
+  const tierCells = useMemo(
+    () =>
+      columns.map(
+        (c): TierColumnCell => (c.player ? { cell: tierBisCell(c.player), counted: !c.player.isSubstitute } : { cell: null, counted: false }),
+      ),
+    [columns],
+  );
+  const statusText = tierStatusText({ totals: tierBisTotals(tierCells.map((c) => (c.counted ? c.cell : null))), week, floors });
+  const tierRow: TierRowModel | undefined =
+    tierName === null
+      ? undefined
+      : { name: tierName, cells: tierCells, statusText, onOpenBoard: () => onNavigate('roster', { rview: 'board' }) };
 
   // Names for "set by {name}": the signed-in user first, so a member's entry below wins. The
   // signed-in user is there for View As: the admin writes the viewed user's row, and an
@@ -377,12 +445,38 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
         subtitle={`Every track ${group.name} is working on, the tier first${week !== null ? ` · Week ${week}` : ''}`}
       />
       <div className="space-y-4">
-        {tierName !== null && (
-          <TierRow
-            tierName={tierName}
-            week={week}
-            onOpenBoard={() => onNavigate('roster', { rview: 'board' })}
+        {barShown && (
+          <EditStatusesBar
+            groupId={group.id}
+            editing={editing}
+            onEdit={() => setMode(true)}
+            onDone={() => setMode(false)}
+            blankCells={blankCells}
           />
+        )}
+        {(tierRow !== undefined || (farmsShown && groupGoals.length > 0)) && (
+          <FarmEditContext.Provider value={editControls}>
+            {/* Keyed by static: it stays mounted through a load now, and Finished's state belongs to one static. */}
+            <ProgressMatrix
+              key={group.id}
+              columns={columns}
+              active={active}
+              finished={finished}
+              canManage={canManage}
+              currentUserId={currentUserId}
+              memberNames={memberNames}
+              editFor={editFor}
+              finishedLoading={finishedLoading}
+              finishedError={finishedError}
+              onExpandFinished={expandFinished}
+              openId={openId}
+              onToggle={toggleRow}
+              groupId={group.id}
+              userRole={userRole}
+              clock={clock}
+              tier={tierRow}
+            />
+          </FarmEditContext.Provider>
         )}
         {!isMember && <MembersOnlyCard staticName={group.name} subject="Farms" />}
         {loading && (
@@ -401,38 +495,6 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
               Retry
             </Button>
           </div>
-        )}
-        {isMember && !loading && (error === null || matrixLoaded) && groupGoals.length > 0 && (
-          <>
-            {barShown && (
-              <EditStatusesBar
-                groupId={group.id}
-                editing={editing}
-                onEdit={() => setMode(true)}
-                onDone={() => setMode(false)}
-                blankCells={blankCells}
-              />
-            )}
-            <FarmEditContext.Provider value={editControls}>
-              <ProgressMatrix
-                columns={columns}
-                active={active}
-                finished={finished}
-                canManage={canManage}
-                currentUserId={currentUserId}
-                memberNames={memberNames}
-                editFor={editFor}
-                finishedLoading={finishedLoading}
-                finishedError={finishedError}
-                onExpandFinished={expandFinished}
-                openId={openId}
-                onToggle={toggleRow}
-                groupId={group.id}
-                userRole={userRole}
-                clock={clock}
-              />
-            </FarmEditContext.Provider>
-          </>
         )}
       </div>
       {discarding !== null && (

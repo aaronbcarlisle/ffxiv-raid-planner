@@ -73,6 +73,15 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): S2a-3b·H2 — the tier\'s BiS model',
         internal: true,
       },
+      {
+        category: 'improvement',
+        title: 'Progress: the tier row\'s BiS cells and status',
+        description:
+          'V2 preview: the tier row moves into the Progress matrix as its first row, so its cells sit under the player columns. Each card shows its BiS count ("6/11") over a three-part bar in its role colour (done, needs the tome augment, to go), or "No BiS set"; an unclaimed card\'s cell is dimmed, and a member with no card has an empty cell. The status column reads the BiS total (substitutes left out), the week and the floors cleared this week, with Open board beside it. The matrix now shows with no farms, while farms load and after a failed load. Guests see the cells and the BiS total, and the page fetches nothing new for them.',
+        pr: 399,
+        prTitle: 'feat(v2): S2a-3b·H3 — the tier row in the matrix',
+        internal: true,
+      },
     ],
     internal: true,
   },

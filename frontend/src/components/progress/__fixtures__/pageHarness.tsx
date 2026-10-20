@@ -25,7 +25,7 @@ const group = { id: 'g1', name: 'Dev Test Static', shareCode: 'DEVTST', settings
 export const otherGroup = { ...group, id: 'g2', name: 'Other Static', shareCode: 'OTHER1' } as unknown as StaticGroup;
 
 const player = (id: string, name: string, position: string, role: string, userId: string | null) => ({
-  id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId,
+  id, name, job: 'PLD', role, position, configured: true, isSubstitute: false, sortOrder: 0, userId, gear: [],
 });
 const tier = {
   id: 't1',
@@ -151,6 +151,11 @@ export const search = () => new URLSearchParams(screen.getByTestId('location').t
 export const trackOf = () => search().get('track');
 export const actionOf = () => screen.getByTestId('location').getAttribute('data-action');
 export const rowOf = (id: string) => screen.getAllByTestId('progress-farm-row').find((r) => r.getAttribute('data-goal-id') === id)!;
+/** The matrix once its farm rows are in: since S2a-3b·H3 the matrix (its tier row) shows while farms load. */
+export async function loadedMatrix(): Promise<HTMLElement> {
+  await screen.findAllByTestId('progress-farm-row');
+  return screen.getByTestId('progress-matrix');
+}
 export const nameOf = (id: string) => within(within(rowOf(id)).getByRole('rowheader')).getByRole('button');
 export const panel = () => screen.queryByTestId('progress-expansion');
 export const inFinished = (el: HTMLElement | null) => el !== null && el.closest('[data-testid="progress-finished"]') !== null;

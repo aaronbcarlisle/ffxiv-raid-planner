@@ -4,7 +4,7 @@
  * (the page reads it like Home does); the api client is mocked so the R-S2-19
  * test can record every request a non-member's render makes.
  */
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -92,33 +92,44 @@ describe('ProgressPage', () => {
     expect(screen.queryByText(/Week/)).not.toBeInTheDocument();
   });
 
-  it('shows the tier name and week on the tier row, and Open board navigates to the board', () => {
+  // S2a-3b·H3 (R-T-3, E-6): the row moved into the matrix. The name stays in its rowheader,
+  // "Week n" moved to the status line that Open board (now a link-variant Button) is described by.
+  it("shows the tier name in the tier row's rowheader, the week on its status line, and Open board navigates to the board", () => {
     const { onNavigate } = renderPage();
     const row = screen.getByTestId('progress-tier-row');
-    expect(row).toHaveTextContent(tierName);
-    expect(row).toHaveTextContent('Week 11');
-    fireEvent.click(screen.getByRole('button', { name: 'Open board' }));
+    const header = within(row).getByRole('rowheader');
+    expect(header).toHaveTextContent(tierName);
+    expect(header).not.toHaveTextContent('Week');
+    const openBoard = within(row).getByRole('button', { name: 'Open board' });
+    expect(openBoard).toHaveAccessibleDescription(/Week 11/);
+    fireEvent.click(openBoard);
     expect(onNavigate).toHaveBeenCalledTimes(1);
     expect(onNavigate).toHaveBeenCalledWith('roster', { rview: 'board' });
   });
 
-  it('shows no week on the tier row while the week is unknown', () => {
+  it('shows no week on the tier row while the week is unknown, and the status line still reads', () => {
     seedWeek(null);
     renderPage();
-    expect(screen.getByTestId('progress-tier-row')).not.toHaveTextContent('Week');
+    const row = screen.getByTestId('progress-tier-row');
+    expect(row).not.toHaveTextContent('Week');
+    // This tier has no players, so the BiS part is all there is.
+    expect(within(row).getByRole('button', { name: 'Open board' })).toHaveAccessibleDescription('No BiS set');
   });
 
-  it('a member with no farms sees the tier row first and no empty state', () => {
+  it('a member with no farms sees the matrix holding the tier row, and no empty state', () => {
     renderPage({ userRole: 'member', canManage: false });
-    expect(screen.getByTestId('progress-tier-row')).toBeInTheDocument();
+    const matrix = screen.getByTestId('progress-matrix');
+    expect(within(matrix).getByTestId('progress-tier-row')).toBeInTheDocument();
     expect(screen.queryByTestId('members-only-card')).not.toBeInTheDocument();
     expect(screen.queryByText(/no farms|nothing yet|get started/i)).not.toBeInTheDocument();
   });
 
-  it('puts the tier row first in the Progress content (DOM order)', () => {
+  it('puts the matrix first in the Progress content, the tier row its first body row (DOM order)', () => {
     renderPage({ userRole: null, canManage: false });
-    const content = screen.getByTestId('progress-tier-row').parentElement!;
-    expect(content.firstElementChild).toBe(screen.getByTestId('progress-tier-row'));
+    const matrix = screen.getByTestId('progress-matrix');
+    const content = matrix.parentElement!;
+    expect(content.firstElementChild).toBe(matrix);
+    expect(matrix.querySelector('tbody > tr')).toBe(screen.getByTestId('progress-tier-row'));
     // The members-only card is a later sibling, so "first" is not merely "only".
     expect(content.children.length).toBeGreaterThan(1);
   });

@@ -5,7 +5,12 @@
  * active farm in `compareFarmRows` order; "Finished (n)" last.
  *
  * It scrolls sideways inside its own container, never the page (R-S2-18). Nothing is
- * sticky (CLAUDE.md § Product rules). The tier row is the page's, above this.
+ * sticky (CLAUDE.md § Product rules).
+ *
+ * S2a-3b·H3 (R-T-3, E-5): the tier row (`tier`, `TierRow`) is the first row of the active `<tbody>`,
+ * above every farm, with a cell under every column. It sits outside the grid's rows (`rowIds`), its
+ * buttons plain tab stops as Finished rows' are, until H3a joins it to the grid. The first column
+ * is headed "Track" (the tier is a track too).
  *
  * S2a-2·F4: the active rows and their columns are one `role="grid"` with a single roving
  * Tab stop (`useMatrixKeyboard`), and each cell says where its value came from on hover
@@ -35,6 +40,7 @@ import type { CellWriteResolver } from './editStatuses';
 import { FarmExpansion } from './FarmExpansion';
 import { FarmRow, MENU_KEY, NAME_KEY } from './FarmRow';
 import { FinishedFarms } from './FinishedFarms';
+import { TierRow, type TierRowModel } from './TierRow';
 import type { ProvenanceContext } from './progressProvenance';
 import { useMatrixKeyboard } from './useMatrixKeyboard';
 import { useVisibleWidth } from './useVisibleWidth';
@@ -112,6 +118,8 @@ interface ProgressMatrixProps {
   userRole: MemberRole | null | undefined;
   /** The tier's week clock, for the open panel's drop labels (R-S3-9). */
   clock?: WeekClock;
+  /** The tier row (R-T-3): its name, a cell per column (aligned to `columns`), the status line, Open board. Absent with no tier selected. */
+  tier?: TierRowModel;
 }
 
 export function ProgressMatrix({
@@ -130,6 +138,7 @@ export function ProgressMatrix({
   groupId,
   userRole,
   clock,
+  tier,
 }: ProgressMatrixProps) {
   const rowIds = useMemo(() => active.map((r) => r.goal.id), [active]);
   // Leads manage the farms (the ⋯ menu column, R-S3-17), as LogDropButton gates its split button.
@@ -145,9 +154,9 @@ export function ProgressMatrix({
   // Every column of the table: the grid's keys (name, a lead's menu, the players) plus Status, which is never a focus target.
   const spanAll = colKeys.length + 1;
   // With an active row the grid's single Tab stop (its name button at least) is the keyboard's
-  // way into the scroller; without one the scroller itself is the stop (axe
-  // scrollable-region-focusable).
-  const hasCells = rowIds.length > 0;
+  // way into the scroller, as the tier row's Open board is; without either the scroller itself is
+  // the stop (axe scrollable-region-focusable).
+  const hasCells = rowIds.length > 0 || tier !== undefined;
 
   // Names for "set by {name}": a writer's column first, then the static's members.
   const columnNames = useMemo(() => {
@@ -181,18 +190,18 @@ export function ProgressMatrix({
       ref={scrollerRef}
       data-testid="progress-matrix"
       role="region"
-      aria-label="Farms by player"
+      aria-label="Tracks by player"
       tabIndex={hasCells ? undefined : 0}
       className="relative overflow-x-auto rounded-lg border border-border-default bg-surface-card focus-visible:outline-2 focus-visible:outline-accent"
     >
       <table role="grid" className="w-full min-w-max border-collapse">
         <caption>
-          <VisuallyHidden>Farm progress by player</VisuallyHidden>
+          <VisuallyHidden>Track progress by player</VisuallyHidden>
         </caption>
         <thead>
           <tr role="row">
             <th role="columnheader" scope="col" className="px-3 py-2 text-left align-top text-xs font-medium text-text-secondary">
-              Farm
+              Track
             </th>
             {lead && (
               <th role="columnheader" scope="col" className="px-1 py-2 text-left align-top">
@@ -208,6 +217,7 @@ export function ProgressMatrix({
           </tr>
         </thead>
         <tbody>
+          {tier !== undefined && <TierRow tier={tier} columns={columns} lead={lead} />}
           {active.map((row) => (
             <FarmRow
               key={row.goal.id}
