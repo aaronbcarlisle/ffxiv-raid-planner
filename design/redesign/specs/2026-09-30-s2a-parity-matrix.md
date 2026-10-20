@@ -181,10 +181,10 @@ The whole tab stays in V2, unchanged, until S2a-5a (S2-14 :136). The verdicts gi
 | P-105 | O-39: farms empty-state copy, which D-67 returned button-less on the card's empty form (`v1-v2-parity-matrix.md:486`) | V1 `static-group/StaticHomeTab.tsx:1224-1245` | RETIRED-SPEC | The card is hidden when no farm is active (S2-12 :121) · S2a-4 | V1 unchanged |
 | P-106 | D-67: V1 Home's Active Farms list (O-38, O-42), absent from V2 | `static-group/StaticHomeTab.tsx:1216-1368` | RE-HOMED | One TrackCard; the full list is Progress (S2-12, F-10) · S2a-4 | V1 unchanged |
 | P-107 | D-68: V1 Home's Split Clears card (O-47): "Alts assigned x/y", "{n} need attention", Open Split Planner | `static-group/StaticHomeTab.tsx:1591-1626,1770-1776` | RE-HOMED | A Home split row carrying D-68's two facts, "Alts assigned x/y" and "{n} need attention" (`StaticHomeTab.tsx:1601-1613`). It shows when `splitClearData?.enabled` and opens `?track=tier` (S2-12 :122). F-11 folds D-68's readiness into a row (`v1-v2-parity-matrix.md:488`) · S2a-4 | V1's button lands on Roster (`:1618`, A13); V2's opens the plan |
-| P-108 | Roster ▸ Split Planner sub-tab, `?rsub=split-planner` (V1 only, D-18) | `pages/GroupViewContent.tsx:74,749-753,976-984` | RE-HOMED | The tier row's expansion, `?track=tier` (S2-6 :41) · S2a-3b | D-18 ship marker |
-| P-109 | More ▸ Split Planner quick action (classic shell only) | `pages/GroupViewContent.tsx:1195-1201` | RE-HOMED | Same · S2a-3b | |
-| P-110 | Split Planner body: board, draft review, run panel, reset | `split-clear/SplitClearPlanner.tsx:23-217` | RE-HOMED | Moved unchanged into the tier row (S2-6 :41) · S2a-3b | GET filtered to the active tier (V1 delta f) |
-| P-111 | Split planning off: "Enable split planning" for leads, nothing for members | `split-clear/SplitClearPlanner.tsx:29-62` | RE-HOMED | Lead sees "Turn on split clears"; a member gets no expand control (S2-6 :41) · S2a-3b | |
+| P-108 | Roster ▸ Split Planner sub-tab, `?rsub=split-planner` (V1 only, D-18) | `pages/GroupViewContent.tsx:74,749-753,976-984` | RE-HOMED | The tier row's expansion, `?track=tier` (S2-6 :41) · S2a-3b | D-18 ship marker. **Shipped, #402 and #404 (2026-10-20).** |
+| P-109 | More ▸ Split Planner quick action (classic shell only) | `pages/GroupViewContent.tsx:1195-1201` | RE-HOMED | Same · S2a-3b | **Shipped, #402 (2026-10-20).** |
+| P-110 | Split Planner body: board, draft review, run panel, reset | `split-clear/SplitClearPlanner.tsx:23-217` | RE-HOMED | Moved unchanged into the tier row (S2-6 :41) · S2a-3b | GET filtered to the active tier (V1 delta f). **Shipped, #396 and #402 (2026-10-20).** |
+| P-111 | Split planning off: "Enable split planning" for leads, nothing for members | `split-clear/SplitClearPlanner.tsx:29-62` | RE-HOMED | Lead sees "Turn on split clears"; a member gets no expand control (S2-6 :41) · S2a-3b | **Shipped, #402 (2026-10-20).** |
 
 ## 11. Code S2a-5b deletes (S2-14 :137-143)
 
