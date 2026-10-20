@@ -102,7 +102,7 @@ describe('DropList in the panel', () => {
   const DROPS = '/api/static-groups/g1/collection-goals/wings/drops';
 
   it('keeps the rest of the panel on a failed load, and Retry loads the drops again', async () => {
-    vi.mocked(api.get).mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([apiDrop('d1', 'u1', { recipient_display_name: 'Melee 1', dropped_at: '2026-09-09T10:00:00Z' })]);
+    vi.mocked(api.get).mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([apiDrop('d1', 'u9', { recipient_display_name: 'Melee 1', dropped_at: '2026-09-09T10:00:00Z' })]);
     renderPanel({
       row: farmRowOf([{ id: 'u1', cell: { state: 'need', tokenCount: 4 } }], goal('wings', { title: 'Wings', summary: 'Tuesdays' }), 'member'),
       spanAll: 3,

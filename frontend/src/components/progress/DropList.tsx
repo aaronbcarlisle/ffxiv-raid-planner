@@ -2,9 +2,10 @@
  * DropList — "Last drops" (S2a-3a·G3 Task TG5, G4 Task TG6; design §3.4, D-13, D-14, D-15,
  * R-S3-9, R-S3-12). The three newest drops, one line each: "{Week n or a date} · {recipient} ·
  * ×{quantity}[ · {note}]", and "Show all ({n})" below them when more were fetched, which expands
- * in place to every one (the server sends at most 50). The recipient (vet M-4): "Nobody" for no
- * recipient, else the display name, else the character's, else "Unknown member"; then
- * "({character})" only when the character's name differs. A failed load reads "Couldn't load
+ * in place to every one (the server sends at most 50). The recipient (vet M-4, #387): "Nobody" for no
+ * recipient, else the matrix column's card name (`nameOf`), else the display name, else the
+ * character's, else "Unknown member"; then "({character})" only when the character's name differs
+ * from that name. A failed load reads "Couldn't load
  * drops" with Retry; the rest of the panel renders regardless.
  *
  * Delete (D-14): a trash `IconButton` on each drop the reader may delete (`canDelete`: the
@@ -28,10 +29,11 @@ const SHOWN = 3;
 const MUTED = 'text-sm text-text-muted';
 const PRIOR_STATE_LABELS: Record<string, string> = { need: 'Need', want: 'Want' };
 
-function recipientOf(drop: RewardDrop): string {
+/** The recipient's card name when the matrix has their column (#387), else the account's name. */
+function recipientOf(drop: RewardDrop, nameOf: (userId: string) => string | null): string {
   if (drop.recipientUserId === null) return 'Nobody';
   const character = drop.recipientCharacterName ?? null;
-  const name = drop.recipientDisplayName ?? character ?? 'Unknown member';
+  const name = nameOf(drop.recipientUserId) ?? drop.recipientDisplayName ?? character ?? 'Unknown member';
   return character !== null && character !== name ? `${name} (${character})` : name;
 }
 
@@ -51,11 +53,13 @@ interface DropListProps {
   goalId: string;
   /** Whether the reader may delete this drop (the API validates it again). */
   canDelete: (drop: RewardDrop) => boolean;
+  /** The card name of the matrix column for a user id, or null with no column. Keep it stable (`useCallback`). */
+  nameOf: (userId: string) => string | null;
   /** Moves focus on when a delete leaves no delete button to take it. Keep it stable (`useCallback`). */
   onLeave: () => void;
 }
 
-export function DropList({ drops, status, onRetry, clock, groupId, goalId, canDelete, onLeave }: DropListProps) {
+export function DropList({ drops, status, onRetry, clock, groupId, goalId, canDelete, nameOf, onLeave }: DropListProps) {
   const [expanded, setExpanded] = useState(false);
   const [pending, setPending] = useState<RewardDrop | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
@@ -94,7 +98,7 @@ export function DropList({ drops, status, onRetry, clock, groupId, goalId, canDe
   const priorLabel = pending?.recipientPriorState ? PRIOR_STATE_LABELS[pending.recipientPriorState] ?? null : null;
   const confirmMessage =
     pending && priorLabel
-      ? `Delete this drop? ${pending.recipientDisplayName ?? 'The recipient'} goes back to ${priorLabel} if it was their only drop.`
+      ? `Delete this drop? ${(pending.recipientUserId !== null && nameOf(pending.recipientUserId)) || pending.recipientDisplayName || 'The recipient'} goes back to ${priorLabel} if it was their only drop.`
       : 'Delete this drop?';
 
   let content;
@@ -123,7 +127,7 @@ export function DropList({ drops, status, onRetry, clock, groupId, goalId, canDe
           {shown.map((drop) => (
             <li key={drop.id} className="flex items-center gap-2">
               <span className="min-w-0 flex-1">
-                {[dropWeekLabel(drop.droppedAt, clock), recipientOf(drop), `×${drop.quantity}`, drop.notes]
+                {[dropWeekLabel(drop.droppedAt, clock), recipientOf(drop, nameOf), `×${drop.quantity}`, drop.notes]
                   .filter((part) => part)
                   .join(' · ')}
               </span>
@@ -131,7 +135,7 @@ export function DropList({ drops, status, onRetry, clock, groupId, goalId, canDe
                 <IconButton
                   data-drop-delete=""
                   icon={<Trash2 size={14} aria-hidden="true" />}
-                  aria-label={`Delete drop for ${recipientOf(drop)}, ${dateOf(drop)}`}
+                  aria-label={`Delete drop for ${recipientOf(drop, nameOf)}, ${dateOf(drop)}`}
                   variant="danger"
                   size="sm"
                   onClick={() => setPending(drop)}
