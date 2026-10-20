@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.74';
+export const CURRENT_VERSION = '2.1.75';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.75',
+    date: '2026-10-20T00:00:00Z',
+    title: 'The Split Planner shows only the current tier\'s assignments',
+    items: [
+      {
+        category: 'improvement',
+        title: 'The Split Planner and the plugin\'s split overlay now show only the current tier\'s assignments',
+        description:
+          'Assignments left over from an earlier tier no longer appear, and turning split clears on or off shows the same list. Nothing is deleted, and resetting the week and marking runs cleared work as before.',
+        pr: 396,
+        prTitle: 'feat(split-clear): S2a-3b H1 — list only the active tier\'s assignments',
+      },
+    ],
+  },
   {
     version: '2.1.74',
     date: '2026-10-20T00:00:00Z',
