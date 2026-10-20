@@ -123,7 +123,8 @@ describe('ProgressPage own cell: who gets the picker', () => {
     renderPage({ userRole: 'viewer', canManage: false, currentUserId: 'u2' });
     const matrix = await screen.findByTestId('progress-matrix');
 
-    expect(within(matrix).queryByRole('button')).not.toBeInTheDocument();
+    // The row's name button (S2a-3a) is the matrix's only control for a viewer.
+    expect(within(matrix).getAllByRole('button').map((b) => b.textContent)).toEqual(['Wings of Resolve']);
     expect(within(matrix).getByRole('gridcell', { name: 'Bo, Wings of Resolve, Need' })).toBeInTheDocument();
   });
 

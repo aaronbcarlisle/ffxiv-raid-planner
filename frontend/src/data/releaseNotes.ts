@@ -135,6 +135,15 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): S2a-3a·G1 — the queue, Copy plan and the drop models',
         internal: true,
       },
+      {
+        category: 'feature',
+        title: 'Progress: open a farm row',
+        description:
+          'V2 preview: each farm\'s name in the Progress matrix is now a button that opens the row, one at a time, by click, Enter or Space, or from a link (?track=<farm>, written in place so Back leaves the page). The open row shows an empty panel for now; the next updates fill it with who is next in line, the last drops and the farm\'s details. Home and the arrow keys reach the name from any cell, Escape inside the panel closes it and returns focus to the name, and a finished farm\'s link expands Finished first. Tab memory keeps the open row across a tab switch; switching static closes it.',
+        pr: 378,
+        prTitle: 'feat(v2): S2a-3a·G2 — open a farm row',
+        internal: true,
+      },
     ],
   },
   {

@@ -38,6 +38,9 @@ const SEEDED_TAB_PARAMS = [
   'rsub', 'sched', 'stab', 'goal', 'farm', 'coll', 'gsub', 'psub', 'rcsub', 'avail', 'mf', 'rview', 'lview',
   // The V2 Recruiting route's tab (R-RH-H).
   'rtab',
+  // The V2 Progress tab's open farm row (S2a-3a, R-S3-3): `useTrackParam`, not this hook
+  // (a goal id is no fixed value list), but it is a sub-tab param in every other way.
+  'track',
 ] as const;
 const registeredTabParams = new Set<string>(SEEDED_TAB_PARAMS);
 
