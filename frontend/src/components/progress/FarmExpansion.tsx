@@ -29,7 +29,7 @@
  * block's (it discards and prevents the key), so the filter above leaves the panel open. Mark
  * finished asks "Discard changes?" first when the block is dirty, as the menu's item does.
  */
-import { useCallback, useRef, type KeyboardEvent } from 'react';
+import { useCallback, useMemo, useRef, type KeyboardEvent } from 'react';
 import { CircleCheck, Copy } from 'lucide-react';
 import type { RewardDrop } from '../../stores/collectionGoalStore';
 import { toast } from '../../stores/toastStore';
@@ -101,6 +101,14 @@ export function FarmExpansion({
   const { busy: statusBusy, markFinished } = useGoalStatus(groupId, row.goal);
   const edit = useFarmEdit();
   const editing = lead && !finished && edit.editingId === row.goal.id;
+
+  // #387: a drop's recipient reads as the card name the queue and the toast show, from this row's columns.
+  const cardNames = useMemo(() => {
+    const byId = new Map<string, string>();
+    for (const { column } of row.cells) if (column.userId !== null) byId.set(column.userId, column.name);
+    return byId;
+  }, [row.cells]);
+  const cardNameOf = useCallback((userId: string) => cardNames.get(userId) ?? null, [cardNames]);
 
   // D-14, as V1's history: a lead any drop, a member the ones they logged; a viewer none (the API refuses them).
   const canDeleteDrop = (drop: RewardDrop) => !viewer && (lead || drop.createdById === currentUserId);
@@ -203,6 +211,7 @@ export function FarmExpansion({
                   groupId={groupId}
                   goalId={row.goal.id}
                   canDelete={canDeleteDrop}
+                  nameOf={cardNameOf}
                   onLeave={focusCopyPlan}
                 />
               </div>

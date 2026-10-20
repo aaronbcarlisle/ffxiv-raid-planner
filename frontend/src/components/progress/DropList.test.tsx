@@ -32,11 +32,20 @@ function drop(id: string, droppedAt: string, overrides: Partial<RewardDrop> = {}
   };
 }
 
-function renderList(drops: RewardDrop[], status: DropsStatus = 'loaded', onRetry = vi.fn(), canDelete: (d: RewardDrop) => boolean = () => false) {
+/** No recipient has a column unless the case says so (#387: the account-name fallback). */
+const noColumns = (): string | null => null;
+
+function renderList(
+  drops: RewardDrop[],
+  status: DropsStatus = 'loaded',
+  onRetry = vi.fn(),
+  canDelete: (d: RewardDrop) => boolean = () => false,
+  nameOf: (userId: string) => string | null = noColumns,
+) {
   stubCanHover(); // the delete confirm's Modal reads matchMedia
   const onLeave = vi.fn();
   const view = render(
-    <DropList drops={drops} status={status} onRetry={onRetry} clock={CLOCK} groupId="g1" goalId="wings" canDelete={canDelete} onLeave={onLeave} />,
+    <DropList drops={drops} status={status} onRetry={onRetry} clock={CLOCK} groupId="g1" goalId="wings" canDelete={canDelete} onLeave={onLeave} nameOf={nameOf} />,
   );
   return { ...view, onRetry, onLeave, lines: () => screen.queryAllByRole('listitem').map((li) => li.textContent) };
 }
@@ -93,7 +102,7 @@ describe('DropList in the panel', () => {
   const DROPS = '/api/static-groups/g1/collection-goals/wings/drops';
 
   it('keeps the rest of the panel on a failed load, and Retry loads the drops again', async () => {
-    vi.mocked(api.get).mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([apiDrop('d1', 'u1', { recipient_display_name: 'Melee 1', dropped_at: '2026-09-09T10:00:00Z' })]);
+    vi.mocked(api.get).mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([apiDrop('d1', 'u9', { recipient_display_name: 'Melee 1', dropped_at: '2026-09-09T10:00:00Z' })]);
     renderPanel({
       row: farmRowOf([{ id: 'u1', cell: { state: 'need', tokenCount: 4 } }], goal('wings', { title: 'Wings', summary: 'Tuesdays' }), 'member'),
       spanAll: 3,
@@ -263,5 +272,120 @@ describe('DropList: delete (D-14)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByTestId('progress-expansion')).toBeInTheDocument();
+  });
+});
+
+/**
+ * #387 (owner 2026-10-20, amends R-S3-12): a recipient with a column in this matrix is named by
+ * the column's card name (`nameOf(userId)`), with "({character})" only when the character's name
+ * differs from the card name; a recipient without a column keeps the account rule; no recipient
+ * is "Nobody". The row, the delete button's name and the confirm all use the same name.
+ */
+describe('DropList: the recipient by card name (#387)', () => {
+  const at = '2026-09-09T10:00:00Z';
+  const cards = (map: Record<string, string>) => (userId: string) => map[userId] ?? null;
+
+  it('names a recipient with a column by the card name, not the account name; no recipient stays "Nobody"', () => {
+    const { lines } = renderList(
+      [
+        drop('d1', '2026-09-16T10:00:00Z', { recipientUserId: 'u7', recipientDisplayName: 'Melee 1' }),
+        drop('d2', at, { recipientUserId: null, recipientDisplayName: 'Ghost' }),
+      ],
+      'loaded', vi.fn(), () => false, () => 'Moonbeam', // every user id has a column: null still is nobody
+    );
+    expect(lines()).toEqual(['Week 3 · Moonbeam · ×1', 'Week 2 · Nobody · ×1']);
+  });
+
+  it('asks nameOf by the recipient\'s user id', () => {
+    const nameOf = vi.fn(cards({ u7: 'Moonbeam' }));
+    renderList([drop('d1', at, { recipientUserId: 'u7', recipientDisplayName: 'u1' })], 'loaded', vi.fn(), () => false, nameOf);
+    expect(nameOf).toHaveBeenCalledWith('u7');
+    expect(nameOf).not.toHaveBeenCalledWith('u1');
+  });
+
+  it('adds "(character)" to the card name only when the character differs from the card name', () => {
+    const cases: [Partial<RewardDrop>, string][] = [
+      [{ recipientDisplayName: 'Melee 1', recipientCharacterName: 'Aria Moon' }, 'Moonbeam (Aria Moon)'],
+      [{ recipientDisplayName: 'Melee 1', recipientCharacterName: 'Moonbeam' }, 'Moonbeam'],
+      [{ recipientDisplayName: 'Melee 1', recipientCharacterName: null }, 'Moonbeam'],
+      [{ recipientDisplayName: null, recipientCharacterName: null }, 'Moonbeam'],
+    ];
+    for (const [overrides, name] of cases) {
+      const { lines, unmount } = renderList([drop('d1', at, { recipientUserId: 'u7', ...overrides })], 'loaded', vi.fn(), () => false, cards({ u7: 'Moonbeam' }));
+      expect(lines()).toEqual([`Week 2 · ${name} · ×1`]);
+      unmount();
+    }
+  });
+
+  it('keeps the account rule for a recipient without a column, beside one with a column', () => {
+    const { lines } = renderList(
+      [
+        drop('d1', '2026-09-16T10:00:00Z', { recipientUserId: 'u7', recipientDisplayName: 'Melee 1' }),
+        drop('d2', '2026-09-09T10:00:00Z', { recipientUserId: 'u9', recipientDisplayName: 'Healer 1', recipientCharacterName: 'Aria Moon' }),
+        drop('d3', '2026-09-02T10:00:00Z', { recipientUserId: 'u8', recipientDisplayName: null, recipientCharacterName: null }),
+      ],
+      'loaded', vi.fn(), () => false, cards({ u7: 'Moonbeam' }),
+    );
+    expect(lines()).toEqual(['Week 3 · Moonbeam · ×1', 'Week 2 · Healer 1 (Aria Moon) · ×1', 'Week 1 · Unknown member · ×1']);
+  });
+
+  it('shows a card name with quotes, backslashes, "$", "%", an ellipsis and unicode literally', () => {
+    const odd = `Mo'ra "Tank" \\u00e9 $1 %s… 月の騎士 ✦`;
+    const { lines } = renderList([drop('d1', at, { recipientUserId: 'u7', recipientCharacterName: 'Aria Moon' })], 'loaded', vi.fn(), () => false, cards({ u7: odd }));
+    expect(lines()).toEqual([`Week 2 · ${odd} (Aria Moon) · ×1`]);
+  });
+
+  it('names the delete button and the confirm by the same card name as the row', async () => {
+    renderList(
+      [drop('d1', '2026-09-09T12:00:00Z', { recipientUserId: 'u7', recipientDisplayName: 'Melee 1', recipientPriorState: 'need' })],
+      'loaded', vi.fn(), () => true, cards({ u7: 'Moonbeam' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: `Delete drop for Moonbeam, ${sept(9)}` }));
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Drop' });
+    expect(within(dialog).getByText('Delete this drop? Moonbeam goes back to Need if it was their only drop.')).toBeInTheDocument();
+  });
+});
+
+describe('DropList in the panel: the card name from the row\'s columns (#387)', () => {
+  const refresh = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installPanelStore(refresh);
+  });
+  afterEach(restorePanelStore);
+
+  /** A row whose claimed column for `u7` reads "Moonbeam" on its card, plus an unclaimed column (no user). */
+  function rowWithCards() {
+    const base = farmRowOf(
+      [{ id: 'u7', cell: { state: 'need', tokenCount: 4 } }, { id: 'open', kind: 'unclaimed' }],
+      goal('wings', { title: 'Wings' }),
+      'lead',
+    );
+    return {
+      ...base,
+      cells: base.cells.map((cell) => (cell.column.userId === 'u7' ? { ...cell, column: { ...cell.column, name: 'Moonbeam' } } : cell)),
+    };
+  }
+
+  it('names the row, the delete button and the confirm by the column\'s card name; others keep the account rule', async () => {
+    serveDrops(api, [
+      apiDrop('d1', 'u7', { recipient_display_name: 'Melee 1', dropped_at: '2026-09-09T12:00:00Z', recipient_prior_state: 'need' }),
+      apiDrop('d2', 'u9', { recipient_display_name: 'Healer 1', dropped_at: '2026-09-08T12:00:00Z' }),
+      apiDrop('d3', null, { recipient_display_name: null, dropped_at: '2026-09-07T12:00:00Z' }),
+    ]);
+    renderPanel({ row: rowWithCards(), userRole: 'lead', canManage: true, clock: CLOCK });
+    const drops = screen.getByTestId('progress-expansion-drops');
+    await waitFor(() =>
+      expect(within(drops).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+        // A row's text ends with its delete button's name.
+        `Week 2 · Moonbeam · ×1Delete drop for Moonbeam, ${sept(9)}`,
+        `Week 2 · Healer 1 · ×1Delete drop for Healer 1, ${sept(8)}`,
+        `Week 1 · Nobody · ×1Delete drop for Nobody, ${sept(7)}`,
+      ]),
+    );
+    fireEvent.click(within(drops).getByRole('button', { name: `Delete drop for Moonbeam, ${sept(9)}` }));
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Drop' });
+    expect(within(dialog).getByText('Delete this drop? Moonbeam goes back to Need if it was their only drop.')).toBeInTheDocument();
   });
 });
