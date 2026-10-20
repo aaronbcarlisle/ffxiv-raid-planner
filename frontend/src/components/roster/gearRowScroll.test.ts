@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { scrollToGearRow } from './gearRowScroll';
+import { scrollToGearRow, scrollToPlayerRow } from './gearRowScroll';
 
 function mountEl(id: string) {
   const el = document.createElement('div');
@@ -78,5 +78,40 @@ describe('scrollToGearRow', () => {
     cancel();
     vi.advanceTimersByTime(5000);
     expect(row.scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+});
+
+// S2a-3b·H3b: the Progress jump's landing on the Board. GroupViewContent's own scroll fires 100 ms
+// after the URL changes and a jump from another tab has not mounted the Roster by then (measured
+// live, ~300 ms), so this poll is the scroll that lands.
+describe('scrollToPlayerRow', () => {
+  beforeEach(() => { vi.useFakeTimers(); document.body.innerHTML = ''; });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('scrolls the player anchor as soon as it exists, then re-centers', () => {
+    const row = mountEl('player-card-p1');
+    scrollToPlayerRow('p1');
+    expect(row.scrollIntoView).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(220);
+    expect(row.scrollIntoView).toHaveBeenCalledTimes(2);
+    expect(row.scrollIntoView).toHaveBeenLastCalledWith({ behavior: 'smooth', block: 'center' });
+  });
+
+  it("polls past GroupViewContent's 100 ms scroll until the row mounts", () => {
+    scrollToPlayerRow('p1');
+    vi.advanceTimersByTime(300);
+    const row = mountEl('player-card-p1');
+    vi.advanceTimersByTime(40);
+    expect(row.scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("never scrolls another player's anchor, and cancel() clears the poll", () => {
+    const other = mountEl('player-card-p2');
+    const cancel = scrollToPlayerRow('p1');
+    cancel();
+    mountEl('player-card-p1');
+    vi.advanceTimersByTime(5000);
+    expect(other.scrollIntoView).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
