@@ -323,7 +323,8 @@ test.describe.serial('Progress matrix', () => {
     // name; the next Tab leaves the grid's rows (not onto the scroller, not onto a cell, not onto
     // another name). Since F6 the owner's toolbar ("Edit statuses") is the last control before
     // the matrix.
-    await page.getByRole('button', { name: 'Edit statuses' }).focus();
+    // S2a-3b·H3 (R-T-3): the tier row's buttons are plain tab stops ahead of the grid until H3a, so the walk starts from its last one.
+    await page.getByTestId('progress-tier-row').locator('button').last().focus();
     await page.keyboard.press('Tab');
     expect(await page.evaluate(() => document.activeElement?.closest('[role="rowheader"]') !== null)).toBe(true);
     expect(await matrix.evaluate((m) => m.contains(document.activeElement))).toBe(true);
@@ -333,6 +334,9 @@ test.describe.serial('Progress matrix', () => {
 
     // The owner's Need cell is their own, so its focus element is the picker button (F5).
     const needCell = page.locator(`[data-goal-id="${seeded.mountId}"] [data-testid="progress-cell"][aria-label*=", Need, "]`).first();
+    // The cell sits past the scroller's edge, and Radix closes a tooltip when its scroller scrolls: scroll first, let that land, then focus.
+    await needCell.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(200);
     await needCell.locator('button').focus();
     // The owner wrote their own status, so the tooltip reads "you" to them.
     await expect(page.getByRole('tooltip').first()).toContainText('you');
@@ -554,7 +558,7 @@ test.describe.serial('Progress: Edit statuses', () => {
     await expect(memberCell.getByRole('button')).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Edit statuses' }).click();
-    await expect(page.getByRole('button', { name: 'Done' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Done', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Mark everyone without a status as Need' })).toBeEnabled();
 
     // A correction: a blank cell of another member says "set status", the pick lands on their row.
@@ -623,7 +627,7 @@ test.describe.serial('Progress: Edit statuses', () => {
     await page.getByRole('button', { name: 'Mark everyone without a status as Need' }).click();
     await expect(page.getByText(`Marked ${blanks} ${blanks === 1 ? 'cell' : 'cells'} Need`)).toBeVisible();
     // The trigger was disabled while it ran, which drops focus to the body: it lands on Done.
-    await expect(page.getByRole('button', { name: 'Done' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Done', exact: true })).toBeFocused();
     for (const column of CLAIMED) {
       await expect(cellOf(page, blank.id, column)).toHaveAttribute('aria-label', `${column}, ${blank.title}, Need`);
     }
@@ -640,7 +644,7 @@ test.describe.serial('Progress: Edit statuses', () => {
     await expect(cellOf(page, editId, 'Melee One')).toHaveAttribute('aria-label', `Melee One, ${EDIT_TITLE}, Need, 7 of 99 Tokens`);
 
     // Done leaves the mode: the bulk is gone, "Edit statuses" is back.
-    await page.getByRole('button', { name: 'Done' }).click();
+    await page.getByRole('button', { name: 'Done', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Edit statuses' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Mark everyone without a status as Need' })).toHaveCount(0);
     await context.close();
@@ -659,7 +663,7 @@ test.describe.serial('Progress: Edit statuses', () => {
       const page = await context.newPage();
       await openEditable(page, theme);
       await page.getByRole('button', { name: 'Edit statuses' }).click();
-      await expect(page.getByRole('button', { name: 'Done' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Done', exact: true })).toBeVisible();
       await page.waitForTimeout(300);
 
       const blocking = await blockingViolations(page, ['[data-testid="progress-screen"]']);

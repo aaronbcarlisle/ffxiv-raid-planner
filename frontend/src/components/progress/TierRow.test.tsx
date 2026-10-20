@@ -191,8 +191,8 @@ describe('TierRow cells (D-2, D-4, D-7)', () => {
     const { columns } = renderMatrix();
     const unclaimed = columnCell(columns, 'p3');
     expect(within(unclaimed).getByRole('button', { name: 'Cy, AAC Heavyweight, 3 of 11 BiS slots done' })).toHaveTextContent('3/11');
-    expect(unclaimed.outerHTML).toMatch(/\bopacity-\d+/);
-    expect(columnCell(columns, 'p2').outerHTML).not.toMatch(/\bopacity-\d+/);
+    expect(unclaimed.outerHTML).toMatch(/(?<![\w:-])opacity-\d+/);
+    expect(columnCell(columns, 'p2').outerHTML).not.toMatch(/(?<![\w:-])opacity-\d+/);
   });
 
   it('shows a substitute its own cell (it is the page that leaves it out of the total)', () => {
