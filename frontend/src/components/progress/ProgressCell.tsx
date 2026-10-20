@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { Tooltip } from '../primitives/Tooltip';
 import type { CollectionGoal, ParticipantState } from '../../stores/collectionGoalStore';
 import { cellAccessibleName, cellText, type ProgressCell as ProgressCellModel } from '../../utils/progressModel';
+import { CELL_FOCUS_RING } from './cellFocusRing';
 import { CellPicker } from './CellPicker';
 import type { CellWriteResolver } from './editStatuses';
 import { cellProvenance, type ProvenanceContext } from './progressProvenance';
@@ -115,7 +116,7 @@ export function ProgressCell({ cell, goal, provenance, grid, editFor }: Progress
           role="gridcell"
           aria-label={name}
           data-testid="progress-cell"
-          className="whitespace-nowrap px-3 py-2 text-sm focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+          className={`whitespace-nowrap px-3 py-2 text-sm ${CELL_FOCUS_RING}`}
           {...grid}
           onPointerLeave={forgetTip}
           onBlur={(event) => {
