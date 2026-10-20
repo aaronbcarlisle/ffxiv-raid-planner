@@ -477,3 +477,49 @@ for (const theme of THEMES) {
     }
   })
 }
+
+// ── Risk view: v2 Progress with the tier row and its panel open (S2a-3b·H4b) ──
+// The tier row (its BiS cells over the role-coloured bars, the status line, Open board) and the
+// tier panel opened by `?track=tier`: the split planner with split clears on, and the lead's
+// off-state ("Turn on split clears") with them off. No role-colour exclusion (#388). DEVTST's
+// split-clear setting is read first and put back in `finally` (the owner's settings PUT).
+for (const theme of THEMES) {
+  test(`v2 progress with the tier row and the tier panel open has zero contrast violations (${theme})`, async ({ page }) => {
+    await forceTheme(page, theme)
+    await loginAsOwner(page)
+    const { groupId, csrfToken } = await ownerApiContext(page)
+    const headers = { 'X-CSRF-Token': csrfToken }
+    const splitUrl = `${API_BASE}/api/static-groups/${groupId}/split-clear`
+    const read = await page.request.get(splitUrl)
+    expect(read.ok(), 'reading DEVTST\'s split clears').toBe(true)
+    const before = ((await read.json()) as { enabled: boolean }).enabled
+    const setSplit = async (enabled: boolean) => {
+      const res = await page.request.put(`${splitUrl}/settings`, { headers, data: { enabled } })
+      expect(res.ok(), `setting split clears to ${enabled}`).toBe(true)
+    }
+    try {
+      for (const enabled of [true, false]) {
+        await setSplit(enabled)
+        await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=progress&track=tier`)
+        const panel = page.getByTestId('progress-tier-expansion')
+        await expect(page.getByTestId('progress-tier-row').locator('button[aria-label*=" BiS slots done"]').first()).toBeVisible({ timeout: 15_000 })
+        await expect(panel).toBeVisible({ timeout: 15_000 })
+        if (enabled) await expect(panel.getByRole('heading', { name: 'Split Clear Composer' })).toBeVisible()
+        else await expect(panel.getByRole('button', { name: 'Turn on split clears' })).toBeVisible()
+        await page.waitForLoadState('networkidle')
+        await page.mouse.move(0, 0)
+        // Settle CSS transitions (Button uses `transition-all duration-fast` = 150ms).
+        await page.waitForTimeout(300)
+
+        const results = await new AxeBuilder({ page })
+          .include('[data-testid="progress-screen"]')
+          .withRules(['color-contrast'])
+          .analyze()
+        // Soft, so the off-state is scanned and reported even when the planner's scan fails.
+        expect.soft(results.violations, `split clears ${enabled ? 'on' : 'off'}: ${JSON.stringify(results.violations, null, 2)}`).toEqual([])
+      }
+    } finally {
+      await setSplit(before)
+    }
+  })
+}

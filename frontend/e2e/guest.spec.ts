@@ -251,3 +251,52 @@ test.describe('Guest on a public static (GUEST-2)', () => {
     await ownerCtx.close();
   });
 });
+
+/**
+ * S2a-3b·H4b (D-11, R-T-5, R-T-7): a guest's V2 Progress shows the tier row's BiS cells and the
+ * status line's BiS and week parts, with no floors part, no split-clear disclosure, and no new
+ * request: the page ledger and the split-clear GET are members-only fetches, so a recorder over
+ * every request the page makes must see neither (and no 401/403).
+ */
+test.describe('Guest on a public static (S2a-3b tier row)', () => {
+  test('Progress shows a guest the tier cells and the status line, and makes no page-ledger or split-clear request', async ({ browser }) => {
+    test.setTimeout(60_000);
+
+    // dev-auth flips DEVTST to public on every owner login.
+    const ownerCtx = await browser.newContext({ baseURL: FRONTEND_BASE });
+    await loginAsOwner(await ownerCtx.newPage());
+
+    const guestCtx = await browser.newContext({ baseURL: FRONTEND_BASE });
+    const page = await guestCtx.newPage();
+    const requests: string[] = [];
+    const denied: string[] = [];
+    page.on('request', (req) => requests.push(`${req.method()} ${req.url()}`));
+    page.on('response', (res) => {
+      if (res.status() === 401 || res.status() === 403) denied.push(`${res.status()} ${res.url()}`);
+    });
+
+    await pinShell(page, 'v2', `/group/${DEV_SHARE_CODE}?tab=progress`);
+    await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
+    const tierRow = page.getByTestId('progress-tier-row');
+    await expect(tierRow).toBeVisible({ timeout: 15_000 });
+    const cells = tierRow.locator('button[aria-label*=" BiS slots done"], button[aria-label$=", no BiS set"]');
+    await expect(cells.first()).toBeVisible();
+    for (const label of await cells.evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''))) {
+      expect(label).toMatch(/, \d+ of \d+ BiS slots done(, \d+ need augment)?$|, no BiS set$/);
+    }
+    // The BiS and week parts only: a guest never fetches the ledger, so there is no floors part.
+    await expect(tierRow.getByRole('button', { name: 'Open board' })).toHaveAccessibleDescription(/^\d+\/\d+ BiS slots · Week \d+$/);
+    await expect(tierRow.locator('[aria-controls="progress-tier-expansion"]')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Members only' })).toBeVisible();
+    await page.waitForLoadState('networkidle');
+
+    // API calls only (the dev server's module URLs carry `components/split-clear/` too).
+    const memberOnly = requests.filter((line) => /\/api\/.*(\/page-ledger|\/split-clear)/.test(line));
+    expect(requests.some((line) => /\/api\/static-groups\//.test(line)), 'the recorder saw the page\'s API calls').toBe(true);
+    expect(memberOnly, `members-only requests a guest made:\n${memberOnly.join('\n')}`).toEqual([]);
+    expect(denied, `401/403 responses:\n${denied.join('\n')}`).toEqual([]);
+
+    await guestCtx.close();
+    await ownerCtx.close();
+  });
+});

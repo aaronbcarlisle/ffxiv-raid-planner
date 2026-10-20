@@ -14,7 +14,7 @@
  *     `data-testid="progress-tier-expansion-body"` with `style.width = viewWidth px`;
  *   - failed: "Couldn't load the split plan" + Button "Retry"; off for a lead: text starting
  *     "Split clears are off." + Button "Turn on split clears"; toasts "Split clears on" / the
- *     error's message; never the text "Loading the split plan…" during a visibility refetch;
+ *     error's message;
  *   - an open that waited on the data scrolls into view with one `scrollIntoView` call.
  */
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
