@@ -68,8 +68,8 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Healer names are easier to read in the light theme',
         description:
-          'The healer green is a little darker in the light theme, so healer names and badges meet the contrast guideline on every surface.',
-        pr: 394,
+          'The healer green is a little darker in the light theme, so healer names meet the contrast guideline on every surface.',
+        pr: 395,
         prTitle: 'fix(tokens): light healer role colour meets AA (#388)',
       },
     ],
