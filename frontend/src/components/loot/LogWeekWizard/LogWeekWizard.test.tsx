@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   /** What the wizard reads from the store: the write action and the in-flight flags. */
   storeState: {
     markFloorCleared: undefined as unknown,
+    pageLedger: [] as unknown[],
     loadingStates: { lootLog: false, materialLog: false },
   },
 }));

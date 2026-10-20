@@ -852,9 +852,26 @@ async def mark_floor_cleared(
         db, request, static_group_id=tier.static_group_id, players=players
     )
 
-    # Create earned entries for each player
+    # Issue #326: credit a floor's books once per player per week. One SELECT for
+    # the players already holding an `earned` entry for this tier/week/floor;
+    # they are skipped, so replaying a request (the wizard, the Books card, the
+    # plugin) never double-credits. The route still answers 201.
+    result = await db.execute(
+        select(PageLedgerEntry.player_id).where(
+            PageLedgerEntry.tier_snapshot_id == tier.id,
+            PageLedgerEntry.week_number == data.week_number,
+            PageLedgerEntry.floor == data.floor,
+            PageLedgerEntry.transaction_type == "earned",
+            PageLedgerEntry.player_id.in_(data.player_ids),
+        )
+    )
+    already_credited = set(result.scalars().all())
+
+    # Create earned entries for each player not yet credited
     entries = []
-    for player_id in data.player_ids:
+    for player_id in dict.fromkeys(data.player_ids):
+        if player_id in already_credited:
+            continue
         prov = provenance[player_id]
         entry = PageLedgerEntry(
             tier_snapshot_id=tier.id,

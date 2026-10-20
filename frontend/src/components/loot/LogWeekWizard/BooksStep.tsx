@@ -11,6 +11,8 @@ interface BooksStepProps {
   floorData: Record<FloorNumber, FloorEntries>;
   clearedFloors: Set<FloorNumber>;
   mainRosterPlayers: SnapshotPlayer[];
+  /** Per floor, the players the page ledger already credits this week (#326): shown locked, never sent. */
+  loggedBooks: Record<FloorNumber, ReadonlySet<string>>;
   singleFloorMode: boolean;
   initialFloor: FloorNumber;
   handleBookToggle: (floorNum: FloorNumber, playerId: string, cleared: boolean) => void;
@@ -24,6 +26,7 @@ export function BooksStep({
   floorData,
   clearedFloors,
   mainRosterPlayers,
+  loggedBooks,
   singleFloorMode,
   initialFloor,
   handleBookToggle,
@@ -52,7 +55,9 @@ export function BooksStep({
                     if (newData[floorNum]) {
                       newData[floorNum] = {
                         ...newData[floorNum],
-                        booksCleared: mainRosterPlayers.map((p) => p.id),
+                        booksCleared: mainRosterPlayers
+                          .map((p) => p.id)
+                          .filter((id) => !loggedBooks[floorNum].has(id)),
                       };
                     }
                   }
@@ -94,6 +99,7 @@ export function BooksStep({
         const floor = floorData[floorNum];
         if (!floor) return null;
         const floorColor = FLOOR_COLORS[floorNum];
+        const lockedOnFloor = loggedBooks[floorNum];
 
         return (
           <div key={floorName} className="space-y-2">
@@ -126,11 +132,14 @@ export function BooksStep({
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {mainRosterPlayers.map((player) => {
-                const isSelected = floor.booksCleared.includes(player.id);
+                const isLocked = lockedOnFloor.has(player.id);
+                const isSelected = isLocked || floor.booksCleared.includes(player.id);
                 return (
                   <label
                     key={player.id}
-                    className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${
+                    className={`flex items-center gap-2 p-2 rounded border transition-colors ${
+                      isLocked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+                    } ${
                       isSelected ? '' : 'bg-surface-raised border-border-subtle hover:border-border-default'
                     }`}
                     style={isSelected ? {
@@ -141,6 +150,7 @@ export function BooksStep({
                     <input
                       type="checkbox"
                       checked={isSelected}
+                      disabled={isLocked}
                       onChange={(e) => handleBookToggle(floorNum, player.id, e.target.checked)}
                       className="sr-only"
                     />
@@ -151,6 +161,9 @@ export function BooksStep({
                     >
                       {player.name}
                     </span>
+                    {isLocked && (
+                      <span className="text-xs text-text-muted whitespace-nowrap">already logged</span>
+                    )}
                   </label>
                 );
               })}

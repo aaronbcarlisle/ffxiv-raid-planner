@@ -16,7 +16,11 @@
  * Top/2nd/3rd labels come from the same ranking Queues uses
  * (`buildRecipientEntries` / `materialPriorityEntries`, with FloorCard's
  * enhanced-scoring gate), so the two surfaces can't disagree on who is next.
- * Still carried: a floor's books can be logged twice (no pageLedger here).
+ * Books are locked the same way (issue #326): a player the page ledger already
+ * holds an `earned` entry for (this tier, the selected week, that floor) is
+ * shown checked and read-only on the Books step, survives Clear / Select All,
+ * and is never sent in `markFloorCleared`. The ledger is read from the store,
+ * so the lock re-derives when the week changes or the ledger lands late.
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -34,6 +38,7 @@ import { JobIcon } from '../../ui/JobIcon';
 import { toast } from '../../../stores/toastStore';
 import { logLootAndUpdateGear } from '../../../utils/lootCoordination';
 import { useLootTrackingStore } from '../../../stores/lootTrackingStore';
+import { useTierStore } from '../../../stores/tierStore';
 import { isPriorityDisabled } from '../../../utils/priority';
 import { buildRecipientEntries } from '../../../utils/recipientRanking';
 import { materialPriorityEntries } from '../materialSuggestion';
@@ -47,6 +52,7 @@ import {
 import type { SnapshotPlayer, StaticSettings, LootMethod, LootLogEntry, MaterialLogEntry, LootLogEntryCreate, MarkFloorClearedRequest } from '../../../types';
 import { STEP_ORDER, STEP_TITLES, type WizardStep, type FloorNumber, type FloorEntries, type SlotEntry } from './types';
 import { loggedSlotsForWeek } from './loggedSlots';
+import { loggedBooksForWeek } from './loggedBooks';
 import { GearStep } from './GearStep';
 import { BooksStep } from './BooksStep';
 import { ConfirmStep } from './ConfirmStep';
@@ -112,6 +118,24 @@ export function LogWeekWizard({
   // opening on this, so the wizard gates its own submit.
   const logsLoading = useLootTrackingStore((s) => s.loadingStates.lootLog || s.loadingStates.materialLog);
   const logsUnknown = logsLoading || logsFailed;
+
+  // #326: the page ledger, to lock books the week already credits. The ledger
+  // rows carry the tier SNAPSHOT id; `tierId` here may be the tier's slug, so
+  // the open tier's snapshot id is accepted too.
+  const pageLedger = useLootTrackingStore((s) => s.pageLedger);
+  const openTierSnapshotId = useTierStore((s) =>
+    s.currentTier && (s.currentTier.tierId === tierId || s.currentTier.id === tierId) ? s.currentTier.id : null,
+  );
+  const tierIds = useMemo(() => {
+    const ids = new Set<string>([tierId]);
+    if (openTierSnapshotId) ids.add(openTierSnapshotId);
+    return ids;
+  }, [tierId, openTierSnapshotId]);
+  const getLoggedBooks = useCallback(
+    (week: number) => loggedBooksForWeek({ floors, week, tierIds, pageLedger }),
+    [floors, tierIds, pageLedger],
+  );
+  const loggedBooks = useMemo(() => getLoggedBooks(selectedWeek), [getLoggedBooks, selectedWeek]);
 
   // Configured main roster players
   const mainRosterPlayers = useMemo(() => {
@@ -240,6 +264,7 @@ export function LogWeekWizard({
   const initFloorData = useCallback((week: number): Record<FloorNumber, FloorEntries> => {
     const data: Record<FloorNumber, FloorEntries> = {} as Record<FloorNumber, FloorEntries>;
     const logged = loggedSlotsForWeek({ floors, week, lootLog, materialLog });
+    const loggedBookPlayers = getLoggedBooks(week);
     for (let i = 1; i <= 4; i++) {
       const floorNum = i as FloorNumber;
       const lootTable = FLOOR_LOOT_TABLES[floorNum];
@@ -300,15 +325,16 @@ export function LogWeekWizard({
         };
       });
 
-      // In single floor mode, pre-select all players for that floor's books
+      // In single floor mode, pre-select all players for that floor's books,
+      // except those the week already credits (#326)
       const booksCleared = singleFloorMode && floorNum === initialFloor
-        ? mainRosterPlayers.map((p) => p.id)
+        ? mainRosterPlayers.map((p) => p.id).filter((id) => !loggedBookPlayers[floorNum].has(id))
         : [];
 
       data[floorNum] = { gear, materials, booksCleared };
     }
     return data;
-  }, [floors, lootLog, materialLog, getSuggestedPlayer, getSuggestedMaterialPlayer, singleFloorMode, initialFloor, mainRosterPlayers]);
+  }, [floors, lootLog, materialLog, getLoggedBooks, getSuggestedPlayer, getSuggestedMaterialPlayer, singleFloorMode, initialFloor, mainRosterPlayers]);
 
   const wasOpenRef = useRef(false);
   const seededWeekRef = useRef(currentWeek);
@@ -380,6 +406,28 @@ export function LogWeekWizard({
     });
   }, [isOpen, floors, selectedWeek, lootLog, materialLog]);
 
+  // A ledger that lands (or changes) after the wizard opened: drop every
+  // already-credited player from the picks, so nothing locked is ever sent.
+  // Declared after the open/week seeds; `seededWeekRef` skips the open commit,
+  // where `selectedWeek` is still the previous session's week.
+  useEffect(() => {
+    if (!isOpen || seededWeekRef.current !== selectedWeek) return;
+    setFloorData((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const floorNum of [1, 2, 3, 4] as FloorNumber[]) {
+        const floor = prev[floorNum];
+        if (!floor) continue;
+        const kept = floor.booksCleared.filter((id) => !loggedBooks[floorNum].has(id));
+        if (kept.length !== floor.booksCleared.length) {
+          next[floorNum] = { ...floor, booksCleared: kept };
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [isOpen, selectedWeek, loggedBooks]);
+
   // Handle slot assignment change
   const handleSlotChange = useCallback(
     (floorNum: FloorNumber, type: 'gear' | 'materials', slot: string, playerId: string | null) => {
@@ -432,6 +480,7 @@ export function LogWeekWizard({
   // Handle book clear toggle
   const handleBookToggle = useCallback(
     (floorNum: FloorNumber, playerId: string, cleared: boolean) => {
+      if (loggedBooks[floorNum].has(playerId)) return;
       setFloorData((prev) => {
         const floor = { ...prev[floorNum] };
         const booksCleared = cleared
@@ -440,7 +489,7 @@ export function LogWeekWizard({
         return { ...prev, [floorNum]: { ...floor, booksCleared } };
       });
     },
-    []
+    [loggedBooks]
   );
 
   // Select/clear all books for a floor
@@ -448,10 +497,11 @@ export function LogWeekWizard({
     (floorNum: FloorNumber) => {
       setFloorData((prev) => {
         const floor = { ...prev[floorNum] };
-        return { ...prev, [floorNum]: { ...floor, booksCleared: mainRosterPlayers.map((p) => p.id) } };
+        const booksCleared = mainRosterPlayers.map((p) => p.id).filter((id) => !loggedBooks[floorNum].has(id));
+        return { ...prev, [floorNum]: { ...floor, booksCleared } };
       });
     },
-    [mainRosterPlayers]
+    [mainRosterPlayers, loggedBooks]
   );
 
   const handleClearAllBooks = useCallback(
@@ -659,10 +709,11 @@ export function LogWeekWizard({
         if (entry.didNotDrop) skipped++;
       }
       bookClears += floor.booksCleared.length;
+      alreadyLogged += mainRosterPlayers.filter((p) => loggedBooks[floorNum].has(p.id)).length;
     }
 
     return { gearDrops, materialDrops, bookClears, skipped, alreadyLogged, total: gearDrops + materialDrops + bookClears };
-  }, [floorData, clearedFloors]);
+  }, [floorData, clearedFloors, loggedBooks, mainRosterPlayers]);
 
   // Submit all entries
   const handleSubmit = async () => {
@@ -734,12 +785,13 @@ export function LogWeekWizard({
           }
         }
 
-        // Book clears
-        if (floor.booksCleared.length > 0) {
+        // Book clears (a player the ledger already credits is never sent, #326)
+        const bookPlayerIds = floor.booksCleared.filter((id) => !loggedBooks[fn].has(id));
+        if (bookPlayerIds.length > 0) {
           const clearRequest: MarkFloorClearedRequest = {
             weekNumber: selectedWeek,
             floor: floorName,
-            playerIds: floor.booksCleared,
+            playerIds: bookPlayerIds,
           };
           tracked.push({
             promise: markFloorCleared(groupId, tierId, clearRequest),
@@ -962,6 +1014,7 @@ export function LogWeekWizard({
               floorData={floorData}
               clearedFloors={clearedFloors}
               mainRosterPlayers={mainRosterPlayers}
+              loggedBooks={loggedBooks}
               singleFloorMode={singleFloorMode}
               initialFloor={initialFloor}
               handleBookToggle={handleBookToggle}
