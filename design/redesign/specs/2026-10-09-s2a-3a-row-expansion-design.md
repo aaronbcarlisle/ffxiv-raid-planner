@@ -64,11 +64,11 @@ Reads and writes `track` through `useSearchParams` with replace (D-8), and regis
 ### 3.4 Components (`components/progress/`)
 
 - **`FarmRow`** gains the disclosure name cell (D-7) and, for leads, the row-menu cell in its own column (D-22). The status cell reads "Everyone has it" with no link.
-- **`FarmExpansion`**: the panel, rendered as a row under its farm row whose single cell spans the matrix. Order: Edit's block (when editing), the action bar (Log a drop or I got it, Mark finished when everyone has it (leads, D-22), Copy plan), then Next in line · Last drops · About (D-4). A finished row's panel has no drop action. Next in line is the ranked queue for leads and members; a viewer gets the unranked "Need: … · Want: …" line (D-20).
+- **`FarmExpansion`**: the panel, rendered as a row under its farm row whose single cell spans the matrix. Order: Edit's block (when editing), the action bar (Log a drop or I got it, Mark finished when everyone has it (leads, D-22), Copy plan), then Next in line · Last drops · About (D-4). *Button variants (amended after merge, #383): **Log drop** `secondary`; **I got it** and **Mark finished** `primary`. I got it (members only) and Mark finished (leads only) are mutually exclusive, so each role sees one primary action.* A finished row's panel has no drop action. Next in line is the ranked queue for leads and members; a viewer gets the unranked "Need: … · Want: …" line (D-20).
 - **`LogDropButton`** (D-6) and **`IGotItButton`** (D-5, D-21).
 - **`DropList`**: the last three drops, Show all (D-13), each drop's recipient, character name when it differs from the player's name (the S2a-1 display slice), ×quantity, note, week label (D-15) and delete (D-14). The name: "Nobody" for a drop with no recipient; else the player's display name, else the character name, else "Unknown member"; then "({character})" only when the character name is set and differs.
 - **`FarmRowMenu`**: active rows Edit · Mark finished · Delete; finished rows Reopen · Delete. Leads only; members and viewers see no menu and no column (ROLE-1: hidden, not disabled).
-- **`FarmEditBlock`**: §12.2's field table, exactly.
+- **`FarmEditBlock`**: §12.2's field table, exactly. A `Select` cannot hold an empty value, so Content "None" and priority mode "Not set" (`null`) use the sentinel value `'__none'` and map back to `null` on save *(amended after merge, #383: `ui/Select` folds `''` into the placeholder, so the plan's `''` (R-S3-10) became `'__none'`)*.
 - **About** (read-only, every role): content, priority mode and notes (`summary`) (Q-3).
 
 Every control uses the design-system primitives (`Button`, `IconButton`, `Popover`, `ContextMenu`, `ConfirmModal`, `Input`, `Select`); no raw elements.

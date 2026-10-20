@@ -41,14 +41,14 @@ Settings ▸ Goals & Farms is reached from the settings gear or ⌘K "Open Setti
 | P-14 | "Custom Goal" (leads) → RewardGoalModal create (G-4) | `collections/CollectionsHub.tsx:146-150,265-270` | RE-HOMED | Find's last row: a custom track (S2-11 :116) · S2a-4 | Design §12.1. S2a-2 → S2a-4: Settings' Add Farm creates (S2-3 :16), so no gap |
 | P-15 | Stats strip: Active farms · Still needed · Completed goals · Can buy now (G-5) | `collections/CollectionsHub.tsx:94-106,154-176` | RETIRED-ACK | — | Q-4 |
 | P-16 | Active-tab empty state + View Suggestions · Browse Catalog · Custom Goal (G-6) | `collections/CollectionsHub.tsx:200-216` | RETIRED-SPEC | The matrix is never empty: the tier row is always first (S2-3 :16, S2-6 :37) · S2a-2 | Its CTAs → P-13, P-14 |
-| P-17 | "Active (n)" and "Completed (n)" card grids | `collections/CollectionsHub.tsx:218-259` | RE-HOMED | Farm rows by need, then "Finished (n)" collapsed (S2-5 :30-32) · S2a-2 | A finished row expands like any farm row (who has it, drops, Copy plan), with no Log a drop (as `RewardGoalCard.tsx:192`). |
+| P-17 | "Active (n)" and "Completed (n)" card grids | `collections/CollectionsHub.tsx:218-259` | RE-HOMED | Farm rows by need, then "Finished (n)" collapsed (S2-5 :30-32) · S2a-2 | A finished row expands like any farm row (who has it, drops, Copy plan), with no Log a drop (as `RewardGoalCard.tsx:192`). **As built:** the farm order and "Finished (n)" shipped in S2a-2 (#372); the finished row's expansion shipped in S2a-3a (#378, #379, #380; Copy plan is its only action-bar control for every role). |
 
 ## 2. Farms ▸ Active: the farm card (`collections/RewardGoalCard.tsx`)
 
 | ID | V1 affordance | V1 source | Verdict | V2 home (ruling · slice) | Notes |
 |---|---|---|---|---|---|
 | P-18 | Card name and type icon | `:76-82` | RE-HOMED | A farm row (S2-3, S2-5) · S2a-2 | |
-| P-19 | Status chip, type, content type, priority-mode labels | `:83-104` | RE-HOMED | The row: a farm row reads "{title} · {type}" plus a Wanted or Scheduled tag; the expansion shows content, priority mode and notes, read-only, to every role (Q-3); S2-5's status column stays the have-count (S2-5 :31) · S2a-2 | |
+| P-19 | Status chip, type, content type, priority-mode labels | `:83-104` | RE-HOMED | The row: a farm row reads "{title} · {type}" plus a Wanted or Scheduled tag; the expansion shows content, priority mode and notes, read-only, to every role (Q-3); S2-5's status column stays the have-count (S2-5 :31) · S2a-2 | **As built, in two halves:** the row text, tag and status column in S2a-2 (#372); content, priority mode and notes (About) in S2a-3a (#379). |
 | P-20 | Need · Want · Have counts | `:109-136` | RE-HOMED | One cell per player plus "{n} of {m} have it" (S2-4, S2-5 :31) · S2a-2 | |
 | P-21 | Token bar "{token}: n / cost" + "Can buy" badge | `:139-169` | RE-HOMED | Each player's own count in their cell, "Need 62/99" (S2-7 :44) · S2a-2 | The bar shows the creator's count to everyone (`:141`, A5-04): fixed. Badge: Q-4 |
 | P-22 | "Next priority: {name} ({n} tokens)" | `:65-67,172-180` | RE-HOMED | The queue's top four in the expansion (S2-8, S2-9 :62); TrackCard "is next" (S2-12) · S2a-3a | Order becomes Need, then fewest totems |
@@ -67,7 +67,7 @@ Settings ▸ Goals & Farms is reached from the settings gear or ⌘K "Open Setti
 | P-30 | Sub-tabs "Who needs it?" · "Drop history" | `collections/RewardGoalDetailModal.tsx:93-109` | RE-HOMED | One expansion: the queue, then the last drops (S2-9) · S2a-3a | |
 | P-31 | My status Need · Want · Have · Pass, not for viewers (G-10) | `collections/ParticipantsPanel.tsx:77-92`; `RewardGoalDetailModal.tsx:119` | RE-HOMED | Own-cell picker: saves on pick, Undo toast, plus own totem count (S2-7 :44-45) · S2a-2 | Have and the count also write the character record (S2-10, S2a-1a) |
 | P-32 | "No one has set their status yet." + Need · Want · Pass | `collections/ParticipantsPanel.tsx:51-71` | RE-HOMED | Blank cells and the own-cell picker (S2-4, S2-7) · S2a-2 | |
-| P-33 | Lists by state with "#rank" and "(you)" (G-11) | `collections/ParticipantsPanel.tsx:95-123` | RE-HOMED | Player columns in Board order: job, position, name in role colour (S2-4 :20); rank in the queue (S2-8) · S2a-2 | Replaces Discord handles (§1 :11) |
+| P-33 | Lists by state with "#rank" and "(you)" (G-11) | `collections/ParticipantsPanel.tsx:95-123` | RE-HOMED | Player columns in Board order: job, position, name in role colour (S2-4 :20); rank in the queue (S2-8) · S2a-2 | Replaces Discord handles (§1 :11). **As built, in two halves:** the player columns in S2a-2 (#371, #372); the rank, as the queue ("Next in line"), in S2a-3a (#377, #379), where viewers get an unranked "Need: … · Want: …" line (S2a-3a D-20). |
 | P-34 | Each person's token count "{n}t" | `collections/ParticipantsPanel.tsx:124-128` | RE-HOMED | Cell count; viewers see none; a member may hide theirs (S2-7 :46) · S2a-2 | The gate ships in S2a-1b (V1 delta i) |
 | P-35 | Source badge "Synced from {source}" | `collections/ParticipantsPanel.tsx:129-135` | RE-HOMED | Cell provenance on hover and focus (S2-7 :47) · S2a-2 | V1 badge unchanged (delta c) |
 | P-36 | Drop list: recipient, notes, ×quantity, date; "No drops logged yet." | `collections/DropHistoryPanel.tsx:67-110` | RE-HOMED | The last three drops, week-labelled (S2-9 :63), with "Show all" under them; each drop keeps its notes and ×quantity (Q-1) · S2a-3a | |
@@ -284,7 +284,7 @@ Q-5, Q-7 and Q-9…Q-12 were already answered by the spec or the code; the direc
 - [x] Sweep: S2a-5b deletes the rest of §11 (P-112…P-118, P-121…P-125; 2,865 lines; §12 A9 "ask before sweeping") — date: 2026-10-01
 - [x] §14 answers Q-1, Q-2, Q-3, Q-4, Q-6, Q-8, as recommended or as amended in place — date: 2026-10-01
 
-INTERIM rows: out of V2 from the S2a-2 merge (filled in by the merging PR) to the S2a-4 merge (filled in by the merging PR), reached through the classic view meanwhile.
+INTERIM rows: out of V2 from the S2a-2 merge (**2026-10-19**, #370-#375 with S2a-3a, main `cc0d96ee`) to the S2a-4 merge (filled in by the merging PR), reached through the classic view meanwhile.
 - [x] P-52 Suggested tab
 - [x] P-54 Suggested source and privacy notes
 - [x] P-55 Suggested empty state

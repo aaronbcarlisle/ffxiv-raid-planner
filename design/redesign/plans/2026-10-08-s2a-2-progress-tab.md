@@ -514,15 +514,25 @@ Every S2a-2 row ships in S2a-2. Four rows have a level-2 half that S2a-3a ships 
 - **The PR body:** the V1 files touched and the unedited tests that pin them (R-S2-2); delta (d) with its render path (F1); the plugin contract unchanged and the response changes additive only (R-S2-15); the owner's answers to the questions the PR implements (a PR implementing an unanswered one stays draft); disclosed residuals (R-S2-6's tier note, R-S2-9's restamp note, R-S2-10's View As notes).
 - **Merging:** backend PRs merge as they pass (R-S2-1). The frontend stack merges only with S2a-3a, after the green `redesign/s2a2-preflight` push run (vet I-3).
 
+## As built (S2a-2, 2026-10-20)
+
+S2a-2 is done: nine PRs on two stacks, merged with S2a-3a on 2026-10-19/20 (main `cc0d96ee`).
+- **Backend stack (merged as each PR passed, R-S2-1; internal releases).** **B1** #366 (the Progress read API with `count_hidden`, 2.1.69), **B2** #368 (undo tokens and the door's restores, 2.1.70), **B3** #369 (the undo route and the bulk Need, 2.1.71). No migration; the plugin contract is unchanged (R-S2-15).
+- **Frontend stack (merged bottom-first with S2a-3a, public 2.1.72 from F1).** **F1** #370 (the tab, the seam, the URLs, the Spine and ⌘K; delta (d)), **F2** #371 (the read model), **F3** #372 (the matrix on screen), **F4** #373 (provenance and the roving grid), **F5** #374 (your cell: the picker and Undo), **F6** #375 (leads' Edit statuses, the bulk Need, e2e and axe).
+- **Size.** Insertions per PR (`git show --shortstat`): B1 923, B2 1,235, B3 1,590, F1 684, F2 1,329, F3 1,756, F4 1,147, F5 1,490, F6 1,616. B3, F3 and F6 ran over the ~1,500 estimate by insertions.
+- **Rulings that bind later slices** are copied into the spec after §7's V1 deltas ("S2a-2 rulings that bind S2a-3a…S2a-5").
+
 ## Write-backs (once, after the frontend + S2a-3a stack merges)
 
-- **Spec §6:** the S2a-2 row as built (nine PRs on two stacks, numbers) and the status paragraph. **Correct §6's "~17 PRs"** (:195): S2a-1's eleven plus S2a-2's nine already make twenty, before S2a-3…S2a-5 re-count at their plans (vet I-4). The same correction goes to `HOME_STRETCH.md`'s W3 S2a row ("~17 PRs").
-- **Spec §7:** criteria 1, 2, 3, 10 and 11's shipped markers; (d)'s wording ("resolves to Goals & Farms in V1"; release line "Progress links open Goals & Farms in the classic view.", vet M-1) and (d), (e) shipped; the rulings below as "S2a-2 rulings that bind S2a-3a…S2a-5"; the owner's answers to Q1–Q4.
-- **Parity matrix §15:** the INTERIM rows' "out of V2 from" date (the merging PR's); the as-built notes on P-17, P-19 and P-33's split halves.
-- **`HOME_STRETCH.md`:** W3 S2a's PR count and the dated log; §4 S2's acceptance line "`Spine.tsx` renders five tabs" met.
-- **`docs/PRODUCT_MODEL.md` §6:** the Stage 2 row (`:240` still says "`Spine.tsx` has 4 tabs" and "no V2 UI yet").
-- **This plan:** an "As built" section.
-- **Rulings that bind later slices:** R-S2-5 (`utils/progressModel.ts` and `utils/goalTypeMeta.ts` as the shared home), R-S2-6 (columns), R-S2-7 (`compareFarmRows` for TrackCard, the tier row's shape for S2a-3b), R-S2-9 (provenance), R-S2-10 (who edits), R-S2-11 (the Undo token, which S2a-3a may reuse for its row edits), R-S2-13 (the read API and `count_hidden`), R-S2-17 (absent controls).
+**Applied (2026-10-20, in the docs PR that also carries S2a-3a's write-backs):** spec §6 (the PR count corrected, the S2a-2 and S2a-3a status paragraph), §7 criteria 1, 2, 3, 4, 5 and 10 and 11 markers, (d)'s wording and (d), (e) shipped, and "S2a-2 rulings that bind S2a-3a…S2a-5" with the owner's Q1–Q4; parity matrix §15's INTERIM date and the as-built notes on P-17, P-19 and P-33; `HOME_STRETCH.md` W3 S2a and the dated log; `PRODUCT_MODEL.md` §6's Stage 2 row; this plan's "As built (S2a-2)". The "~17 PRs" correction also reached `HOME_STRETCH.md`'s W3 S2a row.
+
+- [x] **Spec §6:** the S2a-2 row as built (nine PRs on two stacks, numbers) and the status paragraph. **Correct §6's "~17 PRs"** (:195): S2a-1's eleven plus S2a-2's nine already make twenty, before S2a-3…S2a-5 re-count at their plans (vet I-4). The same correction goes to `HOME_STRETCH.md`'s W3 S2a row ("~17 PRs").
+- [x] **Spec §7:** criteria 1, 2, 3, 10 and 11's shipped markers; (d)'s wording ("resolves to Goals & Farms in V1"; release line "Progress links open Goals & Farms in the classic view.", vet M-1) and (d), (e) shipped; the rulings below as "S2a-2 rulings that bind S2a-3a…S2a-5"; the owner's answers to Q1–Q4.
+- [x] **Parity matrix §15:** the INTERIM rows' "out of V2 from" date (the merging PR's); the as-built notes on P-17, P-19 and P-33's split halves.
+- [x] **`HOME_STRETCH.md`:** W3 S2a's PR count and the dated log; §4 S2's acceptance line "`Spine.tsx` renders five tabs" met.
+- [x] **`docs/PRODUCT_MODEL.md` §6:** the Stage 2 row (`:240` still says "`Spine.tsx` has 4 tabs" and "no V2 UI yet").
+- [x] **This plan:** an "As built" section.
+- [x] **Rulings that bind later slices:** R-S2-5 (`utils/progressModel.ts` and `utils/goalTypeMeta.ts` as the shared home), R-S2-6 (columns), R-S2-7 (`compareFarmRows` for TrackCard, the tier row's shape for S2a-3b), R-S2-9 (provenance), R-S2-10 (who edits), R-S2-11 (the Undo token, which S2a-3a may reuse for its row edits), R-S2-13 (the read API and `count_hidden`), R-S2-17 (absent controls).
 
 ## Carried, not S2a-2
 
