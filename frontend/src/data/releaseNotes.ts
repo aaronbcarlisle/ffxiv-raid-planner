@@ -113,7 +113,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Progress: tier row end-to-end checks',
         description:
-          'V2 preview: browser checks for the tier row end to end (its cells and status line, the breakdown and the jump to the Board, the split plan panel and its off-state, role gating, guests, contrast in both themes). They also fixed two small things: a jump that lands on the Roster\'s Cards view now scrolls to the card, and after Open on board by keyboard, focus lands on the Board row instead of the top of the page.',
+          'V2 preview: two small fixes and the browser checks for the tier row end to end. Fixed: a jump that lands on the Roster\'s Cards view now scrolls to the card, and after a jump by keyboard (Open on board, or any jump to a card) focus lands on the Board row or the card instead of the top of the page. Checked end to end: the tier row\'s cells and status line, the breakdown and the jump to the Board, the split plan panel and its off-state, role gating, guests, and contrast in both themes.',
         internal: true,
       },
     ],

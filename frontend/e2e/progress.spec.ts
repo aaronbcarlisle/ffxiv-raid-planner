@@ -26,6 +26,16 @@ import {
   loginAsOwner,
   ownerApiContext,
 } from './helpers/auth';
+import {
+  type ApiHeaders,
+  currentUserId,
+  ownerSession,
+  setRole,
+  setSplit,
+  splitEnabled,
+  withSplit,
+  withoutSplitPlannerDebt,
+} from './helpers/owner';
 
 const PREFIX = 'E2E Progress';
 const THEMES = ['dark', 'light'] as const;
@@ -65,29 +75,6 @@ let seeded: Seeded;
 let priorRecord: { catalogItemId: string; ownership_state: string; token_count: number | null } | null = null;
 /** DevMember's id, once the viewer test has demoted them (afterAll restores the role). */
 let demotedUserId: string | null = null;
-
-type ApiHeaders = { 'X-CSRF-Token': string };
-
-async function ownerSession(browser: Browser) {
-  const context = await freshContext(browser);
-  const page = await context.newPage();
-  await loginAsOwner(page);
-  const { groupId, csrfToken } = await ownerApiContext(page);
-  const headers: ApiHeaders = { 'X-CSRF-Token': csrfToken };
-  return { context, page, groupId, headers };
-}
-
-/** The signed-in user's id (DEVTST has other members, so the role change must target this one). */
-async function currentUserId(page: Page): Promise<string> {
-  const res = await page.request.get(`${API_BASE}/api/auth/me`);
-  if (!res.ok()) throw new Error(`auth/me returned ${res.status()}`);
-  return ((await res.json()) as { id: string }).id;
-}
-
-async function setMemberRole(page: Page, groupId: string, headers: ApiHeaders, userId: string, role: 'member' | 'viewer') {
-  const res = await page.request.put(`${API_BASE}/api/static-groups/${groupId}/members/${userId}`, { headers, data: { role } });
-  if (!res.ok()) throw new Error(`setting the member's role to ${role} returned ${res.status()}`);
-}
 
 async function deleteSeededFarms(page: Page, groupId: string, headers: ApiHeaders, ids: string[] = []) {
   const list = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/collection-goals`);
@@ -174,7 +161,7 @@ test.describe.serial('Progress matrix', () => {
   test.afterAll(async ({ browser }) => {
     const { context, page, groupId, headers } = await ownerSession(browser);
     try {
-      if (demotedUserId) await setMemberRole(page, groupId, headers, demotedUserId, 'member');
+      if (demotedUserId) await setRole({ page, groupId, headers }, demotedUserId, 'member');
       await deleteSeededFarms(page, groupId, headers, seeded ? [seeded.mountId, seeded.customId] : []);
       if (priorRecord) {
         const res = await page.request.put(`${API_BASE}/api/me/collection-snapshot/${priorRecord.catalogItemId}`, {
@@ -424,7 +411,7 @@ test.describe.serial('Progress matrix', () => {
       // Dev login re-seats DevMember as a member, so demote after logging in.
       await loginAsMember(page);
       demotedUserId = await currentUserId(page);
-      await setMemberRole(owner.page, owner.groupId, owner.headers, demotedUserId, 'viewer');
+      await setRole(owner, demotedUserId, 'viewer');
       await openProgress(page);
 
       expect(await seededOrder(page)).toEqual([seeded.mountId, seeded.customId]);
@@ -434,7 +421,7 @@ test.describe.serial('Progress matrix', () => {
       expect(cellText.filter((t) => /\d/.test(t))).toEqual([]);
       await context.close();
     } finally {
-      if (demotedUserId) await setMemberRole(owner.page, owner.groupId, owner.headers, demotedUserId, 'member');
+      if (demotedUserId) await setRole(owner, demotedUserId, 'member');
       demotedUserId = null;
       await owner.context.close();
     }
@@ -1141,17 +1128,6 @@ interface RosterPlayer {
   isSubstitute: boolean;
 }
 
-async function splitEnabled(page: Page, groupId: string): Promise<boolean> {
-  const res = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/split-clear`);
-  if (!res.ok()) throw new Error(`reading DEVTST's split clears returned ${res.status()}`);
-  return ((await res.json()) as { enabled: boolean }).enabled;
-}
-
-async function setSplit(page: Page, groupId: string, headers: ApiHeaders, enabled: boolean): Promise<void> {
-  const res = await page.request.put(`${API_BASE}/api/static-groups/${groupId}/split-clear/settings`, { headers, data: { enabled } });
-  if (!res.ok()) throw new Error(`setting split clears to ${enabled} returned ${res.status()}`);
-}
-
 /** DEVTST's active-tier players, through the owner's API. */
 async function activePlayers(page: Page, groupId: string): Promise<RosterPlayer[]> {
   const tiers = (await (await page.request.get(`${API_BASE}/api/static-groups/${groupId}/tiers`)).json()) as Array<{ tierId: string; isActive?: boolean }>;
@@ -1187,7 +1163,7 @@ test.describe('Progress: the tier row (S2a-3b)', () => {
   test.beforeAll(async ({ browser }) => {
     const { context, page, groupId } = await ownerSession(browser);
     try {
-      priorSplit = await splitEnabled(page, groupId);
+      priorSplit = await splitEnabled({ page, groupId });
       players = await activePlayers(page, groupId);
     } finally {
       await context.close();
@@ -1197,28 +1173,11 @@ test.describe('Progress: the tier row (S2a-3b)', () => {
   test.afterAll(async ({ browser }) => {
     const { context, page, groupId, headers } = await ownerSession(browser);
     try {
-      if (priorSplit !== null) await setSplit(page, groupId, headers, priorSplit);
+      if (priorSplit !== null) await setSplit({ page, groupId, headers }, priorSplit);
     } finally {
       await context.close();
     }
   });
-
-  /** Run `body` with DEVTST's split clears set to `enabled`, put back after. */
-  async function withSplit(
-    browser: Browser,
-    enabled: boolean,
-    body: (owner: Awaited<ReturnType<typeof ownerSession>>) => Promise<void>,
-  ): Promise<void> {
-    const owner = await ownerSession(browser);
-    const before = await splitEnabled(owner.page, owner.groupId);
-    try {
-      await setSplit(owner.page, owner.groupId, owner.headers, enabled);
-      await body(owner);
-    } finally {
-      await setSplit(owner.page, owner.groupId, owner.headers, before);
-      await owner.context.close();
-    }
-  }
 
   const tierRowOf = (page: Page) => page.getByTestId('progress-tier-row');
   const tierCells = (page: Page) => tierRowOf(page).locator('button[aria-label*=" BiS slots done"], button[aria-label$=", no BiS set"]');
@@ -1345,7 +1304,7 @@ test.describe('Progress: the tier row (S2a-3b)', () => {
     await context.close();
   });
 
-  test('keyboard: Tab out of the breakdown popover keeps focus on the page, never on <body>', async ({ browser }) => {
+  test('keyboard: Tab from Open on board, the last control in the breakdown popover, keeps focus on it', async ({ browser }) => {
     const context = await freshContext(browser);
     const page = await context.newPage();
     await openTierRow(page);
@@ -1353,16 +1312,17 @@ test.describe('Progress: the tier row (S2a-3b)', () => {
     const name = await focusFirstCellByKeyboard(page);
     await page.keyboard.press('Enter');
     const breakdown = page.getByRole('dialog', { name: `${name} · BiS slots` });
-    await expect(breakdown.getByRole('button', { name: 'Open on board' })).toBeFocused();
+    const openOnBoard = breakdown.getByRole('button', { name: 'Open on board' });
+    await expect(openOnBoard).toBeFocused();
 
-    // Open on board is the popover's last control. Tab from it, then let the popover's dismissal
-    // (focus outside closes it) and React's commit run: two frames, not a fixed sleep.
+    // Open on board is the popover's only and last control: Tab stays on it (the popover keeps
+    // focus inside) and the popover stays open; Escape is the way out. Two frames, not a fixed
+    // sleep, so a dismissal or a commit would have landed.
     await page.keyboard.press('Tab');
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    const where = await focusWhere(page);
-    test.info().annotations.push({ type: 'focus after Tab', description: where });
-    console.log(`[TH6] focus after Tab out of the breakdown: ${where}`);
-    expect(where, 'Tab out of the breakdown must not drop focus to <body>').not.toBe('body');
+    expect(await focusWhere(page), 'focus after Tab from Open on board').toBe('popover');
+    await expect(openOnBoard).toBeFocused();
+    await expect(breakdown).toBeVisible();
     await context.close();
   });
 
@@ -1427,7 +1387,7 @@ test.describe('Progress: the tier row (S2a-3b)', () => {
       await expect(panel.getByRole('button', { name: 'Turn on split clears' })).toHaveCount(0);
       await expect(page).toHaveURL(/[?&]track=tier(&|$)/);
       const { groupId } = await ownerApiContext(page);
-      expect(await splitEnabled(page, groupId)).toBe(true);
+      expect(await splitEnabled({ page, groupId })).toBe(true);
       await context.close();
     });
   });
@@ -1490,7 +1450,7 @@ test.describe('Progress: the tier row (S2a-3b)', () => {
           else await expect(tierPanelOf(p).getByRole('button', { name: 'Turn on split clears' })).toBeVisible();
           await p.mouse.move(0, 0);
           await p.waitForTimeout(300);
-          const panel = await blockingIn(p, ['[data-testid="progress-screen"]'], theme === 'light' ? SPLIT_PLANNER_LIGHT_DEBT : []);
+          const panel = await blockingIn(p, ['[data-testid="progress-screen"]'], { splitPlannerLightDebt: theme === 'light' });
           expect.soft(panel, `the tier panel ${enabled ? 'on' : 'off'}: ${JSON.stringify(panel, null, 2)}`).toEqual([]);
           await ctx.close();
         });
@@ -1499,21 +1459,12 @@ test.describe('Progress: the tier row (S2a-3b)', () => {
   }
 });
 
-// Light only, inside the V1 split planner (components/split-clear/**, not edited in this slice): the
-// source chips' success tone ('Roster N/N', 'Priority N/N'; TONE_CHIP_CLASS.success,
-// utils/splitClearHelpers.ts:9, via SplitClearEmptyState.tsx:12) measures 4.21:1 and 'Generate draft
-// plan' (Button variant accent-subtle, SplitClearEmptyState.tsx:107) 3.79:1.
-const SPLIT_PLANNER_LIGHT_DEBT = [
-  // text-status-success on bg-status-success/15 over the planner card: untracked.
-  '[data-testid="progress-tier-expansion"] .text-status-success.bg-status-success\\/15',
-  // Button variant="accent-subtle" (text-accent on bg-accent/10): tracked in #394.
-  '[data-testid="progress-tier-expansion"] button[aria-label="Generate draft plan"]',
-];
-
-async function blockingIn(page: Page, includes: string[], excludes: string[] = []) {
+async function blockingIn(page: Page, includes: string[], opts: { splitPlannerLightDebt?: boolean } = {}) {
   let builder = new AxeBuilder({ page });
   for (const selector of includes) builder = builder.include(selector);
-  for (const selector of excludes) builder = builder.exclude(selector);
   const results = await builder.analyze();
-  return results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+  const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+  // Light only, in the tier panel: the V1 planner's contrast debt (helpers/owner.ts) leaves the
+  // color-contrast rule alone; every other rule still sees those nodes.
+  return opts.splitPlannerLightDebt ? withoutSplitPlannerDebt(page, blocking) : blocking;
 }

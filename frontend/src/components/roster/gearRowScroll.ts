@@ -73,9 +73,9 @@ export function scrollToGearRow(playerId: string, slot: JumpAnchorSlot, options:
  * lands ~300 ms in), so that scroll finds nothing and this one is the one that lands.
  *
  * H4b: it also hands focus to the landed element when focus is on `<body>` (the button that
- * started a keyboard jump has unmounted by then), so a keyboard user lands on the Board row (a
- * focusable `<tr tabIndex=-1>`) and not at the top of the page. A focus the user holds elsewhere
- * is never taken, and an element that cannot take focus (a card) ignores the call.
+ * started a keyboard jump has unmounted by then), so a keyboard user lands on the Board row or the
+ * card (both `tabIndex=-1`) and not at the top of the page. A focus the user holds elsewhere is
+ * never taken, and an element that cannot take focus ignores the call.
  */
 export function scrollToPlayerRow(playerId: string, options: PollOptions = {}): () => void {
   return pollAndCenter(() => document.getElementById(`player-card-${playerId}`), { focusWhenIdle: true, ...options });

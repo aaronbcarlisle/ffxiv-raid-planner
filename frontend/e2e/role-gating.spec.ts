@@ -29,6 +29,7 @@
 
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import { API_BASE, DEV_SHARE_CODE, freshContext, loginAsMember, loginAsOwner, ownerApiContext, pinShell } from './helpers/auth';
+import { currentUserId, ownerSession, setRole, setSplit, splitEnabled, withSplit } from './helpers/owner';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -437,28 +438,6 @@ test.describe.serial('Progress row expansion, by role (S2a-3a)', () => {
   const menuColumn = (page: Page) => page.getByRole('columnheader', { name: 'Actions', exact: true });
   const rowMenus = (page: Page) => page.getByRole('button', { name: /^Actions for / });
 
-  async function setRole(owner: { page: Page; groupId: string; headers: { 'X-CSRF-Token': string } }, userId: string, role: 'member' | 'viewer') {
-    const res = await owner.page.request.put(`${API_BASE}/api/static-groups/${owner.groupId}/members/${userId}`, {
-      headers: owner.headers,
-      data: { role },
-    });
-    if (!res.ok()) throw new Error(`setting the role to ${role} returned ${res.status()}`);
-  }
-
-  async function ownerSession(browser: Browser) {
-    const context = await freshContext(browser);
-    const page = await context.newPage();
-    await loginAsOwner(page);
-    const { groupId, csrfToken } = await ownerApiContext(page);
-    return { context, page, groupId, headers: { 'X-CSRF-Token': csrfToken } };
-  }
-
-  async function userIdOf(page: Page): Promise<string> {
-    const res = await page.request.get(`${API_BASE}/api/auth/me`);
-    if (!res.ok()) throw new Error(`auth/me returned ${res.status()}`);
-    return ((await res.json()) as { id: string }).id;
-  }
-
   test.beforeAll(async ({ browser }) => {
     const owner = await ownerSession(browser);
     try {
@@ -481,7 +460,7 @@ test.describe.serial('Progress row expansion, by role (S2a-3a)', () => {
       const memberId = members.find((m) => m.user?.discordUsername === 'DevMember')?.userId;
       if (!memberId) throw new Error('DevMember is not in DEVTST');
       for (const [userId, state] of [
-        [await userIdOf(page), 'need'],
+        [await currentUserId(page), 'need'],
         [memberId, 'want'],
       ] as const) {
         const set = await page.request.patch(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${farmId}/participants/${userId}`, {
@@ -539,7 +518,7 @@ test.describe.serial('Progress row expansion, by role (S2a-3a)', () => {
       const page = await context.newPage();
       // Dev login re-seats DevMember as a member, so demote after logging in.
       await loginAsMember(page);
-      demoted = await userIdOf(page);
+      demoted = await currentUserId(page);
       await setRole(owner, demoted, 'viewer');
       await openV2(page, track(), progressReady);
 
@@ -586,48 +565,6 @@ test.describe('Progress tier row, by role (S2a-3b)', () => {
   const BIS_CELL = 'button[aria-label*=" BiS slots done"], button[aria-label$=", no BiS set"]';
   let priorSplit: boolean | null = null;
   let demoted: string | null = null;
-
-  type Owner = { context: import('@playwright/test').BrowserContext; page: Page; groupId: string; headers: { 'X-CSRF-Token': string } };
-
-  async function ownerSession(browser: Browser): Promise<Owner> {
-    const context = await freshContext(browser);
-    const page = await context.newPage();
-    await loginAsOwner(page);
-    const { groupId, csrfToken } = await ownerApiContext(page);
-    return { context, page, groupId, headers: { 'X-CSRF-Token': csrfToken } };
-  }
-
-  async function splitEnabled(owner: Owner): Promise<boolean> {
-    const res = await owner.page.request.get(`${API_BASE}/api/static-groups/${owner.groupId}/split-clear`);
-    if (!res.ok()) throw new Error(`reading split clears returned ${res.status()}`);
-    return ((await res.json()) as { enabled: boolean }).enabled;
-  }
-
-  async function setSplit(owner: Owner, enabled: boolean): Promise<void> {
-    const res = await owner.page.request.put(`${API_BASE}/api/static-groups/${owner.groupId}/split-clear/settings`, {
-      headers: owner.headers,
-      data: { enabled },
-    });
-    if (!res.ok()) throw new Error(`setting split clears to ${enabled} returned ${res.status()}`);
-  }
-
-  async function setRole(owner: Owner, userId: string, role: 'member' | 'viewer'): Promise<void> {
-    const res = await owner.page.request.put(`${API_BASE}/api/static-groups/${owner.groupId}/members/${userId}`, { headers: owner.headers, data: { role } });
-    if (!res.ok()) throw new Error(`setting the role to ${role} returned ${res.status()}`);
-  }
-
-  /** Run `body` with split clears set to `enabled`, put back after. */
-  async function withSplit(browser: Browser, enabled: boolean, body: (owner: Owner) => Promise<void>): Promise<void> {
-    const owner = await ownerSession(browser);
-    const before = await splitEnabled(owner);
-    try {
-      await setSplit(owner, enabled);
-      await body(owner);
-    } finally {
-      await setSplit(owner, before);
-      await owner.context.close();
-    }
-  }
 
   const tierRow = (page: Page) => page.getByTestId('progress-tier-row');
   const disclosure = (page: Page) => tierRow(page).locator('[aria-controls="progress-tier-expansion"]');

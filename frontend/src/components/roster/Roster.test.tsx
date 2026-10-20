@@ -760,6 +760,7 @@ describe('Roster — D12 the ?slot= deep link', () => {
   // `?slot=` reaches `gearRowDomId`, which builds a global DOM id — an
   // unvalidated value would be handed straight to `getElementById`.
   it('ignores a slot that is not an anchor slot', async () => {
+    const lookups = vi.spyOn(document, 'getElementById');
     const { container } = renderRosterAtUrl(
       makeTier(players),
       ['/group/DEVTST?tab=roster&player=p1&slot=__proto__'],
@@ -771,11 +772,14 @@ describe('Roster — D12 the ?slot= deep link', () => {
     // absence below is a real absence and not a missing gear table.
     expect(container.querySelector('#gear-row-p1-head')).not.toBeNull();
     expect(container.querySelector('.highlight-pulse[id^="gear-row-"]')).toBeNull();
-    // Validation is what makes this a no-op rather than a lookup. H4b c1: a player-only landing now
-    // scrolls the CARD too (`scrollToPlayerRow`, both views), so the scroll no longer tells a
-    // validated slot from a cast one (both end on the card, once); it pins that exactly one scroll
-    // runs and none is a row.
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
+    // Validation is what makes this a no-op rather than a lookup. Since H4b c1 a player-only landing
+    // scrolls the CARD too, so the scroll cannot tell a validated slot from a cast one; the DOM
+    // lookups can. A cast slot would reach `gearRowDomId` and look up `gear-row-p1-__proto__`.
+    const ids = lookups.mock.calls.map(([id]) => id);
+    expect(ids).toContain('player-card-p1');
+    expect(ids.filter((id) => id.includes('__proto__'))).toEqual([]);
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    lookups.mockRestore();
   });
 
   it('applies the slot pulse to the named player only', async () => {
@@ -915,6 +919,13 @@ describe('Roster — S2a-3b·H3b the Board landing', () => {
   it('moves focus from <body> to the jumped-to Board row', async () => {
     const { container } = renderRosterAtUrl(makeTier(players), ['/group/DEVTST?tab=roster&rview=board&player=p2']);
     await waitFor(() => expect(container.querySelector('tr[id="player-card-p2"]')).toHaveFocus());
+  });
+
+  // H4b I2: the same on Cards (D-9's reset landing, V2 Loot's jump): the card wrapper takes focus.
+  it('moves focus from <body> to the jumped-to card on the Cards view', async () => {
+    const { container } = renderRosterAtUrl(makeTier(players), ['/group/DEVTST?tab=roster&player=p2']);
+    await waitFor(() => expect(container.querySelector('[id="player-card-p2"]')).toHaveFocus());
+    expect(container.querySelector('[id="player-card-p2"]')?.tagName).not.toBe('TR');
   });
 
   it('renders the anchor once in each view: a card on Cards, a row on the Board', async () => {
