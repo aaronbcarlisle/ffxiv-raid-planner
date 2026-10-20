@@ -6,6 +6,7 @@
  * (hoisted per file).
  */
 import { render, screen } from '@testing-library/react';
+import type { ComponentType, ReactNode } from 'react';
 import { vi, type Mock } from 'vitest';
 import { api } from '../../../services/api';
 import { useCollectionGoalStore, type CollectionGoal } from '../../../stores/collectionGoalStore';
@@ -30,6 +31,8 @@ export interface PanelOptions {
   spanAll?: number;
   viewWidth?: number | null;
   clock?: WeekClock;
+  /** Wraps the table, e.g. in a context provider. */
+  wrapper?: ComponentType<{ children: ReactNode }>;
 }
 
 export function renderPanel({
@@ -44,6 +47,7 @@ export function renderPanel({
   spanAll = 5,
   viewWidth,
   clock,
+  wrapper,
 }: PanelOptions = {}) {
   // The panel's delete confirm is a Modal, whose useDevice reads matchMedia (jsdom has none).
   stubCanHover();
@@ -65,6 +69,7 @@ export function renderPanel({
         />
       </tbody>
     </table>,
+    { wrapper },
   );
   return { ...view, onClose, panel: screen.getByTestId('progress-expansion') };
 }

@@ -608,12 +608,12 @@ describe('ProgressMatrix row menu column', () => {
     expect((within(panel()!).getByRole('gridcell') as HTMLTableCellElement).colSpan).toBe(columns.length + 3);
   });
 
-  it('opens Mark finished · Delete on an active row, and Reopen · Delete on a finished one', () => {
+  it('opens Edit · Mark finished · Delete on an active row, and Reopen · Delete on a finished one', () => {
     renderMatrix({ goals: [...two, done], participants: { ...needy, done: [row('done', 'u1', { state: 'have' })] } });
     fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
     const rows = farmRows();
     fireEvent.click(menuButton(rows[0]));
-    expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual(['Mark finished', 'Delete']);
+    expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual(['Edit', 'Mark finished', 'Delete']);
     fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Mark finished' }), { key: 'Escape' });
     fireEvent.click(menuButton(rows[2]));
     expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual(['Reopen', 'Delete']);

@@ -1,8 +1,10 @@
 /**
  * FarmRowMenu — a lead's ⋯ menu on a farm row (S2a-3a·G4 Task TG7; D-9 as amended by D-22, D-10,
  * D-11, R-S3-17). An `IconButton` "Actions for {title}" (`aria-haspopup="menu"`) opening a
- * `ContextMenu` at the button: Mark finished · Delete on an active row, Reopen · Delete on a
- * finished one (TG8 prepends Edit). Leads only; the row renders nothing for anyone else.
+ * `ContextMenu` at the button: Edit · Mark finished · Delete on an active row, Reopen · Delete on a
+ * finished one. Leads only; the row renders nothing for anyone else. Edit opens the row and enters
+ * its inline block (`farmEditContext`, S2a-3a·G5 Task TG8, vet M-1); Mark finished asks "Discard
+ * changes?" first when that row's block holds unsaved changes.
  *
  * Mark finished and Reopen are `useGoalStatus`'s. Delete asks first (V1's confirm, word for
  * word): "Delete Goal", `Delete "{title}"? This will remove all participant states and drop
@@ -24,7 +26,8 @@ import { toast } from '../../stores/toastStore';
 import { IconButton } from '../primitives';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
-import { focusAfterDelete, neighbourFarmId } from './farmFocus';
+import { useFarmEdit } from './farmEditContext';
+import { farmMenuId, focusAfterDelete, neighbourFarmId } from './farmFocus';
 import { messageOf } from './undoToasts';
 import type { MatrixCellProps } from './useMatrixKeyboard';
 import { useGoalStatus } from './useGoalStatus';
@@ -42,16 +45,21 @@ export function FarmRowMenu({ groupId, goal, grid }: FarmRowMenuProps) {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const { markFinished, reopen } = useGoalStatus(groupId, goal);
   const finished = goal.status === 'complete';
+  const edit = useFarmEdit();
 
   const closeMenu = () => {
     setAnchor(null);
     buttonRef.current?.focus({ preventScroll: true });
   };
 
+  const status: ContextMenuItem[] = finished
+    ? [{ label: 'Reopen', onClick: () => void reopen() }]
+    : [
+        { label: 'Edit', onClick: () => edit.start(goal.id) },
+        { label: 'Mark finished', accent: true, onClick: () => edit.guard(goal.id, () => void markFinished(), buttonRef.current) },
+      ];
   const items: ContextMenuItem[] = [
-    finished
-      ? { label: 'Reopen', onClick: () => void reopen() }
-      : { label: 'Mark finished', accent: true, onClick: () => void markFinished() },
+    ...status,
     { separator: true },
     { label: 'Delete', danger: true, onClick: () => setConfirming(true) },
   ];
@@ -74,6 +82,7 @@ export function FarmRowMenu({ groupId, goal, grid }: FarmRowMenuProps) {
     <>
       <IconButton
         {...grid}
+        id={farmMenuId(goal.id)}
         ref={(el) => {
           buttonRef.current = el;
           grid?.ref(el);

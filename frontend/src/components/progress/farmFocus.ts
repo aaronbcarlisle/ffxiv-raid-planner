@@ -14,6 +14,12 @@
 /** The row's name button id: the panel's id plus `-name`. */
 export const farmNameId = (goalId: string) => `progress-expansion-${goalId}-name`;
 
+/** The row's ⋯ menu button id (where focus returns when Edit ends). */
+export const farmMenuId = (goalId: string) => `progress-expansion-${goalId}-menu`;
+
+/** The Edit block's Title input id (where focus goes when Edit starts, or when a discard is kept). */
+export const farmEditTitleId = (goalId: string) => `progress-expansion-${goalId}-edit-title`;
+
 /** The "Finished (n)" disclosure's id. */
 export const FINISHED_TOGGLE_ID = 'progress-finished-toggle';
 
@@ -36,7 +42,17 @@ export function cancelFarmFocus(goalId: string): void {
   expected.delete(goalId);
 }
 
-const focusIsLost = () => document.activeElement === null || document.activeElement === document.body;
+/**
+ * A toast's own controls (`ToastContainer`: a `role="alert"` inside its `aria-live` region). A toast
+ * button the user pressed keeps focus for the 150 ms its exit animation takes, then unmounts and
+ * drops focus on <body>, so focus held there is as good as lost for an Undo's restored row.
+ */
+const inToast = (el: Element) => el.closest('[aria-live="polite"] [role="alert"]') !== null;
+
+const focusIsLost = () => {
+  const active = document.activeElement;
+  return active === null || active === document.body || inToast(active);
+};
 
 /** Takes the claim on a goal's focus, once, for the first row of the expected section that asks: true when it should focus now. */
 export function claimFarmFocus(goalId: string, section: FarmSection): boolean {
@@ -69,11 +85,18 @@ export function neighbourFarmId(from: Element): string | null {
   return seek((el) => el.nextElementSibling) ?? seek((el) => el.previousElementSibling);
 }
 
-/** After a delete: the neighbour's name, else "Finished (n)", else the matrix itself. */
+/**
+ * After a delete: the neighbour's name, else "Finished (n)", else the grid's stop, the first
+ * active row's name (deleting the only finished farm removes the disclosure with it).
+ */
 export function focusAfterDelete(neighbourId: string | null): void {
+  const firstActive = document.querySelector(
+    '[data-testid="progress-matrix"] tbody:not([data-testid="progress-finished"]) [data-testid="progress-farm-row"]',
+  );
+  const firstActiveId = firstActive?.getAttribute('data-goal-id') ?? null;
   const target =
     (neighbourId !== null ? document.getElementById(farmNameId(neighbourId)) : null) ??
     document.getElementById(FINISHED_TOGGLE_ID) ??
-    document.querySelector<HTMLElement>('[data-testid="progress-matrix"]');
+    (firstActiveId !== null ? document.getElementById(farmNameId(firstActiveId)) : null);
   target?.focus();
 }

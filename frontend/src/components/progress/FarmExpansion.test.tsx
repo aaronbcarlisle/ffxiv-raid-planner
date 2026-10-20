@@ -9,6 +9,7 @@
  * layer of its own yet (TG5, TG6/TG7 and TG8 pin the real picker, confirm and Select).
  */
 import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The panel loads its drops (S2a-3a·G3); none here.
@@ -21,6 +22,7 @@ import { useToastStore } from '../../stores/toastStore';
 import { buildColumns, splitFarmRows } from '../../utils/progressModel';
 import { renderPanel as renderHarness, type PanelOptions } from './__fixtures__/panelHarness';
 import { farmRowOf, goal, row, type ColumnSpec } from './__fixtures__/progressFixtures';
+import { FarmEditContext } from './farmEditContext';
 import { FarmExpansion } from './FarmExpansion';
 import { escapeClosesPanel } from './panelEscape';
 
@@ -249,5 +251,32 @@ describe('FarmExpansion Escape (R-S3-4)', () => {
       expect(escapeClosesPanel({ key: 'Enter', defaultPrevented: false, target: inside }, panel)).toBe(false);
       expect(escapeClosesPanel({ key: 'Escape', defaultPrevented: false, target: inside }, null)).toBe(false);
     });
+  });
+});
+
+describe("FarmExpansion: the Edit block is a lead's (ROLE-1)", () => {
+  const editing = ({ children }: { children: ReactNode }) => (
+    <FarmEditContext.Provider value={{ editingId: 'wings', start: () => {}, finish: () => {}, setDirty: () => {}, guard: (_id, proceed) => proceed() }}>
+      {children}
+    </FarmEditContext.Provider>
+  );
+
+  it('shows for a lead the page says is editing this row', () => {
+    renderPanel({ wrapper: editing });
+    expect(screen.getByTestId('progress-edit-block')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['a member', { userRole: 'member', canManage: false }],
+    ['a viewer', { userRole: 'viewer', canManage: false }],
+    ['a viewer who can manage', { userRole: 'viewer', canManage: true }],
+  ] as const)('never shows for %s, whatever the context says', (_label, options) => {
+    renderPanel({ wrapper: editing, ...options });
+    expect(screen.queryByTestId('progress-edit-block')).not.toBeInTheDocument();
+  });
+
+  it('never shows on a finished row', () => {
+    renderPanel({ wrapper: editing, finished: true });
+    expect(screen.queryByTestId('progress-edit-block')).not.toBeInTheDocument();
   });
 });

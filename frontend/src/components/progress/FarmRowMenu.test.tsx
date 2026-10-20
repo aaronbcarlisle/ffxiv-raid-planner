@@ -58,19 +58,19 @@ const items = () => screen.getAllByRole('menuitem').map((item) => item.textConte
 const pickItem = (name: string) => fireEvent.click(screen.getByRole('menuitem', { name }));
 
 describe('FarmRowMenu: the menu (D-9, D-10, D-22)', () => {
-  it('is an "Actions for {title}" button with a menu popup, opening Mark finished · Delete on an active row', () => {
+  it('is an "Actions for {title}" button with a menu popup, opening Edit · Mark finished · Delete on an active row', () => {
     renderMenu();
     expect(menuButton()).toHaveAttribute('aria-haspopup', 'menu');
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     openMenu();
     expect(screen.getByRole('menu')).toBeInTheDocument();
-    expect(items()).toEqual(['Mark finished', 'Delete']);
+    expect(items()).toEqual(['Edit', 'Mark finished', 'Delete']);
   });
 
   it.each(['wanted', 'farming', 'scheduled'] as const)('offers Mark finished, never Reopen, on a %s farm', (status) => {
     renderMenu(goal('wings', { title: 'Wings', status }));
     openMenu();
-    expect(items()).toEqual(['Mark finished', 'Delete']);
+    expect(items()).toEqual(['Edit', 'Mark finished', 'Delete']);
   });
 
   it('opens Reopen · Delete on a finished row', () => {
