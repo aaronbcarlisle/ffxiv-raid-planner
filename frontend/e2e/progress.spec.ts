@@ -1130,9 +1130,9 @@ interface RosterPlayer {
 
 /** DEVTST's active-tier players, through the owner's API. */
 async function activePlayers(page: Page, groupId: string): Promise<RosterPlayer[]> {
-  const tiers = (await (await page.request.get(`${API_BASE}/api/static-groups/${groupId}/tiers`)).json()) as Array<{ tierId: string; isActive?: boolean }>;
-  const tierId = (tiers.find((t) => t.isActive) ?? tiers[0]).tierId;
-  const res = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/tiers/${tierId}/players`);
+  const tiers = (await (await page.request.get(`${API_BASE}/api/static-groups/${groupId}/tiers`)).json()) as Array<{ id: string; isActive?: boolean }>;
+  const snapshotId = (tiers.find((t) => t.isActive) ?? tiers[0]).id;
+  const res = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/tiers/${snapshotId}/players`);
   if (!res.ok()) throw new Error(`the player list returned ${res.status()}`);
   return (await res.json()) as RosterPlayer[];
 }

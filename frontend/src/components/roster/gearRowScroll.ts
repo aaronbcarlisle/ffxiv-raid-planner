@@ -90,7 +90,7 @@ function pollAndCenter(find: () => HTMLElement | null, { attempts = 24, interval
     const el = find();
     if (el) {
       const active = document.activeElement;
-      if (focusWhenIdle && (!active || active === document.body)) el.focus({ preventScroll: true });
+      if (focusWhenIdle && (!active || active === document.body || active === document.documentElement)) el.focus({ preventScroll: true });
       el.scrollIntoView(CENTER);
       timer = setTimeout(() => el.scrollIntoView(CENTER), 220);
       return;
