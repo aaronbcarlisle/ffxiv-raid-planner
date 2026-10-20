@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.72';
+export const CURRENT_VERSION = '2.1.73';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.73',
+    date: '2026-10-20T00:00:00Z',
+    title: 'Log Week no longer logs a floor\'s books twice',
+    items: [
+      {
+        category: 'fix',
+        title: 'Log Week no longer logs a floor\'s books twice',
+        description:
+          'Logging a week again no longer credits a floor\'s books twice. On the Books step, players already credited for that floor this week show as checked and "already logged", and they\'re left out when you submit. Saving the same clear again, from the plugin too, never adds a second book.',
+        pr: 386,
+        prTitle: 'fix(loot): Log Week can\'t log a floor\'s books twice (#326)',
+      },
+    ],
+  },
   {
     version: '2.1.72',
     date: '2026-10-08T00:00:00Z',
