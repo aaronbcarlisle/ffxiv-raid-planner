@@ -42,6 +42,13 @@
  * (shown only while it is the open row), and the block reports whether it is dirty. A dirty block
  * is never dropped silently: opening another row, closing the row (its name button or Escape) and
  * Mark finished each ask "Discard changes?" first (`askToDiscard`), through `farmEditContext`.
+ *
+ * The split plan (S2a-3b·H4, R-T-6, R-T-7, E-8, E-11, design §3.5): `?track=tier` opens the tier
+ * row into the split planner. Members and viewers fetch the static's split-clear data on the active
+ * tier, and again on a return to the tab, and the page keeps the last settled result per static.
+ * Once it has settled the row opens with split clears on, for a lead with them off (Turn on split
+ * clears), or after a failure (Retry). The id waits while the tier is unknown (a cold load) or the
+ * fetch runs, and goes on a known past tier or once the result says the row can't open.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Target } from 'lucide-react';
@@ -52,18 +59,22 @@ import { ConfirmModal } from '../ui/ConfirmModal';
 import { useRosterSortPreset } from '../roster/useRosterSortPreset';
 import { getTierById } from '../../gamedata';
 import { useTrackParam } from '../../hooks/useTrackParam';
+import { useVisibilityRefresh } from '../../hooks/useVisibilityRefresh';
 import { computeWeeklyLootSummary } from '../../hooks/useWeeklyLootSummary';
 import { useAuthStore } from '../../stores/authStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
+import { useSplitClearStore } from '../../stores/splitClearStore';
+import { toast } from '../../stores/toastStore';
 import type { LootLogEntry, MemberRole, PageLedgerEntry, PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
 import { buildColumns, splitFarmRows, type ProgressCell as ProgressCellModel, type ProgressData } from '../../utils/progressModel';
 import { tierBisCell, tierBisTotals, tierStatusText } from '../../utils/tierBis';
 import { blankClaimedCells, cellWriteTarget } from './editStatuses';
 import { FarmEditContext } from './farmEditContext';
-import { farmEditTitleId, farmMenuId, farmNameId } from './farmFocus';
+import { farmEditTitleId, farmMenuId, farmNameId, tierNameId } from './farmFocus';
 import { EditStatusesBar } from './EditStatusesBar';
 import { ProgressMatrix } from './ProgressMatrix';
+import { TIER_TRACK, type TierPanelModel } from './TierExpansion';
 import type { TierColumnCell, TierRowModel } from './TierRow';
 
 /** The route 422s above this many `goal_id` params. */
@@ -74,6 +85,14 @@ const NO_PLAYERS: SnapshotPlayer[] = [];
 const NO_LOOT: LootLogEntry[] = [];
 /** The farm data while the farms are not shown (a guest, or before the first load). */
 const NO_FARMS: ProgressData = { goals: [], participants: {}, recordOnly: {} };
+
+/** The last settled split-clear fetch: for which static, and what it said (R-T-7). */
+interface SplitResult {
+  groupId: string | null;
+  enabled: boolean;
+  failed: boolean;
+}
+const NO_SPLIT: SplitResult = { groupId: null, enabled: false, failed: false };
 
 interface ProgressPageProps {
   group: StaticGroup;
@@ -259,17 +278,6 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     [columns],
   );
   const statusText = tierStatusText({ totals: tierBisTotals(tierCells.map((c) => (c.counted ? c.cell : null))), week, floors });
-  const tierRow: TierRowModel | undefined =
-    tierName === null
-      ? undefined
-      : {
-          name: tierName,
-          cells: tierCells,
-          statusText,
-          onOpenBoard: () => onNavigate('roster', { rview: 'board' }),
-          // D-5, E-9, R-T-9: a tier cell's Alt+Click and the breakdown's Open on board land on that card's Board row.
-          onJump: (playerId) => onNavigate('roster', { rview: 'board', player: playerId }),
-        };
 
   // Names for "set by {name}": the signed-in user first, so a member's entry below wins. The
   // signed-in user is there for View As: the admin writes the viewed user's row, and an
@@ -326,9 +334,73 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   // store holds this static's goals; never on the cached list alone (R-S3-3, "never during loading").
   const goalsFetched = goalsSettled?.groupId === group.id && goalsSettled.attempt === attempt;
   useEffect(() => {
-    if (track === null || !goalsReady || !goalsFetched) return;
+    // `?track=tier` names no goal: the tier's own rule below decides it (E-3).
+    if (track === null || track === TIER_TRACK || !goalsReady || !goalsFetched) return;
     if (!groupGoals.some((g) => g.id === track)) setTrack(null);
   }, [track, goalsReady, goalsFetched, groupGoals, setTrack]);
+
+  // ── The split plan (S2a-3b·H4; R-T-6, R-T-7, E-8, E-11) ──
+  // Members and viewers fetch it on the active tier, and again on a return to the tab. The store is
+  // shared and unkeyed, and a refetch blanks its `data` first, so the page keeps the last settled
+  // result per static and the panel reads that: a refetch never closes it, and `failed` is this
+  // fetch's own outcome, never the store's `error`, which every write sets. Guests never fetch
+  // (D-11), and Progress never clears the store (V1's roster tab owns that).
+  const tierActive = tier?.isActive === true;
+  const [split, setSplit] = useState<SplitResult>(NO_SPLIT);
+  const [splitAttempt, setSplitAttempt] = useState(0);
+  useEffect(() => {
+    if (!isMember || !tierActive) return;
+    const groupId = group.id;
+    let cancelled = false;
+    // `fetchData` keeps its errors (the store's `error`, `data` left null), so this resolves either way.
+    void useSplitClearStore
+      .getState()
+      .fetchData(groupId)
+      .then(() => {
+        if (cancelled) return;
+        const { data } = useSplitClearStore.getState();
+        setSplit({ groupId, enabled: data?.enabled === true, failed: data === null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isMember, group.id, tierActive, splitAttempt]);
+  const refetchSplit = useCallback(() => setSplitAttempt((n) => n + 1), []);
+  useVisibilityRefresh(refetchSplit);
+  const turnOnSplit = useCallback(() => {
+    const groupId = group.id;
+    void useSplitClearStore
+      .getState()
+      .toggleMode(groupId, true)
+      .then(
+        () => {
+          setSplit((s) => (s.groupId === groupId ? { groupId, enabled: true, failed: false } : s));
+          toast.success('Split clears on');
+        },
+        (err: unknown) => toast.error(err instanceof Error ? err.message : "Couldn't turn on split clears"),
+      );
+  }, [group.id]);
+
+  // The row opens once this static's result has settled: with split clears on (everyone), off (a
+  // lead, to turn them on) or failed (the error and Retry inside). Guests never (R-T-11).
+  const splitHere = split.groupId === group.id;
+  const tierOpenable = isMember && tierActive && splitHere && (split.enabled || split.failed || mayEdit);
+  const tierOpen = track === TIER_TRACK && tierOpenable;
+  // `?track=tier` waits while the tier is unknown (a cold load) and while the fetch runs; it goes on
+  // a known past tier (E-8), or once the result says the row can't open (a member, split clears off).
+  const tierPast = tier !== null && !tierActive;
+  useEffect(() => {
+    if (track !== TIER_TRACK) return;
+    if (tierPast || (splitHere && !tierOpenable)) setTrack(null);
+  }, [track, tierPast, splitHere, tierOpenable, setTrack]);
+  // The one open row: the tier's, else a farm's.
+  const openRowId = tierOpen ? TIER_TRACK : openId;
+  // The planner's players (R-T-8): configured, non-substitute cards, in column order.
+  const plannerPlayers = useMemo(
+    () => columns.flatMap((c) => (c.player !== null && c.player.configured && !c.player.isSubstitute ? [c.player] : [])),
+    [columns],
+  );
+
   const [editId, setEditId] = useState<string | null>(null);
   // The edit belongs to the static it started under: dropped in the render that sees another one.
   const [editGroupId, setEditGroupId] = useState(group.id);
@@ -391,17 +463,18 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     },
     [editingId],
   );
+  // A goal id or `TIER_TRACK`, against the effective open row, so the open tier row's name closes it.
   const toggleRow = useCallback(
-    (goalId: string) =>
+    (rowId: string) =>
       askToDiscard(
         openId,
         () => {
           setEditId(null);
-          setTrack(openId === goalId ? null : goalId);
+          setTrack(openRowId === rowId ? null : rowId);
         },
-        farmNameId(goalId),
+        rowId === TIER_TRACK ? tierNameId : farmNameId(rowId),
       ),
-    [openId, setTrack, askToDiscard],
+    [openId, openRowId, setTrack, askToDiscard],
   );
   const editControls = useMemo(
     () => ({
@@ -444,6 +517,30 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     [editingId, askToDiscard, setTrack, setDirty],
   );
 
+  // The tier panel's model, only while the row can open (R-T-8): failed first, then on, then off.
+  const tierPanel: TierPanelModel | undefined = tierOpenable
+    ? {
+        groupId: group.id,
+        state: split.failed ? 'failed' : split.enabled ? 'on' : 'off',
+        players: plannerPlayers,
+        canEdit: canManage,
+        onRetry: refetchSplit,
+        onTurnOn: turnOnSplit,
+      }
+    : undefined;
+  const tierRow: TierRowModel | undefined =
+    tierName === null
+      ? undefined
+      : {
+          name: tierName,
+          cells: tierCells,
+          statusText,
+          onOpenBoard: () => onNavigate('roster', { rview: 'board' }),
+          // D-5, E-9, R-T-9: a tier cell's Alt+Click and the breakdown's Open on board land on that card's Board row.
+          onJump: (playerId) => onNavigate('roster', { rview: 'board', player: playerId }),
+          panel: tierPanel,
+        };
+
   return (
     <div data-testid="progress-screen">
       <PageHeader
@@ -476,7 +573,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
               finishedLoading={finishedLoading}
               finishedError={finishedError}
               onExpandFinished={expandFinished}
-              openId={openId}
+              openId={openRowId}
               onToggle={toggleRow}
               groupId={group.id}
               userRole={userRole}

@@ -14,6 +14,9 @@
 /** The row's name button id: the panel's id plus `-name`. */
 export const farmNameId = (goalId: string) => `progress-expansion-${goalId}-name`;
 
+/** The tier row's name button id (S2a-3b·H4, R-T-6), as a farm's: its panel's id plus `-name`. */
+export const tierNameId = 'progress-tier-expansion-name';
+
 /** The row's ⋯ menu button id (where focus returns when Edit ends). */
 export const farmMenuId = (goalId: string) => `progress-expansion-${goalId}-menu`;
 
