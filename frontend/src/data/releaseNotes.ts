@@ -86,6 +86,23 @@ export const RELEASES: Release[] = [
     internal: true,
   },
   {
+    version: '2.1.76',
+    date: '2026-10-20T00:00:00Z',
+    title: 'V2 preview: Last drops names the card',
+    items: [
+      {
+        category: 'fix',
+        title: 'V2 preview: Progress\'s Last drops names the recipient by their card',
+        description:
+          'V2 preview: a drop in a farm\'s Last drops list now names the recipient by the card shown in the matrix and the Next in line list, as the drop toast does, instead of the account name. A recipient with no column in the matrix keeps the account name, and "(character)" follows the card name only when the character differs from it. The delete button and its confirm use the same name.',
+        pr: 397,
+        prTitle: 'fix(v2): Last drops names the card, not the account (#387)',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.75',
     date: '2026-10-20T00:00:00Z',
     title: 'The Split Planner shows only the current tier\'s assignments',
