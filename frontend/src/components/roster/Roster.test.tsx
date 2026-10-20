@@ -820,17 +820,26 @@ describe('Roster — D12 the ?slot= deep link', () => {
     expect(container.querySelector('#gear-row-p1-head')).toBeNull();
   });
 
-  // R-D12-F cause 4, the NAMED RESIDUAL (pre-existing from C7/D6a) — pinned so
-  // it cannot silently change: Board view renders neither anchor.
-  it('lands nowhere in Board view (named residual)', async () => {
+  // R-D12-F cause 4 was a NAMED RESIDUAL (from C7/D6a): Board view rendered
+  // neither anchor. S2a-3b·H3b (R-T-9) closes it for the PLAYER anchor: the
+  // Board's row carries `player-card-{id}` and the Cards' highlight class. The
+  // SLOT half stays a residual: the Board has no per-slot gear rows, so
+  // `#gear-row-{id}-{slot}` still resolves to nothing there.
+  it("lands on the player's row in Board view (R-T-9 closes the R-D12-F cause 4 residual)", async () => {
     const { container } = renderRosterAtUrl(
       makeTier(players),
       ['/group/DEVTST?tab=roster&rview=board&player=p1&slot=head'],
     );
     await waitFor(() => expect(container.querySelector('table')).not.toBeNull());
-    expect(container.querySelector('#player-card-p1')).toBeNull();
+    const anchor = container.querySelector('#player-card-p1');
+    expect(anchor).not.toBeNull();
+    expect(anchor!.tagName).toBe('TR');
+    expect(anchor).toHaveClass('highlight-pulse');
+    // p1's row only.
+    expect(container.querySelectorAll('.highlight-pulse')).toHaveLength(1);
+    expect(container.querySelector('#player-card-p2')).not.toHaveClass('highlight-pulse');
+    // The slot half of the residual remains: no slot rows on the Board.
     expect(container.querySelector('#gear-row-p1-head')).toBeNull();
-    expect(container.querySelector('.highlight-pulse')).toBeNull();
   });
 });
 
