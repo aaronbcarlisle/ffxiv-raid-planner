@@ -530,3 +530,263 @@ async def test_player_without_linked_user_has_no_characters(
     body = r.json()
     # player has no user_id, so should not appear in playerCharacters at all
     assert player.id not in body["playerCharacters"]
+
+
+# ── S2a-3b H1: the GET and the settings response list the active tier only ───
+#
+# E-4 / E-10 / V1 delta (f): GET /split-clear and the PUT /settings response
+# list only assignments whose snapshot player is in the static's active tier.
+# PATCH, reset-week and mark-run-cleared stay static-scoped (unchanged).
+
+# The plugin reads GET split-clear (RaidPlannerClient.cs); these key sets are
+# today's contract, written out so a schema change cannot slip past.
+_SPLIT_CLEAR_RESPONSE_KEYS = {"enabled", "assignments", "playerCharacters"}
+_ASSIGNMENT_RESPONSE_KEYS = {
+    "id",
+    "snapshotPlayerId",
+    "runACharacterLinkId",
+    "runBCharacterLinkId",
+    "mainCharacterName",
+    "mainCharacterWorld",
+    "altCharacterName",
+    "altCharacterWorld",
+    "runACharacter",
+    "runBCharacter",
+    "lootTarget",
+    "lootTargetJob",
+    "runACleared",
+    "runBCleared",
+    "notes",
+    "updatedAt",
+}
+
+
+@pytest_asyncio.fixture
+async def past_tier(session: AsyncSession, group):
+    """An inactive (past) tier of the same static as `tier`."""
+    return await create_tier_snapshot(
+        session, group, tier_id="aac-cruiserweight", is_active=False
+    )
+
+
+@pytest_asyncio.fixture
+async def past_player(session: AsyncSession, past_tier):
+    return await create_snapshot_player(session, past_tier, name="Past Tier Tank", job="PLD")
+
+
+async def _assign(client: AsyncClient, group_id: str, player_id: str, headers: dict, **fields):
+    body = {"mainCharacterName": "Main", "mainCharacterWorld": "Tonberry", **fields}
+    r = await client.patch(
+        f"/api/static-groups/{group_id}/split-clear/{player_id}", json=body, headers=headers
+    )
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+async def _get(client: AsyncClient, group_id: str, headers: dict) -> dict:
+    r = await client.get(f"/api/static-groups/{group_id}/split-clear", headers=headers)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def _listed_player_ids(body: dict) -> set[str]:
+    return {a["snapshotPlayerId"] for a in body["assignments"]}
+
+
+async def _db_assignment(session: AsyncSession, group_id: str, player_id: str):
+    from sqlalchemy import select
+
+    from app.models.split_clear import SplitClearAssignment
+
+    result = await session.execute(
+        select(SplitClearAssignment)
+        .where(
+            SplitClearAssignment.static_group_id == group_id,
+            SplitClearAssignment.snapshot_player_id == player_id,
+        )
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one()
+
+
+async def test_h1_get_lists_active_tier_assignment_not_inactive_tier(
+    client: AsyncClient, group_with_lead, player, past_player, owner_headers: dict
+):
+    """The GET lists the active tier's assignment and not the past tier's (E-4)."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    await _assign(client, group_with_lead.id, player.id, owner_headers, mainCharacterName="Now")
+    await _assign(
+        client, group_with_lead.id, past_player.id, owner_headers, mainCharacterName="Then"
+    )
+
+    body = await _get(client, group_with_lead.id, owner_headers)
+    assert _listed_player_ids(body) == {player.id}
+    assert [a["mainCharacterName"] for a in body["assignments"]] == ["Now"]
+
+
+async def test_h1_get_viewer_sees_only_active_tier(
+    client: AsyncClient, group_with_lead, player, past_player,
+    owner_headers: dict, viewer_headers: dict,
+):
+    """The filter holds for read-only viewers too (same GET, same list)."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    await _assign(client, group_with_lead.id, player.id, owner_headers)
+    await _assign(client, group_with_lead.id, past_player.id, owner_headers)
+
+    body = await _get(client, group_with_lead.id, viewer_headers)
+    assert _listed_player_ids(body) == {player.id}
+
+
+async def test_h1_get_with_no_active_tier_returns_empty_and_stored_enabled(
+    client: AsyncClient, session: AsyncSession, owner: User, owner_headers: dict
+):
+    """No active tier: assignments is [] and enabled is what was stored."""
+    lone = await create_static_group(session, owner, name="No Active Tier Static")
+    old = await create_tier_snapshot(session, lone, is_active=False)
+    old_player = await create_snapshot_player(session, old, name="Old Roster Slot")
+
+    await _enable(client, lone.id, owner_headers)
+    await _assign(client, lone.id, old_player.id, owner_headers)
+
+    body = await _get(client, lone.id, owner_headers)
+    assert body["enabled"] is True
+    assert body["assignments"] == []
+
+
+async def test_h1_get_follows_the_active_tier_when_it_changes(
+    client: AsyncClient, session: AsyncSession, group_with_lead, tier, past_tier,
+    player, past_player, owner_headers: dict,
+):
+    """Swapping which tier is active swaps which assignment is listed (no stale tier)."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    await _assign(client, group_with_lead.id, player.id, owner_headers)
+    await _assign(client, group_with_lead.id, past_player.id, owner_headers)
+
+    tier.is_active = False
+    past_tier.is_active = True
+    await session.flush()
+
+    body = await _get(client, group_with_lead.id, owner_headers)
+    assert _listed_player_ids(body) == {past_player.id}
+
+
+async def test_h1_get_never_lists_another_statics_assignment(
+    client: AsyncClient, session: AsyncSession, owner: User, group_with_lead,
+    player, past_player, owner_headers: dict,
+):
+    """Static B's active-tier assignment never appears in static A's GET, and vice versa."""
+    other = await create_static_group(session, owner, name="Static B")
+    other_tier = await create_tier_snapshot(session, other, is_active=True)
+    other_player = await create_snapshot_player(session, other_tier, name="B Player")
+
+    await _enable(client, group_with_lead.id, owner_headers)
+    await _enable(client, other.id, owner_headers)
+    await _assign(client, group_with_lead.id, player.id, owner_headers)
+    await _assign(client, group_with_lead.id, past_player.id, owner_headers)
+    await _assign(client, other.id, other_player.id, owner_headers)
+
+    body_a = await _get(client, group_with_lead.id, owner_headers)
+    assert _listed_player_ids(body_a) == {player.id}
+
+    body_b = await _get(client, other.id, owner_headers)
+    assert _listed_player_ids(body_b) == {other_player.id}
+
+
+async def test_h1_settings_put_response_lists_only_active_tier(
+    client: AsyncClient, group_with_lead, player, past_player, owner_headers: dict
+):
+    """The settings PUT answers with the active tier's assignments only (E-10) and still writes."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    await _assign(client, group_with_lead.id, player.id, owner_headers)
+    await _assign(client, group_with_lead.id, past_player.id, owner_headers)
+
+    r = await client.put(
+        f"/api/static-groups/{group_with_lead.id}/split-clear/settings",
+        json={"enabled": False},
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+    off = r.json()
+    assert off["enabled"] is False
+    assert _listed_player_ids(off) == {player.id}
+    assert (await _get(client, group_with_lead.id, owner_headers))["enabled"] is False
+
+    r = await client.put(
+        f"/api/static-groups/{group_with_lead.id}/split-clear/settings",
+        json={"enabled": True},
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+    on = r.json()
+    assert on["enabled"] is True
+    assert _listed_player_ids(on) == {player.id}
+    assert set(on.keys()) == _SPLIT_CLEAR_RESPONSE_KEYS
+
+
+async def test_h1_patch_still_writes_inactive_tier_assignment(
+    client: AsyncClient, group_with_lead, past_player, owner_headers: dict
+):
+    """PIN (passes today): PATCH stays static-scoped; a past tier's player is still writable."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    body = await _assign(
+        client, group_with_lead.id, past_player.id, owner_headers, notes="past tier note"
+    )
+    assert body["snapshotPlayerId"] == past_player.id
+    assert body["notes"] == "past tier note"
+
+
+async def test_h1_reset_week_still_clears_inactive_tier_assignment(
+    client: AsyncClient, session: AsyncSession, group_with_lead, player, past_player,
+    owner_headers: dict,
+):
+    """PIN (passes today): reset-week stays static-scoped (E-4)."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    for p in (player, past_player):
+        await _assign(
+            client, group_with_lead.id, p.id, owner_headers, runACleared=True, runBCleared=True
+        )
+
+    r = await client.post(
+        f"/api/static-groups/{group_with_lead.id}/split-clear/reset-week", headers=owner_headers
+    )
+    assert r.status_code == 204
+
+    for p in (player, past_player):
+        row = await _db_assignment(session, group_with_lead.id, p.id)
+        assert row.run_a_cleared is False
+        assert row.run_b_cleared is False
+
+
+async def test_h1_mark_run_cleared_still_marks_inactive_tier_assignment(
+    client: AsyncClient, session: AsyncSession, group_with_lead, player, past_player,
+    owner_headers: dict,
+):
+    """PIN (passes today): mark-run-cleared (plugin contract) stays static-scoped (E-4)."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    for p in (player, past_player):
+        await _assign(client, group_with_lead.id, p.id, owner_headers)
+
+    r = await client.post(
+        f"/api/static-groups/{group_with_lead.id}/split-clear/mark-run-cleared",
+        json={"run": "A"},
+        headers=owner_headers,
+    )
+    assert r.status_code == 204
+
+    for p in (player, past_player):
+        row = await _db_assignment(session, group_with_lead.id, p.id)
+        assert row.run_a_cleared is True
+        assert row.run_b_cleared is False
+
+
+async def test_h1_get_response_key_set_is_the_plugin_contract(
+    client: AsyncClient, group_with_lead, player, owner_headers: dict
+):
+    """PIN (passes today): the GET's top-level and per-assignment camelCase key sets."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    await _assign(client, group_with_lead.id, player.id, owner_headers)
+
+    body = await _get(client, group_with_lead.id, owner_headers)
+    assert set(body.keys()) == _SPLIT_CLEAR_RESPONSE_KEYS
+    assert len(body["assignments"]) == 1
+    assert set(body["assignments"][0].keys()) == _ASSIGNMENT_RESPONSE_KEYS
