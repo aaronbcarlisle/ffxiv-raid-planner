@@ -25,6 +25,15 @@ export function row(goalId: string, userId: string, overrides: Partial<Participa
 
 type ColumnKind = 'claimed' | 'unclaimed' | 'unconfigured' | 'notOnRoster';
 
+/** A drop as the server sends it (snake_case), for a mocked `api`. */
+export function apiDrop(id: string, recipient: string | null, extra: Record<string, unknown> = {}) {
+  return {
+    id, goal_id: 'wings', static_group_id: 'g1', recipient_user_id: recipient, created_by_id: recipient, quantity: 1,
+    dropped_at: '2026-10-01T00:00:00Z', notes: null, created_at: '2026-10-01T00:00:00Z', recipient_display_name: recipient,
+    recipient_prior_state: null, ...extra,
+  };
+}
+
 /** A column of the given kind; `userId` is the id unless the kind has none. */
 function columnOf(id: string, kind: ColumnKind): ProgressColumn {
   if (kind === 'claimed') return { kind, key: id, name: id, userId: id, player: {} as SnapshotPlayer };

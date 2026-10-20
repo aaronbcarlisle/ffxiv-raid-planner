@@ -6,6 +6,13 @@
 import { useState } from 'react';
 import { act, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// The open panel loads its drops (S2a-3a·G3); none here.
+vi.mock('../../services/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../services/api')>()),
+  api: { get: vi.fn().mockResolvedValue([]), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+}));
+
 import { useCollectionGoalStore, type CollectionGoal } from '../../stores/collectionGoalStore';
 import { useToastStore } from '../../stores/toastStore';
 import type { SnapshotPlayer } from '../../types';
@@ -696,21 +703,28 @@ describe('ProgressMatrix disclosure', () => {
       stops[stops.indexOf(from) + 1]?.focus();
     };
 
-    it('reaches Copy plan, the panel\'s first control, from the open row\'s roving cell', () => {
+    it('reaches the panel\'s first control (a lead\'s Log drop for #1, S2a-3a·G3) from the open row\'s roving cell', () => {
       renderMatrix({ goals: two, participants: needy, openId: 'hot' });
       const [hot] = farmRows();
       focusCell(nameButton(hot));
       expect(gridStops()).toEqual([nameButton(hot)]);
       pressTab();
-      expect(within(panel()!).getByRole('button', { name: 'Copy plan' })).toHaveFocus();
+      expect(within(panel()!).getByRole('button', { name: 'Log drop for Aya' })).toHaveFocus();
     });
 
-    it('reaches the open row\'s Copy plan from the first row\'s stop when a later row is open', () => {
+    it('reaches the open row\'s first control from the first row\'s stop when a later row is open', () => {
       renderMatrix({ goals: two, participants: needy, openId: 'calm' });
       const [hot, calm] = farmRows();
       focusCell(nameButton(hot));
       pressTab();
       expect(calm.nextElementSibling).toBe(panel());
+      expect(within(panel()!).getByRole('button', { name: 'Log drop for Aya' })).toHaveFocus();
+    });
+
+    it('reaches Copy plan first for a viewer, whose panel has no drop action', () => {
+      renderMatrix({ goals: two, participants: needy, openId: 'hot', reader: { currentUserId: 'u1', userRole: 'viewer' }, canManage: false });
+      focusCell(nameButton(farmRows()[0]));
+      pressTab();
       expect(within(panel()!).getByRole('button', { name: 'Copy plan' })).toHaveFocus();
     });
   });

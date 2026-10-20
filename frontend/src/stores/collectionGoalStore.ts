@@ -583,6 +583,19 @@ interface CollectionGoalStore {
   fetchDrops: (groupId: string, goalId: string) => Promise<void>;
   logDrop: (groupId: string, goalId: string, data: RewardDropCreate) => Promise<RewardDrop>;
   deleteDrop: (groupId: string, goalId: string, dropId: string) => Promise<void>;
+
+  /**
+   * V2's read-model refresh after a write (S2a-3a, R-S3-5): the one goal's cells, and with
+   * `lists` also the goal list and every active goal's cells (a farm moved between active and
+   * Finished). The goal list refetches only while `groupId` is the static loaded (an Undo can
+   * land after a static switch). Never rejects: each fetch keeps its own failure.
+   */
+  refreshGoalProgress: (groupId: string, goalId: string, opts?: { lists?: boolean }) => Promise<void>;
+  /**
+   * `fetchDrops`'s request, written to the same `drops` and `dropsLoading` slices, resolving with
+   * the failure instead of swallowing it (R-S3-5, vet I-8); a failure leaves `drops[goalId]` as it was.
+   */
+  loadDrops: (groupId: string, goalId: string) => Promise<{ error: unknown | null }>;
 }
 
 /** Overlapping `fetchProgress` calls: `progressLoading` stays true until the last settles. */
@@ -864,5 +877,29 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
     await get().fetchDrops(groupId, goalId);
     await get().fetchParticipants(groupId, goalId);
     await get().fetchGoals(groupId);
+  },
+
+  refreshGoalProgress: async (groupId, goalId, opts) => {
+    const { fetchProgress, fetchGoals, loadedGroupId } = get();
+    // The goal list is one static's: never swap in this static's while another one is loaded.
+    const goals = opts?.lists && loadedGroupId === groupId ? [fetchGoals(groupId)] : [];
+    await Promise.all([fetchProgress(groupId, [goalId]), ...goals, ...(opts?.lists ? [fetchProgress(groupId)] : [])]);
+  },
+
+  loadDrops: async (groupId, goalId) => {
+    const settle = (drops?: RewardDrop[]) =>
+      set((s) => ({
+        ...(drops ? { drops: { ...s.drops, [goalId]: drops } } : {}),
+        dropsLoading: { ...s.dropsLoading, [goalId]: false },
+      }));
+    set((s) => ({ dropsLoading: { ...s.dropsLoading, [goalId]: true } }));
+    try {
+      const data = await api.get<ApiDrop[]>(`/api/static-groups/${groupId}/collection-goals/${goalId}/drops`);
+      settle(data.map(fromApiDrop));
+      return { error: null };
+    } catch (error) {
+      settle();
+      return { error };
+    }
   },
 }));

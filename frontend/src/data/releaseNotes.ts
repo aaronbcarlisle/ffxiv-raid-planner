@@ -153,6 +153,15 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(v2): S2a-3a·G2b — the queue, About and Copy plan',
         internal: true,
       },
+      {
+        category: 'feature',
+        title: 'Progress: log a drop and I got it',
+        description:
+          'V2 preview: leads log a drop from the open farm row. "Log drop for {name}" logs for whoever is next in line in one click, and the arrow beside it opens a picker with the queue in order, every other member (those not on the roster too), Nobody, and an optional note. Members get "I got it" on their own cell, once per farm, hidden once they have the item or a drop on it. Every log toasts with Undo, which works after the row closes. The row also lists its last three drops with a week label, the recipient and their character, the quantity and the note; if the drops fail to load, Retry tries again while the rest of the row stays.',
+        pr: 380,
+        prTitle: 'feat(v2): S2a-3a·G3 — log a drop and I got it',
+        internal: true,
+      },
     ],
   },
   {

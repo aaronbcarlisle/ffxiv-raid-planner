@@ -5,7 +5,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { VisuallyHidden } from './VisuallyHidden';
 
-type IconButtonVariant = 'default' | 'primary' | 'ghost' | 'danger';
+type IconButtonVariant = 'default' | 'primary' | 'ghost' | 'danger' | 'accent-subtle';
 type IconButtonSize = 'sm' | 'md' | 'lg';
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -26,6 +26,9 @@ const variantStyles: Record<IconButtonVariant, string> = {
     'bg-transparent text-text-secondary hover:bg-surface-interactive hover:text-text-primary active:bg-surface-interactive',
   danger:
     'bg-transparent text-text-secondary hover:bg-status-error/20 hover:text-status-error active:bg-status-error/30',
+  /** Button's `accent-subtle`, so an icon half of a split button matches its label half. */
+  'accent-subtle':
+    'bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 hover:border-accent/50 active:bg-accent/30',
 };
 
 // Touch-friendly sizes: minimum 44px on mobile for accessibility
