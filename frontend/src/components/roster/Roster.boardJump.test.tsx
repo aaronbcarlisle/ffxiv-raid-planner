@@ -4,10 +4,10 @@
  * `GroupViewContent` scrolls `player-card-{id}` 100 ms after `?player=` changes. A jump from
  * Progress has not mounted this Roster by then (measured live: the Board's row lands ~300 ms
  * in), so that scroll finds nothing; Roster's own post-commit effect polls for the row. Kept
- * apart from `Roster.test.tsx` (its wiring mocks, trimmed to the Board's needs). The Cards
- * view's scroll stays `GroupViewContent`'s alone.
+ * apart from `Roster.test.tsx` (its wiring mocks, trimmed to the Board's needs). Since H4b (c1)
+ * the poll runs for the Cards view too: a jump that lands there has the same race.
  */
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SnapshotPlayer, StaticGroup, TierSnapshot } from '../../types';
@@ -112,8 +112,14 @@ describe('Roster — the Board scrolls to the jumped-to row', () => {
     expect(scrolled).toEqual([]);
   });
 
-  it('leaves the Cards view\'s scroll to GroupViewContent', () => {
-    renderAt('/group/DEVTST?tab=roster&player=p2');
-    expect(scrolled).toEqual([]);
+  // S2a-3b·H4b c1 (H3b m4): a cross-tab jump that lands on Cards (D-9's 'reset' landing, V2 Loot's
+  // jump) mounts Roster after GroupViewContent's 100 ms scroll has found nothing, so Roster's own
+  // poll runs for the Cards view too, onto the card's `player-card-{id}` anchor.
+  it('scrolls that player\'s card into view on the Cards view too, once Roster has mounted', async () => {
+    const { container } = renderAt('/group/DEVTST?tab=roster&player=p2');
+    expect(container.querySelector('#player-card-p2')).not.toBeNull();
+    expect(container.querySelector('tr#player-card-p2')).toBeNull();
+    await waitFor(() => expect(scrolled).toContain('player-card-p2'));
+    expect(scrolled).not.toContain('player-card-p1');
   });
 });
