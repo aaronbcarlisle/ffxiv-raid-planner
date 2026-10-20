@@ -342,10 +342,8 @@ for (const theme of THEMES) {
 // rest, and Edit statuses (the "Set status" prompts on the blank cells of a
 // lead's mode, the muted text-xs on a bordered ghost button).
 //
-// EXCLUDED: the column header names set in text-role-{role}. Light-theme healer
-// (#1a8a4a on white) measures 4.39:1, just under AA. That is token debt in the
-// shared role tokens, which render in both shells; the same exclusion is in
-// progress.spec.ts's axe tests. Every other node is scanned.
+// The column header names set in text-role-{role} are scanned too: light-theme healer
+// was lifted to AA in #388.
 for (const theme of THEMES) {
   test(`v2 progress has zero contrast violations (${theme})`, async ({ page }) => {
     await forceTheme(page, theme)
@@ -377,7 +375,6 @@ for (const theme of THEMES) {
       const scan = () =>
         new AxeBuilder({ page })
           .include('[data-testid="progress-screen"]')
-          .exclude('[data-testid="progress-column"] [class*="text-role-"]')
           .withRules(['color-contrast'])
           .analyze()
 
@@ -405,7 +402,7 @@ for (const theme of THEMES) {
 // ("E2E Progress Contrast Row", deleted in `finally`) gives the panel a queue and the action bar
 // its Log a drop split. Axe's color-contrast rule reads text only, so the picker's unchecked
 // radio dots (a 3:1 graphic) are measured here directly against the picker's own surface.
-// EXCLUDED: the same role-token column-header debt as above.
+// The role-coloured column headers are scanned (#388).
 for (const theme of THEMES) {
   test(`v2 progress with a row open has zero contrast violations (${theme})`, async ({ page }) => {
     await forceTheme(page, theme)
@@ -433,7 +430,7 @@ for (const theme of THEMES) {
       await page.waitForTimeout(300)
 
       const scan = (includes: string[]) => {
-        let builder = new AxeBuilder({ page }).exclude('[data-testid="progress-column"] [class*="text-role-"]').withRules(['color-contrast'])
+        let builder = new AxeBuilder({ page }).withRules(['color-contrast'])
         for (const selector of includes) builder = builder.include(selector)
         return builder.analyze()
       }
