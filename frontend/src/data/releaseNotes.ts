@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.77',
+    date: '2026-10-20T00:00:00Z',
+    title: 'Progress: the tier\'s BiS model',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Progress: the tier\'s BiS model',
+        description:
+          'V2 preview: groundwork for the tier row\'s BiS cells. One shared model sorts each player\'s relevant slots into done, needs the tome augment and to go, agrees with the roster card\'s count, and writes the status line. Nothing changes on screen yet.',
+        pr: 398,
+        prTitle: 'feat(v2): S2a-3b·H2 — the tier\'s BiS model',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.76',
     date: '2026-10-20T00:00:00Z',
     title: 'V2 preview: Last drops names the card',
