@@ -575,6 +575,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           isAdminAccess={isAdminAccess}
           actionsForPlayer={actionsForPlayer}
           priorities={priorities}
+          highlightedPlayerId={highlightedPlayerId}
         />
       ) : (
         <RosterCards

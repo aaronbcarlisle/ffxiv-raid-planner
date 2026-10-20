@@ -262,7 +262,14 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   const tierRow: TierRowModel | undefined =
     tierName === null
       ? undefined
-      : { name: tierName, cells: tierCells, statusText, onOpenBoard: () => onNavigate('roster', { rview: 'board' }) };
+      : {
+          name: tierName,
+          cells: tierCells,
+          statusText,
+          onOpenBoard: () => onNavigate('roster', { rview: 'board' }),
+          // D-5, E-9, R-T-9: a tier cell's Alt+Click and the breakdown's Open on board land on that card's Board row.
+          onJump: (playerId) => onNavigate('roster', { rview: 'board', player: playerId }),
+        };
 
   // Names for "set by {name}": the signed-in user first, so a member's entry below wins. The
   // signed-in user is there for View As: the admin writes the viewed user's row, and an
