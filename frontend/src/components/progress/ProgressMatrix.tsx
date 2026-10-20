@@ -28,8 +28,14 @@
  * one more column in `spanAll`; members and viewers have neither. The one open row (`openId`, the page's `?track`) renders its panel
  * (`FarmExpansion`) as the next `<tr>`, spanning every column (`spanAll`) and outside
  * `rowIds`, in whichever `<tbody>` holds the row.
+ *
+ * S2a-3b·H4 (R-T-6, R-T-8, D-10): `openId` is `TIER_TRACK` when the tier row is the open one, and
+ * `onToggle(TIER_TRACK)` toggles it. When the tier can open (`tier.panel`), its panel
+ * (`TierExpansion`) mounts after the tier row on the first open and then stays mounted, hidden
+ * while another row (or none) is open, so the split planner's draft survives. The matrix is keyed
+ * by static, so a static switch unmounts it.
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { VisuallyHidden } from '../primitives/VisuallyHidden';
 import { JobIcon } from '../ui/JobIcon';
 import { Tag } from '../ui/Tag';
@@ -38,9 +44,11 @@ import type { MemberRole } from '../../types';
 import type { WeekClock } from '../../utils/dropWeek';
 import type { FarmRow as FarmRowModel, ProgressColumn } from '../../utils/progressModel';
 import type { CellWriteResolver } from './editStatuses';
+import { tierNameId } from './farmFocus';
 import { FarmExpansion } from './FarmExpansion';
 import { FarmRow, MENU_KEY, NAME_KEY, STATUS_KEY } from './FarmRow';
 import { FinishedFarms } from './FinishedFarms';
+import { TIER_TRACK, TierExpansion } from './TierExpansion';
 import { TIER_ROW_ID, TierRow, type TierRowModel } from './TierRow';
 import type { ProvenanceContext } from './progressProvenance';
 import { useMatrixKeyboard } from './useMatrixKeyboard';
@@ -110,10 +118,10 @@ interface ProgressMatrixProps {
   finishedError?: string | null;
   /** Called once, on the first expand of Finished; also the retry. */
   onExpandFinished: () => void;
-  /** The one open row (D-7, D-8): a goal id of this static, or null. */
+  /** The one open row (D-7, D-8): a goal id of this static, `TIER_TRACK` for the tier row, or null. */
   openId: string | null;
-  /** A row's name button was activated: open it, or close it when it is the open one. */
-  onToggle: (goalId: string) => void;
+  /** A row's name button was activated (a goal id, or `TIER_TRACK`): open it, or close it when it is the open one. */
+  onToggle: (rowId: string) => void;
   /** For the open row's panel. */
   groupId: string;
   userRole: MemberRole | null | undefined;
@@ -172,6 +180,17 @@ export function ProgressMatrix({
     nameOf: (userId) => columnNames.get(userId) ?? memberNames?.get(userId) ?? null,
   };
 
+  // The tier panel mounts on its first open and stays mounted after (D-10), hidden while closed.
+  const tierPanel = tier?.panel;
+  const tierOpen = tierPanel !== undefined && openId === TIER_TRACK;
+  const [tierPanelMounted, setTierPanelMounted] = useState(false);
+  if (tierOpen && !tierPanelMounted) setTierPanelMounted(true);
+  const toggleTier = () => onToggle(TIER_TRACK);
+  const closeTier = () => {
+    toggleTier();
+    document.getElementById(tierNameId)?.focus();
+  };
+
   const renderExpansion = (row: FarmRowModel, finishedRow: boolean, onClose: () => void, id: string) => (
     <FarmExpansion
       row={row}
@@ -220,7 +239,18 @@ export function ProgressMatrix({
           </tr>
         </thead>
         <tbody>
-          {tier !== undefined && <TierRow tier={tier} columns={columns} lead={lead} keyboard={keyboard} />}
+          {tier !== undefined && (
+            <TierRow
+              tier={tier}
+              columns={columns}
+              lead={lead}
+              keyboard={keyboard}
+              disclosure={tierPanel === undefined ? undefined : { open: tierOpen, onToggle: toggleTier }}
+            />
+          )}
+          {tierPanel !== undefined && tierPanelMounted && (
+            <TierExpansion panel={tierPanel} hidden={!tierOpen} spanAll={spanAll} viewWidth={viewWidth} onClose={closeTier} />
+          )}
           {active.map((row) => (
             <FarmRow
               key={row.goal.id}

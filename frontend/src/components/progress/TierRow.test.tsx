@@ -9,6 +9,7 @@
  *     or a `style.width` percentage (either is read, as a share of the three);
  *   - dimmed: an `opacity-*` class on the unclaimed cell or inside it.
  */
+import type { ComponentProps } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -53,7 +54,10 @@ const PLAYERS = [
 const TIER_NAME = 'AAC Heavyweight';
 const STATUS = '14/22 BiS slots · Week 11 · 1 of 4 floors cleared';
 
-const claimedColumn = (p: SnapshotPlayer): ProgressColumn =>
+/** A column with a card, the only kind `TierBisCellButton` takes (H3b m1). */
+type CardColumn = ComponentProps<typeof TierBisCellButton>['column'];
+
+const claimedColumn = (p: SnapshotPlayer): CardColumn =>
   p.userId
     ? { kind: 'claimed', key: p.id, name: p.name, userId: p.userId, player: p }
     : { kind: 'unclaimed', key: p.id, name: p.name, userId: null, player: p };
@@ -93,7 +97,7 @@ function renderMatrix(o: Opts = {}) {
       onToggle={vi.fn()}
       groupId="g1"
       userRole={reader.userRole}
-      tier={{ name: TIER_NAME, cells, statusText: STATUS, onOpenBoard }}
+      tier={{ name: TIER_NAME, cells, statusText: STATUS, onOpenBoard, onJump: vi.fn() }}
     />,
     { wrapper: TooltipWrapper },
   );
@@ -248,8 +252,8 @@ describe('TierBisCellButton', () => {
   // `grid` is required now (M2): a bare stand-in for the roving grid's cell props.
   const grid = { ref: () => {}, tabIndex: -1, onFocus: () => {}, onBlur: () => {}, onKeyDown: () => {} } as const;
 
-  function renderCell(cell: TierBisCell, col: ProgressColumn = column) {
-    return render(<TierBisCellButton column={col} cell={cell} tierName={TIER_NAME} grid={grid} />, { wrapper: TooltipWrapper });
+  function renderCell(cell: TierBisCell, col: CardColumn = column) {
+    return render(<TierBisCellButton column={col} cell={cell} tierName={TIER_NAME} grid={grid} onJump={vi.fn()} />, { wrapper: TooltipWrapper });
   }
 
   it('is a button named "{player}, {tier}, {done} of {total} BiS slots done, {n} need augment" reading "6/11"', () => {
@@ -298,10 +302,10 @@ describe('TierBisCellButton', () => {
     expect(button).toHaveTextContent('No BiS set');
   });
 
-  it('renders no button for a column with no card', () => {
-    const off: ProgressColumn = { kind: 'notOnRoster', key: 'user:u9', name: 'Nia', userId: 'u9', player: null, reason: 'notOnRoster' };
-    renderCell(tierBisCell(HEALER), off);
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.queryByText(/BiS/)).not.toBeInTheDocument();
+  it('takes no column without a card (a type error; TierRow draws an empty cell for it)', () => {
+    const off: Extract<ProgressColumn, { kind: 'notOnRoster' }> = { kind: 'notOnRoster', key: 'user:u9', name: 'Nia', userId: 'u9', player: null, reason: 'notOnRoster' };
+    // @ts-expect-error -- a Not-on-the-roster column has no card, so no BiS cell.
+    const props: CardColumn = off;
+    expect(props.player).toBeNull();
   });
 });

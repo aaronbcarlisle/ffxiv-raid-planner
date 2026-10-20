@@ -322,6 +322,16 @@ describe('the jump to the Board', () => {
   });
 });
 
+// ── The count is a heading (design §3.4; H3b review m5) ─────────────────────
+
+describe('the breakdown\'s count', () => {
+  it('is a heading, "6/11 done", not a paragraph', () => {
+    renderPage();
+    fireEvent.click(tierCell('Healer 1'));
+    expect(within(breakdown('Healer 1')).getByRole('heading', { name: '6/11 done' })).toBeInTheDocument();
+  });
+});
+
 // ── Every reader (D-11) ─────────────────────────────────────────────────────
 
 describe.each(Object.entries(READERS))('as %s', (_who, reader) => {

@@ -14,8 +14,10 @@
  * Board and opens nothing. A plain click never jumps. There is no context menu (D-8). The
  * pointer cursor shows only while Alt is held (`altHeld`, one listener for the row), since a
  * persistent pointer would advertise a plain click the jump does not honour. The popover's
- * content is portalled and its events bubble to the Popover root, the trigger's sibling, so
- * keys typed in it never reach the grid.
+ * content is portalled, but React still bubbles its events up the component tree, through the
+ * Popover root to the `<td>` and `<tr>`. The trigger is the root's child and the content's
+ * sibling, so the grid, whose `cellProps` sit on the trigger, never sees them; on the `<td>` the
+ * props would, so they must not move there.
  */
 import { useState } from 'react';
 import { Button } from '../primitives/Button';
@@ -27,18 +29,21 @@ import { TierBisBar } from './TierBisBar';
 import { TierBreakdown } from './TierBreakdown';
 import type { MatrixCellProps } from './useMatrixKeyboard';
 
+/** A column with a card: only these have a BiS cell. */
+type CardColumn = Extract<ProgressColumn, { kind: 'claimed' | 'unclaimed' }>;
+
 interface TierBisCellButtonProps {
-  column: ProgressColumn;
+  column: CardColumn;
   cell: TierBisCell;
   tierName: string;
   grid: MatrixCellProps;
   /** Alt is down: the pointer cursor shows, and a click jumps. */
   altHeld?: boolean;
-  /** The jump to this card's row on the Board; absent, the cell only opens its breakdown. */
-  onJump?: (playerId: string) => void;
+  /** The jump to this card's row on the Board. */
+  onJump: (playerId: string) => void;
 }
 
-function cellName(column: ProgressColumn, cell: TierBisCell, tierName: string): string {
+function cellName(column: CardColumn, cell: TierBisCell, tierName: string): string {
   if (!cell.hasTargets) return `${column.name}, ${tierName}, no BiS set`;
   const augment = cell.needsAugment > 0 ? `, ${cell.needsAugment} need augment` : '';
   return `${column.name}, ${tierName}, ${cell.done} of ${cell.total} BiS slots done${augment}`;
@@ -47,7 +52,6 @@ function cellName(column: ProgressColumn, cell: TierBisCell, tierName: string): 
 export function TierBisCellButton({ column, cell, tierName, grid, altHeld = false, onJump }: TierBisCellButtonProps) {
   const [open, setOpen] = useState(false);
   const player = column.player;
-  if (player === null) return null;
   const dimmed = column.kind === 'unclaimed';
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -59,7 +63,7 @@ export function TierBisCellButton({ column, cell, tierName, grid, altHeld = fals
           aria-label={cellName(column, cell, tierName)}
           className={`w-full min-w-24${altHeld ? ' cursor-pointer' : ''}`}
           onClick={(event) => {
-            if (!event.altKey || onJump === undefined) return;
+            if (!event.altKey) return;
             // Alt+Click jumps and never opens: the default-prevented click skips the trigger's toggle.
             event.preventDefault();
             onJump(player.id);
@@ -84,14 +88,10 @@ export function TierBisCellButton({ column, cell, tierName, grid, altHeld = fals
         <TierBreakdown
           player={player}
           cell={cell}
-          onOpenBoard={
-            onJump === undefined
-              ? undefined
-              : () => {
-                  setOpen(false);
-                  onJump(player.id);
-                }
-          }
+          onOpenBoard={() => {
+            setOpen(false);
+            onJump(player.id);
+          }}
         />
       </PopoverContent>
     </Popover>

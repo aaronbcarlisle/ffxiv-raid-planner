@@ -79,6 +79,7 @@ const tierModel = (columns: ProgressColumn[]): TierRowModel => ({
   cells: columns.map((c) => (c.player ? { cell: TIER_CELL, counted: true } : { cell: null, counted: false })),
   statusText: TIER_STATUS,
   onOpenBoard: () => {},
+  onJump: vi.fn(),
 });
 
 /** F5's own-cell rule as a resolver (the page's `cellWriteTarget` is tested in its own file). */
