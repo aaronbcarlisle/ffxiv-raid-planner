@@ -20,13 +20,18 @@ import {
   buildColumns,
   splitFarmRows,
   type ProgressCell as ProgressCellModel,
+  type ProgressColumn,
   type ProgressData,
   type ProgressReader,
 } from '../../utils/progressModel';
+import type { TierBisCell } from '../../utils/tierBis';
 import { goal, row } from './__fixtures__/progressFixtures';
 import { stubCanHover, TooltipWrapper } from './__fixtures__/tooltipEnv';
 import type { CellWriteTarget } from './CellPicker';
+// A namespace import, so a missing export fails the pin at run time, not the build (R-T-4).
+import * as FarmRowModule from './FarmRow';
 import { ProgressMatrix } from './ProgressMatrix';
+import type { TierRowModel } from './TierRow';
 
 beforeEach(() => stubCanHover());
 afterEach(() => vi.unstubAllGlobals());
@@ -61,7 +66,20 @@ interface RenderOptions {
   edit?: CellWriteTarget;
   /** The row open on the first render (S2a-3a, the page's `?track`). */
   openId?: string | null;
+  /** Render the tier row (S2a-3b), as the page does whenever a tier is selected. */
+  tier?: boolean;
 }
+
+/** The tier row's fixed fixture (S2a-3b·H3a): every card reads 6/11 with 2 to augment. */
+const TIER_NAME = 'AAC Heavyweight';
+const TIER_STATUS = '18/33 BiS slots · Week 11 · 0 of 4 floors cleared';
+const TIER_CELL: TierBisCell = { done: 6, needsAugment: 2, toGo: 3, total: 11, hasTargets: true };
+const tierModel = (columns: ProgressColumn[]): TierRowModel => ({
+  name: TIER_NAME,
+  cells: columns.map((c) => (c.player ? { cell: TIER_CELL, counted: true } : { cell: null, counted: false })),
+  statusText: TIER_STATUS,
+  onOpenBoard: () => {},
+});
 
 /** F5's own-cell rule as a resolver (the page's `cellWriteTarget` is tested in its own file). */
 const ownCellsOnly = (target: CellWriteTarget) => (cell: ProgressCellModel) => (cell.own ? target : undefined);
@@ -96,6 +114,7 @@ function Harness({ o, onExpandFinished }: { o: RenderOptions; onExpandFinished: 
       onToggle={(id) => setOpenId((cur) => (cur === id ? null : id))}
       groupId="g1"
       userRole={reader.userRole}
+      tier={o.tier ? tierModel(columns) : undefined}
     />
   );
 }
@@ -121,6 +140,27 @@ const nameButton = (r: HTMLElement) => within(within(r).getByRole('rowheader')).
 const gridStops = () => Array.from(screen.getByRole('grid').querySelectorAll<HTMLElement>('[tabindex="0"]'));
 /** Buttons inside the cells only (the name buttons are in the rowheaders). */
 const cellButtons = () => screen.getAllByTestId('progress-cell').flatMap((c) => within(c).queryAllByRole('button'));
+
+// ── The tier row in the grid (S2a-3b·H3a, R-T-4) ──
+const tierRow = () => screen.getByTestId('progress-tier-row');
+/**
+ * The tier's name cell as a grid cell: its rowheader, or the one roving control inside it.
+ * (R-T-4 puts `cellProps` on "the name cell"; either placement satisfies these tests.)
+ */
+const tierName = () => {
+  const header = within(tierRow()).getByRole('rowheader');
+  return header.hasAttribute('tabindex') ? header : (header.querySelector<HTMLElement>('[tabindex]') ?? header);
+};
+/** A lead's empty menu cell on the tier row, the `<td>` holding the visually hidden "No actions". */
+const tierMenuCell = () => within(tierRow()).getByText('No actions').closest('td') as HTMLElement;
+const openBoard = () => within(tierRow()).getByRole('button', { name: 'Open board' });
+/** A cell's focus element: the one control in it, else the `<td>` itself. */
+const focusTarget = (td: Element) => (td.querySelector<HTMLElement>('button') ?? td) as HTMLElement;
+/** The tier row's grid cells left to right: name, (menu), Open board, then one per column. */
+const tierTargets = () => [tierName(), ...Array.from(tierRow().querySelectorAll(':scope > td')).map(focusTarget)];
+const farmStatus = (r: HTMLElement) => within(r).getByTestId('progress-status');
+/** A farm row's grid cells left to right: name, (menu), status, then one per column. */
+const farmTargets = (r: HTMLElement) => [nameButton(r), ...Array.from(r.querySelectorAll(':scope > td')).map(focusTarget)];
 
 // ── Columns (R-S2-6) ────────────────────────────────────────────────────────
 
@@ -421,15 +461,22 @@ describe('ProgressMatrix keyboard grid', () => {
     expect(allCells().every((c) => c.getAttribute('role') === 'gridcell')).toBe(true);
   });
 
-  it('makes exactly one stop, the first row\'s name button; every cell, blank and unclaimed included, is -1 (R-S3-4)', () => {
-    renderMatrix({ goals: two, participants: needy });
-    expect(gridStops()).toEqual([nameButton(farmRows()[0])]);
-    expect(nameButton(farmRows()[1])).toHaveAttribute('tabindex', '-1');
+  it('makes exactly one stop, the tier\'s name cell; every other cell, the tier row\'s and the status cells included, is -1 (R-S3-4, R-T-4)', () => {
+    renderMatrix({ goals: two, participants: needy, tier: true });
+    const stop = tierName();
+    expect(stop).toHaveTextContent(TIER_NAME);
+    expect(gridStops()).toEqual([stop]);
+    // The tier row: the empty menu cell, Open board and every column's cell are in the grid at -1.
+    const rest = tierTargets().slice(1);
+    expect(rest).toHaveLength(2 + PLAYERS.length);
+    for (const el of rest) expect(el).toHaveAttribute('tabindex', '-1');
+    // Every farm row: its name, menu, status and cells, blank and unclaimed included.
+    for (const r of farmRows()) for (const el of farmTargets(r)) expect(el).toHaveAttribute('tabindex', '-1');
     expect(allCells().filter((c) => c.getAttribute('tabindex') === '-1')).toHaveLength(allCells().length);
   });
 
-  it('is one Tab stop for the whole matrix: before, the first name button, after', () => {
-    const { element } = matrixElement({ goals: two, participants: needy }, vi.fn());
+  it('is one Tab stop for the whole matrix: before, the tier\'s name, after', () => {
+    const { element } = matrixElement({ goals: two, participants: needy, tier: true }, vi.fn());
     render(
       <>
         <button type="button">before</button>
@@ -439,19 +486,41 @@ describe('ProgressMatrix keyboard grid', () => {
       { wrapper: TooltipWrapper },
     );
     const stops = tabStops();
-    expect(stops).toHaveLength(3);
-    expect(stops[0]).toHaveTextContent('before');
-    expect(stops[1]).toBe(nameButton(farmRows()[0]));
+    expect(stops.map((s) => s.textContent)).toEqual(['before', TIER_NAME, 'after']);
+    expect(stops[1]).toBe(tierName());
     expect(stops[1].closest('[role="rowheader"]')).not.toBeNull();
-    expect(stops[2]).toHaveTextContent('after');
+    expect(tierRow()).toContainElement(stops[1]);
     // The scroller is not a second stop while the grid has a cell.
     expect(screen.getByTestId('progress-matrix')).not.toHaveAttribute('tabindex');
   });
 
-  it('keeps the scroller itself a stop when the grid has no cell to hold the keyboard', () => {
-    renderMatrix({ goals: [goal('done', { status: 'complete', completedAt: '2026-10-01T00:00:00Z' })] });
+  it('keeps the first farm\'s name the stop with no tier selected, and steps name → menu → status there too', () => {
+    renderMatrix({ goals: two, participants: needy });
+    expect(screen.queryByTestId('progress-tier-row')).not.toBeInTheDocument();
+    const hot = farmRows()[0];
+    expect(gridStops()).toEqual([nameButton(hot)]);
+    focusCell(nameButton(hot));
+    key(nameButton(hot), 'ArrowRight');
+    expect(menuButton(hot)).toHaveFocus();
+    expect(key(menuButton(hot), 'ArrowRight')).toBe(false);
+    expect(farmStatus(hot)).toHaveFocus();
+  });
+
+  it('keeps the scroller itself a stop when the grid has no cell; with only the tier row, its name is the stop', () => {
+    const view = render(matrixElement({ goals: [goal('done', { status: 'complete', completedAt: '2026-10-01T00:00:00Z' })] }, vi.fn()).element, {
+      wrapper: TooltipWrapper,
+    });
     expect(screen.queryAllByTestId('progress-cell')).toHaveLength(0);
     expect(screen.getByTestId('progress-matrix')).toHaveAttribute('tabindex', '0');
+    view.unmount();
+
+    renderMatrix({ goals: [goal('done', { status: 'complete', completedAt: '2026-10-01T00:00:00Z' })], tier: true });
+    expect(screen.getByTestId('progress-matrix')).not.toHaveAttribute('tabindex');
+    expect(gridStops()).toEqual([tierName()]);
+    // The tier row alone is still a grid: ArrowRight walks it.
+    focusCell(tierName());
+    expect(key(tierName(), 'ArrowRight')).toBe(false);
+    expect(tierMenuCell()).toHaveFocus();
   });
 
   it('moves focus with the arrow keys across farm rows and columns, and eats the key', () => {
@@ -473,20 +542,34 @@ describe('ProgressMatrix keyboard grid', () => {
     expect(a[1]).toHaveFocus();
   });
 
-  it('jumps to the name and the last cell of the row with Home and End', () => {
-    renderMatrix({ goals: two, participants: needy });
+  it('jumps to the name and the last cell of the row with Home and End, on a farm row and on the tier row', () => {
+    renderMatrix({ goals: two, participants: needy, tier: true });
     const b = cellsOf(farmRows()[1]);
     focusCell(b[2]);
     key(b[2], 'End');
     expect(b[b.length - 1]).toHaveFocus();
     key(b[b.length - 1], 'Home');
     expect(nameButton(farmRows()[1])).toHaveFocus();
+    // From the farm's status cell too.
+    focusCell(farmStatus(farmRows()[1]));
+    expect(key(farmStatus(farmRows()[1]), 'End')).toBe(false);
+    expect(b[b.length - 1]).toHaveFocus();
+
+    // The tier row: End from its name lands on the last column's cell, Home from Open board on the name.
+    const t = tierTargets();
+    focusCell(tierName());
+    expect(key(tierName(), 'End')).toBe(false);
+    expect(t[t.length - 1]).toHaveFocus();
+    expect(t[t.length - 1]).toHaveAccessibleName(`Dee, ${TIER_NAME}, 6 of 11 BiS slots done, 2 need augment`);
+    focusCell(openBoard());
+    expect(key(openBoard(), 'Home')).toBe(false);
+    expect(tierName()).toHaveFocus();
   });
 
-  it('stops at every edge, the name on the left, without wrapping and leaves the key alone', () => {
-    renderMatrix({ goals: two, participants: needy });
-    const [first, second] = farmRows();
-    const name = nameButton(first);
+  it('stops at every edge, the tier\'s name top left, without wrapping and leaves the key alone', () => {
+    renderMatrix({ goals: two, participants: needy, tier: true });
+    const [, second] = farmRows();
+    const name = tierName();
     const b = cellsOf(second);
     const last = b[b.length - 1];
     focusCell(name);
@@ -537,30 +620,163 @@ describe('ProgressMatrix keyboard grid', () => {
     expect(after.getAttribute('aria-label')).toBe(target.getAttribute('aria-label'));
   });
 
-  it('falls back to the first row\'s name when the stop\'s row is gone', () => {
-    const { rerender } = renderMatrix({ goals: two, participants: needy });
+  it('falls back to the tier\'s name when the stop\'s row is gone', () => {
+    const { rerender } = renderMatrix({ goals: two, participants: needy, tier: true });
     focusCell(cellsOf(farmRows()[1])[1]);
-    rerender({ goals: [two[0]], participants: needy });
-    expect(gridStops()).toEqual([nameButton(farmRows()[0])]);
+    rerender({ goals: [two[0]], participants: needy, tier: true });
+    expect(gridStops()).toEqual([tierName()]);
   });
 
-  it('keeps Finished rows out of the grid: their name a plain stop, their cells no stop and not an arrow target', () => {
-    renderMatrix({
+  it('keeps Finished rows out of the grid: their name a plain stop, their cells and status no stop and not an arrow target', () => {
+    const { columns } = renderMatrix({
       goals: [goal('wings'), goal('done', { title: 'Done', status: 'complete', completedAt: '2026-10-01T00:00:00Z' })],
       participants: { done: [row('done', 'u1', { state: 'have' })] },
+      tier: true,
+      openId: 'wings',
     });
     fireEvent.click(screen.getByRole('button', { name: 'Finished (1)' }));
     const doneRow = farmRows().find((r) => r.getAttribute('data-goal-id') === 'done')!;
     for (const c of cellsOf(doneRow)) expect(c).not.toHaveAttribute('tabindex');
+    expect(farmStatus(doneRow)).not.toHaveAttribute('tabindex');
     // The finished row's disclosure is a plain tab stop (R-S3-4): no roving tabindex, reachable by Tab.
     expect(nameButton(doneRow)).not.toHaveAttribute('tabindex');
     expect(nameButton(doneRow).tabIndex).toBe(0);
-    expect(gridStops()).toEqual([nameButton(farmRows()[0])]);
+    expect(gridStops()).toEqual([tierName()]);
 
     const active = cellsOf(farmRows()[0]);
     focusCell(active[0]);
     expect(key(active[0], 'ArrowDown')).toBe(true);
     expect(active[0]).toHaveFocus();
+    // The open farm's panel spans every column (spanAll = the grid's keys, Status among them).
+    const headers = screen.getAllByRole('columnheader');
+    expect(headers).toHaveLength(columns.length + 3);
+    expect((within(panel()!).getByRole('gridcell') as HTMLTableCellElement).colSpan).toBe(headers.length);
+  });
+});
+
+// ── The tier row joins the grid (S2a-3b·H3a Task TH3a; E-6, R-T-4) ──
+
+describe('ProgressMatrix keyboard grid with the tier row', () => {
+  const two = [goal('hot', { title: 'Hot' }), goal('calm', { title: 'Calm' })];
+  const needy = { hot: [row('hot', 'u1', { state: 'need' })], calm: [row('calm', 'u1', { state: 'want' })] };
+  const tierButton = (player: string) => within(tierRow()).getByRole('button', { name: new RegExp(`^${player}, ${TIER_NAME}, `) });
+
+  it("names the status column's grid key STATUS_KEY = '__status', exported beside NAME_KEY and MENU_KEY", () => {
+    expect((FarmRowModule as Record<string, unknown>).STATUS_KEY).toBe('__status');
+    expect(FarmRowModule.NAME_KEY).toBe('__name');
+    expect(FarmRowModule.MENU_KEY).toBe('__menu');
+  });
+
+  it('moves ArrowDown from the tier\'s name to the first farm\'s name, and ArrowUp back', () => {
+    renderMatrix({ goals: two, participants: needy, tier: true });
+    const hot = farmRows()[0];
+    focusCell(tierName());
+    expect(tierName()).toHaveFocus();
+    expect(key(tierName(), 'ArrowDown')).toBe(false);
+    expect(nameButton(hot)).toHaveFocus();
+    expect(key(nameButton(hot), 'ArrowUp')).toBe(false);
+    expect(tierName()).toHaveFocus();
+    // The stop followed focus back to the tier's name, and is still the only one.
+    expect(gridStops()).toEqual([tierName()]);
+  });
+
+  it('walks a lead ArrowRight from the tier\'s name: the empty menu cell ("No actions"), Open board, then the first player cell', () => {
+    renderMatrix({ goals: two, participants: needy, tier: true });
+    focusCell(tierName());
+    expect(key(tierName(), 'ArrowRight')).toBe(false);
+    const menu = tierMenuCell();
+    expect(menu).toHaveFocus();
+    // Empty but for the visually hidden name; no control in it.
+    expect(menu).toHaveTextContent(/^No actions$/);
+    expect(within(menu).queryAllByRole('button')).toHaveLength(0);
+    expect(key(menu, 'ArrowRight')).toBe(false);
+    expect(openBoard()).toHaveFocus();
+    // Open board keeps its description, the status line (R-T-12).
+    expect(openBoard()).toHaveAccessibleDescription(TIER_STATUS);
+    expect(key(openBoard(), 'ArrowRight')).toBe(false);
+    expect(tierButton('Aya')).toHaveFocus();
+    expect(key(tierButton('Aya'), 'ArrowRight')).toBe(false);
+    expect(tierButton('Bo')).toHaveFocus();
+  });
+
+  it('walks a lead back ArrowLeft from the first player cell: Open board, the menu cell, the name', () => {
+    renderMatrix({ goals: two, participants: needy, tier: true });
+    focusCell(tierButton('Aya'));
+    expect(key(tierButton('Aya'), 'ArrowLeft')).toBe(false);
+    expect(openBoard()).toHaveFocus();
+    expect(key(openBoard(), 'ArrowLeft')).toBe(false);
+    expect(tierMenuCell()).toHaveFocus();
+    expect(key(tierMenuCell(), 'ArrowLeft')).toBe(false);
+    expect(tierName()).toHaveFocus();
+  });
+
+  it('walks a member ArrowRight from the tier\'s name to Open board, then the first player cell, and back; no menu cell', () => {
+    renderMatrix({ goals: two, participants: needy, reader: MEMBER, canManage: false, tier: true });
+    expect(within(tierRow()).queryByText('No actions')).not.toBeInTheDocument();
+    focusCell(tierName());
+    expect(key(tierName(), 'ArrowRight')).toBe(false);
+    expect(openBoard()).toHaveFocus();
+    expect(key(openBoard(), 'ArrowRight')).toBe(false);
+    expect(tierButton('Aya')).toHaveFocus();
+    expect(key(tierButton('Aya'), 'ArrowLeft')).toBe(false);
+    expect(openBoard()).toHaveFocus();
+    expect(key(openBoard(), 'ArrowLeft')).toBe(false);
+    expect(tierName()).toHaveFocus();
+  });
+
+  it('lines every tier cell up with the farm cell under it: ArrowDown and ArrowUp keep the column', () => {
+    renderMatrix({ goals: two, participants: needy, tier: true });
+    const hot = farmRows()[0];
+    const tier = tierTargets();
+    const farm = farmTargets(hot);
+    expect(tier).toHaveLength(farm.length);
+    // Open board sits over the farm's status cell; each player's tier cell over that player's farm cell.
+    focusCell(openBoard());
+    expect(key(openBoard(), 'ArrowDown')).toBe(false);
+    expect(farmStatus(hot)).toHaveFocus();
+    expect(key(farmStatus(hot), 'ArrowUp')).toBe(false);
+    expect(openBoard()).toHaveFocus();
+    const dee = cellsOf(hot)[3];
+    focusCell(dee);
+    expect(key(dee, 'ArrowUp')).toBe(false);
+    expect(tierButton('Dee')).toHaveFocus();
+    expect(key(tierButton('Dee'), 'ArrowUp')).toBe(true);
+    expect(tierButton('Dee')).toHaveFocus();
+  });
+
+  it('makes a farm\'s status cell a read-only focus target that keeps its text', () => {
+    renderMatrix({ goals: two, participants: { hot: ['u1', 'u2', 'u4'].map((u) => row('hot', u, { state: 'have' })) }, tier: true });
+    const hot = farmRows().find((r) => r.getAttribute('data-goal-id') === 'hot')!;
+    const status = farmStatus(hot);
+    expect(status).toHaveAttribute('tabindex', '-1');
+    expect(status).toHaveAttribute('role', 'gridcell');
+    focusCell(status);
+    expect(status).toHaveFocus();
+    expect(status.textContent).toBe('Everyone has it');
+    expect(within(status).queryAllByRole('button')).toHaveLength(0);
+    expect(gridStops()).toEqual([status]);
+  });
+
+  it('makes a Not-on-the-roster tier cell an empty focus target named "{name}, {tier}, no card"', () => {
+    const odd = 'Zoë "Z" O\'Neil $1 \\u0041';
+    renderMatrix({
+      goals: two,
+      participants: { ...needy, hot: [...needy.hot, row('hot', 'u-zed', { displayName: odd })] },
+      tier: true,
+    });
+    const cell = within(tierRow()).getByRole('gridcell', { name: `${odd}, ${TIER_NAME}, no card` });
+    expect(cell.textContent?.trim()).toBe('');
+    expect(within(cell).queryAllByRole('button')).toHaveLength(0);
+    expect(cell).toHaveAttribute('tabindex', '-1');
+    // It is the row's last cell: End reaches it, and the farm cell below it is one ArrowDown away.
+    focusCell(tierName());
+    expect(key(tierName(), 'End')).toBe(false);
+    expect(cell).toHaveFocus();
+    expect(key(cell, 'ArrowDown')).toBe(false);
+    const hot = farmRows().find((r) => r.getAttribute('data-goal-id') === 'hot')!;
+    const below = cellsOf(hot)[cellsOf(hot).length - 1];
+    expect(below).toHaveFocus();
+    expect(below.getAttribute('aria-label')?.startsWith(`${odd}, Hot, `)).toBe(true);
   });
 });
 
@@ -629,30 +845,42 @@ describe('ProgressMatrix row menu column', () => {
   });
 
   describe('in the grid (R-S3-17)', () => {
-    it("is the lead's second cell: ArrowRight from the name focuses it, again the first player cell", () => {
-      renderMatrix({ goals: two, participants: needy });
+    it("is the lead's second cell: ArrowRight from the name focuses it, then the status cell, then the first player cell", () => {
+      renderMatrix({ goals: two, participants: needy, tier: true });
       const hot = farmRows()[0];
       focusCell(nameButton(hot));
       expect(key(nameButton(hot), 'ArrowRight')).toBe(false);
       expect(menuButton(hot)).toHaveFocus();
       expect(key(menuButton(hot), 'ArrowRight')).toBe(false);
+      // The status cell is a read-only focus target, and keeps its text (R-T-4).
+      const status = farmStatus(hot);
+      expect(status).toHaveFocus();
+      expect(status).toHaveTextContent(/^\d+ of \d+ have it$|^Everyone has it$/);
+      expect(key(status, 'ArrowRight')).toBe(false);
       expect(cellsOf(hot)[0]).toHaveFocus();
     });
 
-    it('is reached back through the menu: ArrowLeft from the first player cell, then the name', () => {
-      renderMatrix({ goals: two, participants: needy });
+    it('is reached back through the status and the menu: ArrowLeft from the first player cell, then the name', () => {
+      renderMatrix({ goals: two, participants: needy, tier: true });
       const hot = farmRows()[0];
       focusCell(cellsOf(hot)[0]);
       expect(key(cellsOf(hot)[0], 'ArrowLeft')).toBe(false);
+      expect(farmStatus(hot)).toHaveFocus();
+      expect(key(farmStatus(hot), 'ArrowLeft')).toBe(false);
       expect(menuButton(hot)).toHaveFocus();
       expect(key(menuButton(hot), 'ArrowLeft')).toBe(false);
       expect(nameButton(hot)).toHaveFocus();
     });
 
-    it('lands Home on the name from the menu and from a cell, and moves down the menu column with ArrowDown', () => {
-      renderMatrix({ goals: two, participants: needy });
+    it('lands Home on the name from the menu and from a cell, and moves down the menu column with ArrowDown, the tier\'s empty menu cell above it', () => {
+      renderMatrix({ goals: two, participants: needy, tier: true });
       const [hot, calm] = farmRows();
+      // The tier row's menu cell is the column's top: ArrowUp from the first farm's menu reaches it, ArrowDown comes back.
       focusCell(menuButton(hot));
+      expect(key(menuButton(hot), 'ArrowUp')).toBe(false);
+      expect(tierMenuCell()).toHaveFocus();
+      expect(key(tierMenuCell(), 'ArrowDown')).toBe(false);
+      expect(menuButton(hot)).toHaveFocus();
       expect(key(menuButton(hot), 'ArrowDown')).toBe(false);
       expect(menuButton(calm)).toHaveFocus();
       expect(key(menuButton(calm), 'Home')).toBe(false);
@@ -662,10 +890,11 @@ describe('ProgressMatrix row menu column', () => {
       expect(nameButton(calm)).toHaveFocus();
     });
 
-    it('stays one Tab stop: the name until a cell is focused, every menu button -1', () => {
-      renderMatrix({ goals: two, participants: needy });
+    it('stays one Tab stop: the tier\'s name until a cell is focused, every menu cell -1, the tier\'s included', () => {
+      renderMatrix({ goals: two, participants: needy, tier: true });
       const [hot, calm] = farmRows();
-      expect(gridStops()).toEqual([nameButton(hot)]);
+      expect(gridStops()).toEqual([tierName()]);
+      expect(tierMenuCell()).toHaveAttribute('tabindex', '-1');
       expect(menuButton(hot)).toHaveAttribute('tabindex', '-1');
       expect(menuButton(calm)).toHaveAttribute('tabindex', '-1');
       // The stop follows focus onto the menu button, and stays singular.
@@ -673,11 +902,13 @@ describe('ProgressMatrix row menu column', () => {
       expect(gridStops()).toEqual([menuButton(calm)]);
     });
 
-    it("sends a member's name ArrowRight straight to the first player cell", () => {
-      renderMatrix({ goals: two, participants: needy, reader: MEMBER, canManage: false });
+    it("sends a member's name ArrowRight to the status cell, then the first player cell", () => {
+      renderMatrix({ goals: two, participants: needy, reader: MEMBER, canManage: false, tier: true });
       const hot = farmRows()[0];
       focusCell(nameButton(hot));
       expect(key(nameButton(hot), 'ArrowRight')).toBe(false);
+      expect(farmStatus(hot)).toHaveFocus();
+      expect(key(farmStatus(hot), 'ArrowRight')).toBe(false);
       expect(cellsOf(hot)[0]).toHaveFocus();
     });
 
@@ -783,8 +1014,8 @@ describe('ProgressMatrix disclosure', () => {
     expect(within(within(open).getByTestId('progress-expansion-actions')).getByRole('button', { name: 'Copy plan' })).toBeInTheDocument();
   });
 
-  it('reaches the name with Home, and with ArrowLeft from the first player cell for a member, and moves between names with ArrowDown', () => {
-    renderMatrix({ goals: two, participants: needy, reader: MEMBER, canManage: false });
+  it('reaches the name with Home, and with ArrowLeft from the first player cell through the status for a member, and moves between names with ArrowDown', () => {
+    renderMatrix({ goals: two, participants: needy, reader: MEMBER, canManage: false, tier: true });
     const [hot, calm] = farmRows();
     const a = cellsOf(hot);
     focusCell(a[2]);
@@ -792,11 +1023,15 @@ describe('ProgressMatrix disclosure', () => {
     expect(nameButton(hot)).toHaveFocus();
     focusCell(a[0]);
     expect(key(a[0], 'ArrowLeft')).toBe(false);
+    expect(farmStatus(hot)).toHaveFocus();
+    expect(key(farmStatus(hot), 'ArrowLeft')).toBe(false);
     expect(nameButton(hot)).toHaveFocus();
     expect(key(nameButton(hot), 'ArrowDown')).toBe(false);
     expect(nameButton(calm)).toHaveFocus();
     expect(gridStops()).toEqual([nameButton(calm)]);
     expect(key(nameButton(calm), 'ArrowRight')).toBe(false);
+    expect(farmStatus(calm)).toHaveFocus();
+    expect(key(farmStatus(calm), 'ArrowRight')).toBe(false);
     expect(cellsOf(calm)[0]).toHaveFocus();
   });
 
@@ -1143,9 +1378,9 @@ describe('ProgressMatrix keyboard grid with own-cell buttons', () => {
   });
 
   it('has exactly one Tab stop, the own cell\'s button once focused, with the td around it no stop of its own', () => {
-    renderMatrix({ goals: two, participants: mixed, reader: MEMBER, edit: EDIT });
-    // Before any cell is focused the stop is the first row's name (S2a-3a).
-    expect(gridStops()).toEqual([nameButton(farmRows()[0])]);
+    renderMatrix({ goals: two, participants: mixed, reader: MEMBER, edit: EDIT, tier: true });
+    // Before any cell is focused the stop is the tier's name (S2a-3b·H3a, R-T-4).
+    expect(gridStops()).toEqual([tierName()]);
     const own = ownButton('Aya, Hot, Need, 62 of 99 Tokens — change your status');
     focusCell(own);
     const stops = gridStops();
@@ -1208,15 +1443,15 @@ describe('ProgressMatrix keyboard grid with own-cell buttons', () => {
   });
 
   it('moves focus to the fallback stop when the focused row is gone, where React cannot restore it', () => {
-    const { rerender } = renderMatrix({ goals: two, participants: mixed, reader: MEMBER, edit: EDIT });
+    const { rerender } = renderMatrix({ goals: two, participants: mixed, reader: MEMBER, edit: EDIT, tier: true });
     const own = ownButton('Aya, Calm, Want — change your status');
     focusCell(own);
     expect(own).toHaveFocus();
 
-    rerender({ goals: [two[0]], participants: mixed, reader: MEMBER, edit: EDIT });
+    rerender({ goals: [two[0]], participants: mixed, reader: MEMBER, edit: EDIT, tier: true });
 
-    // The fallback stop is the first row's name button (S2a-3a), and it takes the focus.
-    const first = nameButton(farmRows()[0]);
+    // The fallback stop is the tier's name (S2a-3b·H3a, R-T-4), and it takes the focus.
+    const first = tierName();
     expect(gridStops()).toEqual([first]);
     expect(first).toHaveFocus();
   });
