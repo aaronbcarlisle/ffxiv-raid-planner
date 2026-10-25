@@ -72,13 +72,13 @@ describe('queueFor order', () => {
     expect(entry).toMatchObject({ count: null, countHidden: false });
   });
 
-  it('ignores priority_rank (D-1)', () => {
+  it('honours a lead\'s pin within each state (S2a-3c D-2, superseding D-1)', () => {
     const ranked = farm([
       { id: 'a', cell: need(30, { priorityRank: 1 }) },
       { id: 'b', cell: need(10, { priorityRank: 9 }) },
       { id: 'c', cell: need(10, { priorityRank: 2 }) },
     ]);
-    expect(ids(queueFor(ranked, 'priority_order'))).toEqual(['b', 'c', 'a']);
+    expect(ids(queueFor(ranked, 'priority_order'))).toEqual(['a', 'c', 'b']);
   });
 });
 
