@@ -812,6 +812,32 @@ async def write_row(
     )
 
 
+async def write_rank(
+    db: AsyncSession,
+    *,
+    row: RewardParticipantState,
+    priority_rank: int | None,
+    now: str,
+) -> bool:
+    """Set or clear a farm row's queue rank: the rank-only door (S2a-3c D-9, E-3).
+
+    Only `set_queue_order` calls this (a test asserts it). It writes `priority_rank`
+    and `updated_at` and nothing else, so the row's writer, channel, state, count and
+    source keep saying who set them; a lead's reorder is no one's status edit.
+    `updated_at` must move: Undo restores a row only while `updated_at` is the one
+    its write left, so a pending status Undo is skipped rather than undoing a pin.
+    A rank below 1 is a `ValueError`; an equal rank returns False and writes nothing.
+    The caller flushes and commits.
+    """
+    if priority_rank is not None and priority_rank < 1:
+        raise ValueError("priority_rank must be at least 1")
+    if row.priority_rank == priority_rank:
+        return False
+    row.priority_rank = priority_rank
+    row.updated_at = now
+    return True
+
+
 async def delete_row(db: AsyncSession, row: RewardParticipantState) -> None:
     """Delete one farm row: Undo's revert of the write that created it (R-S2-11).
 

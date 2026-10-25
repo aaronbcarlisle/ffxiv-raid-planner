@@ -135,9 +135,14 @@ DOOR_FUNCTIONS = {
     "adopt_profile_rows",
     "release_last_character_rows",
     "write_row",
+    # The rank-only door (S2a-3c R-C-2): `set_queue_order` is its one caller.
+    "write_rank",
 }
 # (f) Door writes of these also stamp the writer and the channel.
 FACT_ATTRS = {"state", "token_count", "ownership_state", "priority_rank"}
+# (f) The one (door function, fact) pair written without a stamp. S2a-3c D-9: a lead's
+# reorder must not restamp the writer, or every re-ranked cell reads "set by {lead}".
+UNSTAMPED_FACT_WRITES = {("write_rank", "priority_rank")}
 # Non-constant `setattr` is refused everywhere but here (vet M-8). Each entry
 # copies request fields onto a row of a table this guard does not track.
 DYNAMIC_SETATTR_OK = {
@@ -699,7 +704,7 @@ def _stamp_problems(module: str, tree: ast.Module, door_functions: set[str]) -> 
     for fn, line, base, attr in _attribute_writes(tree):
         if fn not in door_functions:
             continue
-        if attr in FACT_ATTRS:
+        if attr in FACT_ATTRS and (fn, attr) not in UNSTAMPED_FACT_WRITES:
             facts.setdefault(fn, {}).setdefault(base, line)
         if attr in ("updated_by_user_id", "updated_via"):
             stamps.setdefault(fn, set()).add((base, attr))
@@ -895,6 +900,91 @@ def test_f_every_door_function_that_writes_a_fact_stamps_it():
     tree = dict(_modules())[DOOR_MODULE]
     problems = _stamp_problems(DOOR_MODULE, tree, DOOR_FUNCTIONS)
     assert not problems, "\n".join(problems)
+
+
+# ---------------------------------------------------------------------------
+# (f) the rank-only door (S2a-3c R-C-2, D-9)
+# ---------------------------------------------------------------------------
+
+QUEUE_ORDER_ROUTE = ("app/routers/collection_goals.py", "set_queue_order")
+
+
+def _write_rank_source() -> str:
+    """The source of the door module's `write_rank`, dedented to module level."""
+    door_tree = dict(_modules())[DOOR_MODULE]
+    found = [
+        node
+        for node in door_tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "write_rank"
+    ]
+    assert found, f"{DOOR_MODULE} has no top-level write_rank (R-C-2)"
+    (fn,) = found
+    return ast.unparse(fn)
+
+
+def test_f_lets_write_ranks_unstamped_rank_write_through():
+    source = _write_rank_source()
+    fn = ast.parse(source).body[0]
+    assert isinstance(fn, ast.AsyncFunctionDef), "write_rank is async (R-C-2)"
+    assert [a.arg for a in fn.args.args] == ["db"]
+    assert [a.arg for a in fn.args.kwonlyargs] == ["row", "priority_rank", "now"]
+    assert "set_queue_order" in (ast.get_docstring(fn) or ""), "name its one caller (R-C-2)"
+    # It writes the rank and the clock, nothing else: no writer, no channel, no state.
+    writes = {attr for _fn, _line, _base, attr in _attribute_writes(ast.parse(source))}
+    assert writes == {"priority_rank", "updated_at"}, writes
+    assert not _stamp_problems(DOOR_MODULE, ast.parse(source), {"write_rank"})
+    assert not _in_place_problems(DOOR_MODULE, ast.parse(source))
+
+
+@pytest.mark.parametrize("other", ["write_row", "write_record", "some_door_function"])
+def test_f_refuses_the_same_unstamped_rank_write_in_another_door_function(other):
+    source = _write_rank_source().replace("def write_rank(", f"def {other}(", 1)
+    assert _stamp_problems(DOOR_MODULE, ast.parse(source), {other})
+    # And the same holds for a bare rank write under another name.
+    bare = _door_fn("    row.priority_rank = 1\n").body[0]
+    bare.name = other
+    assert _stamp_problems(DOOR_MODULE, ast.Module(body=[bare], type_ignores=[]), {other})
+
+
+@pytest.mark.parametrize("fact", sorted(FACT_ATTRS - {"priority_rank"}))
+def test_f_refuses_another_fact_write_in_write_rank(fact):
+    """The exemption is the rank alone: a `state` (or any other fact) write in
+    `write_rank` still needs the writer and the channel."""
+    tree = ast.parse(_write_rank_source())
+    tree.body[0].body.append(ast.parse(f"row.{fact} = 'have'").body[0])
+    assert _stamp_problems(DOOR_MODULE, tree, {"write_rank"})
+
+
+def _write_rank_callers(module: str, tree: ast.Module) -> set[tuple[str, str]]:
+    """(module, function) of every call of `write_rank`, by name, attribute or import alias."""
+    names = {"write_rank"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                if alias.name == "write_rank" and alias.asname:
+                    names.add(alias.asname)
+    callers = set()
+    for fn, node in _nodes_with_function(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if _callee_name(node) in names:
+            callers.add((module, fn))
+    return callers
+
+
+def test_only_set_queue_order_calls_write_rank():
+    callers = {c for module, tree in _modules() for c in _write_rank_callers(module, tree)}
+    assert callers == {QUEUE_ORDER_ROUTE}, sorted(callers)
+    # The walk sees every call form, so an empty or partial finding is not vacuous.
+    for form in (
+        "from app.services.collection_records import write_rank\n"
+        "async def f():\n    await write_rank(db, row=r, priority_rank=1, now=n)\n",
+        "from app.services import collection_records as cr\n"
+        "async def f():\n    await cr.write_rank(db, row=r, priority_rank=1, now=n)\n",
+        "from app.services.collection_records import write_rank as wr\n"
+        "async def f():\n    await wr(db, row=r, priority_rank=1, now=n)\n",
+    ):
+        assert _write_rank_callers("app/x.py", ast.parse(form)) == {("app/x.py", "f")}
 
 
 # ---------------------------------------------------------------------------

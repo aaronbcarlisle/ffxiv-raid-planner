@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 CollectionGoalType = Literal[
     "mount", "token", "minion", "orchestrion", "glam", "custom_reward",
@@ -209,6 +209,35 @@ class MarkNeedResponse(BaseModel):
     created: list[ParticipantStateResponse]
     skipped: int
     undo_token: str | None = None
+
+
+# The queue order's cap (S2a-3c R-C-1): a farm's whole order, one id per member.
+QUEUE_ORDER_MAX_USERS = 200
+
+
+class QueueOrderRequest(BaseModel):
+    """The queue-order route's body (S2a-3c E-1): the farm's whole order, first to last.
+
+    `[]` clears every rank on the farm (Back to automatic). Duplicates are a 422.
+    """
+
+    user_ids: list[str] = Field(..., max_length=QUEUE_ORDER_MAX_USERS)
+
+    @field_validator("user_ids")
+    @classmethod
+    def _no_duplicates(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("user_ids must not repeat an id")
+        return value
+
+
+class QueueOrderResponse(BaseModel):
+    """What a queue-order save did (S2a-3c E-2): `ranked` listed members got a rank,
+    `cleared` rows lost one, `skipped` listed ids had no row for the farm."""
+
+    ranked: int
+    cleared: int
+    skipped: int
 
 
 class RecordOnlyCellResponse(BaseModel):

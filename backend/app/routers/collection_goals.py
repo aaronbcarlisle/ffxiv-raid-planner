@@ -43,6 +43,8 @@ from ..schemas.collection_goals import (
     ParticipantStateUpsert,
     ParticipantSummary,
     ParticipantWriteResponse,
+    QueueOrderRequest,
+    QueueOrderResponse,
     RecordOnlyCellResponse,
     RewardDropCreate,
     RewardDropResponse,
@@ -65,6 +67,7 @@ from ..services.collection_records import (
     parse_ts,
     resolve_record_targets,
     unset_if_none,
+    write_rank,
     write_record,
     write_row,
 )
@@ -1410,6 +1413,75 @@ async def mark_blank_cells_need(
     return MarkNeedResponse(
         created=created, skipped=len(body.cells) - len(created), undo_token=undo_token
     )
+
+
+@router.put(
+    "/static-groups/{group_id}/collection-goals/{goal_id}/queue-order",
+    response_model=QueueOrderResponse,
+)
+async def set_queue_order(
+    group_id: str,
+    goal_id: str,
+    body: QueueOrderRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> QueueOrderResponse:
+    """Replace a farm's queue order (S2a-3c E-1, E-2). Lead and above.
+
+    The k-th listed member who has a row for the goal gets rank k; every other row
+    of the goal loses its rank, so `[]` is Back to automatic. A listed id with no
+    row is skipped and counted. No role check on the listed members and no check of
+    the goal's status: ordering a row creates nothing, and a finished farm keeps its
+    order for Reopen. The goal is locked, then its rows in id order, and a row is
+    written only when its rank changes, through `write_rank`, which leaves the
+    row's writer, channel and state alone. No undo token: the client re-sends the
+    prior order. This route is `write_rank`'s only caller (a guard test asserts it).
+    """
+    await get_static_group(session, group_id)
+    await require_can_manage_members(session, current_user.id, group_id)
+    via = logged_via(request)  # an unset channel raises before anything is written (R-PV-2)
+    goal = await _get_goal(session, group_id, goal_id, for_update=True)
+    now = _now()
+
+    result = await session.execute(
+        select(RewardParticipantState)
+        .where(
+            RewardParticipantState.goal_id == goal.id,
+            RewardParticipantState.static_group_id == group_id,
+        )
+        .order_by(RewardParticipantState.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    rows = {row.user_id: row for row in result.scalars()}
+
+    target: dict[str, int] = {}
+    skipped = 0
+    for user_id in body.user_ids:
+        if user_id in rows:
+            target[user_id] = len(target) + 1
+        else:
+            skipped += 1
+
+    cleared = 0
+    for user_id, row in rows.items():
+        rank = target.get(user_id)
+        if rank is None and row.priority_rank is not None:
+            cleared += 1
+        await write_rank(session, row=row, priority_rank=rank, now=now)
+    await session.commit()
+    logger.info(
+        "collection_queue_order_set",
+        group_id=group_id,
+        goal_id=goal.id,
+        user_id=current_user.id,
+        via=via,
+        ranked=len(target),
+        cleared=cleared,
+        skipped=skipped,
+    )
+    return QueueOrderResponse(ranked=len(target), cleared=cleared, skipped=skipped)
 
 
 # ── Drop Log ──────────────────────────────────────────────────────────────────

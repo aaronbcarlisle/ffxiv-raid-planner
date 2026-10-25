@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.78',
+    date: '2026-10-25T00:00:00Z',
+    title: 'Farm queue order route',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Farm queue order route',
+        description:
+          'Backend groundwork for V2\'s Change order: a lead can save a farm\'s whole queue order, or clear it, in one request. A reorder moves only the rank, so each cell keeps who set its status and from where. Nothing changes on screen yet.',
+        pr: 409,
+        prTitle: 'feat(collections): S2a-3c C1 — the queue-order route',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.77',
     date: '2026-10-20T00:00:00Z',
     title: 'Progress: the tier\'s BiS model',
