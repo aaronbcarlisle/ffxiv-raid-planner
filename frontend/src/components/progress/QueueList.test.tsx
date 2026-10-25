@@ -15,7 +15,7 @@ const want = (tokenCount: number | null) => ({ state: 'want' as const, tokenCoun
 
 function renderQueue(columns: ColumnSpec[], opts: { viewer?: boolean; mode?: CollectionPriorityMode | null; tokenCost?: number | null } = {}) {
   const g = goal('g1', { priorityMode: opts.mode ?? null, tokenCost: opts.tokenCost === undefined ? 99 : opts.tokenCost });
-  return render(<QueueList row={farmRowOf(columns, g)} viewer={opts.viewer ?? false} />);
+  return render(<QueueList row={farmRowOf(columns, g)} viewer={opts.viewer ?? false} canOrder={false} groupId="g1" onLeave={() => {}} />);
 }
 
 const items = () => screen.queryAllByRole('listitem').map((li) => li.textContent);
