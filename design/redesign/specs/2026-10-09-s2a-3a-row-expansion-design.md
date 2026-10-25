@@ -18,7 +18,7 @@ It also closes the halves the S2a-2 plan handed on (`plans/2026-10-08-s2a-2-prog
 
 | # | Decision | Why |
 |---|---|---|
-| D-1 | **Change order is deferred** to a small slice after S2a-3a. The automatic queue ships now; leads can still set ranks through the classic view. | Keeps S2a-3a frontend-only and under the cap. Clearing a rank may need a backend change: the participant PATCH treats `null` as unchanged. |
+| D-1 | **Change order is deferred** to a small slice after S2a-3a. The automatic queue ships now; leads can still set ranks through the classic view (corrected 2026-10-25, S2a-3c: no V1 control sets a rank). | Keeps S2a-3a frontend-only and under the cap. Clearing a rank may need a backend change: the participant PATCH treats `null` as unchanged. |
 | D-2 | **Copy plan keeps legacy's format, in V2's queue order.** Hidden counts are left out; `free_roll` and `desired_only` follow the queue rules (§3.1). | The pasted list matches what the expansion shows. V1 keeps its own order and its output stays byte-identical (§3.2). |
 | D-3 | **Drop Undo keeps re-resolving the chain** (R-S1-14 as built). The stored `recipient_character_id` is not preferred. | The edge (a card or main change between the drop and its Undo) is rare and fails safe: the revert is skipped, never applied to the wrong record. Disclosed as a residual. |
 | D-4 | **Layout A.** The panel holds an action bar on top, then three columns: Next in line · Last drops · About. Edit's block goes above the action bar. Mockup: claude.ai artifact `NagngyR4V32ssZjaV5K1cH`. | The action comes first, #1 sits right under it, and the panel stays about six lines so the matrix stays in view. One primary action per region (rule 11). |
@@ -119,7 +119,7 @@ All 28 "· S2a-3a" rows ship here: P-22 (queue, §3.1, D-19; viewers unranked, D
 - D-3's edge: Undo after a card or main change skips the record revert.
 - Quantity and drop date aren't offered (always ×1, now), as today's dialog.
 - The drop list shows at most 50 drops.
-- `priority_rank` set in the classic view doesn't affect V2's queue until Change order ships (D-1).
+- `priority_rank` set in the classic view doesn't affect V2's queue until Change order ships (D-1) (corrected 2026-10-25, S2a-3c: no V1 control sets a rank).
 - A member gets a column (and so "I got it") only when rostered or holding a row on an active farm (S2a-2's columns); a member with neither can be logged by a lead only through Nobody plus a note, or from the classic view.
 - D-21 reads the loaded drops: while they load "I got it" waits; if they fail to load, D-5's cell rule alone decides, so a Pass member could log twice in that state.
 
