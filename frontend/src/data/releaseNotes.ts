@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.75';
+export const CURRENT_VERSION = '2.1.80';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -60,6 +60,30 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.80',
+    date: '2026-10-25T00:00:00Z',
+    title: 'A lead\'s farm queue order now shows in the classic farm view as ranks',
+    items: [
+      {
+        category: 'improvement',
+        title: 'A lead\'s farm queue order now shows in the classic farm view as ranks',
+        description:
+          'When a lead of your static sets the order of a farm\'s queue, the classic farm view shows it as ranks: each member a lead placed carries their #1, #2… rank, "Next priority" names the first ranked member who needs it, and the Log Drop list and Copy plan follow the ranks. A ranked member keeps their rank after they get the drop or pass, until a lead saves the order again or goes back to the automatic order.',
+        pr: 411,
+        prTitle: 'feat(v2): S2a-3c C3 — Change order',
+      },
+      {
+        category: 'feature',
+        title: 'Progress: Change order and Back to automatic',
+        description:
+          'V2 preview: a lead can set a farm\'s queue order in the open farm row\'s Next in line. Change order lists the whole queue with Move up and Move down beside each member, within Need and within Want, then Save order or Cancel; Back to automatic drops the set order. Both toast with Undo. A set order reads "Manual order", with a line saying where anyone added later goes. Members see the order and the tag; viewers see no order.',
+        pr: 411,
+        prTitle: 'feat(v2): S2a-3c C3 — Change order',
+        internal: true,
+      },
+    ],
+  },
+  {
     version: '2.1.79',
     date: '2026-10-25T00:00:00Z',
     title: 'Progress: the queue honours a lead\'s order',
@@ -68,7 +92,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Progress: the queue honours a lead\'s order',
         description:
-          'V2 preview: a farm\'s queue now follows the order a lead has set. Within Need and within Want, the members a lead placed come first in that order and everyone else follows in the automatic order; viewers still see the automatic order. Nothing to change the order on screen yet.',
+          'V2 preview: a farm\'s queue now follows the order a lead has set. Within Need and within Want, the members a lead placed come first in that order and everyone else follows in the automatic order; viewers still see no order. Nothing to change the order on screen yet.',
         pr: 410,
         prTitle: 'feat(v2): S2a-3c C2 — the pinned queue',
         internal: true,
