@@ -300,3 +300,56 @@ test.describe('Guest on a public static (S2a-3b tier row)', () => {
     await ownerCtx.close();
   });
 });
+
+/**
+ * S2a-3c·C4 (design §3.4): a guest sees no farms, so a lead's pinned order never reaches them.
+ * DEVTST holds one pinned farm for the run ("E2E Progress Guest Order", the owner Needs it and
+ * the order is set through the owner's API; deleted in `finally`). A recorder over every request
+ * the guest's Progress makes sees no `queue-order` call, and the page shows no order tag or control.
+ */
+test.describe('Guest on a public static (S2a-3c Change order)', () => {
+  test('Progress makes no queue-order request and shows no "Manual order" or order control', async ({ browser }) => {
+    test.setTimeout(60_000);
+
+    // dev-auth flips DEVTST to public on every owner login.
+    const ownerCtx = await browser.newContext({ baseURL: FRONTEND_BASE });
+    await loginAsOwner(await ownerCtx.newPage());
+    const gid = ((await (await ownerCtx.request.get(`${API_BASE}/api/static-groups/by-code/${DEV_SHARE_CODE}`)).json()) as { id: string }).id;
+    const headers = { 'X-CSRF-Token': (await ownerCtx.cookies(API_BASE)).find((c) => c.name === 'csrf_token')?.value ?? '' };
+    const ownerId = ((await (await ownerCtx.request.get(`${API_BASE}/api/auth/me`)).json()) as { id: string }).id;
+    const goals = `${API_BASE}/api/static-groups/${gid}/collection-goals`;
+    const created = await ownerCtx.request.post(goals, {
+      headers,
+      data: { goal_type: 'custom_reward', title: 'E2E Progress Guest Order', status: 'farming' },
+    });
+    expect(created.ok(), `seeding the guest order farm returned ${created.status()}`).toBe(true);
+    const farmId = ((await created.json()) as { id: string }).id;
+
+    try {
+      const need = await ownerCtx.request.patch(`${goals}/${farmId}/participants/${ownerId}`, { headers, data: { state: 'need' } });
+      expect(need.ok(), `setting Need returned ${need.status()}`).toBe(true);
+      const pin = await ownerCtx.request.put(`${goals}/${farmId}/queue-order`, { headers, data: { user_ids: [ownerId] } });
+      expect(pin.ok(), `pinning the order returned ${pin.status()}`).toBe(true);
+
+      const guestCtx = await browser.newContext({ baseURL: FRONTEND_BASE });
+      const page = await guestCtx.newPage();
+      const requests: string[] = [];
+      page.on('request', (req) => requests.push(`${req.method()} ${req.url()}`));
+
+      await pinShell(page, 'v2', `/group/${DEV_SHARE_CODE}?tab=progress&track=${farmId}`);
+      await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
+      await expect(page.getByTestId('progress-tier-row')).toBeVisible({ timeout: 15_000 });
+      await page.waitForLoadState('networkidle');
+
+      expect(requests.some((line) => /\/api\/static-groups\//.test(line)), 'the recorder saw the page\'s API calls').toBe(true);
+      const orderCalls = requests.filter((line) => /\/api\/.*\/queue-order/.test(line));
+      expect(orderCalls, `queue-order requests a guest made:\n${orderCalls.join('\n')}`).toEqual([]);
+      await expect(page.getByText('Manual order', { exact: true })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /^(Change order|Back to automatic)$/ })).toHaveCount(0);
+      await guestCtx.close();
+    } finally {
+      await ownerCtx.request.delete(`${goals}/${farmId}`, { headers });
+      await ownerCtx.close();
+    }
+  });
+});

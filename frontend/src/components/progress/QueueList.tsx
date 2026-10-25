@@ -29,22 +29,16 @@ import { BUSY_CLASS } from './useDrops';
 
 const TOP = 4;
 
-/** Change order's wiring: the open farm row passes all three; without them the list has no controls. */
-type OrderProps =
-  | {
-      /** A lead on an active row (`lead && !finished`): Change order and Back to automatic (R-C-6). */
-      canOrder: boolean;
-      groupId: string;
-      /** Takes focus when a write leaves no Change order to hold it (the panel's Copy plan). */
-      onLeave: () => void;
-    }
-  | { canOrder?: undefined; groupId?: undefined; onLeave?: undefined };
-
 export type QueueListProps = {
   row: FarmRow;
   /** `userRole === 'viewer'`: the unranked line, no counts. */
   viewer: boolean;
-} & OrderProps;
+  /** A lead on an active row (`lead && !finished`): Change order and Back to automatic (R-C-6). */
+  canOrder: boolean;
+  groupId: string;
+  /** Takes focus when a write leaves no Change order to hold it (the panel's Copy plan). */
+  onLeave: () => void;
+};
 
 const MUTED = 'text-sm text-text-muted';
 
@@ -60,8 +54,7 @@ async function restoreOrder(groupId: string, goalId: string, userIds: readonly s
 }
 
 export function QueueList(props: QueueListProps) {
-  const { row, viewer } = props;
-  const ordering = props.canOrder === undefined ? null : props;
+  const { row, viewer, groupId } = props;
   const [showAll, setShowAll] = useState(false);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -74,7 +67,7 @@ export function QueueList(props: QueueListProps) {
   const listId = useId();
   const { goal } = row;
   const queue = queueFor(row, goal.priorityMode);
-  const canOrder = ordering !== null && ordering.canOrder && !viewer;
+  const canOrder = props.canOrder && !viewer;
   const open = editing && canOrder;
 
   useLayoutEffect(() => {
@@ -85,14 +78,13 @@ export function QueueList(props: QueueListProps) {
     // Focus the reader moved elsewhere meanwhile stays where they put it.
     if (!dropped) return;
     if (changeRef.current) changeRef.current.focus();
-    else props.onLeave?.();
+    else props.onLeave();
   });
 
   const write = async (userIds: readonly string[], message: string) => {
-    if (ordering === null || lock.current) return;
+    if (lock.current) return;
     lock.current = true;
     setBusy(true);
-    const { groupId } = ordering;
     const prior = pinnedOrder(row);
     try {
       await useCollectionGoalStore.getState().setQueueOrder(groupId, goal.id, userIds);
@@ -187,7 +179,7 @@ export function QueueList(props: QueueListProps) {
         ))}
       </ol>
       {queue.length > TOP && (
-        <Button variant="ghost" size="sm" aria-expanded={showAll} aria-controls={listId} onClick={() => setShowAll((isOpen) => !isOpen)}>
+        <Button variant="secondary" size="sm" aria-expanded={showAll} aria-controls={listId} onClick={() => setShowAll((isOpen) => !isOpen)}>
           {showAll ? 'Show fewer' : `Show all (${queue.length})`}
         </Button>
       )}
