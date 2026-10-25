@@ -7,6 +7,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { vi, type Mock } from 'vitest';
+import { heldGate } from './heldGate';
 import type { api as Api } from '../../../services/api';
 import type { ColumnSpec } from './progressFixtures';
 
@@ -43,9 +44,9 @@ export function applyQueueOrder(specs: ColumnSpec[], userIds: readonly string[])
 export const QUEUE_ORDER_URL = '/api/static-groups/g1/collection-goals/wings/queue-order';
 
 export function serveQueueOrder(api: typeof Api, refresh: Mock, live: LiveSpecs) {
-  let held: Promise<void> | null = null;
+  const held = heldGate();
   vi.mocked(api.put).mockImplementation(async (_url: string, body?: unknown) => {
-    if (held) await held;
+    await held.wait();
     const ids = (body as { user_ids: string[] }).user_ids;
     return { ranked: ids.length, cleared: 0, skipped: 0 } as never;
   });
@@ -58,15 +59,6 @@ export function serveQueueOrder(api: typeof Api, refresh: Mock, live: LiveSpecs)
     sent: () => vi.mocked(api.put).mock.calls.map((call) => (call[1] as { user_ids: string[] }).user_ids),
     urls: () => vi.mocked(api.put).mock.calls.map((call) => call[0]),
     /** Holds every PUT until the returned release runs. */
-    gate: () => {
-      let release = () => {};
-      held = new Promise<void>((resolve) => {
-        release = () => {
-          held = null;
-          resolve();
-        };
-      });
-      return () => release();
-    },
+    gate: held.hold,
   };
 }
