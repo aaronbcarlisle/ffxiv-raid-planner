@@ -28,6 +28,11 @@
  * (`farmEditContext`), `FarmEditBlock` sits on top of the action bar. Escape inside it is the
  * block's (it discards and prevents the key), so the filter above leaves the panel open. Mark
  * finished asks "Discard changes?" first when the block is dirty, as the menu's item does.
+ *
+ * Change order (S2a-3c·C3 Task TC3, R-C-6): Next in line gets a lead's order controls on an
+ * active row (`lead && !finished`), and Copy plan takes focus when a write leaves none to hold
+ * it. The order editor prevents the Escape it cancels on, so the filter above leaves the panel
+ * open.
  */
 import { useCallback, useMemo, useRef, type KeyboardEvent } from 'react';
 import { CircleCheck, Copy } from 'lucide-react';
@@ -195,7 +200,7 @@ export function FarmExpansion({
                 Next in line
               </h2>
               <div className="mt-2">
-                <QueueList row={row} viewer={viewer} />
+                <QueueList row={row} viewer={viewer} canOrder={lead && !finished} groupId={groupId} onLeave={focusCopyPlan} />
               </div>
             </section>
             <section aria-labelledby={`${id}-drops`} data-testid="progress-expansion-drops">
