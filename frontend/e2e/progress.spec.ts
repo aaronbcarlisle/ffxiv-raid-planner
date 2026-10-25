@@ -744,30 +744,30 @@ interface MemberRow {
   user?: { discordUsername?: string };
 }
 
+async function seedFarm(page: Page, groupId: string, headers: ApiHeaders, title: string): Promise<string> {
+  const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals`, {
+    headers,
+    data: { goal_type: 'custom_reward', title, status: 'farming' },
+  });
+  if (!res.ok()) throw new Error(`seeding ${title} returned ${res.status()}`);
+  const id = ((await res.json()) as { id: string }).id;
+  recordSeeded(id);
+  return id;
+}
+
+async function setStates(page: Page, groupId: string, headers: ApiHeaders, goalId: string, userIds: string[], state: 'need' | 'want' | 'have') {
+  for (const userId of userIds) {
+    const res = await page.request.patch(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${goalId}/participants/${userId}`, {
+      headers,
+      data: { state },
+    });
+    if (!res.ok()) throw new Error(`setting ${state} for ${userId} returned ${res.status()}`);
+  }
+}
+
 test.describe.serial('Progress: row expansion', () => {
   const ids = { drops: '', finish: '', everyone: '', edit: '' };
   let editedTitle: string = TITLES.edit;
-
-  async function seedFarm(page: Page, groupId: string, headers: ApiHeaders, title: string): Promise<string> {
-    const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals`, {
-      headers,
-      data: { goal_type: 'custom_reward', title, status: 'farming' },
-    });
-    if (!res.ok()) throw new Error(`seeding ${title} returned ${res.status()}`);
-    const id = ((await res.json()) as { id: string }).id;
-    recordSeeded(id);
-    return id;
-  }
-
-  async function setStates(page: Page, groupId: string, headers: ApiHeaders, goalId: string, userIds: string[], state: 'need' | 'have') {
-    for (const userId of userIds) {
-      const res = await page.request.patch(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${goalId}/participants/${userId}`, {
-        headers,
-        data: { state },
-      });
-      if (!res.ok()) throw new Error(`setting ${state} for ${userId} returned ${res.status()}`);
-    }
-  }
 
   test.beforeAll(async ({ browser }) => {
     const { context, page, groupId, headers } = await ownerSession(browser);
@@ -1103,6 +1103,287 @@ test.describe.serial('Progress: row expansion', () => {
     await expect(page).not.toHaveURL(new RegExp(`[?&]track=${ids.edit}`));
     await context.close();
   });
+});
+
+/**
+ * S2a-3c·C4 (TC4): Change order end to end on DEVTST, as the owner (design §4 criteria 1, 3, 4
+ * and 8; R-C-9). Two drop-only custom farms, so the automatic order is column order:
+ * `${PREFIX} Order` (Need for the three claimed members: DevOwner, DevMember, Lloyd; reset to
+ * automatic before each test) and `${PREFIX} Order Join` (Lloyd Needs, DevMember Wants, DevOwner
+ * joins after the pin). A pin is set through the owner's API (`PUT …/queue-order`) where a test
+ * starts from one; the editor's own Save is driven by keyboard. Both farms go in afterAll.
+ */
+const ORDER_TITLES = { order: `${PREFIX} Order`, join: `${PREFIX} Order Join` } as const;
+const ORDER_CAPTION = 'Set by a lead. Anyone added later goes after the set order in their status.';
+const [OWNER_COL, MEMBER_COL, LLOYD_COL] = CLAIMED;
+
+async function putQueueOrder(page: Page, groupId: string, headers: ApiHeaders, goalId: string, userIds: string[]) {
+  const res = await page.request.put(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${goalId}/queue-order`, {
+    headers,
+    data: { user_ids: userIds },
+  });
+  if (!res.ok()) throw new Error(`setting the queue order returned ${res.status()}`);
+}
+
+test.describe.serial('Progress: Change order (S2a-3c)', () => {
+  const ids = { order: '', join: '' };
+  const users = { owner: '', member: '', lloyd: '' };
+
+  test.beforeAll(async ({ browser }) => {
+    const { context, page, groupId, headers } = await ownerSession(browser);
+    try {
+      await deleteSeededFarms(page, groupId, headers);
+      const membersRes = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/members`);
+      if (!membersRes.ok()) throw new Error(`the member list returned ${membersRes.status()}`);
+      const members = (await membersRes.json()) as MemberRow[];
+      users.owner = await currentUserId(page);
+      users.member = members.find((m) => m.user?.discordUsername === 'DevMember')?.userId ?? '';
+      users.lloyd = members.find((m) => m.userId !== users.owner && m.userId !== users.member)?.userId ?? '';
+      if (!users.member || !users.lloyd) throw new Error('DEVTST needs DevMember and a third member');
+
+      ids.order = await seedFarm(page, groupId, headers, ORDER_TITLES.order);
+      ids.join = await seedFarm(page, groupId, headers, ORDER_TITLES.join);
+      await setStates(page, groupId, headers, ids.join, [users.lloyd], 'need');
+      await setStates(page, groupId, headers, ids.join, [users.member], 'want');
+    } finally {
+      await context.close();
+    }
+  });
+
+  // Every test on the Order farm starts from three Needs and the automatic order.
+  test.beforeEach(async ({ browser }) => {
+    const { context, page, groupId, headers } = await ownerSession(browser);
+    try {
+      await setStates(page, groupId, headers, ids.order, [users.owner, users.member, users.lloyd], 'need');
+      await putQueueOrder(page, groupId, headers, ids.order, []);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { context, page, groupId, headers } = await ownerSession(browser);
+    try {
+      await deleteSeededFarms(page, groupId, headers, Object.values(ids).filter(Boolean));
+    } finally {
+      await context.close();
+    }
+  });
+
+  const panelOf = (page: Page) => page.getByTestId('progress-expansion');
+  const queueOf = (page: Page) => panelOf(page).getByTestId('progress-expansion-queue');
+  const editorOf = (page: Page) => panelOf(page).getByRole('list', { name: 'Queue order' });
+  const button = (page: Page, name: string) => panelOf(page).getByRole('button', { name, exact: true });
+  const statusLine = (page: Page) => panelOf(page).getByRole('status').filter({ hasText: /, \d+ of \d+$/ });
+
+  /** The names in a list's entries, "#k {name} · …", in order. */
+  async function namesIn(list: ReturnType<Page['locator']>): Promise<string[]> {
+    const texts = await list.getByRole('listitem').allInnerTexts();
+    return texts.map((t) => t.replace(/\s+/g, ' ').trim().match(/^#\d+\s*([^·]+?)\s*(?:·|$)/)?.[1] ?? `<unparsed: ${t}>`);
+  }
+  const restNames = (page: Page) => namesIn(queueOf(page));
+
+  /** The farm row's claimed columns, in the matrix's order (a drop-only farm's automatic order). */
+  async function columnOrder(page: Page, goalId: string): Promise<string[]> {
+    const labels = await page.locator(`[data-goal-id="${goalId}"] td[data-testid="progress-cell"]`).evaluateAll((cells) =>
+      cells.map((c) => c.getAttribute('aria-label') ?? ''),
+    );
+    return labels.map((l) => l.split(', ')[0]).filter((name) => (CLAIMED as readonly string[]).includes(name));
+  }
+
+  /** Sign in as the owner and open Progress on `goalId`'s row by `?track=`. */
+  async function openOrder(page: Page, goalId: string, theme?: 'dark' | 'light') {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    if (theme) await page.addInitScript((t) => window.localStorage.setItem('theme', t), theme);
+    await loginAsOwner(page);
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=progress&track=${goalId}`);
+    await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
+    await expect(queueOf(page)).toBeVisible({ timeout: 15_000 });
+    await page.waitForLoadState('networkidle');
+  }
+
+  /** Every queue-order PUT the page sends, as its `user_ids`. */
+  function recordOrderPuts(page: Page): string[][] {
+    const sent: string[][] = [];
+    page.on('request', (req) => {
+      if (req.method() === 'PUT' && /\/collection-goals\/[^/]+\/queue-order$/.test(new URL(req.url()).pathname)) {
+        sent.push(((req.postDataJSON() ?? {}) as { user_ids: string[] }).user_ids);
+      }
+    });
+    return sent;
+  }
+
+  test('owner, keyboard only: Move up twice keeps focus, stops at the top, Save pins it; Log drop follows; a reload keeps it (criterion 1)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await openOrder(page, ids.order);
+    const auto = await restNames(page);
+    expect(auto).toEqual(await columnOrder(page, ids.order));
+    expect(auto).toHaveLength(3);
+    const [first, second, third] = auto;
+    await expect(queueOf(page).getByText('Manual order', { exact: true })).toHaveCount(0);
+
+    await button(page, 'Change order').focus();
+    await page.keyboard.press('Enter');
+    await expect(editorOf(page)).toBeVisible();
+    expect(await namesIn(editorOf(page))).toEqual(auto);
+    await expect(button(page, `Move ${first} up`)).toHaveAttribute('aria-disabled', 'true');
+    await expect(button(page, `Move ${third} down`)).toHaveAttribute('aria-disabled', 'true');
+
+    const up = button(page, `Move ${third} up`);
+    await up.focus();
+    await page.keyboard.press('Enter');
+    await expect(up).toBeFocused();
+    await expect(statusLine(page)).toHaveText(`${third}, 2 of 3`);
+    await page.keyboard.press('Enter');
+    await expect(up).toBeFocused();
+    await expect(statusLine(page)).toHaveText(`${third}, 1 of 3`);
+    await expect(up).toHaveAttribute('aria-disabled', 'true');
+    // At the top the boundary button does nothing.
+    await page.keyboard.press('Enter');
+    await expect(up).toBeFocused();
+    expect(await namesIn(editorOf(page))).toEqual([third, first, second]);
+
+    await button(page, 'Save order').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Order saved', { exact: true })).toBeVisible();
+    await expect(editorOf(page)).toHaveCount(0);
+    await expect.poll(() => restNames(page)).toEqual([third, first, second]);
+    await expect(queueOf(page).getByText('Manual order', { exact: true })).toBeVisible();
+    await expect(queueOf(page).getByText(ORDER_CAPTION, { exact: true })).toBeVisible();
+    await expect(panelOf(page).getByRole('button', { name: `Log drop for ${third}` })).toBeVisible();
+
+    await page.reload();
+    await expect(queueOf(page)).toBeVisible({ timeout: 15_000 });
+    await expect.poll(() => restNames(page)).toEqual([third, first, second]);
+    await expect(queueOf(page).getByText('Manual order', { exact: true })).toBeVisible();
+    await expect(panelOf(page).getByRole('button', { name: `Log drop for ${third}` })).toBeVisible();
+    await context.close();
+  });
+
+  test('owner: a Need set after the pin lands after the pinned Need and before the Want; no move crosses Need/Want (criteria 1, 3)', async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      await putQueueOrder(owner.page, owner.groupId, owner.headers, ids.join, [users.lloyd, users.member]);
+      await setStates(owner.page, owner.groupId, owner.headers, ids.join, [users.owner], 'need');
+    } finally {
+      await owner.context.close();
+    }
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await openOrder(page, ids.join);
+    // Non-vacuous: the joiner's column comes first, so the automatic order would put them first.
+    const columns = await columnOrder(page, ids.join);
+    expect(columns.indexOf(OWNER_COL)).toBeLessThan(columns.indexOf(LLOYD_COL));
+
+    await expect.poll(() => restNames(page)).toEqual([LLOYD_COL, OWNER_COL, MEMBER_COL]);
+    await expect(queueOf(page).getByText('Manual order', { exact: true })).toBeVisible();
+
+    await button(page, 'Change order').click();
+    await expect(editorOf(page)).toBeVisible();
+    await expect(button(page, `Move ${OWNER_COL} down`)).toHaveAttribute('aria-disabled', 'true');
+    await expect(button(page, `Move ${MEMBER_COL} up`)).toHaveAttribute('aria-disabled', 'true');
+    // aria-disabled, so a press does nothing (Playwright's click would refuse it).
+    await button(page, `Move ${MEMBER_COL} up`).focus();
+    await page.keyboard.press('Enter');
+    expect(await namesIn(editorOf(page))).toEqual([LLOYD_COL, OWNER_COL, MEMBER_COL]);
+    await button(page, 'Cancel').click();
+    await expect(editorOf(page)).toHaveCount(0);
+    await context.close();
+  });
+
+  test('owner: a logged drop takes the pinned #1 out; its Undo puts them back at #1 (criterion 3)', async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      await putQueueOrder(owner.page, owner.groupId, owner.headers, ids.order, [users.lloyd, users.owner, users.member]);
+    } finally {
+      await owner.context.close();
+    }
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await openOrder(page, ids.order);
+    await expect.poll(() => restNames(page)).toEqual([LLOYD_COL, OWNER_COL, MEMBER_COL]);
+    await expect(queueOf(page).getByText('Manual order', { exact: true })).toBeVisible();
+
+    await panelOf(page).getByRole('button', { name: `Log drop for ${LLOYD_COL}` }).click();
+    await expect(page.getByText(`Drop logged for ${LLOYD_COL}`)).toBeVisible();
+    await expect.poll(() => restNames(page)).toEqual([OWNER_COL, MEMBER_COL]);
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(page.getByText('Undone', { exact: true })).toBeVisible();
+    await expect.poll(() => restNames(page)).toEqual([LLOYD_COL, OWNER_COL, MEMBER_COL]);
+    await expect(queueOf(page).getByText('Manual order', { exact: true })).toBeVisible();
+    await expect(panelOf(page).getByRole('button', { name: `Log drop for ${LLOYD_COL}` })).toBeVisible();
+    await context.close();
+  });
+
+  test('owner: Back to automatic PUTs [] and restores column order; its Undo PUTs the pin back (criterion 4)', async ({ browser }) => {
+    const pin = [users.lloyd, users.owner, users.member];
+    const owner = await ownerSession(browser);
+    try {
+      await putQueueOrder(owner.page, owner.groupId, owner.headers, ids.order, pin);
+    } finally {
+      await owner.context.close();
+    }
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    const sent = recordOrderPuts(page);
+    await openOrder(page, ids.order);
+    await expect.poll(() => restNames(page)).toEqual([LLOYD_COL, OWNER_COL, MEMBER_COL]);
+    await expect(queueOf(page).getByText('Manual order', { exact: true })).toBeVisible();
+
+    await button(page, 'Back to automatic').click();
+    await expect(page.getByText('Back to automatic order', { exact: true })).toBeVisible();
+    await expect.poll(() => restNames(page)).toEqual(await columnOrder(page, ids.order));
+    await expect(queueOf(page).getByText('Manual order', { exact: true })).toHaveCount(0);
+    await expect(button(page, 'Back to automatic')).toHaveCount(0);
+    await expect(button(page, 'Change order')).toBeFocused();
+    expect(sent).toEqual([[]]);
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(page.getByText('Order restored', { exact: true })).toBeVisible();
+    await expect.poll(() => restNames(page)).toEqual([LLOYD_COL, OWNER_COL, MEMBER_COL]);
+    await expect(queueOf(page).getByText('Manual order', { exact: true })).toBeVisible();
+    expect(sent).toEqual([[], pin]);
+    await context.close();
+  });
+
+  test('owner: Escape in the editor cancels it with no write, and the panel stays open', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    const sent = recordOrderPuts(page);
+    await openOrder(page, ids.order);
+    const auto = await restNames(page);
+
+    await button(page, 'Change order').click();
+    await expect(editorOf(page)).toBeVisible();
+    await button(page, `Move ${auto[2]} up`).click();
+    expect(await namesIn(editorOf(page))).toEqual([auto[0], auto[2], auto[1]]);
+    await page.keyboard.press('Escape');
+    await expect(editorOf(page)).toHaveCount(0);
+    await expect(panelOf(page)).toBeVisible();
+    await expect(page.locator(`[data-goal-id="${ids.order}"] [role="rowheader"] button`)).toHaveAttribute('aria-expanded', 'true');
+    expect(await restNames(page)).toEqual(auto);
+    await expect(button(page, 'Change order')).toBeVisible();
+    expect(sent).toEqual([]);
+    await context.close();
+  });
+
+  for (const theme of THEMES) {
+    test(`owner: axe reports no critical or serious violation with the order editor open (${theme}, 1440 x 900)`, async ({ browser }) => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await openOrder(page, ids.order, theme);
+      await button(page, 'Change order').click();
+      await expect(editorOf(page)).toBeVisible();
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(300);
+
+      const blocking = await blockingIn(page, ['[data-testid="progress-screen"]']);
+      expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+      await context.close();
+    });
+  }
 });
 
 /**

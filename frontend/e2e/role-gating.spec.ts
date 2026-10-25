@@ -549,6 +549,138 @@ test.describe.serial('Progress row expansion, by role (S2a-3a)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Progress Change order (S2a-3c·C4): the lead's order controls by role
+// ---------------------------------------------------------------------------
+
+/**
+ * One drop-only farm on DEVTST where DevOwner and Lloyd Need and DevMember Wants, pinned through
+ * the owner's API as Lloyd, DevOwner, DevMember (not the column order, which puts DevOwner
+ * first). A lead sees Change order, Back to automatic and "Manual order"; a member the same order
+ * and the tag with neither control (hidden, not disabled); a viewer the unranked line with no tag
+ * and no "#" (D-20). DevMember is demoted for the viewer test and restored in `finally` and afterAll.
+ */
+test.describe.serial('Progress Change order, by role (S2a-3c)', () => {
+  const TITLE = 'E2E Progress Gating Order';
+  const CAPTION = 'Set by a lead. Anyone added later goes after the set order in their status.';
+  const PINNED = ['Caster One', 'Healer Two', 'Melee One']; // Lloyd, DevOwner, DevMember
+  let farmId = '';
+  let demoted: string | null = null;
+
+  const track = () => `tab=progress&track=${farmId}`;
+  const queueOf = (page: Page) => page.getByTestId('progress-expansion').getByTestId('progress-expansion-queue');
+  const orderControls = (page: Page) => page.getByTestId('progress-expansion').getByRole('button', { name: /^(Change order|Back to automatic)$/ });
+  const restNames = async (page: Page) =>
+    (await queueOf(page).getByRole('listitem').allInnerTexts()).map(
+      (t) => t.replace(/\s+/g, ' ').trim().match(/^#\d+\s*([^·]+?)\s*(?:·|$)/)?.[1] ?? `<unparsed: ${t}>`,
+    );
+
+  test.beforeAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      const { page, groupId, headers } = owner;
+      const list = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/collection-goals`);
+      for (const g of (await list.json()) as Array<{ id: string; title: string }>) {
+        if (g.title === TITLE) await page.request.delete(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${g.id}`, { headers });
+      }
+      const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals`, {
+        headers,
+        data: { goal_type: 'custom_reward', title: TITLE, status: 'farming' },
+      });
+      if (!res.ok()) throw new Error(`seeding the gating order farm returned ${res.status()}`);
+      farmId = ((await res.json()) as { id: string }).id;
+
+      const members = (await (await page.request.get(`${API_BASE}/api/static-groups/${groupId}/members`)).json()) as Array<{
+        userId: string;
+        user?: { discordUsername?: string };
+      }>;
+      const ownerId = await currentUserId(page);
+      const memberId = members.find((m) => m.user?.discordUsername === 'DevMember')?.userId;
+      const lloydId = members.find((m) => m.userId !== ownerId && m.userId !== memberId)?.userId;
+      if (!memberId || !lloydId) throw new Error('DEVTST needs DevMember and a third member');
+      for (const [userId, state] of [
+        [ownerId, 'need'],
+        [lloydId, 'need'],
+        [memberId, 'want'],
+      ] as const) {
+        const set = await page.request.patch(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${farmId}/participants/${userId}`, {
+          headers,
+          data: { state },
+        });
+        if (!set.ok()) throw new Error(`setting ${state} returned ${set.status()}`);
+      }
+      const pin = await page.request.put(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${farmId}/queue-order`, {
+        headers,
+        data: { user_ids: [lloydId, ownerId, memberId] },
+      });
+      if (!pin.ok()) throw new Error(`pinning the order returned ${pin.status()}`);
+    } finally {
+      await owner.context.close();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      if (demoted) await setRole(owner, demoted, 'member');
+      if (farmId) {
+        const del = await owner.page.request.delete(`${API_BASE}/api/static-groups/${owner.groupId}/collection-goals/${farmId}`, { headers: owner.headers });
+        if (!del.ok() && del.status() !== 404) throw new Error(`deleting the gating order farm returned ${del.status()}`);
+      }
+    } finally {
+      await owner.context.close();
+    }
+  });
+
+  test('owner pin: the pinned order, "Manual order", Change order and Back to automatic, so the checks below are not vacuous', async ({ page }) => {
+    await loginAsOwner(page);
+    await openV2(page, track(), progressReady);
+    await expect(queueOf(page)).toBeVisible();
+    await expect.poll(() => restNames(page)).toEqual(PINNED);
+    await expect(queueOf(page).getByText('Manual order', { exact: true })).toBeVisible();
+    await expect(orderControls(page)).toHaveCount(2);
+  });
+
+  test('member: the same order, the tag and the caption, no Change order or Back to automatic (hidden, not disabled)', async ({ page }) => {
+    await loginAsMember(page);
+    await openV2(page, track(), progressReady);
+    await expect(queueOf(page)).toBeVisible();
+    await expect.poll(() => restNames(page)).toEqual(PINNED);
+    await expect(queueOf(page).getByText('Manual order', { exact: true })).toBeVisible();
+    await expect(queueOf(page).getByText(CAPTION, { exact: true })).toBeVisible();
+    await expect(orderControls(page)).toHaveCount(0);
+    await expectNoDisabledOutside(page, []);
+  });
+
+  test('viewer: the unranked line, no "Manual order", no "#", no order controls (D-20)', async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      // Dev login re-seats DevMember as a member, so demote after logging in.
+      await loginAsMember(page);
+      demoted = await currentUserId(page);
+      await setRole(owner, demoted, 'viewer');
+      await openV2(page, track(), progressReady);
+
+      const queue = queueOf(page);
+      await expect(queue).toBeVisible();
+      await expect(queue.getByRole('list')).toHaveCount(0);
+      await expect(queue.getByRole('button')).toHaveCount(0);
+      const line = (await queue.locator('p').first().innerText()).trim();
+      expect(line).toMatch(/^Need: [^#\d]+ · Want: [^#\d]+$/);
+      await expect(queue.getByText('Manual order', { exact: true })).toHaveCount(0);
+      await expect(queue.getByText(CAPTION, { exact: true })).toHaveCount(0);
+      await expect(orderControls(page)).toHaveCount(0);
+      await context.close();
+    } finally {
+      if (demoted) await setRole(owner, demoted, 'member');
+      demoted = null;
+      await owner.context.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Progress tier row (S2a-3b·H4b): split clears by role (R-T-11, P-111)
 // ---------------------------------------------------------------------------
 
