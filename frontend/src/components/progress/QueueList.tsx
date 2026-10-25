@@ -150,7 +150,7 @@ export function QueueList(props: QueueListProps) {
           {changeShown && (
             <Button
               ref={changeRef}
-              variant="ghost"
+              variant="secondary"
               size="sm"
               className={BUSY_CLASS}
               leftIcon={<ArrowUpDown size={14} aria-hidden="true" />}
@@ -164,7 +164,7 @@ export function QueueList(props: QueueListProps) {
           )}
           {backShown && (
             <Button
-              variant="ghost"
+              variant="secondary"
               size="sm"
               className={BUSY_CLASS}
               leftIcon={<RotateCcw size={14} aria-hidden="true" />}

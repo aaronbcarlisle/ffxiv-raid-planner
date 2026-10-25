@@ -137,7 +137,7 @@ export function QueueOrderEditor({ queue, tokenCost, saving, onSave, onCancel }:
           Save order
         </Button>
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           className={BUSY_CLASS}
           aria-disabled={saving || undefined}
