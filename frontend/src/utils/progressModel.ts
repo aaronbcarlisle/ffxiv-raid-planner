@@ -149,7 +149,8 @@ export interface ProgressCell {
  * only: every count is withheld from them, their own included (R-S2-8). The server
  * already gates every read for the real caller, so the role check matters under
  * View As, where reads stay gated as the admin (R-S2-10). For any other role one's
- * own count is never withheld by role; the server's `countHidden` still applies.
+ * own count is never withheld by role; the server's `countHidden` still applies. A viewer's
+ * entry is a copy without its `priorityRank`, so the queue shows them no lead's pin.
  */
 export function cellFor(column: ProgressColumn, cells: GoalCells, reader: ProgressReader): ProgressCell {
   const userId = column.userId;
@@ -157,7 +158,9 @@ export function cellFor(column: ProgressColumn, cells: GoalCells, reader: Progre
     return { column, state: null, count: null, countHidden: false, own: false, entry: null, recordOnly: null, record: null };
   }
   const own = userId === reader.currentUserId;
-  const entry = cells.participants?.find((p) => p.userId === userId) ?? null;
+  const stored = cells.participants?.find((p) => p.userId === userId) ?? null;
+  // A viewer never sees a lead's pin: their queue is the automatic order (S2a-3c D-2, R-C-4).
+  const entry = stored && stored.priorityRank !== null && reader.userRole === 'viewer' ? { ...stored, priorityRank: null } : stored;
   const recordOnly = entry ? null : (cells.recordOnly?.find((c) => c.userId === userId) ?? null);
 
   const state = entry ? entry.state : (recordOnly?.state ?? null);

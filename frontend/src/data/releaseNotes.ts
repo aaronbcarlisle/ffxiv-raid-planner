@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.79',
+    date: '2026-10-25T00:00:00Z',
+    title: 'Progress: the queue honours a lead\'s order',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Progress: the queue honours a lead\'s order',
+        description:
+          'V2 preview: a farm\'s queue now follows the order a lead has set. Within Need and within Want, the members a lead placed come first in that order and everyone else follows in the automatic order; viewers still see the automatic order. Nothing to change the order on screen yet.',
+        pr: 410,
+        prTitle: 'feat(v2): S2a-3c C2 — the pinned queue',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.78',
     date: '2026-10-25T00:00:00Z',
     title: 'Farm queue order route',

@@ -580,6 +580,17 @@ interface CollectionGoalStore {
    */
   markNeed: (groupId: string, cells: readonly MarkNeedCell[]) => Promise<{ created: number; skipped: number; undoTokens: string[] }>;
 
+  /**
+   * Sets a farm's queue order (S2a-3c, E-6): the listed members take ranks 1…n in that order and
+   * every other row's rank clears, so `[]` is Back to automatic. Then refreshes the one goal's
+   * cells. A failed PUT rejects and refreshes nothing.
+   */
+  setQueueOrder: (
+    groupId: string,
+    goalId: string,
+    userIds: readonly string[],
+  ) => Promise<{ ranked: number; cleared: number; skipped: number }>;
+
   fetchDrops: (groupId: string, goalId: string) => Promise<void>;
   logDrop: (groupId: string, goalId: string, data: RewardDropCreate) => Promise<RewardDrop>;
   deleteDrop: (groupId: string, goalId: string, dropId: string) => Promise<void>;
@@ -877,6 +888,15 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
     await get().fetchDrops(groupId, goalId);
     await get().fetchParticipants(groupId, goalId);
     await get().fetchGoals(groupId);
+  },
+
+  setQueueOrder: async (groupId, goalId, userIds) => {
+    const result = await api.put<{ ranked: number; cleared: number; skipped: number }>(
+      `/api/static-groups/${groupId}/collection-goals/${goalId}/queue-order`,
+      { user_ids: [...userIds] },
+    );
+    await get().refreshGoalProgress(groupId, goalId);
+    return result;
   },
 
   refreshGoalProgress: async (groupId, goalId, opts) => {
