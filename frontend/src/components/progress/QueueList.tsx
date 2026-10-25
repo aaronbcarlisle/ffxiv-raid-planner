@@ -179,7 +179,7 @@ export function QueueList(props: QueueListProps) {
         ))}
       </ol>
       {queue.length > TOP && (
-        <Button variant="ghost" size="sm" aria-expanded={showAll} aria-controls={listId} onClick={() => setShowAll((isOpen) => !isOpen)}>
+        <Button variant="secondary" size="sm" aria-expanded={showAll} aria-controls={listId} onClick={() => setShowAll((isOpen) => !isOpen)}>
           {showAll ? 'Show fewer' : `Show all (${queue.length})`}
         </Button>
       )}

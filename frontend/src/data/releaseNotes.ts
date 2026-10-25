@@ -68,7 +68,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Progress: Change order end-to-end checks',
         description:
-          'Browser checks now cover Change order in the V2 Progress screen: a lead sets and saves an order, goes back to automatic and undoes either, a member sees the order but cannot change it, a viewer and a guest see no order, and the light and dark themes pass the accessibility scan.',
+          'Browser checks now cover Change order in the V2 Progress screen: a lead sets and saves an order, goes back to automatic and undoes either, a member sees the order but cannot change it, a viewer and a guest see no order, and the light and dark themes pass the accessibility scan. The Show all toggle on the farm queue now meets light-theme contrast.',
         pr: 412,
         prTitle: 'test(v2): S2a-3c C4 — Change order, proven end to end',
         internal: true,
