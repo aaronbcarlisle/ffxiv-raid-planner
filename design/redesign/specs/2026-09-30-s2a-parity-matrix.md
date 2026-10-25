@@ -51,7 +51,7 @@ Settings ▸ Goals & Farms is reached from the settings gear or ⌘K "Open Setti
 | P-19 | Status chip, type, content type, priority-mode labels | `:83-104` | RE-HOMED | The row: a farm row reads "{title} · {type}" plus a Wanted or Scheduled tag; the expansion shows content, priority mode and notes, read-only, to every role (Q-3); S2-5's status column stays the have-count (S2-5 :31) · S2a-2 | **As built, in two halves:** the row text, tag and status column in S2a-2 (#372); content, priority mode and notes (About) in S2a-3a (#379). |
 | P-20 | Need · Want · Have counts | `:109-136` | RE-HOMED | One cell per player plus "{n} of {m} have it" (S2-4, S2-5 :31) · S2a-2 | |
 | P-21 | Token bar "{token}: n / cost" + "Can buy" badge | `:139-169` | RE-HOMED | Each player's own count in their cell, "Need 62/99" (S2-7 :44) · S2a-2 | The bar shows the creator's count to everyone (`:141`, A5-04): fixed. Badge: Q-4 |
-| P-22 | "Next priority: {name} ({n} tokens)" | `:65-67,172-180` | RE-HOMED | The queue's top four in the expansion (S2-8, S2-9 :62); TrackCard "is next" (S2-12) · S2a-3a | Order becomes Need, then fewest totems |
+| P-22 | "Next priority: {name} ({n} tokens)" | `:65-67,172-180` | RE-HOMED | The queue's top four in the expansion (S2-8, S2-9 :62); TrackCard "is next" (S2-12) · S2a-3a | Order becomes Need, then fewest totems. **S2a-3c (#410, #411):** the queue honours a lead's pin, within each state, so "is next" follows it |
 | P-23 | Summary note (`goal.summary`) | `:183-185` | RE-HOMED | Edit's Notes (S2-9 :68); shown read-only in the expansion (Q-3) · S2a-3a | |
 | P-24 | View → RewardGoalDetailModal | `:189-191` | RE-HOMED | Click the row or `?track=<goalId>`; one open at a time (S2-9 :60) · S2a-3a | |
 | P-25 | Log Drop (not for viewers or finished farms) | `:192-196` | RE-HOMED | Lead "Log a drop", member "I got it" (S2-9 :64) · S2a-3a | |
@@ -67,7 +67,7 @@ Settings ▸ Goals & Farms is reached from the settings gear or ⌘K "Open Setti
 | P-30 | Sub-tabs "Who needs it?" · "Drop history" | `collections/RewardGoalDetailModal.tsx:93-109` | RE-HOMED | One expansion: the queue, then the last drops (S2-9) · S2a-3a | |
 | P-31 | My status Need · Want · Have · Pass, not for viewers (G-10) | `collections/ParticipantsPanel.tsx:77-92`; `RewardGoalDetailModal.tsx:119` | RE-HOMED | Own-cell picker: saves on pick, Undo toast, plus own totem count (S2-7 :44-45) · S2a-2 | Have and the count also write the character record (S2-10, S2a-1a) |
 | P-32 | "No one has set their status yet." + Need · Want · Pass | `collections/ParticipantsPanel.tsx:51-71` | RE-HOMED | Blank cells and the own-cell picker (S2-4, S2-7) · S2a-2 | |
-| P-33 | Lists by state with "#rank" and "(you)" (G-11) | `collections/ParticipantsPanel.tsx:95-123` | RE-HOMED | Player columns in Board order: job, position, name in role colour (S2-4 :20); rank in the queue (S2-8) · S2a-2 | Replaces Discord handles (§1 :11). **As built, in two halves:** the player columns in S2a-2 (#371, #372); the rank, as the queue ("Next in line"), in S2a-3a (#377, #379), where viewers get an unranked "Need: … · Want: …" line (S2a-3a D-20). |
+| P-33 | Lists by state with "#rank" and "(you)" (G-11) | `collections/ParticipantsPanel.tsx:95-123` | RE-HOMED | Player columns in Board order: job, position, name in role colour (S2-4 :20); rank in the queue (S2-8) · S2a-2 | Replaces Discord handles (§1 :11). **As built, in two halves:** the player columns in S2a-2 (#371, #372); the rank, as the queue ("Next in line"), in S2a-3a (#377, #379), where viewers get an unranked "Need: … · Want: …" line (S2a-3a D-20). **S2a-3c (#410, #411):** the ranks follow a lead's pin, numbered 1…n within the queue; V1 prints the stored ranks (V1 delta (l)). |
 | P-34 | Each person's token count "{n}t" | `collections/ParticipantsPanel.tsx:124-128` | RE-HOMED | Cell count; viewers see none; a member may hide theirs (S2-7 :46) · S2a-2 | The gate ships in S2a-1b (V1 delta i) |
 | P-35 | Source badge "Synced from {source}" | `collections/ParticipantsPanel.tsx:129-135` | RE-HOMED | Cell provenance on hover and focus (S2-7 :47) · S2a-2 | V1 badge unchanged (delta c) |
 | P-36 | Drop list: recipient, notes, ×quantity, date; "No drops logged yet." | `collections/DropHistoryPanel.tsx:67-110` | RE-HOMED | The last three drops, week-labelled (S2-9 :63), with "Show all" under them; each drop keeps its notes and ×quantity (Q-1) · S2a-3a | |
@@ -77,7 +77,7 @@ Settings ▸ Goals & Farms is reached from the settings gear or ⌘K "Open Setti
 
 | ID | V1 affordance | V1 source | Verdict | V2 home (ruling · slice) | Notes |
 |---|---|---|---|---|---|
-| P-38 | Recipient: Need/Want by rank, else everyone; non-leads only themselves; no viewers | `:29-51,79-85` | RE-HOMED | Lead logs for anyone with #1 preselected, none under `free_roll`; member "I got it", self only (S2-8 :54, S2-9 :64) · S2a-3a | |
+| P-38 | Recipient: Need/Want by rank, else everyone; non-leads only themselves; no viewers | `:29-51,79-85` | RE-HOMED | Lead logs for anyone with #1 preselected, none under `free_roll`; member "I got it", self only (S2-8 :54, S2-9 :64) · S2a-3a | **S2a-3c (#410, #411):** #1 is the pinned first, per state (Needs before Wants) |
 | P-39 | "No specific recipient" | `:41` | RE-HOMED | The lead's Log a drop: a "Nobody" choice, which `free_roll` preselects (S2-8 :54) (Q-2) · S2a-3a | "I got it" stays one click |
 | P-40 | Hint: the drop sets the recipient to "have" | `:86-90` | RE-HOMED | Behaviour kept; your own drop also writes your character record (S2-9 :64) · S2a-3a | Copy unspecified |
 | P-41 | Notes (optional) | `:93-100` | RE-HOMED | The lead's Log a drop: an optional note (Q-2) · S2a-3a | "I got it" takes no note |
@@ -220,6 +220,7 @@ The whole tab stays in V2, unchanged, until S2a-5a (S2-14 :136). The verdicts gi
 | P-123 | `CatalogFarmRow`: per-reward row, expand, Track | `collections/CatalogFarmRow.tsx:49-290` | RETIRED-SPEC | Deleted (S2-14 :140) · S2a-5b | Superseded by SourceFarmCard (`SourceFarmCard.tsx:4`) |
 | P-124 | `SuggestionFarmCard`: Make Active Farm, View Farm, Copy Plan | `collections/SuggestionFarmCard.tsx:125-271` | RETIRED-SPEC | Deleted (S2-14 :140) · S2a-5b | Superseded by DutyFarmCard |
 | P-125 | `ObjectiveCommandCenter`: per-objective cards, next action → Roster, Schedule, `goals`/`farms` | `static-group/ObjectiveCommandCenter.tsx:71-95,225-279` | RETIRED-SPEC | Deleted (S2-14 :140) · S2a-5b | |
+| P-126 | Set a farm's queue order (`priority_rank`): API only; no V1 control sends one | `routers/collection_goals.py:884,1069`; `stores/collectionGoalStore.ts:753,775` | RE-HOMED | Change order and Back to automatic in the open farm row (S2-8 :55) · S2a-3c | **Shipped, #411 (2026-10-25)**; the route is #409, the pinned queue #410. Added at S2a-3c: the capability had no V1 control, so no earlier row |
 
 ## 12. G-4 and G-14: designs, signed 2026-10-01 (S2-9 :68, S2-11 :116, §8 :267)
 
@@ -321,11 +322,11 @@ RETIRED-ACK rows (accepted 2026-10-01; each follows its question):
 | Verdict | Rows | of which OPEN — owner | of which INTERIM |
 |---|---|---|---|
 | KEPT | 15 | 0 | 0 |
-| RE-HOMED | 85 | 0 (P-19, P-23, P-27, P-36, P-37, P-39, P-41, P-87 answered 2026-10-01) | 20 |
+| RE-HOMED | 86 | 0 (P-19, P-23, P-27, P-36, P-37, P-39, P-41, P-87 answered 2026-10-01) | 20 |
 | RETIRED-SPEC | 18 | 0 | 0 |
 | RETIRED-ACK | 7 (plus P-21's badge) | 0 (each signed in §15) | 0 |
 | DEFERRED | 0 | — | — |
-| **Total** | **125** (P-01…P-125) | **0** | **20** |
+| **Total** | **126** (P-01…P-126) | **0** | **20** |
 
 DEFERRED is empty. What S2a leaves for other waves sits in the Notes column: W4 HOME's D-70 hand-off of Suggestions (P-83, P-92), W1's key 5 (P-02) and S2c's removal of the phone bar (P-03, P-04).
 
@@ -335,11 +336,12 @@ DEFERRED is empty. What S2a leaves for other waves sits in the Notes column: W4 
 | S2a-2 | 26 |
 | S2a-3a | 28 |
 | S2a-3b | 4 |
+| S2a-3c | 1 |
 | S2a-4 | 30 |
 | S2a-5a | 18 |
 | S2a-5b | 12 |
 | No V2 home (the RETIRED-ACK rows) | 7 |
-| **Total** | **125** |
+| **Total** | **126** |
 
 ## Change log
 

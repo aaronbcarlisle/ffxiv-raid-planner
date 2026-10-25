@@ -127,7 +127,7 @@ All four "· S2a-3b" rows ship here: P-108 (Roster ▸ Split Planner sub-tab →
 
 ## 7. Residuals (disclosed)
 
-- D-1: Change order waits for S2a-3c; `priority_rank` set in the classic view still doesn't affect V2's queue. S2a-3a D-3's stored-character edge stays.
+- D-1: Change order waits for S2a-3c; `priority_rank` set in the classic view still doesn't affect V2's queue (corrected 2026-10-25, S2a-3c: no V1 control sets a rank). S2a-3a D-3's stored-character edge stays.
 - The planner inside the panel keeps V1's look and copy ("Split Clear Composer"; its own Enable card never shows in V2) until the holistic review (D-3).
 - Home's BiS bar (`bisSlotTotals`: "obtained" = `hasItem` on target slots) and the tier row's status total (done only) can differ until W4 HOME adopts the selector (E-1); both now exclude substitutes (D-7).
 - D-9: under the "reset" tab memory a jump lands on Roster ▸ Cards, highlighted, not the Board: `GroupViewContent`'s `?player=` effect calls `setPageMode('roster')` again (`:248`), which clears `rview` in that mode (`hooks/useGroupViewState.ts:333-334`). V1's file stays byte-for-byte until D1.
