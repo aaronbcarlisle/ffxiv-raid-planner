@@ -542,6 +542,9 @@ ROUTES: tuple[AuthzRoute, ...] = (
     R("POST", CP + "/mark-need", "lead", "helper", "mark blank farm cells Need (S2-7)",
       build=lambda w: _r(_g(w), None, {"cells": [{"goal_id": w.goal.id,
                                                   "user_id": w.u["member2"].id}]})),
+    R("PUT", CG + "/{goal_id}/queue-order", "lead", "helper",
+      "set or clear a farm's queue order (S2a-3c)",
+      build=lambda w: _r(_goal(w), None, {"user_ids": [w.u["member2"].id]})),
 
     # ── content suggestions (viewers may suggest and vote: HS-35 #2 (a)) ───
     R("POST", CS, "viewer", "helper", "suggest content (any role, HS-35 #2 (a))",
