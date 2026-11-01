@@ -47,7 +47,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "framer-motion": "^13.4.4",
+    "framer-motion": "^14.7.1",
     "lucide-react": "^1.52.0",
     "prism-react-renderer": "^2.4.1",
     "prismjs": "^1.30.0",
