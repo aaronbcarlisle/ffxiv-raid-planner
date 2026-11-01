@@ -11,6 +11,6 @@
     "discord.js": "^14.14.1"
   },
   "devDependencies": {
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.5"
   }
 }
