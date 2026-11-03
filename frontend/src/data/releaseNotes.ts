@@ -70,6 +70,8 @@ export const RELEASES: Release[] = [
         description:
           'The list behind V2\'s Find: what your static wants, untracked first and then tracked, and every farm in the catalog, with search, three filters and their counts. A failed suggestions fetch now records its error for the screen to show. Nothing changes on screen yet.',
         internal: true,
+        pr: 423,
+        prTitle: 'feat(v2): S2a-4a A1 — the Find model',
       },
     ],
     internal: true,
