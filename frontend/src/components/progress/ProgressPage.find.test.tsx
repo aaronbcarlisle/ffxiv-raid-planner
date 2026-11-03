@@ -329,7 +329,7 @@ describe('focus after Discard on the way to Find (A2-M1)', () => {
     await waitFor(() => expect(viewButton('Find')).toHaveFocus());
   });
 
-  it('returns focus to Track a farm', async () => {
+  it('Track a farm: Discard lands focus on the search, not back on the button (D-5, TA3)', async () => {
     await dirtyEdit();
     const track = within(screen.getByTestId('progress-view-bar')).getByRole('button', { name: 'Track a farm' });
     track.focus();

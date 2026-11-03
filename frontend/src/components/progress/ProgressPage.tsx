@@ -788,7 +788,19 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
                 names={memberNames}
                 expandedId={expandedFind}
                 onExpand={(id) => setExpandedFind((cur) => (cur === id ? null : id))}
-                footer={mayEdit ? <CustomTrackRow query={findQuery} groupId={group.id} onCreated={(id) => editControls.start(id)} /> : undefined}
+                footer={
+                  mayEdit ? (
+                    <CustomTrackRow
+                      query={findQuery}
+                      groupId={group.id}
+                      onCreated={(id) => {
+                        // The text became a farm: a return to Find must not offer it again (no server duplicate check, E-4).
+                        setFindQuery('');
+                        editControls.start(id);
+                      }}
+                    />
+                  ) : undefined
+                }
                 error={suggestionsError}
                 onRetry={() => void useCollectionIntentStore.getState().fetchSuggestions(group.id)}
                 catalogFallback={catalogFallback}
