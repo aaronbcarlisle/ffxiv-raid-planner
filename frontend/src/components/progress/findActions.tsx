@@ -7,8 +7,9 @@
  *
  * `MemberFindAction`: **I want this** writes the member's own Hub want (`upsertIntent`, a full
  * replace): a new row gets the defaults, an existing row keeps its priority and notes, and a
- * private one asks first, inline ("Your want is private. Share it with your statics?" Cancel ·
- * Share) so a private want is never shared blind. Nothing is written before this mount's intents
+ * private one asks first, inline ("Your want is private. Share it with your statics?" Share ·
+ * Cancel, Cancel last so it holds the trigger's place, S-6) so a private want is never shared
+ * blind. Nothing is written before this mount's intents
  * have loaded, and the page never renders it under View As (the intents route ignores
  * `X-View-As`). A shared want reads **Wanted ✓**.
  *
@@ -33,21 +34,21 @@ import { BUSY_CLASS } from './useDrops';
 const SHARE_PROMPT = 'Your want is private. Share it with your statics?';
 const TITLE_MAX = 200;
 
-/** The row's disclosure toggle (`FindRow`'s first control): where focus goes when a control under it is gone. */
-function focusRowToggle(from: HTMLElement) {
-  from.closest('li')?.querySelector<HTMLElement>('button[aria-expanded]')?.focus();
+/** The row's disclosure toggle (`FindRow`'s first control): where focus lands when a control under it is gone. */
+function rowToggleOf(from: HTMLElement): HTMLElement | null {
+  return from.closest('li')?.querySelector<HTMLElement>('button[aria-expanded]') ?? null;
 }
 
 interface ActionButtonProps extends Omit<ComponentProps<typeof Button>, 'onClick' | 'variant' | 'size' | 'className'> {
   busy: boolean;
   onPress: () => void;
-  /** Runs when this control unmounts while it holds focus, so focus never falls to <body>. Keep it stable. */
-  onLeave?: (el: HTMLButtonElement) => void;
+  /** Where focus lands when this control is removed while it holds focus (never <body>). Keep it stable. */
+  leaveTo?: (el: HTMLButtonElement) => HTMLElement | null;
   children: ReactNode;
 }
 
 /** A Find action: `secondary` (the row is `bg-surface-card`), `aria-disabled` with `BUSY_CLASS` while busy. */
-function ActionButton({ busy, onPress, onLeave, children, ref: outerRef, ...rest }: ActionButtonProps) {
+function ActionButton({ busy, onPress, leaveTo, children, ref: outerRef, ...rest }: ActionButtonProps) {
   const inner = useRef<HTMLButtonElement>(null);
   const setRefs = useCallback(
     (el: HTMLButtonElement | null) => {
@@ -57,13 +58,23 @@ function ActionButton({ busy, onPress, onLeave, children, ref: outerRef, ...rest
     },
     [outerRef],
   );
-  // A layout cleanup runs before React removes the button, so it can still see the focus.
+  // A layout cleanup runs before React removes the button, while it still sits in its row (so the
+  // landing can be found), but it also runs for StrictMode's simulated unmount, which removes
+  // nothing. So the move is decided once the commit is over: only when the button is really gone
+  // and nothing else (the prompt's Cancel, a row's name) has taken the focus meanwhile.
   useLayoutEffect(() => {
     const el = inner.current;
     return () => {
-      if (onLeave !== undefined && el !== null && document.activeElement === el) onLeave(el);
+      if (leaveTo === undefined || el === null || document.activeElement !== el) return;
+      const landing = leaveTo(el);
+      queueMicrotask(() => {
+        if (el.isConnected || landing === null) return;
+        const active = document.activeElement;
+        if (active !== null && active !== document.body) return;
+        landing.focus();
+      });
     };
-  }, [onLeave]);
+  }, [leaveTo]);
   return (
     <Button
       ref={setRefs}
@@ -239,14 +250,17 @@ export function MemberFindAction({ item, groupId, existing, intents, onRetry }: 
   }
 
   if (prompt) {
+    // Cancel is the LAST control, so it sits where I want this was (the slot's right edge, S-6): a
+    // second press on the same spot cancels, never shares. The order is the DOM's, with no CSS
+    // reordering, so Tab runs the same way the eye does.
     return (
       <span className="inline-flex flex-wrap items-center justify-end gap-1.5">
         <span className="text-xs text-text-secondary">{SHARE_PROMPT}</span>
+        <ActionButton busy={busy} onPress={() => void write()} leaveTo={rowToggleOf} onKeyDown={onPromptKeyDown}>
+          Share
+        </ActionButton>
         <ActionButton ref={cancelRef} busy={busy} onPress={cancel} onKeyDown={onPromptKeyDown}>
           Cancel
-        </ActionButton>
-        <ActionButton busy={busy} onPress={() => void write()} onLeave={focusRowToggle} onKeyDown={onPromptKeyDown}>
-          Share
         </ActionButton>
       </span>
     );
@@ -254,7 +268,7 @@ export function MemberFindAction({ item, groupId, existing, intents, onRetry }: 
 
   // Until the intents have loaded the control is the busy placeholder: in place, never pressable.
   return (
-    <ActionButton ref={triggerRef} busy={busy || intents !== 'ready'} onPress={press} onLeave={focusRowToggle}>
+    <ActionButton ref={triggerRef} busy={busy || intents !== 'ready'} onPress={press} leaveTo={rowToggleOf}>
       I want this
     </ActionButton>
   );
