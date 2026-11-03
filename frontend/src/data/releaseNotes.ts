@@ -60,6 +60,21 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.86',
+    date: '2026-11-03T00:00:00Z',
+    title: 'Progress: Find end-to-end checks',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Progress: Find end-to-end checks',
+        description:
+          'Browser checks for V2\'s Find view: the wanted section comes first and hides private wants, Track seeds the statuses, I want this asks before sharing, the footer finds the wanted farm, each role sees only its own controls, a guest loads no catalog or wants, and both themes pass the accessibility scan with a row open and with the share prompt open.',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.85',
     date: '2026-11-03T00:00:00Z',
     title: 'Progress: Track, I want this and custom farms in Find',
