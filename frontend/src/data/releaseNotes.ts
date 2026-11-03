@@ -70,6 +70,8 @@ export const RELEASES: Release[] = [
         description:
           'V2\'s Progress screen has a Tracks and Find switch for every role, kept in the address as pview. A lead also gets Track a farm beside it. Opening a farm row, or an old farm link, lands on the right view. Find is an empty page for now.',
         internal: true,
+        pr: 424,
+        prTitle: 'feat(v2): S2a-4a A2 — the Tracks and Find switch',
       },
     ],
     internal: true,
