@@ -197,7 +197,7 @@ export function FindList({
         </section>
       )}
 
-      {(list.all.length > 0 || (!loading && !noMatches)) && (
+      {(list.all.length > 0 || (!loading && !noMatches && list.wanted.length === 0)) && (
         <section aria-labelledby={allHeadingId} className="space-y-2">
           <h2 id={allHeadingId} className="text-sm font-semibold text-text-primary">
             {`All farm sources (${list.counts.all})`}

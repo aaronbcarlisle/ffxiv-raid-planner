@@ -1,6 +1,13 @@
-import { type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { API_BASE, freshContext, loginAsMember } from './auth';
 import type { ApiHeaders } from './owner';
+
+/** Find's regions and rows, for `progress.spec.ts` and `role-gating.spec.ts`. */
+export const findRegion = (page: Page) => page.getByRole('region', { name: 'Find', exact: true });
+export const wantedSection = (page: Page) => findRegion(page).getByRole('region', { name: /^Wanted by your static/ });
+export const allSection = (page: Page) => findRegion(page).getByRole('region', { name: /^All farm sources/ });
+export const rowIn = (scope: Locator, name: string) => scope.getByTestId('find-row').filter({ has: scope.page().getByText(name, { exact: true }) });
+export const search = (page: Page) => findRegion(page).getByRole('textbox', { name: 'Search farms' });
 
 /**
  * S2a-4a·A4: DevMember's Hub wants, seeded through the member's own API for the Find specs.
@@ -49,14 +56,11 @@ async function getJson<T>(page: Page, url: string): Promise<T> {
 export async function pickFindItems(member: MemberSession, groupId: string): Promise<FindSeed> {
   const { page } = member;
   const catalog = await getJson<Array<{ id: string; name: string; category: string }>>(page, `${API_BASE}/api/collection-catalog`);
-  const goals = await getJson<Array<{ catalog_item_id?: string | null; catalogItemId?: string | null }>>(
-    page,
-    `${API_BASE}/api/static-groups/${groupId}/collection-goals`,
-  );
+  const goals = await getJson<Array<{ catalog_item_id: string | null }>>(page, `${API_BASE}/api/static-groups/${groupId}/collection-goals`);
   const suggestions = await getJson<Array<{ catalog_item_id: string }>>(page, `${API_BASE}/api/static-groups/${groupId}/collection-suggestions`);
   const intents = await getJson<IntentRow[]>(page, `${API_BASE}/api/me/collection-intent`);
   const taken = new Set<string>([
-    ...goals.map((g) => g.catalog_item_id ?? g.catalogItemId ?? ''),
+    ...goals.map((g) => g.catalog_item_id ?? ''),
     ...suggestions.map((s) => s.catalog_item_id),
     ...intents.map((i) => i.catalog_item_id),
   ]);

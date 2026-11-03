@@ -40,10 +40,12 @@
  *
  * Find's actions (S2a-4a·A3, R-F-6, D-6, D-7, D-8): a lead's Track and the custom row (`findActions`)
  * create the goal, then this page makes the one URL write that opens its row (Track focuses the row's
- * name; the custom row opens Edit, so its Title takes focus). A member's I want this needs the
- * member's own intents, fetched here when a member who is not under View As opens Find: the control
- * is a busy placeholder until this mount's fetch has settled, an error line with Retry when it
- * failed, and it is never rendered under View As (the intents route ignores `X-View-As`).
+ * name; the custom row opens Edit, so its Title takes focus). Both wait for this mount's goals fetch
+ * to come back clean (`goalsKnown`), and a failed one has its own line at the top of Find with a
+ * Retry. A member's I want this needs the member's own intents, fetched here when a member who is
+ * not under View As opens Find: the control is a busy placeholder until this mount's fetch has
+ * settled, an error line with Retry when it failed, and it is never rendered under View As (the
+ * intents route ignores `X-View-As`).
  *
  * The open row (S2a-3a·G2, R-S3-3, D-7, D-8): `?track=<goal id>` through `useProgressView`,
  * one row at a time. A row is open only while its id names a goal of THIS static whose
@@ -98,7 +100,7 @@ import { FindList } from './FindList';
 import { ProgressMatrix } from './ProgressMatrix';
 import { messageOf } from './undoToasts';
 import { ProgressToolbar } from './ProgressToolbar';
-import { useProgressView, type ProgressViewName } from './useProgressView';
+import { useProgressView, type ProgressViewName, type ProgressViewPatch } from './useProgressView';
 import { TIER_TRACK, type TierPanelModel } from './TierExpansion';
 import type { TierColumnCell, TierRowModel } from './TierRow';
 
@@ -130,6 +132,22 @@ interface ProgressPageProps {
   currentUserId: string | null;
   isViewingAs: boolean;
   onNavigate: (tab: PageMode, extra?: Record<string, string>) => void;
+}
+
+/** The page's failure line, with its Retry: Tracks' under the matrix, Find's above the list. */
+function LoadFailure({ testId, message, busy = false, onRetry }: { testId: string; message: string; busy?: boolean; onRetry: () => void }) {
+  return (
+    <div
+      role="alert"
+      data-testid={testId}
+      className="flex flex-wrap items-center gap-3 rounded-lg border border-status-error/30 bg-status-error/10 px-4 py-3 text-sm text-text-primary"
+    >
+      <span>{message}</span>
+      <Button variant="secondary" size="sm" loading={busy} onClick={onRetry}>
+        Retry
+      </Button>
+    </div>
+  );
 }
 
 export function ProgressPage({ group, tier, canManage, userRole, currentUserId, isViewingAs, onNavigate }: ProgressPageProps) {
@@ -448,42 +466,16 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   // ── The open row (S2a-3a·G2, R-S3-3) ──
   // `?edit` belongs to the open row (A2-M3): every move of `?track` drops it, in the same write.
   const setTrack = useCallback((id: string | null) => setProgressView({ track: id, edit: null }), [setProgressView]);
-  const [searchParams] = useSearchParams();
-  // Rule 1: `?track` wins over `?pview=find`, in one write that drops `pview`. The shell seeds
-  // `?tier=` on a cold entry in the same tick from the params of its own render, so that write can
-  // land after this one and bring `pview=find` back with the same (`find`, `track`) pair. Only a
-  // new params object re-arms this effect to write again, so `searchParams` is a dependency on
-  // purpose. Once `pview` is gone the condition is false and it is done.
-  useEffect(() => {
-    if (pview === 'find' && track !== null) setProgressView({ pview: 'tracks' });
-  }, [pview, track, searchParams, setProgressView]);
-  // Rule 2: V1's `?farm=suggested|catalog` opens Find once, on mount, and goes from the URL.
-  // The shell seeds `?tier=` on a cold entry in the same tick, and React Router builds each write
-  // from the params of its render, so that write can land after this one and bring `farm` back.
-  // The map therefore stays pending until a render has seen `farm` gone, and writes again (from
-  // the latest params, each write removing `farm`) while it is still there. Once gone it is done.
-  const farmParam = searchParams.get('farm');
-  // `searchParams` is a dependency on purpose: a clobbering write can bring `farm` back with the same
-  // value, and only a new params object re-arms this effect to write again.
-  const farmPending = useRef(farmParam === 'suggested' || farmParam === 'catalog');
-  useEffect(() => {
-    if (!farmPending.current) return;
-    if (farmParam !== 'suggested' && farmParam !== 'catalog') {
-      farmPending.current = false;
-      return;
-    }
-    if (isMember) setProgressView({ pview: 'find', farm: null });
-  }, [farmParam, isMember, searchParams, setProgressView]);
   // Open only while the id names a goal of this static and the goals have loaded.
   const openId = track !== null && goalsReady && groupGoals.some((g) => g.id === track) ? track : null;
-  // An id that matches no goal here is dropped once this mount's goals fetch has returned and the
-  // store holds this static's goals; never on the cached list alone (R-S3-3, "never during loading").
   const goalsFetched = goalsSettled?.groupId === group.id && goalsSettled.attempt === attempt;
-  useEffect(() => {
-    // `?track=tier` names no goal: the tier's own rule below decides it (E-3).
-    if (track === null || track === TIER_TRACK || !goalsReady || !goalsFetched) return;
-    if (!groupGoals.some((g) => g.id === track)) setTrack(null);
-  }, [track, goalsReady, goalsFetched, groupGoals, setTrack]);
+  // What Find reads `goals` for: which farms the static already tracks. A wrong answer offers Track on
+  // a tracked farm, and the route has no duplicate guard (E-4), so a lead's controls wait for THIS
+  // mount's fetch to bring this static's goals back clean: never a cold load's empty list, never a
+  // cached list while the refetch runs, and never one a failed fetch left behind.
+  const goalsKnown = goalsReady && goalsFetched && goalsError === null;
+  // Only this mount's failure, so a Retry in flight or an earlier mount's error never shows.
+  const findGoalsError = goalsFetched ? goalsError : null;
 
   // ── The split plan (S2a-3b·H4; R-T-6, R-T-7, E-8, E-11) ──
   // Members and viewers fetch it on the active tier, and again on a return to the tab. The store is
@@ -535,10 +527,6 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   // `?track=tier` waits while the tier is unknown (a cold load) and while the fetch runs; it goes on
   // a known past tier (E-8), or once the result says the row can't open (a member, split clears off).
   const tierPast = tier !== null && !tierActive;
-  useEffect(() => {
-    if (track !== TIER_TRACK) return;
-    if (tierPast || (splitHere && !tierOpenable)) setTrack(null);
-  }, [track, tierPast, splitHere, tierOpenable, setTrack]);
   // The one open row: the tier's, else a farm's.
   const openRowId = tierOpen ? TIER_TRACK : openId;
   // The planner's players (R-T-8): configured, non-substitute cards, in column order.
@@ -547,24 +535,56 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     [columns],
   );
 
-  // A static switch under the mounted page clears `?track` (and the edit with it) at once (the
-  // switches that navigate with no query clear it already); the id belongs to the static it was
-  // read under.
+  // ── What the URL must not hold (R-F-3 rules 1 and 2, R-S3-3, E-3, E-8, A2-M3, R-D11-B) ──
+  // React Router builds each write from the params of its render, so writes in one effect flush share
+  // a start and the last one wins. The shell's `?tier=` seed on a cold entry is such a write, from the
+  // params of its own render, and it can land after these and bring back what they dropped. So every
+  // drop of `pview`, `track` and `edit` is ONE write, from the first effect below, and both effects
+  // have `searchParams` as a dependency on purpose: a param can come back with the value it had, and
+  // only a new params object re-arms them to write again. Once it is gone the condition is false, so
+  // neither loops.
+  const [searchParams] = useSearchParams();
   const trackedGroupId = useRef(group.id);
   useEffect(() => {
-    if (trackedGroupId.current === group.id) return;
+    const switched = trackedGroupId.current !== group.id;
     trackedGroupId.current = group.id;
-    setTrack(null);
-  }, [group.id, setTrack]);
+    const patch: ProgressViewPatch = {};
+    // Rule 1: `?track` wins over `?pview=find`.
+    if (pview === 'find' && track !== null) patch.pview = 'tracks';
+    // An id that matches no goal here goes once this mount's goals fetch has returned and the store
+    // holds this static's goals; never on the cached list alone (R-S3-3, "never during loading").
+    // `?track=tier` names no goal, so the tier's own rule decides it (E-3, E-8).
+    const goalGone = track !== TIER_TRACK && goalsReady && goalsFetched && !groupGoals.some((g) => g.id === track);
+    const tierGone = track === TIER_TRACK && (tierPast || (splitHere && !tierOpenable));
+    // A static switch under the mounted page clears the id at once, before the new static's goals
+    // load: it belongs to the static it was read under (the switches that navigate with no query
+    // clear it already). `?edit` goes with `?track` (A2-M3), and on its own when it names another id.
+    if (track !== null && (switched || goalGone || tierGone)) {
+      patch.track = null;
+      patch.edit = null;
+    } else if (edit !== null && edit !== track) {
+      patch.edit = null;
+    }
+    if (Object.keys(patch).length > 0) setProgressView(patch);
+  }, [pview, track, edit, searchParams, group.id, goalsReady, goalsFetched, groupGoals, tierPast, splitHere, tierOpenable, setProgressView]);
+  // Rule 2: V1's `?farm=suggested|catalog` opens Find once, on mount, and goes from the URL. The map
+  // stays pending until a render has seen `farm` gone, and writes again while it is still there.
+  const farmParam = searchParams.get('farm');
+  const farmPending = useRef(farmParam === 'suggested' || farmParam === 'catalog');
+  useEffect(() => {
+    if (!farmPending.current) return;
+    if (farmParam !== 'suggested' && farmParam !== 'catalog') {
+      farmPending.current = false;
+      return;
+    }
+    if (isMember) setProgressView({ pview: 'find', farm: null });
+  }, [farmParam, isMember, searchParams, setProgressView]);
 
   // ── Inline Edit (G5, D-12; A2-M3) ──
   // `?edit` is the farm whose block is on, and the block is on screen only while that row is the
   // open one. The page writes `edit` with `track` only, so an `edit` that names another id (a
-  // hand-written or foreign URL) is dropped.
+  // hand-written or foreign URL) is dropped above.
   const editingId = edit !== null && edit === openId ? edit : null;
-  useEffect(() => {
-    if (edit !== null && edit !== track) setProgressView({ edit: null });
-  }, [edit, track, setProgressView]);
   // Read in event handlers only: the block reports it from an effect, the handlers read it fresh.
   const dirtyRef = useRef(false);
   const setDirty = useCallback((dirty: boolean) => {
@@ -721,7 +741,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     [setProgressView],
   );
   const renderAction = (item: FindItem) => {
-    if (mayEdit) return <LeadFindAction item={item} groupId={group.id} onTracked={onTracked} />;
+    if (mayEdit) return goalsKnown ? <LeadFindAction item={item} groupId={group.id} onTracked={onTracked} /> : null;
     if (memberActions && item.trackable) {
       return <MemberFindAction item={item} groupId={group.id} existing={myIntents[item.id]} intents={intentsStatus} onRetry={retryIntents} />;
     }
@@ -779,6 +799,9 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
             }
           />
         )}
+        {view === 'find' && findGoalsError !== null && (
+          <LoadFailure testId="find-goals-error" message={`Couldn't load what your static tracks: ${findGoalsError}`} onRetry={retry} />
+        )}
         {view === 'find' && (
           <section ref={findSectionRef} aria-label="Find">
             {findList !== null && (
@@ -793,7 +816,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
                 expandedId={expandedFind}
                 onExpand={(id) => setExpandedFind((cur) => (cur === id ? null : id))}
                 footer={
-                  mayEdit ? (
+                  mayEdit && goalsKnown ? (
                     <CustomTrackRow
                       query={findQuery}
                       groupId={group.id}
@@ -847,16 +870,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
           </p>
         )}
         {view === 'tracks' && error !== null && (
-          <div
-            role="alert"
-            data-testid="progress-error"
-            className="flex flex-wrap items-center gap-3 rounded-lg border border-status-error/30 bg-status-error/10 px-4 py-3 text-sm text-text-primary"
-          >
-            <span>{`Couldn't load farms: ${error}`}</span>
-            <Button variant="secondary" size="sm" loading={progressLoading} onClick={retry}>
-              Retry
-            </Button>
-          </div>
+          <LoadFailure testId="progress-error" message={`Couldn't load farms: ${error}`} busy={progressLoading} onRetry={retry} />
         )}
         {view === 'tracks' && footerItem !== null && <FindFooter item={footerItem} names={memberNames} onFind={() => findFromFooter(footerItem)} />}
       </div>

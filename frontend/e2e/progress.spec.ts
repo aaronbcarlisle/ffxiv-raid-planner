@@ -36,7 +36,7 @@ import {
   withSplit,
   withoutSplitPlannerDebt,
 } from './helpers/owner';
-import { type FindSeed, type PriorWants, memberSession, pickFindItems, readWants, restoreWants, seedWants } from './helpers/find';
+import { type FindSeed, type PriorWants, allSection, findRegion, memberSession, pickFindItems, readWants, restoreWants, rowIn, search, seedWants, wantedSection } from './helpers/find';
 
 const PREFIX = 'E2E Progress';
 const THEMES = ['dark', 'light'] as const;
@@ -1802,13 +1802,8 @@ test.describe.serial('Progress: Find (S2a-4a)', () => {
     }
   });
 
-  const findRegion = (page: Page) => page.getByRole('region', { name: 'Find', exact: true });
   const viewButton = (page: Page, name: 'Tracks' | 'Find') => page.getByRole('group', { name: 'Progress view' }).getByRole('button', { name, exact: true });
-  const wantedSection = (page: Page) => findRegion(page).getByRole('region', { name: /^Wanted by your static/ });
-  const allSection = (page: Page) => findRegion(page).getByRole('region', { name: /^All farm sources/ });
-  const rowIn = (scope: Locator, name: string) => scope.getByTestId('find-row').filter({ has: scope.page().getByText(name, { exact: true }) });
   const toggleOf = (row: Locator, name: string) => row.getByRole('button', { name: `Show details for ${name}`, exact: true });
-  const search = (page: Page) => findRegion(page).getByRole('textbox', { name: 'Search farms' });
   const shared = () => (seed as FindSeed).shared;
   const priv = () => (seed as FindSeed).private;
 
@@ -1882,7 +1877,15 @@ test.describe.serial('Progress: Find (S2a-4a)', () => {
   test('owner: the footer names the wanted farm, and its Find opens Find with that row expanded and focused (R-F-7)', async ({ browser }) => {
     const context = await freshContext(browser);
     const page = await context.newPage();
-    await open(page, 'tab=progress');
+    // The footer names `topWanted`, the first Wanted row nobody tracks. Everything below reads the
+    // seeded want, so it has to be that row: a DEVTST want that outscores it fails here, by name.
+    await open(page, 'tab=progress&pview=find');
+    await findReady(page);
+    const topRow = wantedSection(page).getByTestId('find-row').first();
+    await expect(topRow).toContainText(shared().name);
+    await expect(topRow.getByRole('button', { name: 'Track', exact: true })).toBeVisible();
+
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=progress`);
     await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
 
     const link = page.getByLabel(`Find ${shared().name}`, { exact: true });

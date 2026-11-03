@@ -138,7 +138,7 @@ afterEach(() => {
 
 // ── Geometry (S-6) ──────────────────────────────────────────────────────────
 
-describe('the prompt\'s geometry (S-6)', () => {
+describe('the prompt\'s DOM order (S-6)', () => {
   it('Cancel is the last control, after Share, with no CSS reordering between it and the row', async () => {
     await openPrompt();
     const c = cancel();

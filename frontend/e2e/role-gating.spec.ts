@@ -30,7 +30,7 @@
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import { API_BASE, DEV_SHARE_CODE, freshContext, loginAsMember, loginAsOwner, ownerApiContext, pinShell } from './helpers/auth';
 import { currentUserId, ownerSession, setRole, setSplit, splitEnabled, withSplit } from './helpers/owner';
-import { type FindSeed, type PriorWants, memberSession, pickFindItems, readWants, restoreWants, seedWants } from './helpers/find';
+import { type FindSeed, type PriorWants, allSection, findRegion, memberSession, pickFindItems, readWants, restoreWants, rowIn, search, seedWants, wantedSection } from './helpers/find';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -813,12 +813,6 @@ test.describe.serial('Progress Find, by role (S2a-4a)', () => {
   let demoted: string | null = null;
 
   const FIND = 'tab=progress&pview=find';
-  const findRegion = (page: Page) => page.getByRole('region', { name: 'Find', exact: true });
-  const wantedSection = (page: Page) => findRegion(page).getByRole('region', { name: /^Wanted by your static/ });
-  const allSection = (page: Page) => findRegion(page).getByRole('region', { name: /^All farm sources/ });
-  const rowIn = (scope: ReturnType<Page['locator']>, name: string) =>
-    scope.getByTestId('find-row').filter({ has: scope.page().getByText(name, { exact: true }) });
-  const search = (page: Page) => findRegion(page).getByRole('textbox', { name: 'Search farms' });
   const customRow = (page: Page) => findRegion(page).getByRole('button', { name: /as a custom farm$/ });
   const customHint = (page: Page) => findRegion(page).getByText('Type a name to track a custom farm', { exact: true });
   const shared = () => (seed as FindSeed).shared;
