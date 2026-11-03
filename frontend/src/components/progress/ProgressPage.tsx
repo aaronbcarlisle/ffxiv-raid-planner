@@ -448,12 +448,16 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   // ── The open row (S2a-3a·G2, R-S3-3) ──
   // `?edit` belongs to the open row (A2-M3): every move of `?track` drops it, in the same write.
   const setTrack = useCallback((id: string | null) => setProgressView({ track: id, edit: null }), [setProgressView]);
-  // Rule 1: `?track` wins over `?pview=find`, in one write that drops `pview`.
+  const [searchParams] = useSearchParams();
+  // Rule 1: `?track` wins over `?pview=find`, in one write that drops `pview`. The shell seeds
+  // `?tier=` on a cold entry in the same tick from the params of its own render, so that write can
+  // land after this one and bring `pview=find` back with the same (`find`, `track`) pair. Only a
+  // new params object re-arms this effect to write again, so `searchParams` is a dependency on
+  // purpose. Once `pview` is gone the condition is false and it is done.
   useEffect(() => {
     if (pview === 'find' && track !== null) setProgressView({ pview: 'tracks' });
-  }, [pview, track, setProgressView]);
+  }, [pview, track, searchParams, setProgressView]);
   // Rule 2: V1's `?farm=suggested|catalog` opens Find once, on mount, and goes from the URL.
-  const [searchParams] = useSearchParams();
   // The shell seeds `?tier=` on a cold entry in the same tick, and React Router builds each write
   // from the params of its render, so that write can land after this one and bring `farm` back.
   // The map therefore stays pending until a render has seen `farm` gone, and writes again (from
