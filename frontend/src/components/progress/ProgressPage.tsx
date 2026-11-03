@@ -349,11 +349,20 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   }, [pview, track, setProgressView]);
   // Rule 2: V1's `?farm=suggested|catalog` opens Find once, on mount, and goes from the URL.
   const [searchParams] = useSearchParams();
-  const farmOnMount = useRef(searchParams.get('farm'));
+  // The shell seeds `?tier=` on a cold entry in the same tick, and React Router builds each write
+  // from the params of its render, so that write can land after this one and bring `farm` back.
+  // The map therefore stays pending until a render has seen `farm` gone, and writes again (from
+  // the latest params, each write removing `farm`) while it is still there. Once gone it is done.
+  const farmParam = searchParams.get('farm');
+  const farmPending = useRef(farmParam === 'suggested' || farmParam === 'catalog');
   useEffect(() => {
-    const farm = farmOnMount.current;
-    if (isMember && (farm === 'suggested' || farm === 'catalog')) setProgressView({ pview: 'find', farm: null });
-  }, [isMember, setProgressView]);
+    if (!farmPending.current) return;
+    if (farmParam !== 'suggested' && farmParam !== 'catalog') {
+      farmPending.current = false;
+      return;
+    }
+    if (isMember) setProgressView({ pview: 'find', farm: null });
+  }, [farmParam, isMember, searchParams, setProgressView]);
   // Open only while the id names a goal of this static and the goals have loaded.
   const openId = track !== null && goalsReady && groupGoals.some((g) => g.id === track) ? track : null;
   // An id that matches no goal here is dropped once this mount's goals fetch has returned and the
