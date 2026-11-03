@@ -124,4 +124,14 @@ describe('collectionIntentStore.suggestionsError', () => {
     expect(errorMap()?.['group-2'] ?? null).toBeNull();
     expect(useCollectionIntentStore.getState().suggestions['group-2']).toHaveLength(1);
   });
+
+  it('a second static\'s failure keeps the first static\'s message (A1-M2)', async () => {
+    vi.mocked(api.get).mockRejectedValueOnce(new Error('Boom two'));
+    await useCollectionIntentStore.getState().fetchSuggestions('group-2');
+    vi.mocked(api.get).mockRejectedValueOnce(new Error('Boom one'));
+    await useCollectionIntentStore.getState().fetchSuggestions('group-1');
+
+    expect(errorMap()?.['group-1']).toBe('Boom one');
+    expect(errorMap()?.['group-2']).toBe('Boom two');
+  });
 });
