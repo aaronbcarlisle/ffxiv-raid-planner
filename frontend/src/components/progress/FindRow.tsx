@@ -6,7 +6,8 @@
  * The toggle is a disclosure `IconButton`. The body is always in the DOM so `aria-controls`
  * resolves, and is `hidden` and `inert` while collapsed. Expanded it lists every member's state
  * (P-58): names come from the roster `names` map, "A member" for anyone not in it, never the join's
- * Discord username (S-2). Token counts are hidden from a viewer (B1) and when the count is null.
+ * Discord username (S-2). Token counts (and the can-buy mark) are hidden from a viewer (B1), when the
+ * count is null, and for a member who has the item (V1's `DutyFarmCard` gate).
  */
 import { useId, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
@@ -92,7 +93,7 @@ export function FindRow({ item, names, expanded, onToggle, action, readerIsViewe
             {item.members.map((m) => (
               <li key={m.userId}>
                 <span className="text-text-primary">{`${names.get(m.userId) ?? 'A member'}: ${stateLabel(m)}`}</span>
-                {!readerIsViewer && m.tokenCount !== null && (
+                {!readerIsViewer && m.tokenCount !== null && m.ownershipState !== 'have' && (
                   <>
                     {` · ${m.tokenCount} ${item.token?.name ?? 'tokens'}`}
                     {m.canBuy && (

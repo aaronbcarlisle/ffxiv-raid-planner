@@ -362,3 +362,18 @@ describe('the state words', () => {
     expect(stateOf(intent, own)).toBe(expected);
   });
 });
+
+// ── The count gate for a Have member (S2a-4a·A3 TA3, carried; V1 `collections/DutyFarmCard.tsx:203`) ──
+
+describe('the count gate for a Have member', () => {
+  it('shows no token count and no can-buy mark for a member who has it, even with a count and canBuy', () => {
+    const owner = { ...m('u2', null, 'have', 40), canBuy: true };
+    const hunter = { ...m('u1', 'hunting', 'missing', 37), canBuy: true };
+    renderRow({ expanded: true, readerIsViewer: false, item: item({ members: [hunter, owner], wantedBy: ['u1'] }) });
+    const items = within(bodyOf()).getAllByRole('listitem');
+    const bo = items.find((li) => /Bo:/.test(li.textContent ?? ''))!;
+    const aya = items.find((li) => /Aya:/.test(li.textContent ?? ''))!;
+    expect(bo.textContent).toBe('Bo: Have');
+    expect(aya).toHaveTextContent(/37.*✓/);
+  });
+});

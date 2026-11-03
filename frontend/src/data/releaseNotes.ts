@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.85',
+    date: '2026-11-03T00:00:00Z',
+    title: 'Progress: Track, I want this and custom farms in Find',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Progress: Track, I want this and custom farms in Find',
+        description:
+          'V2\'s Find view acts: a lead tracks a wanted farm from its row (Track seeds the statuses and opens the new row), tracks the search text as a custom farm (Edit opens with the title focused), or starts from Track a farm in the toolbar. A member marks a farm with I want this; a private Hub want asks before it is shared with the static, and a shared one reads Wanted. Under the matrix, "{names} want {farm} · Find" points at the first wanted farm nobody tracks yet.',
+        internal: true,
+        pr: 426,
+        prTitle: 'feat(v2): S2a-4a A3 — Track, I want this and custom farms in Find',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.84',
     date: '2026-11-03T00:00:00Z',
     title: 'Progress: the Find list',
