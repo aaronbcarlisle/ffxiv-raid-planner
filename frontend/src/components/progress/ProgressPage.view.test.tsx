@@ -122,14 +122,15 @@ describe('the switch is there for every role (D-4, E-7)', () => {
 });
 
 describe('arriving in Find (R-F-3 rules 1 and 2, D-9)', () => {
-  it('?pview=find shows an empty Find region in place of the matrix, Find pressed', async () => {
+  it('?pview=find shows the Find region in place of the matrix, Find pressed', async () => {
     seedPage();
     renderAt('/?tab=progress&pview=find');
     await ready();
     const region = findRegion()!;
     expect(region).toBeInTheDocument();
     expect(region.tagName).toBe('SECTION');
-    expect(region).toBeEmptyDOMElement();
+    // A2b fills it with FindList (its search first).
+    expect(await within(region).findByLabelText('Search farms')).toBeInTheDocument();
     expect(matrix()).not.toBeInTheDocument();
     expect(within(viewSwitch()).getByRole('button', { name: 'Find' })).toHaveAttribute('aria-pressed', 'true');
     expect(search().get('pview')).toBe('find');

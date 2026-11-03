@@ -475,6 +475,25 @@ describe('buildFindList — filters and counts', () => {
     expect(byCat.counts.bySource.ultimate ?? 0).toBe(0);
   });
 
+  it('each by* facet count ignores its own filter but applies the query and the other two (A1-M1)', () => {
+    // Own dimension ignored: with expansion=dt, byExpansion still counts the EW item.
+    const exp = build({ filters: { ...NO_FILTERS, expansion: 'dt' } });
+    expect(exp.counts.byExpansion).toEqual({ dt: 3, ew: 1 });
+    const cat = build({ filters: { ...NO_FILTERS, category: 'orchestrion' } });
+    expect(cat.counts.byCategory).toEqual({ mount: 2, orchestrion: 1, weapon: 1 });
+    const src = build({ filters: { ...NO_FILTERS, source: 'ultimate' } });
+    expect(src.counts.bySource).toEqual({ extreme: 3, ultimate: 1 });
+
+    // The other two filters and the query still apply.
+    const both = build({ filters: { category: 'mount', source: 'extreme', expansion: 'dt' } });
+    expect(both.counts.byExpansion).toEqual({ dt: 1, ew: 1 });
+    expect(both.counts.byCategory).toEqual({ mount: 1, orchestrion: 1 });
+    expect(both.counts.bySource).toEqual({ extreme: 1 });
+    const q = build({ query: 'worqor', filters: { ...NO_FILTERS, expansion: 'ew' } });
+    expect(q.counts.byExpansion).toEqual({ dt: 2 });
+    expect(q.counts.all).toBe(0);
+  });
+
   it('anyWanted ignores both the query and the filters', () => {
     const want = [sug('cat-lynx', 5, [member('u1', 'hunting')])];
     const q = build({ suggestions: want, query: 'no such thing' });
@@ -519,6 +538,20 @@ describe('buildFindList — fallback and a failed catalog', () => {
       trackable: true,
     });
     expect(r.wanted[0].members).toHaveLength(2);
+  });
+
+  it('a suggestion-only row (missing from the catalog) is in wanted but NOT in all (A1-M6)', () => {
+    const row = sug('cat-gone', 7, [member('u1', 'hunting')], { catalogItemName: 'Gone Mount' });
+    const failed = build({ catalog: [], suggestions: [row] });
+    expect(ids(failed.wanted)).toEqual(['cat-gone']);
+    expect(failed.all).toEqual([]);
+    expect(failed.counts.all).toBe(0);
+
+    // Beside a live catalog that lacks it, too.
+    const partial = build({ suggestions: [row, sug('cat-lynx', 5, [member('u1', 'hunting')])] });
+    expect(ids(partial.wanted)).toEqual(['cat-gone', 'cat-lynx']);
+    expect(ids(partial.all)).not.toContain('cat-gone');
+    expect(partial.counts.all).toBe(4);
   });
 });
 
