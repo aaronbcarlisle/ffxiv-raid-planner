@@ -60,6 +60,21 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.84',
+    date: '2026-11-03T00:00:00Z',
+    title: 'Progress: the Find list',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Progress: the Find list',
+        description:
+          'V2\'s Find view lists the farms your static wants, then every farm source, with search and Category, Source and Expansion filters. A row shows its exchange, the plugin-ready tag and how many members want it, and opens to each member\'s state. A farm you already track shows Tracking and opens it. Viewers can browse, and see no token counts. Find is read-only for now.',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.83',
     date: '2026-11-03T00:00:00Z',
     title: 'Progress: the Tracks and Find switch',
