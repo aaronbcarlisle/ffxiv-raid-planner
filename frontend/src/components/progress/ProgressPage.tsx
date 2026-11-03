@@ -30,7 +30,12 @@
  * never a substitute) and, for members, adds the week's cleared floors from the page ledger,
  * fetched here and copied locally keyed by (static, tier).
  *
- * The open row (S2a-3a·G2, R-S3-3, D-7, D-8): `?track=<goal id>` through `useTrackParam`,
+ * The view (S2a-4a·A2, R-F-3, R-F-4): the "Progress view" switch (Tracks, Find) for every member
+ * role, `?pview=find` through `useProgressView` (one write per change; `?track` wins over it;
+ * V1's `?farm=suggested|catalog` maps to Find once on mount), and Track a farm for leads. Find is
+ * an empty region here; the Find list fills it.
+ *
+ * The open row (S2a-3a·G2, R-S3-3, D-7, D-8): `?track=<goal id>` through `useProgressView`,
  * one row at a time. A row is open only while its id names a goal of THIS static whose
  * goals have loaded, so a stale id opens nothing during a load; an id that matches no goal
  * is dropped from the URL only once THIS mount's goals fetch has returned (never on the
@@ -52,13 +57,13 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Target } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { MembersOnlyCard } from '../auth';
 import { PageHeader } from '../layout/PageHeader';
 import { Button } from '../primitives/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { useRosterSortPreset } from '../roster/useRosterSortPreset';
 import { getTierById } from '../../gamedata';
-import { useTrackParam } from '../../hooks/useTrackParam';
 import { useVisibilityRefresh } from '../../hooks/useVisibilityRefresh';
 import { computeWeeklyLootSummary } from '../../hooks/useWeeklyLootSummary';
 import { useAuthStore } from '../../stores/authStore';
@@ -74,6 +79,8 @@ import { FarmEditContext } from './farmEditContext';
 import { farmEditTitleId, farmMenuId, farmNameId, tierNameId } from './farmFocus';
 import { EditStatusesBar } from './EditStatusesBar';
 import { ProgressMatrix } from './ProgressMatrix';
+import { ProgressToolbar } from './ProgressToolbar';
+import { useProgressView, type ProgressViewName } from './useProgressView';
 import { TIER_TRACK, type TierPanelModel } from './TierExpansion';
 import type { TierColumnCell, TierRowModel } from './TierRow';
 
@@ -306,10 +313,18 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   // only while there is an active farm to edit (the bar renders under the same condition).
   const mayEdit = canManage && isMember && userRole !== 'viewer';
   const barShown = mayEdit && active.length > 0;
+
+  // ── The view (S2a-4a·A2, R-F-3, E-1, D-9) ──
+  // `?pview=find` is Find, for members only. A `?track` wins over it (rule 1), so the render that
+  // meets both is already Tracks and the effect below drops `pview`.
+  const { pview, track, setProgressView } = useProgressView();
+  const view: ProgressViewName = isMember && pview === 'find' && track === null ? 'find' : 'tracks';
+
   const [mode, setMode] = useState(false);
   // Reset during the render that loses the bar (React's adjust-state-on-change pattern), so the
-  // mode never outlives it: it cannot resume when the role, or an active farm, comes back.
-  if (mode && !barShown) setMode(false);
+  // mode never outlives it: it cannot resume when the role, or an active farm, comes back. Find
+  // ends it too (C-4).
+  if (mode && (!barShown || view === 'find')) setMode(false);
   const editing = mode && barShown;
 
   // Where each active cell writes (R-S2-10): one's own (View As: the lead route aimed at the
@@ -327,7 +342,18 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   };
 
   // ── The open row (S2a-3a·G2, R-S3-3) ──
-  const [track, setTrack] = useTrackParam();
+  const setTrack = useCallback((id: string | null) => setProgressView({ track: id }), [setProgressView]);
+  // Rule 1: `?track` wins over `?pview=find`, in one write that drops `pview`.
+  useEffect(() => {
+    if (pview === 'find' && track !== null) setProgressView({ pview: 'tracks' });
+  }, [pview, track, setProgressView]);
+  // Rule 2: V1's `?farm=suggested|catalog` opens Find once, on mount, and goes from the URL.
+  const [searchParams] = useSearchParams();
+  const farmOnMount = useRef(searchParams.get('farm'));
+  useEffect(() => {
+    const farm = farmOnMount.current;
+    if (isMember && (farm === 'suggested' || farm === 'catalog')) setProgressView({ pview: 'find', farm: null });
+  }, [isMember, setProgressView]);
   // Open only while the id names a goal of this static and the goals have loaded.
   const openId = track !== null && goalsReady && groupGoals.some((g) => g.id === track) ? track : null;
   // An id that matches no goal here is dropped once this mount's goals fetch has returned and the
@@ -517,6 +543,17 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     [editingId, askToDiscard, setTrack, setDirty],
   );
 
+  // ── The switch (S2a-4a·A2, R-F-3 rule 3, D-9, C-4) ──
+  // To Find: the discard guard first, then ONE write that sets `pview=find` and clears the open row
+  // and its edit; edit-statuses mode ends by itself (a Find view has no mode). Track a farm goes
+  // the same way. Back to Tracks drops `pview` and opens nothing.
+  const goFind = () =>
+    askToDiscard(openId, () => {
+      setEditId(null);
+      setProgressView({ pview: 'find', track: null, edit: null });
+    });
+  const onView = (next: ProgressViewName) => (next === 'find' ? goFind() : setProgressView({ pview: 'tracks' }));
+
   // The tier panel's model, only while the row can open (R-T-8): failed first, then on, then off.
   const tierPanel: TierPanelModel | undefined = tierOpenable
     ? {
@@ -549,16 +586,27 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
         subtitle={`Every track ${group.name} is working on, the tier first${week !== null ? ` · Week ${week}` : ''}`}
       />
       <div className="space-y-4">
-        {barShown && (
-          <EditStatusesBar
-            groupId={group.id}
-            editing={editing}
-            onEdit={() => setMode(true)}
-            onDone={() => setMode(false)}
-            blankCells={blankCells}
+        {isMember && (
+          <ProgressToolbar
+            view={view}
+            onView={onView}
+            lead={canManage}
+            onTrackFarm={goFind}
+            editBar={
+              barShown ? (
+                <EditStatusesBar
+                  groupId={group.id}
+                  editing={editing}
+                  onEdit={() => setMode(true)}
+                  onDone={() => setMode(false)}
+                  blankCells={blankCells}
+                />
+              ) : null
+            }
           />
         )}
-        {(tierRow !== undefined || (farmsShown && groupGoals.length > 0)) && (
+        {view === 'find' && <section aria-label="Find" />}
+        {view === 'tracks' && (tierRow !== undefined || (farmsShown && groupGoals.length > 0)) && (
           <FarmEditContext.Provider value={editControls}>
             {/* Keyed by static: it stays mounted through a load now, and Finished's state belongs to one static. */}
             <ProgressMatrix
