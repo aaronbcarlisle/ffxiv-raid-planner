@@ -70,6 +70,8 @@ export const RELEASES: Release[] = [
         description:
           'Browser checks for V2\'s Find view: the wanted section comes first and hides private wants, Track seeds the statuses, I want this asks before sharing, the footer finds the wanted farm, each role sees only its own controls, a guest loads no catalog or wants, and both themes pass the accessibility scan with a row open and with the share prompt open.',
         internal: true,
+        pr: 427,
+        prTitle: 'test(v2): S2a-4a A4 — Find end-to-end checks',
       },
     ],
     internal: true,
