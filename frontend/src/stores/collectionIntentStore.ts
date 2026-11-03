@@ -203,6 +203,8 @@ interface CollectionIntentState {
   // Static suggestion cache (keyed by groupId)
   suggestions: Record<string, StaticCollectionSuggestion[]>;
   suggestionsLoading: Record<string, boolean>;
+  /** Last fetch failure per static (null/absent = none). fetchSuggestions still swallows errors. */
+  suggestionsError: Record<string, string | null>;
 
   // Personal catalog (all active catalog items + merged player state)
   myCatalog: CatalogPlayerEntry[];
@@ -223,6 +225,7 @@ export const useCollectionIntentStore = create<CollectionIntentState>((set, get)
   myIntentsLoaded: false,
   suggestions: {},
   suggestionsLoading: {},
+  suggestionsError: {},
   myCatalog: [],
   myCatalogLoaded: false,
 
@@ -268,9 +271,14 @@ export const useCollectionIntentStore = create<CollectionIntentState>((set, get)
       set(s => ({
         suggestions: { ...s.suggestions, [groupId]: raw.map(fromApiSuggestion) },
         suggestionsLoading: { ...s.suggestionsLoading, [groupId]: false },
+        suggestionsError: { ...s.suggestionsError, [groupId]: null },
       }));
-    } catch {
-      set(s => ({ suggestionsLoading: { ...s.suggestionsLoading, [groupId]: false } }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'something went wrong';
+      set(s => ({
+        suggestionsLoading: { ...s.suggestionsLoading, [groupId]: false },
+        suggestionsError: { ...s.suggestionsError, [groupId]: message },
+      }));
     }
   },
 

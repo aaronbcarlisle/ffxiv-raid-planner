@@ -60,6 +60,21 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.82',
+    date: '2026-11-03T00:00:00Z',
+    title: 'Progress: the Find model',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Progress: the Find model',
+        description:
+          'The list behind V2\'s Find: what your static wants, untracked first and then tracked, and every farm in the catalog, with search, three filters and their counts. A failed suggestions fetch now records its error for the screen to show. Nothing changes on screen yet.',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.81',
     date: '2026-10-25T00:00:00Z',
     title: 'Progress: Change order end-to-end checks',
