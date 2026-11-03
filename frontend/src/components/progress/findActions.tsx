@@ -259,7 +259,7 @@ export function MemberFindAction({ item, groupId, existing, intents, onRetry }: 
         <ActionButton busy={busy} onPress={() => void write()} leaveTo={rowToggleOf} onKeyDown={onPromptKeyDown}>
           Share
         </ActionButton>
-        <ActionButton ref={cancelRef} busy={busy} onPress={cancel} onKeyDown={onPromptKeyDown}>
+        <ActionButton ref={cancelRef} busy={busy} onPress={cancel} leaveTo={rowToggleOf} onKeyDown={onPromptKeyDown}>
           Cancel
         </ActionButton>
       </span>

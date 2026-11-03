@@ -30,6 +30,7 @@
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import { API_BASE, DEV_SHARE_CODE, freshContext, loginAsMember, loginAsOwner, ownerApiContext, pinShell } from './helpers/auth';
 import { currentUserId, ownerSession, setRole, setSplit, splitEnabled, withSplit } from './helpers/owner';
+import { type FindSeed, type PriorWants, allSection, findRegion, memberSession, pickFindItems, readWants, restoreWants, rowIn, search, seedWants, wantedSection } from './helpers/find';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -790,5 +791,166 @@ test.describe('Progress tier row, by role (S2a-3b)', () => {
         await context.close();
       }
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Progress Find (S2a-4a·A4): the actions by role
+// ---------------------------------------------------------------------------
+
+/**
+ * Design §3.7 and §4 items 3 and 4: a lead gets Track, Track a farm and the custom row; a member
+ * gets I want this (a private want asks first, Cancel writes nothing, Share makes it wanted) and no
+ * Track control anywhere; a viewer browses Find with no action at all. Hidden, never disabled.
+ *
+ * DevMember's wants are seeded through their own API (helpers/find.ts): a shared want and a private
+ * want on two catalog items nobody in DEVTST has a signal for; afterAll puts DevMember's rows back.
+ * DevMember is demoted for the viewer test and restored in `finally` and in afterAll.
+ */
+test.describe.serial('Progress Find, by role (S2a-4a)', () => {
+  let seed: FindSeed | undefined;
+  let prior: PriorWants = {};
+  let demoted: string | null = null;
+
+  const FIND = 'tab=progress&pview=find';
+  const customRow = (page: Page) => findRegion(page).getByRole('button', { name: /as a custom farm$/ });
+  const customHint = (page: Page) => findRegion(page).getByText('Type a name to track a custom farm', { exact: true });
+  const shared = () => (seed as FindSeed).shared;
+  const priv = () => (seed as FindSeed).private;
+
+  /**
+   * Find is open with both seeded items listed. A viewer's own wants are not the static's (the
+   * suggestions count non-viewer members only), so for the demoted DevMember the shared item is
+   * waited for in All farm sources instead.
+   */
+  async function openFind(page: Page, { wanted = true } = {}) {
+    await openV2(page, FIND, findRegion);
+    await rowIn(wanted ? wantedSection(page) : allSection(page), shared().name).waitFor({ timeout: 15_000 });
+    await rowIn(allSection(page), priv().name).waitFor({ timeout: 15_000 });
+  }
+
+  test.beforeAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    const member = await memberSession(browser);
+    try {
+      const picked = await pickFindItems(member, owner.groupId);
+      prior = await readWants(member, [picked.shared.id, picked.private.id]);
+      seed = picked;
+      await seedWants(member, picked);
+    } finally {
+      await member.context.close();
+      await owner.context.close();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    const member = await memberSession(browser);
+    try {
+      if (demoted) await setRole(owner, demoted, 'member');
+      await restoreWants(member, prior);
+    } finally {
+      await member.context.close();
+      await owner.context.close();
+    }
+  });
+
+  test('owner pin: Track, Track a farm and the custom row are there, and no I want this, so the checks below are not vacuous', async ({ page }) => {
+    await loginAsOwner(page);
+    await openFind(page);
+    await expect(rowIn(wantedSection(page), shared().name).getByRole('button', { name: 'Track', exact: true })).toBeVisible();
+    expect(await trackButtons(page).count()).toBeGreaterThan(0);
+    await expect(page.getByRole('button', { name: 'Track a farm', exact: true })).toBeVisible();
+    await expect(customHint(page)).toBeVisible();
+    await search(page).fill('E2E Find Gating');
+    await expect(customRow(page)).toBeVisible();
+    await expect(findRegion(page).getByRole('button', { name: 'I want this' })).toHaveCount(0);
+  });
+
+  test('member: I want this on a private want asks first; Cancel sends no request; Share makes it wanted (design §4.3, criterion 7)', async ({ page }) => {
+    const writes: Array<{ method: string; url: string; body: unknown }> = [];
+    page.on('request', (req) => {
+      if (req.method() !== 'GET' && /\/api\/me\/collection-intent\//.test(req.url())) {
+        writes.push({ method: req.method(), url: req.url(), body: req.postDataJSON() as unknown });
+      }
+    });
+    await loginAsMember(page);
+    await openFind(page);
+
+    // The shared want already reads Wanted ✓; the private one is not in Wanted.
+    await expect(rowIn(wantedSection(page), shared().name).getByText('Wanted ✓', { exact: true })).toBeVisible();
+    await expect(rowIn(wantedSection(page), priv().name)).toHaveCount(0);
+
+    const row = rowIn(allSection(page), priv().name);
+    const want = row.getByRole('button', { name: 'I want this', exact: true });
+    await expect(want).not.toHaveAttribute('aria-disabled', 'true');
+    await want.click();
+    const prompt = row.getByText('Your want is private. Share it with your statics?', { exact: true });
+    await expect(prompt).toBeVisible();
+    await expect(row.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
+
+    await row.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(prompt).toHaveCount(0);
+    await expect(want).toBeFocused();
+    await page.waitForLoadState('networkidle');
+    expect(writes, 'Cancel sends no request').toEqual([]);
+
+    await want.click();
+    const put = page.waitForResponse((res) => res.request().method() === 'PUT' && res.url().endsWith(`/api/me/collection-intent/${priv().id}`));
+    await row.getByRole('button', { name: 'Share', exact: true }).click();
+    expect((await put).ok()).toBe(true);
+    expect(writes).toHaveLength(1);
+    // Shared, and the rest of the row kept (priority and notes).
+    expect(writes[0].body).toEqual({ intent: 'hunting', priority: 'low', visibility: 'static_only', notes: 'E2E Find private' });
+
+    // The section updates: the item is wanted now, and reads Wanted ✓.
+    const wantedRow = rowIn(wantedSection(page), priv().name);
+    await expect(wantedRow).toBeVisible();
+    await expect(wantedRow.getByText('Wanted ✓', { exact: true })).toBeVisible();
+    await expect(page.getByText(`Your statics can see you want ${priv().name}`, { exact: true })).toBeVisible();
+  });
+
+  test('member: no Track control anywhere in Find, no Track a farm and no custom row (hidden, not disabled)', async ({ page }) => {
+    await loginAsMember(page);
+    await openFind(page);
+    await expect(findRegion(page).getByRole('button', { name: 'I want this' }).first()).toBeVisible();
+    await expect(trackButtons(page)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Track a farm' })).toHaveCount(0);
+    await expect(customHint(page)).toHaveCount(0);
+    await search(page).fill('E2E Find Gating');
+    await expect(customRow(page)).toHaveCount(0);
+    await search(page).fill('');
+    await expect(findRegion(page).getByRole('button', { name: 'I want this' }).first()).not.toHaveAttribute('aria-disabled', 'true');
+    await expectNoDisabledOutside(page, []);
+  });
+
+  test('viewer: browses Find with no action, no custom row and no Track a farm (design §4.4)', async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      // Dev login re-seats DevMember as a member, so demote after logging in.
+      await loginAsMember(page);
+      demoted = await currentUserId(page);
+      await setRole(owner, demoted, 'viewer');
+      await openFind(page, { wanted: false });
+
+      const rows = findRegion(page).getByTestId('find-row');
+      expect(await rows.count()).toBeGreaterThan(1);
+      await expect(rows.getByRole('button', { name: /^(Track|I want this|Share|Cancel|Retry)$/ })).toHaveCount(0);
+      await expect(findRegion(page).getByText('Wanted ✓', { exact: true })).toHaveCount(0);
+      await expect(trackButtons(page)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Track a farm' })).toHaveCount(0);
+      await expect(customHint(page)).toHaveCount(0);
+      await search(page).fill('E2E Find Gating');
+      await expect(customRow(page)).toHaveCount(0);
+      await search(page).fill('');
+      await expectNoDisabledOutside(page, []);
+      await context.close();
+    } finally {
+      if (demoted) await setRole(owner, demoted, 'member');
+      demoted = null;
+      await owner.context.close();
+    }
   });
 });

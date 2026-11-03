@@ -74,7 +74,7 @@ export function FindRow({ item, names, expanded, onToggle, action, readerIsViewe
           <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-text-secondary">
             {meta.flatMap((node, i) => (i === 0 ? [node] : [<span key={`sep-${i}`} aria-hidden>{' · '}</span>, node]))}
             {item.pluginReady && (
-              <Tag variant="label" tone="info" className="ml-1">
+              <Tag variant="label" className="ml-1">
                 Plugin ready
               </Tag>
             )}
