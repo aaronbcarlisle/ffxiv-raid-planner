@@ -70,6 +70,8 @@ export const RELEASES: Release[] = [
         description:
           'V2\'s Find view lists the farms your static wants, then every farm source, with search and Category, Source and Expansion filters. A row shows its exchange, the plugin-ready tag and how many members want it, and opens to each member\'s state. A farm you already track shows Tracking and opens it. Viewers can browse, and see no token counts. Find is read-only for now.',
         internal: true,
+        pr: 425,
+        prTitle: 'feat(v2): S2a-4a A2b — the Find list',
       },
     ],
     internal: true,
