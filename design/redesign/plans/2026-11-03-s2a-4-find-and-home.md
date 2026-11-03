@@ -2,7 +2,7 @@
 
 > Run with the `slice-loop` skill (`.claude/skills/slice-loop/`). Never load `superpowers:subagent-driven-development` in this repo. Each PR below is one slice-loop run: its own ledger, one whole-branch review against its parent branch, and one fix wave.
 
-**Plan-vet (2026-11-03).** `xivrp-director` returned **PASS with fixes**. Every finding is folded in below and in the design note: M-1…M-5, S-1…S-9 and C-1…C-8. The fold changed D-2, D-4, D-6, D-8 and D-10, cut A2 into A2 and A2b, and adds `useProgressView`'s single write (R-F-3). Because the plan-vet is done, slice-loop §0 needs no second one. **The owner's answers to D-1…D-14 are pending.**
+**Plan-vet (2026-11-03).** `xivrp-director` returned **PASS with fixes**. Every finding is folded in below and in the design note: M-1…M-5, S-1…S-9 and C-1…C-8. The fold changed D-2, D-4, D-6, D-8 and D-10, cut A2 into A2 and A2b, and adds `useProgressView`'s single write (R-F-3). Because the plan-vet is done, slice-loop §0 needs no second one. **Owner (2026-11-03): D-1…D-14 all as recommended**, D-8's §12.1 amendment included.
 
 **Goal (S2a-4a):**
 - The Progress toolbar gets a Tracks ⇄ Find switch for every member role, and leads also get Track a farm.
@@ -19,7 +19,7 @@
 
 **Design (binding):** `design/redesign/specs/2026-11-03-s2a-4-find-and-home-design.md`: D-1…D-14, E-1…E-12, §3–§8. It builds on the parent spec, `design/redesign/specs/2026-09-30-s2a-progress-design.md`: S2-3, S2-5, S2-11, S2-12, §4 (`?pview=find`), and §7 criteria 7 and 8.
 
-**Parity matrix (binding):** `design/redesign/specs/2026-09-30-s2a-parity-matrix.md`. The rows are P-09, P-13, P-14, P-52…P-77, P-89 (slice corrected), P-96…P-107, and §12.1 (amended by D-8 once the owner signs it).
+**Parity matrix (binding):** `design/redesign/specs/2026-09-30-s2a-parity-matrix.md`. The rows are P-09, P-13, P-14, P-52…P-77, P-89 (slice corrected), P-96…P-107, and §12.1 (amended by D-8, which the owner signed on 2026-11-03).
 
 **Earlier plans (binding):**
 - **S2a-2** (`plans/2026-10-08-s2a-2-progress-tab.md`):

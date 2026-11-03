@@ -1,6 +1,6 @@
 # Stage 2a · S2a-4, Find and Home's pointers (V2) — design
 
-**Status:** drafted 2026-11-03 from the specs and the code, at `main` `8e871801`. The owner skipped the co-design Q&A. **Plan-vet, 2026-11-03:** `xivrp-director` PASS with fixes. Every finding (M-1…M-5, S-1…S-9, C-1…C-8) is folded in here and in the plan. **D-2, D-4, D-6, D-8 and D-10 changed.** D-1…D-14 are the controller's recommendations and wait for the owner. E-1…E-12 are the controller's engineering rulings. This note records only what S2a-4 adds; the rest is ruled in the parent spec, [`2026-09-30-s2a-progress-design.md`](2026-09-30-s2a-progress-design.md): S2-3 (the toolbar), S2-5 (row order), S2-11 (Find), S2-12 (Home's pointers), §4 (`?pview=find`), §7 criteria 7 and 8, R-S2-5, R-S2-7 and R-S2-17. The binding matrix rows are in the parity matrix, [`2026-09-30-s2a-parity-matrix.md`](2026-09-30-s2a-parity-matrix.md): P-09, P-14, P-52…P-77 (the interim rows), P-96…P-107. Where this note and the parent differ, this note wins for S2a-4, and the parent is corrected at write-back (§9).
+**Status:** drafted 2026-11-03 from the specs and the code, at `main` `8e871801`. The owner skipped the co-design Q&A. **Plan-vet, 2026-11-03:** `xivrp-director` PASS with fixes. Every finding (M-1…M-5, S-1…S-9, C-1…C-8) is folded in here and in the plan. **D-2, D-4, D-6, D-8 and D-10 changed.** **Owner, 2026-11-03: D-1…D-14 all as recommended**, D-8's amendment to signed §12.1 included. E-1…E-12 are the controller's engineering rulings. This note records only what S2a-4 adds; the rest is ruled in the parent spec, [`2026-09-30-s2a-progress-design.md`](2026-09-30-s2a-progress-design.md): S2-3 (the toolbar), S2-5 (row order), S2-11 (Find), S2-12 (Home's pointers), §4 (`?pview=find`), §7 criteria 7 and 8, R-S2-5, R-S2-7 and R-S2-17. The binding matrix rows are in the parity matrix, [`2026-09-30-s2a-parity-matrix.md`](2026-09-30-s2a-parity-matrix.md): P-09, P-14, P-52…P-77 (the interim rows), P-96…P-107. Where this note and the parent differ, this note wins for S2a-4, and the parent is corrected at write-back (§9).
 
 ## 1. Scope
 
@@ -12,7 +12,7 @@
 
 ## 2. Decisions
 
-D-1…D-14 are the **controller's recommendations, awaiting the owner**. The decision is in bold; the last column holds the alternative and why not. E-1…E-12 are the controller's.
+D-1…D-14: **Owner: as recommended, 2026-11-03.** The decision is in bold; the last column holds the alternative and why not. E-1…E-12 are the controller's.
 
 | # | Decision | Alternative, and why not |
 |---|---|---|
