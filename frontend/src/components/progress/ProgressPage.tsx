@@ -32,8 +32,9 @@
  *
  * The view (S2a-4a·A2, R-F-3, R-F-4): the "Progress view" switch (Tracks, Find) for every member
  * role, `?pview=find` through `useProgressView` (one write per change; `?track` wins over it;
- * V1's `?farm=suggested|catalog` maps to Find once on mount), and Track a farm for leads. Find is
- * an empty region here; the Find list fills it.
+ * V1's `?farm=suggested|catalog` maps to Find once on mount), and Track a farm for leads. Find holds
+ * `FindList` (A2b, read-only for now): opening it fetches the catalog (once) and the static's
+ * suggestions (E-6), never for a guest; a failed catalog shows the built-in farms (P-67).
  *
  * The open row (S2a-3a·G2, R-S3-3, D-7, D-8): `?track=<goal id>` through `useProgressView`,
  * one row at a time. A row is open only while its id names a goal of THIS static whose
@@ -66,18 +67,22 @@ import { useRosterSortPreset } from '../roster/useRosterSortPreset';
 import { getTierById } from '../../gamedata';
 import { useVisibilityRefresh } from '../../hooks/useVisibilityRefresh';
 import { computeWeeklyLootSummary } from '../../hooks/useWeeklyLootSummary';
+import { FALLBACK_CATALOG } from '../../data/curatedCatalog';
 import { useAuthStore } from '../../stores/authStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
+import { useCollectionIntentStore, type StaticCollectionSuggestion } from '../../stores/collectionIntentStore';
 import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
 import { useSplitClearStore } from '../../stores/splitClearStore';
 import { toast } from '../../stores/toastStore';
 import type { LootLogEntry, MemberRole, PageLedgerEntry, PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
 import { buildColumns, splitFarmRows, type ProgressCell as ProgressCellModel, type ProgressData } from '../../utils/progressModel';
+import { buildFindList, type FindFilters } from '../../utils/findModel';
 import { tierBisCell, tierBisTotals, tierStatusText } from '../../utils/tierBis';
 import { blankClaimedCells, cellWriteTarget } from './editStatuses';
 import { FarmEditContext } from './farmEditContext';
 import { farmEditTitleId, farmMenuId, farmNameId, tierNameId } from './farmFocus';
 import { EditStatusesBar } from './EditStatusesBar';
+import { FindList } from './FindList';
 import { ProgressMatrix } from './ProgressMatrix';
 import { ProgressToolbar } from './ProgressToolbar';
 import { useProgressView, type ProgressViewName } from './useProgressView';
@@ -92,6 +97,10 @@ const NO_PLAYERS: SnapshotPlayer[] = [];
 const NO_LOOT: LootLogEntry[] = [];
 /** The farm data while the farms are not shown (a guest, or before the first load). */
 const NO_FARMS: ProgressData = { goals: [], participants: {}, recordOnly: {} };
+const NO_SUGGESTIONS: StaticCollectionSuggestion[] = [];
+const NO_FILTERS: FindFilters = { category: null, source: null, expansion: null };
+/** Find is read-only until A3: the rows carry no action of their own. */
+const NO_ACTION = () => null;
 
 /** The last settled split-clear fetch: for which static, and what it said (R-T-7). */
 interface SplitResult {
@@ -320,6 +329,44 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   const { pview, track, setProgressView } = useProgressView();
   const view: ProgressViewName = isMember && pview === 'find' && track === null ? 'find' : 'tracks';
 
+  // ── Find (S2a-4a·A2b, R-F-5, E-5, E-6, P-67) ──
+  // The catalog and the static's suggestions are the stores' own (V1 reads the same ones). Both
+  // fetch when Find opens, so a guest (who never reaches `view === 'find'`) triggers neither.
+  const catalog = useCollectionGoalStore((s) => s.catalog);
+  const catalogLoaded = useCollectionGoalStore((s) => s.catalogLoaded);
+  const catalogLoading = useCollectionGoalStore((s) => s.catalogLoading);
+  const catalogError = useCollectionGoalStore((s) => s.catalogError);
+  const findSuggestions = useCollectionIntentStore((s) => s.suggestions[group.id]);
+  const suggestionsError = useCollectionIntentStore((s) => s.suggestionsError[group.id] ?? null);
+  const [findQuery, setFindQuery] = useState('');
+  const [findFilters, setFindFilters] = useState<FindFilters>(NO_FILTERS);
+  const [expandedFind, setExpandedFind] = useState<string | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const findOpen = view === 'find';
+  useEffect(() => {
+    if (!findOpen) return;
+    const goalStore = useCollectionGoalStore.getState();
+    if (!goalStore.catalogLoaded && !goalStore.catalogLoading) void goalStore.fetchCatalog();
+    void useCollectionIntentStore.getState().fetchSuggestions(group.id);
+  }, [findOpen, group.id]);
+  // A failed or empty live catalog shows the built-in farms (V1's CatalogBrowse does the same).
+  const catalogFallback = !catalogLoading && catalogLoaded && (catalogError !== null || catalog.length === 0);
+  const findList = useMemo(
+    () =>
+      findOpen
+        ? buildFindList({
+            catalog: catalogFallback ? FALLBACK_CATALOG : catalog,
+            suggestions: findSuggestions ?? NO_SUGGESTIONS,
+            goals,
+            groupId: group.id,
+            query: findQuery,
+            filters: findFilters,
+          })
+        : null,
+    [findOpen, catalogFallback, catalog, findSuggestions, goals, group.id, findQuery, findFilters],
+  );
+  const findLoading = !catalogLoaded || catalogLoading || (findSuggestions === undefined && suggestionsError === null);
+
   const [mode, setMode] = useState(false);
   // Reset during the render that loses the bar (React's adjust-state-on-change pattern), so the
   // mode never outlives it: it cannot resume when the role, or an active farm, comes back. Find
@@ -354,6 +401,8 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   // The map therefore stays pending until a render has seen `farm` gone, and writes again (from
   // the latest params, each write removing `farm`) while it is still there. Once gone it is done.
   const farmParam = searchParams.get('farm');
+  // `searchParams` is a dependency on purpose: a clobbering write can bring `farm` back with the same
+  // value, and only a new params object re-arms this effect to write again.
   const farmPending = useRef(farmParam === 'suggested' || farmParam === 'catalog');
   useEffect(() => {
     if (!farmPending.current) return;
@@ -557,10 +606,17 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   // and its edit; edit-statuses mode ends by itself (a Find view has no mode). Track a farm goes
   // the same way. Back to Tracks drops `pview` and opens nothing.
   const goFind = () =>
-    askToDiscard(openId, () => {
-      setEditId(null);
-      setProgressView({ pview: 'find', track: null, edit: null });
-    });
+    askToDiscard(
+      openId,
+      () => {
+        setEditId(null);
+        setProgressView({ pview: 'find', track: null, edit: null });
+      },
+      undefined,
+      undefined,
+      // Focus goes back to the control that asked: the switch or Track a farm both stay mounted.
+      true,
+    );
   const onView = (next: ProgressViewName) => (next === 'find' ? goFind() : setProgressView({ pview: 'tracks' }));
 
   // The tier panel's model, only while the row can open (R-T-8): failed first, then on, then off.
@@ -614,7 +670,30 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
             }
           />
         )}
-        {view === 'find' && <section aria-label="Find" />}
+        {view === 'find' && (
+          <section aria-label="Find">
+            {findList !== null && (
+              <FindList
+                list={findList}
+                query={findQuery}
+                onQuery={setFindQuery}
+                filters={findFilters}
+                onFilters={setFindFilters}
+                renderAction={NO_ACTION}
+                names={memberNames}
+                expandedId={expandedFind}
+                onExpand={(id) => setExpandedFind((cur) => (cur === id ? null : id))}
+                error={suggestionsError}
+                onRetry={() => void useCollectionIntentStore.getState().fetchSuggestions(group.id)}
+                catalogFallback={catalogFallback}
+                onRetryCatalog={() => void useCollectionGoalStore.getState().fetchCatalog()}
+                searchRef={searchRef}
+                readerIsViewer={userRole === 'viewer'}
+                loading={findLoading}
+              />
+            )}
+          </section>
+        )}
         {view === 'tracks' && (tierRow !== undefined || (farmsShown && groupGoals.length > 0)) && (
           <FarmEditContext.Provider value={editControls}>
             {/* Keyed by static: it stays mounted through a load now, and Finished's state belongs to one static. */}
@@ -640,12 +719,12 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
           </FarmEditContext.Provider>
         )}
         {!isMember && <MembersOnlyCard staticName={group.name} subject="Farms" />}
-        {loading && (
+        {view === 'tracks' && loading && (
           <p role="status" data-testid="progress-loading" className="px-1 text-sm text-text-secondary">
             Loading farms…
           </p>
         )}
-        {error !== null && (
+        {view === 'tracks' && error !== null && (
           <div
             role="alert"
             data-testid="progress-error"

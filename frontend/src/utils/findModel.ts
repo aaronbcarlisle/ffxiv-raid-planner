@@ -29,7 +29,8 @@ export interface FindItem {
   token: { name: string; cost: number } | null;
   /** The catalog field V1's plugin-ready tag reads (collections/SourceFarmCard.tsx). */
   pluginReady: boolean;
-  members: MemberSuggestionEntry[];
+  /** Without the join's Discord username: names come from the roster (S-2), so it can't compile into a render. */
+  members: Omit<MemberSuggestionEntry, 'displayName'>[];
   /** Members hunting or interested whose ownership_state isn't `have`. */
   wantedBy: string[];
   /** Id of an open goal in this static for the item. */
