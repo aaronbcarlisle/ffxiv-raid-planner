@@ -60,6 +60,21 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.83',
+    date: '2026-11-03T00:00:00Z',
+    title: 'Progress: the Tracks and Find switch',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Progress: the Tracks and Find switch',
+        description:
+          'V2\'s Progress screen has a Tracks and Find switch for every role, kept in the address as pview. A lead also gets Track a farm beside it. Opening a farm row, or an old farm link, lands on the right view. Find is an empty page for now.',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.82',
     date: '2026-11-03T00:00:00Z',
     title: 'Progress: the Find model',

@@ -41,6 +41,8 @@ const SEEDED_TAB_PARAMS = [
   // The V2 Progress tab's open farm row (S2a-3a, R-S3-3): `useTrackParam`, not this hook
   // (a goal id is no fixed value list), but it is a sub-tab param in every other way.
   'track',
+  // The V2 Progress tab's view, Tracks or Find (S2a-4a, E-1): `useProgressView`, V1 never writes it.
+  'pview',
 ] as const;
 const registeredTabParams = new Set<string>(SEEDED_TAB_PARAMS);
 
