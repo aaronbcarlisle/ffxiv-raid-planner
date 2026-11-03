@@ -306,3 +306,59 @@ describe('Tracking ✓', () => {
     expect(trackingControl()).toBeInTheDocument();
   });
 });
+
+// ── The can-buy mark and the state words (P-58; review fixes) ──────────────
+
+describe('the can-buy mark', () => {
+  const buyer = { ...m('u1', 'hunting', 'missing', 37), canBuy: true };
+  const saver = { ...m('u2', 'hunting', 'missing', 12), canBuy: false };
+  const body = (over: Partial<RowProps>) => {
+    renderRow({ expanded: true, item: item({ members: [buyer, saver], wantedBy: ['u1', 'u2'] }), ...over });
+    const items = within(bodyOf()).getAllByRole('listitem');
+    return {
+      aya: items.find((li) => /Aya:/.test(li.textContent ?? ''))!,
+      bo: items.find((li) => /Bo:/.test(li.textContent ?? ''))!,
+    };
+  };
+
+  it('shows ✓ with a "can buy" reading beside the count when canBuy, for a member reader', () => {
+    const { aya } = body({ readerIsViewer: false });
+    expect(aya).toHaveTextContent(/37.*✓/);
+    expect(within(aya).getByText(/can buy/)).toBeInTheDocument();
+  });
+
+  it('shows no mark when the member cannot buy', () => {
+    const { bo } = body({ readerIsViewer: false });
+    expect(bo).toHaveTextContent(/12/);
+    expect(bo.textContent).not.toMatch(/✓|can buy/);
+  });
+
+  it('shows no mark to a viewer reader, who sees no counts', () => {
+    const { aya } = body({ readerIsViewer: true });
+    expect(aya.textContent).not.toMatch(/✓|can buy|37/);
+  });
+});
+
+describe('the state words', () => {
+  function stateOf(intent: MemberSuggestionEntry['intent'], own: MemberSuggestionEntry['ownershipState']): string {
+    const { unmount } = renderRow({ expanded: true, item: item({ members: [m('u1', intent, own, null)] }) });
+    const text = within(bodyOf()).getByRole('listitem').textContent ?? '';
+    unmount();
+    return text;
+  }
+
+  it.each([
+    ['hunting', 'missing', 'Aya: Want'],
+    ['interested', 'missing', 'Aya: Interested'],
+    ['pass', 'missing', 'Aya: Passed'],
+    [null, 'have', 'Aya: Have'],
+    [null, 'missing', 'Aya: Missing'],
+    [null, 'unknown', 'Aya: Unknown'],
+    ['hunting', 'have', 'Aya: Have'],
+    ['hidden', 'missing', 'Aya: Missing'],
+    ['hidden', 'unknown', 'Aya: Unknown'],
+    ['hidden', 'have', 'Aya: Have'],
+  ] as const)('intent %s with ownership %s reads "%s"', (intent, own, expected) => {
+    expect(stateOf(intent, own)).toBe(expected);
+  });
+});

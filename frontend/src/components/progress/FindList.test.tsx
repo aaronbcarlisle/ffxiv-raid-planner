@@ -372,3 +372,24 @@ describe('failures', () => {
     expect(screen.queryByRole('button', { name: /Retry/ })).not.toBeInTheDocument();
   });
 });
+
+// ── Loading (review fix) ────────────────────────────────────────────────────
+
+describe('while loading', () => {
+  it('shows neither P-55\'s line nor the no-match message', () => {
+    const first = renderList({ list: model({ suggestions: [], catalog: [] }), loading: true });
+    expect(screen.queryByText(P55)).not.toBeInTheDocument();
+    first.unmount();
+    renderList({ list: model({ query: 'zz', suggestions: [], catalog: [] }), query: 'zz', loading: true });
+    expect(screen.queryByText(/No farms match/)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('status').length).toBeGreaterThan(0);
+  });
+
+  it('does show both once loading ends (the same models)', () => {
+    const first = renderList({ list: model({ suggestions: [], catalog: [] }), loading: false });
+    expect(screen.getByText(P55)).toBeInTheDocument();
+    first.unmount();
+    renderList({ list: model({ query: 'zz', suggestions: [], catalog: [] }), query: 'zz', loading: false });
+    expect(screen.getByText(/No farms match/)).toBeInTheDocument();
+  });
+});
