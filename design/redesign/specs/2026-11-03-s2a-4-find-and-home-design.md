@@ -1,6 +1,6 @@
 # Stage 2a · S2a-4, Find and Home's pointers (V2) — design
 
-**Status:** drafted 2026-11-03 from the specs and the code, at `main` `8e871801`. The owner skipped the co-design Q&A. **Plan-vet, 2026-11-03:** `xivrp-director` PASS with fixes. Every finding (M-1…M-5, S-1…S-9, C-1…C-8) is folded in here and in the plan. **D-2, D-4, D-6, D-8 and D-10 changed.** **Owner, 2026-11-03: D-1…D-14 all as recommended**, D-8's amendment to signed §12.1 included. E-1…E-12 are the controller's engineering rulings. This note records only what S2a-4 adds; the rest is ruled in the parent spec, [`2026-09-30-s2a-progress-design.md`](2026-09-30-s2a-progress-design.md): S2-3 (the toolbar), S2-5 (row order), S2-11 (Find), S2-12 (Home's pointers), §4 (`?pview=find`), §7 criteria 7 and 8, R-S2-5, R-S2-7 and R-S2-17. The binding matrix rows are in the parity matrix, [`2026-09-30-s2a-parity-matrix.md`](2026-09-30-s2a-parity-matrix.md): P-09, P-14, P-52…P-77 (the interim rows), P-96…P-107. Where this note and the parent differ, this note wins for S2a-4, and the parent is corrected at write-back (§9).
+**Status:** drafted 2026-11-03 from the specs and the code, at `main` `8e871801`. The owner skipped the co-design Q&A. **Plan-vet, 2026-11-03:** `xivrp-director` PASS with fixes. Every finding (M-1…M-5, S-1…S-9, C-1…C-8) is folded in here and in the plan. **D-2, D-4, D-6, D-8 and D-10 changed.** **Owner, 2026-11-03: D-1…D-14 all as recommended**, D-8's amendment to signed §12.1 included. E-1…E-12 are the controller's engineering rulings. This note records only what S2a-4 adds; the rest is ruled in the parent spec, [`2026-09-30-s2a-progress-design.md`](2026-09-30-s2a-progress-design.md): S2-3 (the toolbar), S2-5 (row order), S2-11 (Find), S2-12 (Home's pointers), §4 (`?pview=find`), §7 criteria 7 and 8, R-S2-5, R-S2-7 and R-S2-17. The binding matrix rows are in the parity matrix, [`2026-09-30-s2a-parity-matrix.md`](2026-09-30-s2a-parity-matrix.md): P-09, P-14, P-52…P-77 (the interim rows), P-96…P-107. Where this note and the parent differ, this note wins for S2a-4, and the parent is corrected at write-back (§9). **S2a-4a shipped 2026-11-03 (#423–#427, main `c145e38f`) and its write-back is done (§9); S2a-4b (B1, B2) is next.**
 
 ## 1. Scope
 
@@ -186,19 +186,30 @@ The parity matrix's S2a-4 rows (30) are written in at write-back:
 - A farm tracked from Find has no duty or note until a lead sets them in Edit (D-7, P-77).
 - The split row's x/y is always the active tier's (the GET returns active-tier assignments), so it's hidden on a past tier (D-13).
 - Phones: Find's list is one column and the matrix scrolls sideways (S2-15).
+- S2a-4a's own residuals (2026-11-03) are listed in the plan's "Carried from S2a-4a" section.
 
 ## 8. Spec facts corrected
 
 - The parent's seed cite `collection_goals.py:406-409` is now `:647-673`, and V1 delta (g) (the blank seed for no signal) has already shipped (`:672-673`, S2a-1a).
-- The matrix's `:263-440` (now `:527-701`), §12.1's `:205-217` (now `:469-511`) and `CollectionsHub.tsx:184-187` (now `:158-161`) are stale.
+- The matrix's `:263-440` (now `:527-701`), §12.1's `:205-217` (now `:469-511`) and `CollectionsHub.tsx:184-187` (now `:159-162`; the first draft of this note said `:158-161`, one line early) are stale. *(Corrected in the matrix by the S2a-4a write-back. P-98's `collection_goals.py:299` was stale too: the type mapping is at `:568`.)*
 - P-89 puts "Track a farm" in S2a-5a. The spec's §6 and S2-3 put it in S2a-4, and the spec wins.
 
 ## 9. Write-back (after each stack merges)
 
-After S2a-4a merges:
+After S2a-4a merges (**done 2026-11-03**, #423–#427, main `c145e38f`):
 - The parent spec: S2-11 as built (D-2…D-10), §6 records the PRs, §7 marks criterion 7 shipped.
 - The matrix: §6's rows and the interim end date (`:288`).
 - `PRODUCT_MODEL` §6 and `HOME_STRETCH`'s W3 S2a row.
+
+**Where S2a-4a differs from this note as written** (all in the plan's Carried section too):
+- **`?edit` is the source of truth** for the open Edit, and a foreign `?edit` (one that isn't the open row's) is dropped.
+- **Every `pview`, `track` and `edit` drop goes through one effect and one write** (R-D11-B), so the shell's cold `?tier=` seed can't bring one back.
+- **A goals failure shows Find's own line**, `find-goals-error`, with Retry. A lead's Track and custom row wait for `goalsKnown` (this mount's goals fetch came back clean), because the route has no duplicate guard (E-4). I want this and Track a farm aren't gated. This narrows A2-M2: Tracks' error line stays out of Find, but Find has its own.
+- **Plugin ready** is a label `Tag` in the default tone.
+- **The footer's Find** resets the search and filters; **Track** has a module-level lock per (static, item), so a row's Wanted and All twins can't double-send.
+- **The Share prompt's text sits in the action slot** (Share, then Cancel last), not in the row's body line (§3.2).
+- **A custom create clears the search**, so Find doesn't offer the same text again.
+- **A row reads "1 wants" and "2 want"** (the verb agrees with the count), as the plan's R-F-5 words it.
 
 After S2a-4b merges:
 - The parent spec: S2-12 as built (D-11…D-13), §7 marks criterion 8 shipped.

@@ -826,7 +826,7 @@ No diff touches any path in § Scope's "Not edited" list. Two stores' existing t
 
 ## Write-backs (once per stack, after it merges)
 
-- [ ] **S2a-4a**, one docs PR:
+- [x] **S2a-4a**, one docs PR *(done 2026-11-03, after #423–#427 merged, main `c145e38f`; P-68 stays open, see the matrix)*:
   - the first half of the design's §9, into the parent spec;
   - the matrix:
     - P-09, P-13 and P-14;
@@ -848,3 +848,18 @@ No diff touches any path in § Scope's "Not edited" list. Two stores' existing t
 - **Old-tracker wants** count as wanted until S2a-5b deletes that tracker (D-2).
 - **Home-A's layout** (W4 HOME): where the card and the row finally sit.
 - **Team Summary off Home** (HS-35 #10): not this slice.
+
+## Carried from S2a-4a (residuals, 2026-11-03)
+
+Found at write-back, against the code at `c145e38f`. None blocks S2a-4b. Homes are the holistic review (taste calls) or a small cleanup PR (defects).
+
+- **`hooks/useTrackParam.ts`** is imported only by its own test now (`useProgressView` replaced it in `ProgressPage`): a candidate to delete, with `useTrackParam.test.tsx`.
+- **P-68's patch line** isn't in Find's rows (`FindItem` has no `patch`), so that INTERIM row stays open: add it to the row body, or the owner signs it off (matrix §7).
+- **`Tag tone="info"`** is under 4.5:1 in the light theme at 12px (`bg-status-info/10` with `text-status-info`; about 4.48:1 over white by calculation, not measured in a browser). It's token-level. Find doesn't use it (Tracking ✓ is `success`, Plugin ready the default tone), but `TeamSummaryCard`'s Alt chip, `HubIdentityHeader`'s "Shareable" chip and `JobsGearTab` do.
+- **The toolbar is left-packed.** §3.1 puts the switch left and Track a farm and Edit statuses right; `ProgressToolbar` keeps one left-aligned wrapping row. The Find row has no type icon either (R-F-5 doesn't list one).
+- **Find's Retry drops focus to `<body>` once its line goes**, as Tracks' does: no code restores focus after a Retry (read from `LoadFailure` and `FindList`, not run in a browser).
+- **A warm-cache goals failure shows in Find but not Tracks.** Tracks' `goalsFailed` needs the goals not to be loaded for this static; Find's line (`findGoalsError`) shows whenever this mount's fetch failed.
+- **A wanted row counts Interested as "wants"**: `wantedBy` includes `interested` members (D-2), so "2 want" can include members who only said "interested".
+- **V1's orchestrion supplement** (`CatalogBrowse.tsx:70-80`, built-in orchestrion rolls added when the live catalog has none) isn't carried into All.
+- **The Share prompt's text sits in the action slot**, not in the row's body line (§3.2).
+- **No `landing.isConnected` guard** in `findActions.tsx`'s focus move: the microtask checks that the removed button is gone and that focus is on `<body>`, but not that the landing target (the row's toggle) is still mounted.
