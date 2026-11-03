@@ -336,8 +336,6 @@ describe('focus after Discard on the way to Find (A2-M1)', () => {
     fireEvent.click(track);
     await discardFromDialog();
     await waitFor(() => expect(search().get('pview')).toBe('find'));
-    await waitFor(() =>
-      expect(within(screen.getByTestId('progress-view-bar')).getByRole('button', { name: 'Track a farm' })).toHaveFocus(),
-    );
+    await waitFor(() => expect(within(findRegion()).getByLabelText('Search farms')).toHaveFocus());
   });
 });

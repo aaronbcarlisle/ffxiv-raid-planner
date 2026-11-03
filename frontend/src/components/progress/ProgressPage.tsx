@@ -32,9 +32,18 @@
  *
  * The view (S2a-4a·A2, R-F-3, R-F-4): the "Progress view" switch (Tracks, Find) for every member
  * role, `?pview=find` through `useProgressView` (one write per change; `?track` wins over it;
- * V1's `?farm=suggested|catalog` maps to Find once on mount), and Track a farm for leads. Find holds
- * `FindList` (A2b, read-only for now): opening it fetches the catalog (once) and the static's
- * suggestions (E-6), never for a guest; a failed catalog shows the built-in farms (P-67).
+ * V1's `?farm=suggested|catalog` maps to Find once on mount), and Track a farm for leads, which
+ * opens Find with the search focused (D-5). Find holds `FindList` (A2b): opening it fetches the
+ * catalog (once), never for a guest; a failed catalog shows the built-in farms (P-67). The static's
+ * suggestions (E-6) are fetched once per static per mount, Tracks included, so the footer under the
+ * matrix (`FindFooter`, R-F-7) can name the first wanted farm nobody tracks yet.
+ *
+ * Find's actions (S2a-4a·A3, R-F-6, D-6, D-7, D-8): a lead's Track and the custom row (`findActions`)
+ * create the goal, then this page makes the one URL write that opens its row (Track focuses the row's
+ * name; the custom row opens Edit, so its Title takes focus). A member's I want this needs the
+ * member's own intents, fetched here when a member who is not under View As opens Find: the control
+ * is a busy placeholder until this mount's fetch has settled, an error line with Retry when it
+ * failed, and it is never rendered under View As (the intents route ignores `X-View-As`).
  *
  * The open row (S2a-3a·G2, R-S3-3, D-7, D-8): `?track=<goal id>` through `useProgressView`,
  * one row at a time. A row is open only while its id names a goal of THIS static whose
@@ -44,10 +53,11 @@
  * a static switch under the mounted page clears it at once (a goal id never belongs to two
  * statics), before the new static's goals load.
  *
- * Inline Edit (S2a-3a·G5 Task TG8, D-12, R-S3-10): `editId` names the farm whose Edit block is on
- * (shown only while it is the open row), and the block reports whether it is dirty. A dirty block
- * is never dropped silently: opening another row, closing the row (its name button or Escape) and
- * Mark finished each ask "Discard changes?" first (`askToDiscard`), through `farmEditContext`.
+ * Inline Edit (S2a-3a·G5 Task TG8, D-12, R-S3-10; S2a-4a·A3 A2-M3): `?edit=<goal id>` names the
+ * farm whose Edit block is on (shown only while it is the open row), written with `?track` in one
+ * write and never outliving it; the block reports whether it is dirty. A dirty block is never
+ * dropped silently: opening another row, closing the row (its name button or Escape) and Mark
+ * finished each ask "Discard changes?" first (`askToDiscard`), through `farmEditContext`.
  *
  * The split plan (S2a-3b·H4, R-T-6, R-T-7, E-8, E-11, design §3.5): `?track=tier` opens the tier
  * row into the split planner. Members and viewers fetch the static's split-clear data on the active
@@ -76,14 +86,17 @@ import { useSplitClearStore } from '../../stores/splitClearStore';
 import { toast } from '../../stores/toastStore';
 import type { LootLogEntry, MemberRole, PageLedgerEntry, PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
 import { buildColumns, splitFarmRows, type ProgressCell as ProgressCellModel, type ProgressData } from '../../utils/progressModel';
-import { buildFindList, type FindFilters } from '../../utils/findModel';
+import { buildFindList, topWanted, type FindFilters, type FindItem } from '../../utils/findModel';
 import { tierBisCell, tierBisTotals, tierStatusText } from '../../utils/tierBis';
 import { blankClaimedCells, cellWriteTarget } from './editStatuses';
 import { FarmEditContext } from './farmEditContext';
 import { farmEditTitleId, farmMenuId, farmNameId, tierNameId } from './farmFocus';
 import { EditStatusesBar } from './EditStatusesBar';
+import { CustomTrackRow, LeadFindAction, MemberFindAction, type MemberIntentsStatus } from './findActions';
+import { FindFooter } from './FindFooter';
 import { FindList } from './FindList';
 import { ProgressMatrix } from './ProgressMatrix';
+import { messageOf } from './undoToasts';
 import { ProgressToolbar } from './ProgressToolbar';
 import { useProgressView, type ProgressViewName } from './useProgressView';
 import { TIER_TRACK, type TierPanelModel } from './TierExpansion';
@@ -99,8 +112,6 @@ const NO_LOOT: LootLogEntry[] = [];
 const NO_FARMS: ProgressData = { goals: [], participants: {}, recordOnly: {} };
 const NO_SUGGESTIONS: StaticCollectionSuggestion[] = [];
 const NO_FILTERS: FindFilters = { category: null, source: null, expansion: null };
-/** Find is read-only until A3: the rows carry no action of their own. */
-const NO_ACTION = () => null;
 
 /** The last settled split-clear fetch: for which static, and what it said (R-T-7). */
 interface SplitResult {
@@ -326,12 +337,13 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   // ── The view (S2a-4a·A2, R-F-3, E-1, D-9) ──
   // `?pview=find` is Find, for members only. A `?track` wins over it (rule 1), so the render that
   // meets both is already Tracks and the effect below drops `pview`.
-  const { pview, track, setProgressView } = useProgressView();
+  const { pview, track, edit, setProgressView } = useProgressView();
   const view: ProgressViewName = isMember && pview === 'find' && track === null ? 'find' : 'tracks';
 
   // ── Find (S2a-4a·A2b, R-F-5, E-5, E-6, P-67) ──
-  // The catalog and the static's suggestions are the stores' own (V1 reads the same ones). Both
-  // fetch when Find opens, so a guest (who never reaches `view === 'find'`) triggers neither.
+  // The catalog and the static's suggestions are the stores' own (V1 reads the same ones). The
+  // catalog fetches when Find opens; the suggestions once per static per mount (the footer reads
+  // them in Tracks, R-F-7). A guest (who never reaches `view === 'find'`) triggers neither.
   const catalog = useCollectionGoalStore((s) => s.catalog);
   const catalogLoaded = useCollectionGoalStore((s) => s.catalogLoaded);
   const catalogLoading = useCollectionGoalStore((s) => s.catalogLoading);
@@ -347,15 +359,19 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     if (!findOpen) return;
     const goalStore = useCollectionGoalStore.getState();
     if (!goalStore.catalogLoaded && !goalStore.catalogLoading) void goalStore.fetchCatalog();
+  }, [findOpen]);
+  useEffect(() => {
+    if (!isMember) return;
     void useCollectionIntentStore.getState().fetchSuggestions(group.id);
-  }, [findOpen, group.id]);
+  }, [isMember, group.id]);
   // A failed or empty live catalog shows the built-in farms (V1's CatalogBrowse does the same).
   const catalogFallback = !catalogLoading && catalogLoaded && (catalogError !== null || catalog.length === 0);
+  const findCatalog = catalogFallback ? FALLBACK_CATALOG : catalog;
   const findList = useMemo(
     () =>
       findOpen
         ? buildFindList({
-            catalog: catalogFallback ? FALLBACK_CATALOG : catalog,
+            catalog: findCatalog,
             suggestions: findSuggestions ?? NO_SUGGESTIONS,
             goals,
             groupId: group.id,
@@ -363,9 +379,50 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
             filters: findFilters,
           })
         : null,
-    [findOpen, catalogFallback, catalog, findSuggestions, goals, group.id, findQuery, findFilters],
+    [findOpen, findCatalog, findSuggestions, goals, group.id, findQuery, findFilters],
   );
   const findLoading = !catalogLoaded || catalogLoading || (findSuggestions === undefined && suggestionsError === null);
+
+  // ── The footer (R-F-7) ──
+  // The first wanted item nobody tracks yet, from the whole wanted list (no search or filter), once
+  // the goals are in (an item never reads as untracked while its goal is still loading). The catalog
+  // need not be loaded: a wanted item it lacks is built from its suggestion row.
+  const footerItem = useMemo(() => {
+    if (!isMember || !goalsReady || findSuggestions === undefined) return null;
+    return topWanted(buildFindList({ catalog: findCatalog, suggestions: findSuggestions, goals, groupId: group.id, query: '', filters: NO_FILTERS }).wanted);
+  }, [isMember, goalsReady, findCatalog, findSuggestions, goals, group.id]);
+
+  // ── A member's intents (R-F-6, D-6, M-5a) ──
+  // I want this belongs to a member role that is not under View As (the intents route ignores
+  // `X-View-As`, so a write there would be the admin's own). Their rows are fetched when such a
+  // member opens Find; until THIS mount's fetch has settled nothing can be written.
+  const memberActions = isMember && !mayEdit && userRole !== 'viewer' && !isViewingAs;
+  const myIntents = useCollectionIntentStore((s) => s.myIntents);
+  const myIntentsLoaded = useCollectionIntentStore((s) => s.myIntentsLoaded);
+  const [intentsAttempt, setIntentsAttempt] = useState(0);
+  const [intentsSettled, setIntentsSettled] = useState<{ attempt: number; error: string | null } | null>(null);
+  useEffect(() => {
+    if (!findOpen || !memberActions) return;
+    const attempt = intentsAttempt;
+    let cancelled = false;
+    useCollectionIntentStore
+      .getState()
+      .fetchMyIntents()
+      .then(
+        () => {
+          if (!cancelled) setIntentsSettled({ attempt, error: null });
+        },
+        (err: unknown) => {
+          if (!cancelled) setIntentsSettled({ attempt, error: messageOf(err) });
+        },
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [findOpen, memberActions, intentsAttempt]);
+  const intentsStatus: MemberIntentsStatus =
+    intentsSettled?.attempt !== intentsAttempt ? 'loading' : intentsSettled.error !== null ? 'failed' : myIntentsLoaded ? 'ready' : 'loading';
+  const retryIntents = useCallback(() => setIntentsAttempt((n) => n + 1), []);
 
   const [mode, setMode] = useState(false);
   // Reset during the render that loses the bar (React's adjust-state-on-change pattern), so the
@@ -389,7 +446,8 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   };
 
   // ── The open row (S2a-3a·G2, R-S3-3) ──
-  const setTrack = useCallback((id: string | null) => setProgressView({ track: id }), [setProgressView]);
+  // `?edit` belongs to the open row (A2-M3): every move of `?track` drops it, in the same write.
+  const setTrack = useCallback((id: string | null) => setProgressView({ track: id, edit: null }), [setProgressView]);
   // Rule 1: `?track` wins over `?pview=find`, in one write that drops `pview`.
   useEffect(() => {
     if (pview === 'find' && track !== null) setProgressView({ pview: 'tracks' });
@@ -485,15 +543,9 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     [columns],
   );
 
-  const [editId, setEditId] = useState<string | null>(null);
-  // The edit belongs to the static it started under: dropped in the render that sees another one.
-  const [editGroupId, setEditGroupId] = useState(group.id);
-  if (editGroupId !== group.id) {
-    setEditGroupId(group.id);
-    setEditId(null);
-  }
-  // A static switch under the mounted page clears `?track` at once (the switches that navigate with
-  // no query clear it already); the id belongs to the static it was read under.
+  // A static switch under the mounted page clears `?track` (and the edit with it) at once (the
+  // switches that navigate with no query clear it already); the id belongs to the static it was
+  // read under.
   const trackedGroupId = useRef(group.id);
   useEffect(() => {
     if (trackedGroupId.current === group.id) return;
@@ -501,9 +553,14 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
     setTrack(null);
   }, [group.id, setTrack]);
 
-  // ── Inline Edit (G5, D-12) ──
-  // The block is on screen only while its row is the open one.
-  const editingId = editId !== null && editId === openId ? editId : null;
+  // ── Inline Edit (G5, D-12; A2-M3) ──
+  // `?edit` is the farm whose block is on, and the block is on screen only while that row is the
+  // open one. The page writes `edit` with `track` only, so an `edit` that names another id (a
+  // hand-written or foreign URL) is dropped.
+  const editingId = edit !== null && edit === openId ? edit : null;
+  useEffect(() => {
+    if (edit !== null && edit !== track) setProgressView({ edit: null });
+  }, [edit, track, setProgressView]);
   // Read in event handlers only: the block reports it from an effect, the handlers read it fresh.
   const dirtyRef = useRef(false);
   const setDirty = useCallback((dirty: boolean) => {
@@ -549,15 +606,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   );
   // A goal id or `TIER_TRACK`, against the effective open row, so the open tier row's name closes it.
   const toggleRow = useCallback(
-    (rowId: string) =>
-      askToDiscard(
-        openId,
-        () => {
-          setEditId(null);
-          setTrack(openRowId === rowId ? null : rowId);
-        },
-        rowId === TIER_TRACK ? tierNameId : farmNameId(rowId),
-      ),
+    (rowId: string) => askToDiscard(openId, () => setTrack(openRowId === rowId ? null : rowId), rowId === TIER_TRACK ? tierNameId : farmNameId(rowId)),
     [openId, openRowId, setTrack, askToDiscard],
   );
   const editControls = useMemo(
@@ -569,18 +618,11 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
           queueMicrotask(() => document.getElementById(farmEditTitleId(goalId))?.focus());
           return;
         }
-        askToDiscard(
-          editingId,
-          () => {
-            setEditId(goalId);
-            setTrack(goalId);
-          },
-          undefined,
-          opener,
-        );
+        // ONE write opens the row in Tracks with its block on; the block's mount focuses its Title.
+        askToDiscard(editingId, () => setProgressView({ pview: 'tracks', track: goalId, edit: goalId }), undefined, opener);
       },
       finish: (goalId: string) => {
-        setEditId(null);
+        setProgressView({ edit: null });
         dirtyRef.current = false;
         document.getElementById(farmMenuId(goalId))?.focus();
       },
@@ -590,7 +632,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
           goalId,
           () => {
             // Only this farm's own block goes; another row's Mark finished leaves an edit elsewhere alone.
-            if (goalId === editingId) setEditId(null);
+            if (goalId === editingId) setProgressView({ edit: null });
             proceed();
           },
           undefined,
@@ -598,26 +640,89 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
           true,
         ),
     }),
-    [editingId, askToDiscard, setTrack, setDirty],
+    [editingId, askToDiscard, setProgressView, setDirty],
   );
 
   // ── The switch (S2a-4a·A2, R-F-3 rule 3, D-9, C-4) ──
   // To Find: the discard guard first, then ONE write that sets `pview=find` and clears the open row
-  // and its edit; edit-statuses mode ends by itself (a Find view has no mode). Track a farm goes
-  // the same way. Back to Tracks drops `pview` and opens nothing.
+  // and its edit; edit-statuses mode ends by itself (a Find view has no mode). Back to Tracks drops
+  // `pview` and opens nothing.
   const goFind = () =>
     askToDiscard(
       openId,
-      () => {
-        setEditId(null);
-        setProgressView({ pview: 'find', track: null, edit: null });
-      },
+      () => setProgressView({ pview: 'find', track: null, edit: null }),
       undefined,
       undefined,
-      // Focus goes back to the control that asked: the switch or Track a farm both stay mounted.
+      // Focus goes back to the switch, which stays mounted, after a Discard.
       true,
     );
   const onView = (next: ProgressViewName) => (next === 'find' ? goFind() : setProgressView({ pview: 'tracks' }));
+
+  // ── Where focus lands after a view change (D-5, R-F-7, design §3.3) ──
+  // Each is settled in a layout effect of the commit that shows the target, so it is never aimed at
+  // an element that is not there yet: the search when Track a farm opens Find (after a Discard too,
+  // which is why Track a farm asks with no return), the Wanted row's toggle after the footer's
+  // Find, and the row's name after Track. The URL write is a transition (React Router), so its
+  // commit comes after the handler's own state commit: each effect also keys on what that write shows.
+  const pendingSearchFocus = useRef(false);
+  // Bumped so the effect runs even when Find is already open and the write changes nothing.
+  const [searchFocusTick, setSearchFocusTick] = useState(0);
+  useLayoutEffect(() => {
+    if (!pendingSearchFocus.current || searchRef.current === null) return;
+    pendingSearchFocus.current = false;
+    searchRef.current.focus();
+  }, [searchFocusTick, findOpen]);
+  const trackFarm = () =>
+    askToDiscard(openId, () => {
+      pendingSearchFocus.current = true;
+      setProgressView({ pview: 'find', track: null, edit: null });
+      setSearchFocusTick((n) => n + 1);
+    });
+
+  const findSectionRef = useRef<HTMLElement>(null);
+  const pendingFindFocus = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const id = pendingFindFocus.current;
+    if (id === null || !findOpen || findList === null) return;
+    pendingFindFocus.current = null;
+    // The Wanted twin, not the All one: the wanted section is the first section of the list, and
+    // its rows follow `findList.wanted` one to one.
+    const index = findList.wanted.findIndex((i) => i.id === id);
+    if (index < 0) return;
+    findSectionRef.current?.querySelector('section')?.querySelectorAll<HTMLElement>('button[aria-expanded]')[index]?.focus();
+  }, [findOpen, findList]);
+  const findFromFooter = (item: FindItem) =>
+    askToDiscard(openId, () => {
+      pendingFindFocus.current = item.id;
+      // The farm must be on screen: the search and filters start clean.
+      setFindQuery('');
+      setFindFilters(NO_FILTERS);
+      setExpandedFind(item.id);
+      setProgressView({ pview: 'find', track: null, edit: null });
+    });
+
+  const pendingRowFocus = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const id = pendingRowFocus.current;
+    if (id === null || id !== openRowId) return;
+    pendingRowFocus.current = null;
+    document.getElementById(farmNameId(id))?.focus();
+  }, [openRowId]);
+  // Track's row exists and its cells are fetched: ONE write opens it in Tracks (R-F-6, §3.3).
+  const onTracked = useCallback(
+    (goalId: string) => {
+      pendingRowFocus.current = goalId;
+      setProgressView({ pview: 'tracks', track: goalId, edit: null });
+    },
+    [setProgressView],
+  );
+  const renderAction = (item: FindItem) => {
+    if (mayEdit) return <LeadFindAction item={item} groupId={group.id} onTracked={onTracked} />;
+    if (memberActions && item.trackable) {
+      return <MemberFindAction item={item} groupId={group.id} existing={myIntents[item.id]} intents={intentsStatus} onRetry={retryIntents} />;
+    }
+    return null;
+  };
 
   // The tier panel's model, only while the row can open (R-T-8): failed first, then on, then off.
   const tierPanel: TierPanelModel | undefined = tierOpenable
@@ -656,7 +761,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
             view={view}
             onView={onView}
             lead={canManage}
-            onTrackFarm={goFind}
+            onTrackFarm={trackFarm}
             editBar={
               barShown ? (
                 <EditStatusesBar
@@ -671,7 +776,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
           />
         )}
         {view === 'find' && (
-          <section aria-label="Find">
+          <section ref={findSectionRef} aria-label="Find">
             {findList !== null && (
               <FindList
                 list={findList}
@@ -679,10 +784,11 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
                 onQuery={setFindQuery}
                 filters={findFilters}
                 onFilters={setFindFilters}
-                renderAction={NO_ACTION}
+                renderAction={renderAction}
                 names={memberNames}
                 expandedId={expandedFind}
                 onExpand={(id) => setExpandedFind((cur) => (cur === id ? null : id))}
+                footer={mayEdit ? <CustomTrackRow query={findQuery} groupId={group.id} onCreated={(id) => editControls.start(id)} /> : undefined}
                 error={suggestionsError}
                 onRetry={() => void useCollectionIntentStore.getState().fetchSuggestions(group.id)}
                 catalogFallback={catalogFallback}
@@ -736,6 +842,7 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
             </Button>
           </div>
         )}
+        {view === 'tracks' && footerItem !== null && <FindFooter item={footerItem} names={memberNames} onFind={() => findFromFooter(footerItem)} />}
       </div>
       {discarding !== null && (
         <ConfirmModal
