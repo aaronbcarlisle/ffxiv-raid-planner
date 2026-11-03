@@ -353,3 +353,61 @@ test.describe('Guest on a public static (S2a-3c Change order)', () => {
     }
   });
 });
+
+/**
+ * S2a-4a·A4 (design §3.7, §4 item 8): Find is members-only. A guest who lands on `?pview=find` or
+ * V1's `?farm=catalog` gets the members-only Progress with no view switch, and the page makes no
+ * `collection-catalog`, `collection-suggestions` or `collection-intent` request. The same recorder
+ * on the owner's Find sees the catalog and the suggestions, so the empty guest list is not vacuous.
+ */
+test.describe('Guest on a public static (S2a-4a Find)', () => {
+  const FIND_CALLS = /\/api\/.*collection-(catalog|suggestions|intent)/;
+
+  test('Find makes no collection-catalog, collection-suggestions or collection-intent request for a guest', async ({ browser }) => {
+    test.setTimeout(60_000);
+
+    // dev-auth flips DEVTST to public on every owner login.
+    const ownerCtx = await browser.newContext({ baseURL: FRONTEND_BASE });
+    const ownerPage = await ownerCtx.newPage();
+    await loginAsOwner(ownerPage);
+    try {
+      // Positive control: the owner's Find makes both reads through the same recorder.
+      const ownerCalls: string[] = [];
+      ownerPage.on('request', (req) => {
+        if (FIND_CALLS.test(req.url())) ownerCalls.push(`${req.method()} ${req.url()}`);
+      });
+      await pinShell(ownerPage, 'v2', `/group/${DEV_SHARE_CODE}?tab=progress&pview=find`);
+      await expect(ownerPage.getByRole('region', { name: 'Find', exact: true })).toBeVisible({ timeout: 15_000 });
+      await ownerPage.waitForLoadState('networkidle');
+      expect(ownerCalls.some((line) => /\/collection-catalog/.test(line)), `owner calls:\n${ownerCalls.join('\n')}`).toBe(true);
+      expect(ownerCalls.some((line) => /\/collection-suggestions/.test(line)), `owner calls:\n${ownerCalls.join('\n')}`).toBe(true);
+
+      const guestCtx = await browser.newContext({ baseURL: FRONTEND_BASE });
+      const page = await guestCtx.newPage();
+      const requests: string[] = [];
+      const denied: string[] = [];
+      page.on('request', (req) => requests.push(`${req.method()} ${req.url()}`));
+      page.on('response', (res) => {
+        if (res.status() === 401 || res.status() === 403) denied.push(`${res.status()} ${res.url()}`);
+      });
+
+      for (const query of ['tab=progress&pview=find', 'tab=progress&farm=catalog']) {
+        await pinShell(page, 'v2', `/group/${DEV_SHARE_CODE}?${query}`);
+        await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
+        await expect(page.getByTestId('progress-tier-row')).toBeVisible({ timeout: 15_000 });
+        await expect(page.getByRole('heading', { name: 'Members only' })).toBeVisible();
+        await page.waitForLoadState('networkidle');
+        await expect(page.getByRole('group', { name: 'Progress view' })).toHaveCount(0);
+        await expect(page.getByRole('region', { name: 'Find', exact: true })).toHaveCount(0);
+      }
+
+      expect(requests.some((line) => /\/api\/static-groups\//.test(line)), 'the recorder saw the page\'s API calls').toBe(true);
+      const findCalls = requests.filter((line) => FIND_CALLS.test(line));
+      expect(findCalls, `Find requests a guest made:\n${findCalls.join('\n')}`).toEqual([]);
+      expect(denied, `401/403 responses:\n${denied.join('\n')}`).toEqual([]);
+      await guestCtx.close();
+    } finally {
+      await ownerCtx.close();
+    }
+  });
+});

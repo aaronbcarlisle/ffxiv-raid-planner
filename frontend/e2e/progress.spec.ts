@@ -16,7 +16,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { test, expect, type Browser, type Page } from '@playwright/test';
+import { test, expect, type Browser, type Locator, type Page } from '@playwright/test';
 import {
   API_BASE,
   DEV_SHARE_CODE,
@@ -36,6 +36,7 @@ import {
   withSplit,
   withoutSplitPlannerDebt,
 } from './helpers/owner';
+import { type FindSeed, type PriorWants, memberSession, pickFindItems, readWants, restoreWants, seedWants } from './helpers/find';
 
 const PREFIX = 'E2E Progress';
 const THEMES = ['dark', 'light'] as const;
@@ -1749,3 +1750,319 @@ async function blockingIn(page: Page, includes: string[], opts: { splitPlannerLi
   // color-contrast rule alone; every other rule still sees those nodes.
   return opts.splitPlannerLightDebt ? withoutSplitPlannerDebt(page, blocking) : blocking;
 }
+
+/**
+ * S2a-4a·A4 (design §4 items 1, 2, 3, 5 and 8; parent criterion 7): Find end to end on DEVTST.
+ *
+ * Seeds, through DevMember's own API, a shared want (hunting, high, static_only) and a private want
+ * on two catalog items nobody in DEVTST has any signal for (helpers/find.ts), and one prefixed custom
+ * farm (the `?pview=find&track=` target). The owner's Track and custom row create farms through the
+ * UI; their ids go in the ledger. afterAll deletes every farm on either item or with the prefix, and
+ * puts DevMember's rows back as they were (deleted where there was none).
+ *
+ * Track runs last: once the shared want is tracked, the footer moves on to another farm.
+ */
+const FIND_ROW = `${PREFIX} Find Row`;
+const FIND_CUSTOM = `${PREFIX} Find Custom`;
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+test.describe.serial('Progress: Find (S2a-4a)', () => {
+  let seed: FindSeed | undefined;
+  let prior: PriorWants = {};
+  let rowId = '';
+
+  test.beforeAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    const member = await memberSession(browser);
+    try {
+      await deleteSeededFarms(owner.page, owner.groupId, owner.headers);
+      const picked = await pickFindItems(member, owner.groupId);
+      prior = await readWants(member, [picked.shared.id, picked.private.id]);
+      seed = picked;
+      await seedWants(member, picked);
+      rowId = await seedFarm(owner.page, owner.groupId, owner.headers, FIND_ROW);
+    } finally {
+      await member.context.close();
+      await owner.context.close();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    const member = await memberSession(browser);
+    try {
+      await restoreWants(member, prior);
+      const list = await owner.page.request.get(`${API_BASE}/api/static-groups/${owner.groupId}/collection-goals`);
+      const goals = list.ok() ? ((await list.json()) as Array<{ id: string; catalog_item_id: string | null }>) : [];
+      const onSeeded = seed ? goals.filter((g) => g.catalog_item_id === seed?.shared.id || g.catalog_item_id === seed?.private.id) : [];
+      await deleteSeededFarms(owner.page, owner.groupId, owner.headers, [...(rowId ? [rowId] : []), ...onSeeded.map((g) => g.id)]);
+    } finally {
+      await member.context.close();
+      await owner.context.close();
+    }
+  });
+
+  const findRegion = (page: Page) => page.getByRole('region', { name: 'Find', exact: true });
+  const viewButton = (page: Page, name: 'Tracks' | 'Find') => page.getByRole('group', { name: 'Progress view' }).getByRole('button', { name, exact: true });
+  const wantedSection = (page: Page) => findRegion(page).getByRole('region', { name: /^Wanted by your static/ });
+  const allSection = (page: Page) => findRegion(page).getByRole('region', { name: /^All farm sources/ });
+  const rowIn = (scope: Locator, name: string) => scope.getByTestId('find-row').filter({ has: scope.page().getByText(name, { exact: true }) });
+  const toggleOf = (row: Locator, name: string) => row.getByRole('button', { name: `Show details for ${name}`, exact: true });
+  const search = (page: Page) => findRegion(page).getByRole('textbox', { name: 'Search farms' });
+  const shared = () => (seed as FindSeed).shared;
+  const priv = () => (seed as FindSeed).private;
+
+  /** Sign in, open `query` on V2 Progress at 1440 x 900 and wait for the shell. */
+  async function open(page: Page, query: string, opts: { login?: 'owner' | 'member'; theme?: 'dark' | 'light' } = {}) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    if (opts.theme) await page.addInitScript((t) => window.localStorage.setItem('theme', t), opts.theme);
+    if ((opts.login ?? 'owner') === 'owner') await loginAsOwner(page);
+    else await loginAsMember(page);
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&${query}`);
+    await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
+    await page.getByRole('button', { name: /User menu for/i }).waitFor({ timeout: 15_000 });
+  }
+
+  /** Find is open and both seeded items have their rows (the catalog and the suggestions are in). */
+  async function findReady(page: Page) {
+    await expect(findRegion(page)).toBeVisible({ timeout: 15_000 });
+    await expect(rowIn(wantedSection(page), shared().name)).toBeVisible({ timeout: 15_000 });
+    await expect(rowIn(allSection(page), priv().name)).toBeVisible();
+  }
+
+  test('owner: the switch opens Find, and Tracks brings the matrix back (design §4.1)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, 'tab=progress');
+    await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
+    await expect(viewButton(page, 'Find')).toHaveAttribute('aria-pressed', 'false');
+
+    await viewButton(page, 'Find').click();
+    await findReady(page);
+    await expect(page).toHaveURL(/[?&]pview=find(&|$)/);
+    await expect(viewButton(page, 'Find')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('progress-matrix')).toHaveCount(0);
+
+    await viewButton(page, 'Tracks').click();
+    await expect(page.getByTestId('progress-matrix')).toBeVisible();
+    await expect(page).not.toHaveURL(/[?&]pview=/);
+    await expect(findRegion(page)).toHaveCount(0);
+    await context.close();
+  });
+
+  test('owner: "Wanted by your static" comes first and lists the shared want, never the private one (criterion 7)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, 'tab=progress&pview=find');
+    await findReady(page);
+
+    const headings = await findRegion(page).getByRole('heading', { level: 2 }).allTextContents();
+    expect(headings[0]).toMatch(/^Wanted by your static \(\d+\)$/);
+    expect(headings[1]).toMatch(/^All farm sources \(\d+\)$/);
+
+    const sharedRow = rowIn(wantedSection(page), shared().name);
+    await expect(sharedRow).toHaveCount(1);
+    await expect(sharedRow).toContainText('1 wants');
+    await expect(rowIn(wantedSection(page), priv().name)).toHaveCount(0);
+    // The private item is in the catalog (so the absence above is not vacuous), with no wanter.
+    const privateRow = rowIn(allSection(page), priv().name);
+    await expect(privateRow).toHaveCount(1);
+    await expect(privateRow).not.toContainText(/\bwants?\b/);
+
+    // Expanded: the shared row names its wanter's state; the private row lists no Want at all.
+    await toggleOf(sharedRow, shared().name).click();
+    await expect(toggleOf(sharedRow, shared().name)).toHaveAttribute('aria-expanded', 'true');
+    await expect(sharedRow.getByRole('listitem').filter({ hasText: /: Want\b/ })).toHaveCount(1);
+    await toggleOf(privateRow, priv().name).click();
+    await expect(toggleOf(privateRow, priv().name)).toHaveAttribute('aria-expanded', 'true');
+    await expect(privateRow.getByRole('listitem').filter({ hasText: /: Want\b/ })).toHaveCount(0);
+    await context.close();
+  });
+
+  test('owner: the footer names the wanted farm, and its Find opens Find with that row expanded and focused (R-F-7)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, 'tab=progress');
+    await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
+
+    const link = page.getByLabel(`Find ${shared().name}`, { exact: true });
+    await expect(link).toBeVisible({ timeout: 15_000 });
+    await expect(link.locator('xpath=..')).toHaveText(new RegExp(`^.+ wants ${escapeRe(shared().name)} · Find$`));
+
+    await link.click();
+    await expect(findRegion(page)).toBeVisible();
+    await expect(page).toHaveURL(/[?&]pview=find(&|$)/);
+    await expect(page).not.toHaveURL(/[?&]track=/);
+    const toggle = toggleOf(rowIn(wantedSection(page), shared().name), shared().name);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(toggle).toBeFocused();
+    await context.close();
+  });
+
+  test('owner: ?farm=catalog opens Find and leaves the URL (design §4.5)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, 'tab=progress&farm=catalog');
+    await findReady(page);
+    await expect(page).toHaveURL(/[?&]pview=find(&|$)/);
+    await expect(page).not.toHaveURL(/[?&]farm=/);
+    await context.close();
+  });
+
+  test('owner: ?pview=find&track=<id> opens that row in Tracks and drops pview (design §4.5)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, `tab=progress&pview=find&track=${rowId}`);
+    await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(`[data-goal-id="${rowId}"] [role="rowheader"] button`)).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByTestId('progress-expansion')).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`[?&]track=${rowId}(&|$)`));
+    await expect(page).not.toHaveURL(/[?&]pview=/);
+    await expect(viewButton(page, 'Tracks')).toHaveAttribute('aria-pressed', 'true');
+    await expect(findRegion(page)).toHaveCount(0);
+    await context.close();
+  });
+
+  test('owner: Track a farm opens Find with the search focused (D-5)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, 'tab=progress');
+    await expect(page.getByTestId('progress-matrix')).toBeVisible({ timeout: 15_000 });
+
+    const trackAFarm = page.getByRole('button', { name: 'Track a farm', exact: true });
+    await expect(trackAFarm).toBeVisible();
+    await trackAFarm.click();
+    await expect(findRegion(page)).toBeVisible();
+    await expect(page).toHaveURL(/[?&]pview=find(&|$)/);
+    await expect(search(page)).toBeFocused();
+    await context.close();
+  });
+
+  test('owner: search narrows the list and Clear search restores it; a filter narrows it and Clear filters restores it (P-64, P-65, P-66)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, 'tab=progress&pview=find');
+    await findReady(page);
+
+    const allHeading = allSection(page).getByRole('heading', { level: 2 });
+    const countOf = async () => Number(/\((\d+)\)$/.exec((await allHeading.textContent()) ?? '')?.[1] ?? NaN);
+    const total = await countOf();
+    expect(total).toBeGreaterThan(1);
+
+    // Search: the shared item's name finds it, and the private item drops out.
+    await search(page).fill(shared().name);
+    await expect(rowIn(allSection(page), shared().name)).toHaveCount(1);
+    await expect(rowIn(allSection(page), priv().name)).toHaveCount(0);
+    expect(await countOf()).toBeLessThan(total);
+    await findRegion(page).getByRole('button', { name: 'Clear search', exact: true }).click();
+    await expect(search(page)).toHaveValue('');
+    await expect(allHeading).toHaveText(`All farm sources (${total})`);
+
+    // A filter: the first Category chip after All, whose count is what the list then holds.
+    const category = findRegion(page).getByRole('group', { name: 'Category', exact: true });
+    const chip = category.getByRole('button').nth(1);
+    const chipCount = Number(/(\d+)$/.exec(((await chip.textContent()) ?? '').trim())?.[1] ?? NaN);
+    expect(chipCount).toBeGreaterThan(0);
+    expect(chipCount).toBeLessThan(total);
+    await chip.click();
+    await expect(chip).toHaveAttribute('aria-pressed', 'true');
+    await expect(allHeading).toHaveText(`All farm sources (${chipCount})`);
+
+    const clearFilters = findRegion(page).getByRole('button', { name: 'Clear filters', exact: true });
+    await clearFilters.click();
+    await expect(allHeading).toHaveText(`All farm sources (${total})`);
+    await expect(category.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(clearFilters).toHaveCount(0);
+    await context.close();
+  });
+
+  test('owner: a search with no match offers the custom row, which opens the new farm in Edit with Title focused (design §4.2)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, 'tab=progress&pview=find');
+    await findReady(page);
+    await expect(findRegion(page).getByText('Type a name to track a custom farm', { exact: true })).toBeVisible();
+
+    await search(page).fill(FIND_CUSTOM);
+    await expect(findRegion(page).getByText(`No farms match "${FIND_CUSTOM}"`, { exact: true })).toBeVisible();
+    await findRegion(page).getByRole('button', { name: `Track "${FIND_CUSTOM}" as a custom farm`, exact: true }).click();
+
+    await expect(page).toHaveURL(/[?&]edit=/);
+    const url = new URL(page.url());
+    const id = url.searchParams.get('track') ?? '';
+    expect(id).not.toBe('');
+    recordSeeded(id);
+    expect(url.searchParams.get('edit')).toBe(id);
+    expect(url.searchParams.get('pview')).toBeNull();
+    const title = page.locator(`#progress-expansion-${id}-edit-title`);
+    await expect(title).toBeFocused();
+    await expect(title).toHaveValue(FIND_CUSTOM);
+    await context.close();
+  });
+
+  for (const theme of THEMES) {
+    test(`owner: axe reports no critical or serious violation in Find with a row expanded (${theme}, 1440 x 900)`, async ({ browser }) => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await open(page, 'tab=progress&pview=find', { theme });
+      await findReady(page);
+      const toggle = toggleOf(rowIn(wantedSection(page), shared().name), shared().name);
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await page.waitForLoadState('networkidle');
+
+      const blocking = await blockingIn(page, ['[data-testid="progress-screen"]']);
+      expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+      await context.close();
+    });
+
+    test(`member: axe reports no critical or serious violation in Find with the Share prompt open (${theme}, 1440 x 900)`, async ({ browser }) => {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      const puts: string[] = [];
+      page.on('request', (req) => {
+        if (req.method() !== 'GET' && /\/api\/me\/collection-intent\//.test(req.url())) puts.push(`${req.method()} ${req.url()}`);
+      });
+      await open(page, 'tab=progress&pview=find', { login: 'member', theme });
+      await findReady(page);
+      const row = rowIn(allSection(page), priv().name);
+      const want = row.getByRole('button', { name: 'I want this', exact: true });
+      await expect(want).not.toHaveAttribute('aria-disabled', 'true');
+      await want.click();
+      await expect(row.getByText('Your want is private. Share it with your statics?', { exact: true })).toBeVisible();
+      await expect(row.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
+      await page.waitForLoadState('networkidle');
+
+      const blocking = await blockingIn(page, ['[data-testid="progress-screen"]']);
+      expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+      await row.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await expect(want).toBeFocused();
+      expect(puts, 'the prompt and its Cancel write nothing').toEqual([]);
+      await context.close();
+    });
+  }
+
+  test('owner: Track on the shared want opens its new row in Tracks, and DevMember\'s cell is Want (design §4.1, criterion 7)', async ({ browser }) => {
+    const context = await freshContext(browser);
+    const page = await context.newPage();
+    await open(page, 'tab=progress&pview=find');
+    await findReady(page);
+
+    const track = rowIn(wantedSection(page), shared().name).getByRole('button', { name: 'Track', exact: true });
+    await expect(track).toBeVisible();
+    await track.click();
+    await expect(page).toHaveURL(/[?&]track=/);
+    const url = new URL(page.url());
+    const id = url.searchParams.get('track') ?? '';
+    recordSeeded(id);
+    expect(url.searchParams.get('pview')).toBeNull();
+    expect(url.searchParams.get('edit')).toBeNull();
+
+    await expect(page.getByTestId('progress-matrix')).toBeVisible();
+    await expect(page.locator(`[data-goal-id="${id}"] [role="rowheader"] button`)).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByText(`Tracking ${shared().name}`, { exact: true })).toBeVisible();
+    // Track seeds statuses from wants: DevMember's shared want reads Want (B5 leaves the rest blank).
+    await expect(cellOf(page, id, 'Melee One')).toHaveAttribute('aria-label', new RegExp(`^Melee One, ${escapeRe(shared().name)}, Want(,|$)`));
+    await context.close();
+  });
+});
