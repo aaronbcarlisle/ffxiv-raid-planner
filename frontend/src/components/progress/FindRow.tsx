@@ -11,6 +11,7 @@
 import { useId, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { IconButton } from '../primitives/IconButton';
+import { VisuallyHidden } from '../primitives/VisuallyHidden';
 import { Tag } from '../ui/Tag';
 import { SOURCE_TYPE_BADGE, expansionLabel } from '../../utils/collectionBadgeConfig';
 import type { FindItem } from '../../utils/findModel';
@@ -34,7 +35,7 @@ function stateLabel(m: Member): string {
   if (m.ownershipState === 'have') return 'Have';
   if (m.intent === 'hunting') return 'Want';
   if (m.intent === 'interested') return 'Interested';
-  if (m.intent === 'pass' || m.intent === 'hidden') return 'Passed';
+  if (m.intent === 'pass') return 'Passed';
   return m.ownershipState === 'missing' ? 'Missing' : 'Unknown';
 }
 
@@ -91,7 +92,17 @@ export function FindRow({ item, names, expanded, onToggle, action, readerIsViewe
             {item.members.map((m) => (
               <li key={m.userId}>
                 <span className="text-text-primary">{`${names.get(m.userId) ?? 'A member'}: ${stateLabel(m)}`}</span>
-                {!readerIsViewer && m.tokenCount !== null && ` · ${m.tokenCount} ${item.token?.name ?? 'tokens'}`}
+                {!readerIsViewer && m.tokenCount !== null && (
+                  <>
+                    {` · ${m.tokenCount} ${item.token?.name ?? 'tokens'}`}
+                    {m.canBuy && (
+                      <>
+                        <span aria-hidden>{' ✓'}</span>
+                        <VisuallyHidden>, can buy</VisuallyHidden>
+                      </>
+                    )}
+                  </>
+                )}
               </li>
             ))}
           </ul>
