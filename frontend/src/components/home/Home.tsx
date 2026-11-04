@@ -37,6 +37,9 @@
  * viewers also fetch the static's split-clear plan (`splitResult`, keyed by
  * static) and, with split clears on, "Needs your attention" ends with a Split
  * clears row that opens the tier row in Progress.
+ *
+ * The objectives card (S2a-5a·C2a, R-M-5): members and viewers also fetch the static's objectives,
+ * in an effect of its own with no tier dep, for the card under the farm card.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -58,6 +61,7 @@ import { RoleBisCard } from './RoleBisCard';
 import { TeamSummaryCard } from './TeamSummaryCard';
 import { StaticActivityFeed } from './StaticActivityFeed';
 import { TrackCard } from './TrackCard';
+import { ObjectivesCard } from './ObjectivesCard';
 import { FairnessSummary } from '../loot/FairnessSummary';
 
 import { useScheduleStore } from '../../stores/scheduleStore';
@@ -68,6 +72,7 @@ import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { useSplitClearStore } from '../../stores/splitClearStore';
+import { useObjectiveGoalStore } from '../../stores/objectiveGoalStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useViewAsStore } from '../../stores/viewAsStore';
 import { useStaticPermissions } from '../../hooks/useStaticPermissions';
@@ -90,6 +95,8 @@ export interface HomeProps {
   onNavigate: (tab: PageMode, extra?: Record<string, string>) => void;
   /** Opens Settings ▸ Recruitment ▸ Requests (now live via the v2 settings host). */
   onOpenRequests: () => void;
+  /** Opens the objectives editor (Recruit ▸ Listing); the card's Edit link shows for managers only. */
+  onEditObjectives?: () => void;
 }
 
 /** One built attention item — the data behind a rendered <AttentionRow/>. */
@@ -106,7 +113,7 @@ function hasBis(gear: { bisSource?: unknown }[]): boolean {
   return gear.some((s) => s.bisSource !== null && s.bisSource !== undefined);
 }
 
-export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: HomeProps) {
+export function Home({ group, tier, canManage, onNavigate, onOpenRequests, onEditObjectives }: HomeProps) {
   // ── Store reads ──────────────────────────────────────────────────────────
   const sessions = useScheduleStore((s) => s.sessions);
   const submitRsvp = useScheduleStore((s) => s.submitRsvp);
@@ -138,6 +145,8 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   const fetchRegistrations = useStaticCharacterStore((s) => s.fetchRegistrations);
 
   const fetchSplitClear = useSplitClearStore((s) => s.fetchData);
+
+  const fetchObjectives = useObjectiveGoalStore((s) => s.fetchObjectives);
 
   const authUserId = useAuthStore((s) => s.user?.id);
   // ROLE-1 (vet F5): the gates below read the EFFECTIVE role and user, so View
@@ -236,6 +245,15 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
       cancelled = true;
     };
   }, [group.id, group.userRole, fetchGoals, fetchGoalProgress]);
+
+  // ── The objectives card's data (S2a-5a·C2a, R-M-5, C-3) ─────────────────────
+  // Every member role, viewers included, on any tier or none: objectives are the static's, so no tier
+  // dep. Guests have no `userRole` and send nothing. The fetch uses the actual role, as the farm
+  // card's does; the card reads the effective one.
+  useEffect(() => {
+    if (!group.id || !group.userRole) return;
+    void fetchObjectives(group.id);
+  }, [group.id, group.userRole, fetchObjectives]);
 
   // ── The split row's data (E-11, R-F-11) ────────────────────────────────────
   // Members and viewers, the active tier only (guests have no `userRole`, so
@@ -563,6 +581,7 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
           )}
           <StaticActivityFeed />
           <TrackCard group={group} tier={tier} onNavigate={onNavigate} />
+          <ObjectivesCard group={group} canManage={canManage} onEdit={onEditObjectives} />
         </div>
       </div>
     </div>
