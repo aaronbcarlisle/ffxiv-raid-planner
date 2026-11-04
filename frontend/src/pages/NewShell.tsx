@@ -437,7 +437,7 @@ export function NewShell() {
     }
     if (canManage) {
       const target = recruitUrl(shareCode, 'listing', { tier: params.get('tier') });
-      navigate(withCarriedParams(target, location.search, ['goal', 'tab']), { replace: true });
+      navigate(withCarriedParams(target, location.search, ['tab']), { replace: true });
     } else {
       params.delete('goal');
       params.set('tab', 'overview');
