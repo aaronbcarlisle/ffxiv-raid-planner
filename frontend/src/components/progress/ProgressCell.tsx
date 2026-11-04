@@ -17,21 +17,14 @@
  */
 import { useState } from 'react';
 import { Tooltip } from '../primitives/Tooltip';
-import type { CollectionGoal, ParticipantState } from '../../stores/collectionGoalStore';
+import type { CollectionGoal } from '../../stores/collectionGoalStore';
 import { cellAccessibleName, cellText, type ProgressCell as ProgressCellModel } from '../../utils/progressModel';
+import { STATE_TONE } from '../../utils/progressState';
 import { CELL_FOCUS_RING } from './cellFocusRing';
 import { CellPicker } from './CellPicker';
 import type { CellWriteResolver } from './editStatuses';
 import { cellProvenance, type ProvenanceContext } from './progressProvenance';
 import type { MatrixCellProps } from './useMatrixKeyboard';
-
-/** Semantic tones only. The glyph/word carries each state; colour never tells it alone. */
-const STATE_TONE: Record<ParticipantState, string> = {
-  have: 'text-status-success',
-  need: 'text-status-error',
-  want: 'text-status-warning',
-  pass: 'text-text-secondary',
-};
 
 interface ProgressCellProps {
   cell: ProgressCellModel;

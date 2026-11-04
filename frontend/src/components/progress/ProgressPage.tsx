@@ -87,7 +87,8 @@ import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingS
 import { useSplitClearStore } from '../../stores/splitClearStore';
 import { toast } from '../../stores/toastStore';
 import type { LootLogEntry, MemberRole, PageLedgerEntry, PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
-import { buildColumns, splitFarmRows, type ProgressCell as ProgressCellModel, type ProgressData } from '../../utils/progressModel';
+import { splitFarmRows, type ProgressCell as ProgressCellModel, type ProgressData } from '../../utils/progressModel';
+import { progressInputs } from '../../utils/progressView';
 import { buildFindList, topWanted, type FindFilters, type FindItem } from '../../utils/findModel';
 import { tierBisCell, tierBisTotals, tierStatusText } from '../../utils/tierBis';
 import { blankClaimedCells, cellWriteTarget } from './editStatuses';
@@ -307,10 +308,11 @@ export function ProgressPage({ group, tier, canManage, userRole, currentUserId, 
   const { columns, active, finished } = useMemo(() => {
     // Columns come from the ACTIVE goals only: Finished never adds or shifts one. Until the farms
     // show, the columns are the roster's alone.
-    const columns = buildColumns(players, preset, farmsShown ? { goals: activeGoals, participants, recordOnly } : NO_FARMS);
-    const rows = splitFarmRows(farmsShown ? { goals: groupGoals, participants, recordOnly } : NO_FARMS, columns, { currentUserId, userRole });
+    const data = farmsShown ? { goals: groupGoals, participants, recordOnly } : NO_FARMS;
+    const { columns } = progressInputs({ goals, groupId: group.id, players, sortPreset: preset, data });
+    const rows = splitFarmRows(data, columns, { currentUserId, userRole });
     return { columns, ...rows };
-  }, [players, preset, farmsShown, activeGoals, groupGoals, participants, recordOnly, currentUserId, userRole]);
+  }, [goals, group.id, players, preset, farmsShown, groupGoals, participants, recordOnly, currentUserId, userRole]);
 
   // ── The tier row (R-T-3, D-4, D-7, E-7) ──
   // A card's column has its BiS cell; a column with no card has none. Substitutes show theirs but

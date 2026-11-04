@@ -5,8 +5,8 @@
  * subtitle) and ONE grid — a 3-card hero row (next session + RSVP · this
  * week's loot · roster readiness) over a second row where the actionable
  * stack (Needs your attention + BiS-by-role + Team Summary) spans the first
- * two columns and the ambient stack (loot fairness + recent activity + a
- * display-only Track card) is the third. Wired in as the `overview` slot on
+ * two columns and the ambient stack (loot fairness + recent activity + the
+ * farm card) is the third. Wired in as the `overview` slot on
  * `GroupViewContent` (see NewShell).
  *
  * Boundary discipline (ring0): composes `home/` siblings + `loot/`'s
@@ -27,6 +27,11 @@
  * branch fetches the loot log, page ledger and material log read-only,
  * mirroring Loot's own unconditional mount-fetch (`Loot.tsx:641-643`) —
  * balances, registrations and `TeamSummaryCard` stay member-only.
+ *
+ * The farm card (S2a-4b·B1, E-8, C-7): members also fetch the static's goals
+ * and then their cells, the goal store's `fetchProgress`, aliased here because
+ * `fetchProgress` is the mount farm's. That one stays for `StaticActivityFeed`
+ * (D-12).
  */
 
 import { useEffect, useMemo } from 'react';
@@ -54,6 +59,7 @@ import { useScheduleStore } from '../../stores/scheduleStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { normalizeRecruitmentStatus, STATUS_LABEL } from '../../utils/recruitmentStatus';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -118,6 +124,9 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   const fetchMaterialBalances = useLootTrackingStore((s) => s.fetchMaterialBalances);
 
   const fetchProgress = useMountFarmStore((s) => s.fetchProgress);
+
+  const fetchGoals = useCollectionGoalStore((s) => s.fetchGoals);
+  const fetchGoalProgress = useCollectionGoalStore((s) => s.fetchProgress);
 
   const fetchRegistrations = useStaticCharacterStore((s) => s.fetchRegistrations);
 
@@ -192,6 +201,26 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
     fetchMaterialBalances,
     fetchMaterialLog,
   ]);
+
+  // ── The farm card's data (E-8) ─────────────────────────────────────────────
+  // Members only, as above, in an effect of its own: the one above re-runs on a
+  // tier switch, and farms belong to the static, so a tier switch must not hide
+  // the card behind a refetch. Goals first, then the cells, as ProgressPage does
+  // (`loadedGroupId` is how the cells know the goals in the store are this
+  // static's). With no active farm there are no cells to ask for.
+  useEffect(() => {
+    if (!group.id || !group.userRole) return;
+    let cancelled = false;
+    void fetchGoals(group.id).then(() => {
+      if (cancelled) return;
+      const { goals, loadedGroupId } = useCollectionGoalStore.getState();
+      const anyActive = goals.some((g) => g.staticGroupId === group.id && g.status !== 'complete');
+      if (loadedGroupId === group.id && anyActive) void fetchGoalProgress(group.id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [group.id, group.userRole, fetchGoals, fetchGoalProgress]);
 
   // ── FairnessSummary inputs (R-D14-D — same derivations as Loot's mount,
   // `Loot.tsx:1216-1224` before D14 moved the card here) ────────────────────
@@ -463,7 +492,7 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
             </CardShell>
           )}
           <StaticActivityFeed />
-          <TrackCard />
+          <TrackCard group={group} tier={tier} onNavigate={onNavigate} />
         </div>
       </div>
     </div>
