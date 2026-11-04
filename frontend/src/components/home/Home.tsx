@@ -32,11 +32,16 @@
  * and then their cells, the goal store's `fetchProgress`, aliased here because
  * `fetchProgress` is the mount farm's. That one stays for `StaticActivityFeed`
  * (D-12).
+ *
+ * The split row (S2a-4b·B2, D-13, E-11): on the active tier, members and
+ * viewers also fetch the static's split-clear plan (`splitResult`, keyed by
+ * static) and, with split clears on, "Needs your attention" ends with a Split
+ * clears row that opens the tier row in Progress.
  */
 
-import { useEffect, useMemo } from 'react';
-import { AlertTriangle, CalendarPlus, Inbox, Scale, UserPlus } from 'lucide-react';
-import type { PageMode, RsvpStatus, StaticGroup, TierSnapshot } from '../../types';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, CalendarPlus, Inbox, Scale, Split, UserPlus } from 'lucide-react';
+import type { PageMode, RsvpStatus, SplitClearData, StaticGroup, TierSnapshot } from '../../types';
 
 import { PageHeader } from '../layout/PageHeader';
 import { CardShell } from '../ui/CardShell';
@@ -62,6 +67,7 @@ import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
+import { useSplitClearStore } from '../../stores/splitClearStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useViewAsStore } from '../../stores/viewAsStore';
 import { useStaticPermissions } from '../../hooks/useStaticPermissions';
@@ -73,6 +79,7 @@ import { relativeTime } from '../../utils/staticActivity';
 import { getAllTrialIds } from '../../gamedata';
 import { getTierById } from '../../gamedata/raid-tiers';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
+import { getSplitClearReadiness } from '../../utils/splitClear';
 
 export interface HomeProps {
   group: StaticGroup;
@@ -91,7 +98,7 @@ interface AttentionItem {
   icon: React.ReactNode;
   title: React.ReactNode;
   meta?: string;
-  action: { label: string; onClick: () => void; variant?: 'ghost' | 'accent-subtle' };
+  action: { label: string; onClick: () => void; variant?: 'ghost' | 'accent-subtle' | 'secondary' };
 }
 
 /** A configured roster slot has no BiS imported when no gear slot carries a bisSource. */
@@ -130,6 +137,8 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
 
   const fetchRegistrations = useStaticCharacterStore((s) => s.fetchRegistrations);
 
+  const fetchSplitClear = useSplitClearStore((s) => s.fetchData);
+
   const authUserId = useAuthStore((s) => s.user?.id);
   // ROLE-1 (vet F5): the gates below read the EFFECTIVE role and user, so View
   // As previews the right Home (`Roster.tsx:190-194`). The fetch gate above
@@ -141,6 +150,12 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   const userId = authUserId;
 
   const tierId = tier?.tierId;
+  const isActiveTier = !!tier?.isActive;
+
+  // The split row's read (R-F-11): the store is shared and unkeyed (Progress
+  // leaves its own plan there), so Home keeps the result it asked for, tagged
+  // with the static it belongs to, and never reads the store at render.
+  const [splitResult, setSplitResult] = useState<{ groupId: string; data: SplitClearData | null } | null>(null);
 
   // ── Fetch-on-mount (membership-gated, mirrors StaticHomeTab) ──────────────
   // These endpoints require membership. Applicants / non-members have no
@@ -221,6 +236,27 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
       cancelled = true;
     };
   }, [group.id, group.userRole, fetchGoals, fetchGoalProgress]);
+
+  // ── The split row's data (E-11, R-F-11) ────────────────────────────────────
+  // Members and viewers, the active tier only (guests have no `userRole`, so
+  // they send nothing). An effect of its own like the farm card's: it must ask
+  // again when `isActive` flips on the same tier and not when a sibling
+  // store's action changes identity. A failed read leaves the store's old
+  // `data` in place (fetchData clears `error` when a read starts), so `error`
+  // decides; a read for a static or tier that has since changed lands nowhere.
+  useEffect(() => {
+    if (!group.id || !group.userRole || !isActiveTier) return;
+    let cancelled = false;
+    const groupId = group.id;
+    void fetchSplitClear(groupId).then(() => {
+      if (cancelled) return;
+      const { data, error } = useSplitClearStore.getState();
+      setSplitResult({ groupId, data: error ? null : data });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [group.id, group.userRole, tierId, isActiveTier, fetchSplitClear]);
 
   // ── FairnessSummary inputs (R-D14-D — same derivations as Loot's mount,
   // `Loot.tsx:1216-1224` before D14 moved the card here) ────────────────────
@@ -353,8 +389,42 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
         });
     }
 
+    // (d) the split plan (D-13, R-F-11): last and uncapped. `n` counts members
+    // with something to fix, as legacy's card does. The active-tier check runs
+    // here too, so a switch to a past tier hides it before any refetch.
+    if (isActiveTier && splitResult?.groupId === group.id && splitResult.data?.enabled) {
+      const readiness = getSplitClearReadiness(
+        players.filter((p) => p.configured && !p.isSubstitute),
+        splitResult.data.assignments,
+      );
+      items.push({
+        key: 'split-clear',
+        icon: <Split size={18} />,
+        title: 'Split clears',
+        meta:
+          `Alts assigned ${readiness.altCount}/${readiness.memberCount}` +
+          (readiness.issueMemberCount > 0 ? ` · ${readiness.issueMemberCount} need attention` : ''),
+        action: {
+          label: 'Open split plan',
+          onClick: () => onNavigate('goals', { track: 'tier' }),
+          variant: 'secondary',
+        },
+      });
+    }
+
     return items;
-  }, [tier?.players, groupRequests, canManage, effectiveRole, effectiveUserId, onNavigate, onOpenRequests]);
+  }, [
+    tier?.players,
+    groupRequests,
+    canManage,
+    effectiveRole,
+    effectiveUserId,
+    onNavigate,
+    onOpenRequests,
+    isActiveTier,
+    splitResult,
+    group.id,
+  ]);
 
   // ── Recruiting line (manage-only, R-RH-P): "Recruiting · Live/Listing off
   // · {status label} · {n} waiting". The store's `pendingCount` is kept warm

@@ -16,8 +16,9 @@
  * guests and are covered by the GUEST-2 describe below.
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Browser, type Page } from '@playwright/test';
 import { API_BASE, FRONTEND_BASE, DEV_SHARE_CODE, loginAsOwner, pinShell, switchTab } from './helpers/auth';
+import { type OwnerSession, withSplit } from './helpers/owner';
 
 test.describe('Guest on a public static (V2)', () => {
   test('no bell, no gear, Log in visible, no 401s, no member identity in by-code', async ({ browser }) => {
@@ -409,5 +410,87 @@ test.describe('Guest on a public static (S2a-4a Find)', () => {
     } finally {
       await ownerCtx.close();
     }
+  });
+});
+
+/**
+ * S2a-4b·B2 (design §3.7, §4 item 8, E-8): a guest's Home has neither pointer and sends none of
+ * their requests. DEVTST holds one active farm for the run, so the cells fetch has a reason to go,
+ * with split clears on (`withSplit` puts them back). The same recorder on the owner's Home sees the
+ * reads, so the guest's empty list isn't vacuous. The split-clear read has a case of its own: it's
+ * the one that arrives with the row.
+ */
+test.describe('Guest on a public static (S2a-4b Home pointers)', () => {
+  const HOME_CALLS = /\/api\/static-groups\/[^/]+\/(collection-goals|collection-participants|split-clear)(\/|\?|$)/;
+
+  /** Run `body` with one active farm on DEVTST and split clears on, both put back after. */
+  async function withFarm(browser: Browser, body: (owner: OwnerSession) => Promise<void>) {
+    await withSplit(browser, true, async (owner) => {
+      const goals = `${API_BASE}/api/static-groups/${owner.groupId}/collection-goals`;
+      const created = await owner.page.request.post(goals, {
+        headers: owner.headers,
+        data: { goal_type: 'custom_reward', title: 'E2E Home Guest', status: 'farming' },
+      });
+      expect(created.ok(), `seeding the guest farm returned ${created.status()}`).toBe(true);
+      const farmId = ((await created.json()) as { id: string }).id;
+      try {
+        await body(owner);
+      } finally {
+        await owner.page.request.delete(`${goals}/${farmId}`, { headers: owner.headers });
+      }
+    });
+  }
+
+  /** Open Home on `page` and return every request it made that matches HOME_CALLS. */
+  async function homeCalls(page: Page): Promise<string[]> {
+    const calls: string[] = [];
+    page.on('request', (req) => {
+      if (HOME_CALLS.test(req.url())) calls.push(`${req.method()} ${req.url()}`);
+    });
+    await pinShell(page, 'v2', `/group/${DEV_SHARE_CODE}?tab=overview`);
+    await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { level: 1, name: 'This week' })).toBeVisible({ timeout: 15_000 });
+    await page.waitForLoadState('networkidle');
+    return calls;
+  }
+
+  test('Home makes no collection-goals, collection-participants or split-clear request for a guest, and shows neither pointer', async ({ browser }) => {
+    test.setTimeout(60_000);
+
+    await withFarm(browser, async (owner) => {
+      // Positive control: the owner's Home reads the farms and the cells through the same recorder.
+      const ownerCalls = await homeCalls(owner.page);
+      expect(ownerCalls.some((line) => /\/collection-goals/.test(line)), `owner calls:\n${ownerCalls.join('\n')}`).toBe(true);
+      expect(ownerCalls.some((line) => /\/collection-participants/.test(line)), `owner calls:\n${ownerCalls.join('\n')}`).toBe(true);
+      await expect(owner.page.getByRole('heading', { name: 'Farm', exact: true })).toBeVisible({ timeout: 15_000 });
+
+      const guestCtx = await browser.newContext({ baseURL: FRONTEND_BASE });
+      const page = await guestCtx.newPage();
+      const denied: string[] = [];
+      let sawApi = false;
+      page.on('request', (req) => {
+        if (/\/api\/static-groups\//.test(req.url())) sawApi = true;
+      });
+      page.on('response', (res) => {
+        if (res.status() === 401 || res.status() === 403) denied.push(`${res.status()} ${res.url()}`);
+      });
+      const calls = await homeCalls(page);
+
+      expect(sawApi, 'the recorder saw the page\'s API calls').toBe(true);
+      expect(calls, `requests a guest made:\n${calls.join('\n')}`).toEqual([]);
+      expect(denied, `401/403 responses:\n${denied.join('\n')}`).toEqual([]);
+      await expect(page.getByRole('heading', { name: 'Farm', exact: true })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Open split plan' })).toHaveCount(0);
+      await guestCtx.close();
+    });
+  });
+
+  test('positive control: the owner\'s Home reads split clears, so the guest\'s empty list above is not vacuous', async ({ browser }) => {
+    test.setTimeout(60_000);
+
+    await withFarm(browser, async (owner) => {
+      const calls = await homeCalls(owner.page);
+      expect(calls.some((line) => /\/split-clear/.test(line)), `owner calls:\n${calls.join('\n')}`).toBe(true);
+    });
   });
 });

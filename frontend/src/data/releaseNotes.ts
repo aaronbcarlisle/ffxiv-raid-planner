@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.88',
+    date: '2026-11-03T00:00:00Z',
+    title: 'Home: the split clears row',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Home: the split clears row',
+        description:
+          'V2\'s Home lists a Split clears row under Needs your attention when the static has split clears on and the active tier is showing. It reads how many members have an alt assigned and how many still need attention, and Open split plan opens the tier row in Progress. Viewers see it too; past tiers and guests do not.',
+        internal: true,
+        pr: 431,
+        prTitle: 'feat(v2): S2a-4b B2 — Home\'s split clears row and the pointer proof',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.87',
     date: '2026-11-03T00:00:00Z',
     title: 'Home: the farm card',
