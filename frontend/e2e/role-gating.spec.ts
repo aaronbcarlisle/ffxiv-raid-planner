@@ -981,7 +981,7 @@ test.describe.serial('Home pointers, by role (S2a-4b)', () => {
   const pips = (page: Page) => main(page).getByRole('img', { name: /^Need: / });
   const nextLine = (page: Page) => main(page).getByText(/ is next\b/);
   const splitTitle = (page: Page) => main(page).getByText('Split clears', { exact: true });
-  const splitMeta = (page: Page) => main(page).getByText(/^Alts assigned \d+\/\d+( · \d+ need attention)?$/);
+  const splitMeta = (page: Page) => main(page).getByText(/^Alts assigned \d+\/\d+( · \d+ needs? attention)?$/);
   const openPlan = (page: Page) => main(page).getByRole('button', { name: 'Open split plan', exact: true });
 
   /** Home with the card up (it waits on two fetches), and every request settled. */

@@ -109,7 +109,7 @@ export function FindRow({ item, names, expanded, onToggle, action, readerIsViewe
           </ul>
         )}
         <p>
-          {[item.duty, typeLabel, item.expansion ? expansionLabel(item.expansion) : null].filter((p) => p !== null && p !== '').join(' · ')}
+          {[item.duty, typeLabel, item.expansion ? expansionLabel(item.expansion) : null, item.patch ? `Patch ${item.patch}` : null].filter((p) => p !== null && p !== '').join(' · ')}
         </p>
       </div>
     </li>

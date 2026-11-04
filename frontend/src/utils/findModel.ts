@@ -25,6 +25,8 @@ export interface FindItem {
   sourceType: string | null;
   duty: string | null;
   expansion: string | null;
+  /** The catalog's patch string; null on a suggestion-only row. Display only: not searchable, not a filter. */
+  patch: string | null;
   /** The exchange (P-75). */
   token: { name: string; cost: number } | null;
   /** The catalog field V1's plugin-ready tag reads (collections/SourceFarmCard.tsx). */
@@ -131,6 +133,7 @@ export function buildFindList({
       sourceType: c ? c.sourceType : s?.sourceType ?? null,
       duty: c ? c.sourceDutyName : s?.sourceDutyName ?? null,
       expansion: c ? c.expansion : s?.expansion ?? null,
+      patch: c?.patch ?? null,
       token: c?.tokenName ? { name: c.tokenName, cost: c.tokenCost ?? 0 } : null,
       pluginReady: c?.gameMountId != null,
       members,

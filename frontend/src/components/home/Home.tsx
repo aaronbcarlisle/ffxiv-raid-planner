@@ -403,7 +403,7 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
         title: 'Split clears',
         meta:
           `Alts assigned ${readiness.altCount}/${readiness.memberCount}` +
-          (readiness.issueMemberCount > 0 ? ` · ${readiness.issueMemberCount} need attention` : ''),
+          (readiness.issueMemberCount > 0 ? ` · ${readiness.issueMemberCount} ${readiness.issueMemberCount === 1 ? 'needs' : 'need'} attention` : ''),
         action: {
           label: 'Open split plan',
           onClick: () => onNavigate('goals', { track: 'tier' }),
