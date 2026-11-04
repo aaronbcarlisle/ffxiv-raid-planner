@@ -82,6 +82,10 @@ export function ShellContent({ onRecruitPath = false }: { onRecruitPath?: boolea
       onOpenRequests={() =>
         useSettingsPanelStore.getState().open({ tab: 'recruitment', section: 'requests' })
       }
+      // R-M-5: no URL built here; V2's registered redirect carries `?viewAs=` and the tier.
+      onEditObjectives={() =>
+        useSettingsPanelStore.getState().open({ tab: 'recruitment', section: 'listing' })
+      }
     />
   ) : undefined;
 

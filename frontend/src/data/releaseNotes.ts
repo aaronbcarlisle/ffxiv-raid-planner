@@ -60,6 +60,21 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.90',
+    date: '2026-11-04T00:00:00Z',
+    title: 'Home: the Objectives card, and the editor on Listing',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Home: the Objectives card, and the editor on Listing',
+        description:
+          'V2\'s Home lists the static\'s objectives under the Farm card: every active one in full, with its category, priority, title and description, ordered Required, Preferred, then Optional. Not Doing objectives are hidden, and the card is hidden when nothing else is left or the list fails to load. Members, viewers and anyone viewing as one of them see it; guests do not. Those who can manage the static get an Edit link that opens Recruit, Listing, where the objectives editor now sits above the listing builder.',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.89',
     date: '2026-11-04T00:00:00Z',
     title: 'Find\'s patch line and the singular on Home',

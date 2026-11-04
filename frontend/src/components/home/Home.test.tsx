@@ -102,6 +102,11 @@ vi.mock('../../hooks/useStaticPermissions', () => ({
 vi.mock('../../stores/viewAsStore', () => ({
   useViewAsStore: (sel: (s: Record<string, unknown>) => unknown) => sel({ viewAsUser: mocks.viewAsUser }),
 }));
+// The objectives card's store: stubbed so the card's fetch never reaches the network here.
+vi.mock('../../stores/objectiveGoalStore', () => {
+  const state = { objectives: [], objectivesError: null, fetchObjectives: vi.fn().mockResolvedValue(undefined) };
+  return { useObjectiveGoalStore: (sel: (s: Record<string, unknown>) => unknown) => sel(state) };
+});
 vi.mock('../../stores/toastStore', () => ({
   toast: { error: mocks.toastError, success: vi.fn(), warning: vi.fn(), info: vi.fn() },
 }));
