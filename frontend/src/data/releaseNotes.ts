@@ -70,6 +70,8 @@ export const RELEASES: Release[] = [
         description:
           'V2\'s Home lists the static\'s objectives under the Farm card: every active one in full, with its category, priority, title and description, ordered Required, Preferred, then Optional. Not Doing objectives are hidden, and the card is hidden when nothing else is left or the list fails to load. Members, viewers and anyone viewing as one of them see it; guests do not. Those who can manage the static get an Edit link that opens Recruit, Listing, where the objectives editor now sits above the listing builder.',
         internal: true,
+        pr: 436,
+        prTitle: 'feat(v2): S2a-5a C2a — the Objectives card on Home and the editor on Listing',
       },
     ],
     internal: true,
