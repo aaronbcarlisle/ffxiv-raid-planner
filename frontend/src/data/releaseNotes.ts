@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.92',
+    date: '2026-11-04T00:00:00Z',
+    title: 'The Settings dock reads Suggestions in V2',
+    items: [
+      {
+        category: 'improvement',
+        title: 'The Settings dock reads Suggestions in V2',
+        description:
+          'In V2 the Settings dock\'s Goals & Farms tab is now Suggestions and holds only the suggestions list, with no sub-tabs. Objectives are edited on Recruit, Listing and read on Home, and farms live on Progress. A stale ?gsub= in the URL is ignored and left as it is. V1 keeps Goals & Farms and its four sections.',
+        internal: true,
+        pr: 439,
+        prTitle: 'feat(v2): S2a-5a C3 — the Suggestions tab',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.91',
     date: '2026-11-04T00:00:00Z',
     title: 'The ?goal=objectives link lands on V2',
