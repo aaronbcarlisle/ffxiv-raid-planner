@@ -70,6 +70,8 @@ export const RELEASES: Release[] = [
         description:
           'A ?goal=objectives link to a static now redirects once on arrival in V2, by replace. Those who can manage the static land on Recruit, Listing, and everyone else, guests included, on Home. An admin viewing as someone holds until that read lands, so they arrive where the viewed member would, or on their own role\'s target if the read fails, and ?viewAs= survives either way. ?goal=farms and ?farm= still land on Progress, and the Recruit route ignores the link.',
         internal: true,
+        pr: 438,
+        prTitle: 'feat(v2): S2a-5a C2b — the ?goal=objectives deep link and the objectives proof',
       },
     ],
     internal: true,
