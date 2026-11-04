@@ -222,3 +222,51 @@ describe('?goal=objectives with a leftover View As error', () => {
     expect(seen.filter((p) => p.includes('/recruit'))).toEqual([]);
   });
 });
+
+describe('?goal=objectives after a View As read has landed at another static', () => {
+  const HELD_B = '/group/def?tab=goals&goal=objectives&viewAs=u2';
+
+  /** View As for u2 lands at `g1` as `roleAtA`, then an in-app arrival at `g2` holds the link. */
+  async function arriveAtB(roleAtA: MemberRole) {
+    mocks.currentGroup = group('owner');
+    const { rerenderShell } = renderShell('/group/abc?tab=roster&viewAs=u2');
+    await landRead(roleAtA, 'g1');
+    expect(useViewAsStore.getState().viewAsUser?.groupId).toBe('g1');
+
+    // The route moves first, then the next static's group loads.
+    act(() => { fireEvent.click(screen.getByTestId('go-def')); });
+    mocks.currentGroup = group('owner', { id: 'g2', shareCode: 'def' });
+    rerenderShell();
+    // Control: the read for B is in flight, and the commit that showed B decided nothing. The
+    // landed read named A for that commit; the sync hook drops it right after, so the held link
+    // is only protected in that one commit.
+    expect(reads.map((r) => r.url)).toContain('/api/static-groups/admin/user-role/g2/u2');
+    expect(path()).toBe(HELD_B);
+  }
+
+  async function landReadFor(role: MemberRole, groupId: string) {
+    // The newest: the sync hook's first start for B is superseded by its restart.
+    const index = reads.map((r) => r.url).lastIndexOf(`/api/static-groups/admin/user-role/${groupId}/u2`);
+    expect(index, `no read for ${groupId} in flight`).toBeGreaterThanOrEqual(0);
+    const [read] = reads.splice(index, 1);
+    await act(async () => { read.resolve(viewAsInfo(role, groupId)); });
+  }
+
+  it('a member at A who is a lead at B: held, then Recruit, and never Home', async () => {
+    await arriveAtB('member');
+    expect(seen.at(-1)).toBe(HELD_B);
+
+    await landReadFor('lead', 'g2');
+    expect(path()).toBe('/group/def/recruit?rtab=listing&viewAs=u2');
+    expect(seen.filter((p) => p.includes('tab=overview'))).toEqual([]);
+  });
+
+  it('a lead at A who is a member at B: held, then Home, and never Recruit', async () => {
+    await arriveAtB('lead');
+    expect(seen.at(-1)).toBe(HELD_B);
+
+    await landReadFor('member', 'g2');
+    expect(path()).toBe('/group/def?tab=overview&viewAs=u2');
+    expect(seen.filter((p) => p.includes('/recruit'))).toEqual([]);
+  });
+});

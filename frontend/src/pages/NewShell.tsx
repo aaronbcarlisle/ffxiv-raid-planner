@@ -414,6 +414,7 @@ export function NewShell() {
   // through both, and a failed read falls through to the real role.
   const authInitialized = useAuthStore((s) => s.authInitialized);
   const viewAsUserId = useViewAsStore((s) => s.viewAsUser?.userId);
+  const viewAsGroupId = useViewAsStore((s) => s.viewAsUser?.groupId);
   const viewAsError = useViewAsStore((s) => s.error);
   const goalArrival = useRef<{ shareCode: string; pending: boolean } | null>(null);
   useEffect(() => {
@@ -431,8 +432,13 @@ export function NewShell() {
     }
     const viewAs = params.get('viewAs');
     if (viewAs) {
-      // Read live, not `viewAsError`: useViewAsUrlSync's effect runs first, and its startViewAs clears a leftover error synchronously.
-      const readPending = isAdmin && viewAsUserId !== viewAs && !useViewAsStore.getState().error;
+      // Read `error` live, not `viewAsError`: useViewAsUrlSync's effect runs
+      // first, and its startViewAs clears a leftover error synchronously.
+      // A landed read for another static is still pending: the sync hook is
+      // restarting it for this one, and the role it holds is not this static's.
+      const readPending = isAdmin
+        && (viewAsUserId !== viewAs || viewAsGroupId !== currentGroup?.id)
+        && !useViewAsStore.getState().error;
       if (!authInitialized || readPending) return;
     }
     if (canManage) {
@@ -444,7 +450,7 @@ export function NewShell() {
       navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
     }
     // `viewAsError` stays a dep though the body reads the store: a real failure must re-run this.
-  }, [location, shareCode, onRecruitPath, groupLoadedForRoute, canManage, navigate, authInitialized, isAdmin, viewAsUserId, viewAsError]);
+  }, [location, shareCode, onRecruitPath, groupLoadedForRoute, canManage, navigate, authInitialized, isAdmin, viewAsUserId, viewAsGroupId, currentGroup?.id, viewAsError]);
 
   // M1: a Spine / ⌘K tab change from the Recruiting route goes back to the
   // static on that tab, carrying the current search (the tier, so the target
