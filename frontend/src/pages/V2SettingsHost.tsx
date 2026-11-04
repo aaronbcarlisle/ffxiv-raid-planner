@@ -14,6 +14,13 @@
  * at module scope, not inline: `SettingsPanel` uses it as a `useMemo` dep, and
  * a fresh array literal on every render would defeat that memo. V1's
  * `StaticSettingsHost` caller passes nothing, so its dock keeps Recruitment.
+ *
+ * `tabLabels={SUGGESTIONS_LABEL}` + `goalsSuggestionsOnly` (S2a-5a C3, R-M-8,
+ * C-6): objectives are edited on Recruit ▸ Listing and read on Home, and farms
+ * live on Progress, so the dock's Goals tab holds only the suggestions list.
+ * The tab reads "Suggestions" with no sub-nav, and a stale `?gsub=` is ignored.
+ * Module-scope constants for the same reason as `RECRUITMENT_HIDDEN`. V1's
+ * caller passes neither, so it keeps "Goals & Farms" and its four sections.
  */
 import { StaticSettingsHost, type SettingsTab } from '../components/settings';
 import { useGroupAddToRoster } from './groupActionsContext';
@@ -23,6 +30,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useSortedMainRosterPlayers } from '../hooks/useSortedMainRosterPlayers';
 
 const RECRUITMENT_HIDDEN: SettingsTab[] = ['recruitment'];
+const SUGGESTIONS_LABEL: Partial<Record<SettingsTab, string>> = { goals: 'Suggestions' };
 
 export function V2SettingsHost() {
   const group = useStaticGroupStore((s) => s.currentGroup);
@@ -41,6 +49,8 @@ export function V2SettingsHost() {
       isAdmin={user?.isAdmin ?? false}
       onAddToRoster={onAddToRoster}
       hiddenTabs={RECRUITMENT_HIDDEN}
+      tabLabels={SUGGESTIONS_LABEL}
+      goalsSuggestionsOnly
     />
   );
 }

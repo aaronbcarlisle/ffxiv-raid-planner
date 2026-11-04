@@ -2,14 +2,16 @@
  * W0 DEL-1 — destructive actions ask first, and the session modal says what
  * Discord will do.
  *
- *   1. The farm trash in Settings → Goals & Farms → Farms opens a "Delete Farm"
- *      confirm in BOTH shells (R-D1-1 / R-D1-2); Cancel keeps the row, Delete
- *      removes it.
+ *   1. The farm trash in legacy Settings → Goals & Farms → Farms opens a "Delete
+ *      Farm" confirm (R-D1-1 / R-D1-2); Delete removes the row. V2's dock has no
+ *      Farms section since S2a-5a C3 (R-M-8), so P-90's V2 home is the Progress
+ *      row menu's confirm, proved at progress.spec.ts:1099-1103 and, for Cancel,
+ *      FarmRowMenu.test.tsx:177.
  *   2. The trash is hover-revealed (`opacity-0 group-hover:opacity-100`), so a
- *      keyboard user must see it on focus (`focus-visible:opacity-100`). The
- *      check uses real Tab presses with the mouse parked off the row and polls
- *      the computed opacity: `toBeVisible` and a programmatic `focus()` prove
- *      nothing here.
+ *      keyboard user must see it on focus (`focus-visible:opacity-100`). That
+ *      trash is V1's now, and this is its only keyboard proof. The check uses
+ *      real Tab presses with the mouse parked off the row and polls the computed
+ *      opacity: `toBeVisible` and a programmatic `focus()` prove nothing here.
  *   3. V2 Schedule → "Add session" shows the Discord Delivery block fed by the
  *      static's scheduler settings (R-D1-5 / R-D1-6).
  *
@@ -63,7 +65,7 @@ async function cleanupTestFarms(page: Page) {
   }
 }
 
-/** Gear → Goals & Farms → Farms, in whichever shell the page is already in. */
+/** Legacy only: Gear → Goals & Farms → Farms. V2's dock has neither (R-M-8). */
 async function openFarmsList(page: Page) {
   await page.getByRole('button', { name: 'Settings' }).click();
   const dialog = page.getByRole('dialog', { name: 'Static settings' });
@@ -83,41 +85,12 @@ test.describe('Farm delete asks first (R-D1-1 / R-D1-2)', () => {
     await cleanupTestFarms(page);
   });
 
-  test('V2: the trash opens Delete Farm; Cancel keeps the row; Delete removes it', async ({ page }) => {
-    const title = `${TEST_FARM_PREFIX}v2 ${Date.now()}`;
-    await loginAsOwner(page);
-    await seedFarm(page, title);
-    await goToTestStatic(page);
-
-    const dialog = await openFarmsList(page);
-    const row = dialog.getByTestId('collection-goal-row').filter({ hasText: title });
-    await expect(row).toHaveCount(1, { timeout: 10_000 });
-    const trash = row.getByRole('button', { name: `Delete ${title}` });
-    const confirm = page.getByRole('dialog', { name: 'Delete Farm' });
-
-    // Cancel: the confirm appears and closes, the row stays.
-    await row.hover();
-    await trash.click();
-    await expect(confirm).toBeVisible();
-    await expect(confirm).toContainText(title);
-    await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(confirm).toHaveCount(0);
-    await expect(row).toHaveCount(1);
-
-    // Confirm: the row is gone.
-    await row.hover();
-    await trash.click();
-    await expect(confirm).toBeVisible();
-    await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
-    await expect(confirm).toHaveCount(0);
-    await expect(dialog.getByTestId('collection-goal-row').filter({ hasText: title })).toHaveCount(0);
-  });
-
-  test('V2: a keyboard user reaches the trash by Tab and it is opaque on focus (vet I-3)', async ({ page }) => {
+  test('legacy: a keyboard user reaches the trash by Tab and it is opaque on focus (vet I-3)', async ({ page }) => {
     const title = `${TEST_FARM_PREFIX}kbd ${Date.now()}`;
     await loginAsOwner(page);
     await seedFarm(page, title);
-    await goToTestStatic(page);
+    await goToTestStaticLegacy(page);
+    await expect(page.getByTestId('new-shell')).toHaveCount(0);
 
     const dialog = await openFarmsList(page);
     const row = dialog.getByTestId('collection-goal-row').filter({ hasText: title });

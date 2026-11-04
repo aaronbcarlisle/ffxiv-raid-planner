@@ -20,9 +20,15 @@ interface StaticSettingsHostProps {
   onAddToRoster?: (request: JoinRequest) => void;
   /** Passed through to `SettingsPanel.hiddenTabs` (R-RH-J); V1 passes nothing. */
   hiddenTabs?: SettingsTab[];
+  /** Passed through to `SettingsPanel.tabLabels` (R-M-8); V1 passes nothing. */
+  tabLabels?: Partial<Record<SettingsTab, string>>;
+  /** Passed through to `SettingsPanel.goalsSuggestionsOnly` (R-M-8); V1 passes nothing. */
+  goalsSuggestionsOnly?: boolean;
 }
 
-export function StaticSettingsHost({ group, players, tierId, isAdmin, onAddToRoster, hiddenTabs }: StaticSettingsHostProps) {
+export function StaticSettingsHost({
+  group, players, tierId, isAdmin, onAddToRoster, hiddenTabs, tabLabels, goalsSuggestionsOnly,
+}: StaticSettingsHostProps) {
   const isOpen = useSettingsPanelStore((s) => s.isOpen);
   const close = useSettingsPanelStore((s) => s.close);
   const { isSmallScreen } = useDevice();
@@ -38,6 +44,8 @@ export function StaticSettingsHost({ group, players, tierId, isAdmin, onAddToRos
       isAdmin={isAdmin}
       onAddToRoster={onAddToRoster}
       hiddenTabs={hiddenTabs}
+      tabLabels={tabLabels}
+      goalsSuggestionsOnly={goalsSuggestionsOnly}
     />
   );
 

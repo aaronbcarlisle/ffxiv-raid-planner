@@ -292,6 +292,17 @@ function CollectionGoalsSection({
   );
 }
 
+// ─── Suggestions section ──────────────────────────────────────────────────────
+
+/** The Suggestions section's scroll container; shared by the sub-nav and the suggestions-only tab. */
+function SuggestionsSection({ groupId, canManage }: { groupId: string; canManage: boolean }) {
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
+      <ContentSuggestionsPanel groupId={groupId} canManage={canManage} />
+    </div>
+  );
+}
+
 // ─── Goals & Farms tab content ────────────────────────────────────────────────
 
 function GoalsFarmsTabContent({
@@ -326,11 +337,7 @@ function GoalsFarmsTabContent({
           <CollectionGoalsSection groupId={groupId} canManage={canManage} />
         )}
 
-        {section === 'suggestions' && (
-          <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
-            <ContentSuggestionsPanel groupId={groupId} canManage={canManage} />
-          </div>
-        )}
+        {section === 'suggestions' && <SuggestionsSection groupId={groupId} canManage={canManage} />}
       </div>
     </div>
   );
@@ -363,6 +370,17 @@ interface SettingsPanelProps {
    * active tab that is hidden falls back to General like a role-hidden one.
    */
   hiddenTabs?: SettingsTab[];
+  /**
+   * Per-tab label overrides, applied in the tab bar only (R-M-8: V2 reads
+   * "Suggestions" for the `goals` tab). Pass a stable reference.
+   */
+  tabLabels?: Partial<Record<SettingsTab, string>>;
+  /**
+   * The `goals` tab shows ContentSuggestionsPanel alone: no sub-nav, `?gsub=`
+   * is not read, and the Overview, Objectives and Farms sections never mount
+   * (R-M-8, C-6). V1 passes nothing and keeps all four sections.
+   */
+  goalsSuggestionsOnly?: boolean;
 }
 
 export function SettingsPanel({
@@ -375,6 +393,8 @@ export function SettingsPanel({
   onAddToRoster,
   container = 'slideout',
   hiddenTabs,
+  tabLabels,
+  goalsSuggestionsOnly,
 }: SettingsPanelProps) {
   // Open-state, active tab, and routed sub-section all live in the settings
   // store (NOT the URL) so toggling the panel never re-renders the roster that
@@ -443,7 +463,7 @@ export function SettingsPanel({
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="hidden sm:inline">{tabLabels?.[tab.id] ?? tab.label}</span>
                 {tab.id === 'recruitment' && pendingCount > 0 && (
                   <span className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-full bg-accent text-accent-contrast">
                     {pendingCount}
@@ -476,7 +496,9 @@ export function SettingsPanel({
           )}
 
           {effectiveTab === 'goals' && group && (
-            <GoalsFarmsTabContent groupId={group.id} canManage={canManage} />
+            goalsSuggestionsOnly
+              ? <SuggestionsSection groupId={group.id} canManage={canManage} />
+              : <GoalsFarmsTabContent groupId={group.id} canManage={canManage} />
           )}
 
           {effectiveTab === 'recruitment' && group && (
