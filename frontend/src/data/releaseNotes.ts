@@ -60,6 +60,21 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.91',
+    date: '2026-11-04T00:00:00Z',
+    title: 'The ?goal=objectives link lands on V2',
+    items: [
+      {
+        category: 'improvement',
+        title: 'The ?goal=objectives link lands on V2',
+        description:
+          'A ?goal=objectives link to a static now redirects once on arrival in V2, by replace. Those who can manage the static land on Recruit, Listing, and everyone else, guests included, on Home. An admin viewing as someone holds until that read lands, so they arrive where the viewed member would, or on their own role\'s target if the read fails, and ?viewAs= survives either way. ?goal=farms and ?farm= still land on Progress, and the Recruit route ignores the link.',
+        internal: true,
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.90',
     date: '2026-11-04T00:00:00Z',
     title: 'Home: the Objectives card, and the editor on Listing',

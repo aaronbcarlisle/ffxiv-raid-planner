@@ -232,7 +232,7 @@ export function NewShell() {
   // tab change (Spine or ⌘K) LEAVES the route for `/group/:code?tab=…` instead
   // of writing `?tab=` onto it (M1). `useGroupViewState` is left alone.
   const onRecruitPath = useMatch('/group/:shareCode/recruit') !== null;
-  const { canEdit: canManage } = useStaticPermissions();
+  const { canEdit: canManage, isAdmin } = useStaticPermissions();
   const palette = useModal();
   // Stage-1 req 10: the NotificationCenter is mounted ONCE, app-level, by
   // NotificationCenterHost (App.tsx) — the TopBar bell only writes the store's
@@ -399,6 +399,52 @@ export function NewShell() {
       navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace: true });
     }
   }, [location, shareCode, onRecruitPath, groupLoadedForRoute, canManage, navigate]);
+
+  // ── `?goal=objectives` on the group route (R-M-7, C-5) ──────────────────
+  // V2 has no objectives sub-tab: the editor is on Recruit ▸ Listing and the
+  // list is on Home, so this link lands a manager on the first and anyone else,
+  // guests included, on the second. It works as `?rcsub=` above does, with its
+  // own ref and the same pending re-check. `goal=farms` and `farm=` are left
+  // alone: they keep landing on Progress.
+  //
+  // The difference is the hold. Until a `?viewAs=` read lands, `canManage` is
+  // the admin's own, so deciding early would send an admin viewing as a member
+  // to Recruit and one viewing as a lead to Home for good. While auth is still
+  // starting nobody knows whether a read is coming. The arrival stays pending
+  // through both, and a failed read falls through to the real role.
+  const authInitialized = useAuthStore((s) => s.authInitialized);
+  const viewAsUserId = useViewAsStore((s) => s.viewAsUser?.userId);
+  const viewAsError = useViewAsStore((s) => s.error);
+  const goalArrival = useRef<{ shareCode: string; pending: boolean } | null>(null);
+  useEffect(() => {
+    if (!shareCode || !groupLoadedForRoute) return;
+    const params = new URLSearchParams(location.search);
+    const objectivesLink = params.get('goal') === 'objectives';
+    if (goalArrival.current?.shareCode !== shareCode) {
+      goalArrival.current = { shareCode, pending: objectivesLink };
+    }
+    const arrival = goalArrival.current;
+    if (!arrival.pending) return;
+    if (!objectivesLink || onRecruitPath) {
+      arrival.pending = false;
+      return;
+    }
+    const viewAs = params.get('viewAs');
+    if (viewAs) {
+      // Read live, not `viewAsError`: useViewAsUrlSync's effect runs first, and its startViewAs clears a leftover error synchronously.
+      const readPending = isAdmin && viewAsUserId !== viewAs && !useViewAsStore.getState().error;
+      if (!authInitialized || readPending) return;
+    }
+    if (canManage) {
+      const target = recruitUrl(shareCode, 'listing', { tier: params.get('tier') });
+      navigate(withCarriedParams(target, location.search, ['goal', 'tab']), { replace: true });
+    } else {
+      params.delete('goal');
+      params.set('tab', 'overview');
+      navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
+    }
+    // `viewAsError` stays a dep though the body reads the store: a real failure must re-run this.
+  }, [location, shareCode, onRecruitPath, groupLoadedForRoute, canManage, navigate, authInitialized, isAdmin, viewAsUserId, viewAsError]);
 
   // M1: a Spine / ⌘K tab change from the Recruiting route goes back to the
   // static on that tab, carrying the current search (the tier, so the target
