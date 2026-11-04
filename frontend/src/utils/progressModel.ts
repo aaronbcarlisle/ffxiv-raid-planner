@@ -16,6 +16,7 @@ import type {
 import type { MemberRole, SnapshotPlayer, SortPreset } from '../types';
 import { boardSections, sortPlayersByRole } from './calculations';
 import { DEFAULT_SETTINGS, SORT_PRESETS } from './constants';
+import { STATE_TEXT } from './progressState';
 
 // ── Inputs ──────────────────────────────────────────────────────────────────
 
@@ -273,14 +274,6 @@ export function splitFarmRows(
 }
 
 // ── Text (R-S2-8) ───────────────────────────────────────────────────────────
-
-/** Glyph plus word in every state; no state is told by colour alone. */
-const STATE_TEXT: Record<ParticipantState, string> = {
-  have: '✓ Have',
-  need: 'Need',
-  want: '★ Want',
-  pass: '– Pass',
-};
 
 const STATE_NAME: Record<ParticipantState, string> = {
   have: 'Have',

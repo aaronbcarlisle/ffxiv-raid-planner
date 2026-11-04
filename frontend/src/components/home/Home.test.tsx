@@ -421,14 +421,12 @@ describe('Home', () => {
     expect(heroGrid).not.toBeNull();
     expect(heroGrid).toBe(dashboardGrid);
 
-    // Side stack order unchanged: Loot fairness, Recent activity, Track card.
+    // Side stack order unchanged: Loot fairness, Recent activity.
     const headingNames = screen.getAllByRole('heading').map((h) => h.textContent);
     const fairnessIndex = headingNames.findIndex((t) => t === 'Loot fairness');
     const activityIndex = headingNames.findIndex((t) => /recent activity/i.test(t ?? ''));
-    const trackIndex = headingNames.findIndex((t) => t === 'test-trial');
     expect(fairnessIndex).toBeGreaterThanOrEqual(0);
     expect(activityIndex).toBeGreaterThan(fairnessIndex);
-    expect(trackIndex).toBeGreaterThan(activityIndex);
   });
 
   it('renders the fairness module above the activity feed, in DOM order (R-D14-B)', () => {

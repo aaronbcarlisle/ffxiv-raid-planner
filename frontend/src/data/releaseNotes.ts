@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.87',
+    date: '2026-11-03T00:00:00Z',
+    title: 'Home: the farm card',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Home: the farm card',
+        description:
+          'V2\'s Home swaps the old mount-farm card for a Farm card on the static\'s top active farm, the one Progress lists first. Its title opens that farm\'s row. Below it: how many have it, a pip for each member counted, with a role colour and a state mark, and who is next. Viewers see the tally and pips but no next line or counts, and guests see no card.',
+        internal: true,
+        pr: 430,
+        prTitle: 'feat(v2): S2a-4b B1 — the farm card on Home',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.86',
     date: '2026-11-03T00:00:00Z',
     title: 'Progress: Find end-to-end checks',
