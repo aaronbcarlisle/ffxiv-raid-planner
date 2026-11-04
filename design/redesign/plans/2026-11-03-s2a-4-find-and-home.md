@@ -888,7 +888,7 @@ Found at write-back, against the code at `47501e99`. None blocks S2a-5. Homes ar
 
 **Copy and taste (holistic)**
 - **All-Pass copy**: a top farm whose claimed columns are all on Pass reads "0 of 0 have it" with no pips (`FarmPips` returns null when empty). It agrees with the matrix row; a holistic call.
-- **"1 need attention"**: the singular reads wrong. D-13's copy is verbatim, and legacy has the same grammar ("1 member need attention", `StaticHomeTab.tsx:1611`), so it is an owner copy ruling.
+- **"1 need attention"**: the singular reads wrong. D-13's copy is verbatim, and legacy has the same grammar ("1 member need attention", `StaticHomeTab.tsx:1611`), so it is an owner copy ruling. **Ruled 2026-11-04 (O-2, #435):** "1 needs attention", V2 only.
 
 **Not walked live**
 - The empty copy with nothing listed, and a past tier (DEVTST has one tier). Unit tests pin both (`Home.splitRow.test.tsx` "keeps the empty copy on a past tier" and "on a past tier shows no row and makes no split-clear request").
