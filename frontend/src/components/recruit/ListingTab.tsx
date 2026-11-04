@@ -9,9 +9,13 @@
  * writes the status label — it shows only Live/Hidden and the waiting count
  * (the status label stays in `RecruitHeader`'s subtitle) — and has no
  * `Select`, no checklist, no preview and no fill button.
+ *
+ * Between the two sits the static's objectives editor (S2a-5a·C2a, O-4), V1's
+ * `ObjectiveGoalsPanel` unedited.
  */
 import { CardShell } from '../ui/CardShell';
 import { DiscoveryTab } from '../settings/DiscoveryTab';
+import { ObjectiveGoalsPanel } from '../static-group/ObjectiveGoalsPanel';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import type { RecruitTab } from './recruitTabs';
 import type { StaticGroup } from '../../types';
@@ -41,6 +45,15 @@ export function ListingTab({ group, onTabChange }: ListingTabProps) {
           {parts.join(' · ')}
         </span>
       </CardShell>
+      {/* The objectives editor (S2a-5a·C2a, R-M-6, O-4). `canManage` is literal: `RecruitPage` redirects
+          anyone who can't manage the static, so this tab only mounts for those who can. The panel saves
+          on its own, outside Save Listing and Cancel. `key` restarts its form on a static switch, as
+          Home keeps the unkeyed store warm. */}
+      <div data-testid="listing-objectives">
+        <CardShell as="div">
+          <ObjectiveGoalsPanel key={group.id} groupId={group.id} canManage />
+        </CardShell>
+      </div>
       <DiscoveryTab group={group} onClose={() => onTabChange('applicants')} />
     </div>
   );

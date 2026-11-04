@@ -19,6 +19,9 @@ vi.mock('../../stores/joinRequestStore', () => ({
   useJoinRequestStore: (sel: (s: Record<string, unknown>) => unknown) => sel({ applicants: mocks.applicants }),
 }));
 
+// The objectives editor fetches on mount; stubbed so these status-card cases never reach the network.
+vi.mock('../static-group/ObjectiveGoalsPanel', () => ({ ObjectiveGoalsPanel: () => null }));
+
 vi.mock('../settings/DiscoveryTab', () => ({
   DiscoveryTab: (props: Record<string, unknown>) => {
     mocks.discoveryTabProps = props;
