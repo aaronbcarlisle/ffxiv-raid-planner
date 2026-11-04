@@ -70,6 +70,8 @@ export const RELEASES: Release[] = [
         description:
           'V2\'s Find rows end their detail line with the patch the farm came in, for example "Patch 7.2", and show nothing when the catalog has no patch. The patch is display only: it isn\'t searchable and isn\'t a filter. Home\'s Split clears row now reads "1 needs attention" for one member and "2 need attention" for more.',
         internal: true,
+        pr: 435,
+        prTitle: 'feat(v2): S2a-5a C1 — Find\'s patch line and "1 needs attention"',
       },
     ],
     internal: true,
