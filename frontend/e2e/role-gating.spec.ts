@@ -954,3 +954,171 @@ test.describe.serial('Progress Find, by role (S2a-4a)', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Home's pointers (S2a-4b·B2): the farm card and the split row by role
+// ---------------------------------------------------------------------------
+
+/**
+ * Design §3.7 and §4 items 6 and 7: an owner and a member see the card with its next line; a viewer
+ * sees the card's tally and pips, and no next line or count (D-11, B1). All three see the split row
+ * and it opens the plan (D-13, P-107). Hidden, never disabled.
+ *
+ * One farm on DEVTST where the owner and DevMember both Need, with counts, plus split clears on.
+ * The setting is read first and put back in afterAll, and the farm is deleted there. DevMember is
+ * demoted for the viewer test and restored in `finally` and in afterAll.
+ */
+test.describe.serial('Home pointers, by role (S2a-4b)', () => {
+  const TITLE = 'E2E Home Gating';
+  let farmId = '';
+  let priorSplit: boolean | null = null;
+  let demoted: string | null = null;
+
+  const main = (page: Page) => page.getByRole('main');
+  const farmHeading = (page: Page) => main(page).getByRole('heading', { name: 'Farm', exact: true });
+  const farmLink = (page: Page) => main(page).getByRole('button', { name: TITLE, exact: true });
+  const tally = (page: Page) => main(page).getByText(/^\d+ of \d+ have it$/);
+  const pips = (page: Page) => main(page).getByRole('img', { name: /^Need: / });
+  const nextLine = (page: Page) => main(page).getByText(/ is next\b/);
+  const splitTitle = (page: Page) => main(page).getByText('Split clears', { exact: true });
+  const splitMeta = (page: Page) => main(page).getByText(/^Alts assigned \d+\/\d+( · \d+ need attention)?$/);
+  const openPlan = (page: Page) => main(page).getByRole('button', { name: 'Open split plan', exact: true });
+
+  /** Home with the card up (it waits on two fetches), and every request settled. */
+  async function openHome(page: Page) {
+    await openV2(page, 'tab=overview', homeReady);
+    await farmHeading(page).waitFor({ timeout: 15_000 });
+    await page.waitForLoadState('networkidle');
+  }
+
+  async function expectPlanOpens(page: Page) {
+    await openPlan(page).click();
+    await expect(page).toHaveURL(/[?&]track=tier(&|$)/);
+    await expect(page.getByTestId('progress-tier-expansion')).toBeVisible({ timeout: 15_000 });
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/[?&]track=tier(&|$)/);
+  }
+
+  test.beforeAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      const { page, groupId, headers } = owner;
+      const list = await page.request.get(`${API_BASE}/api/static-groups/${groupId}/collection-goals`);
+      for (const g of (await list.json()) as Array<{ id: string; title: string }>) {
+        if (g.title === TITLE) await page.request.delete(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${g.id}`, { headers });
+      }
+      priorSplit = await splitEnabled(owner);
+      await setSplit(owner, true);
+
+      const res = await page.request.post(`${API_BASE}/api/static-groups/${groupId}/collection-goals`, {
+        headers,
+        data: { goal_type: 'mount', title: TITLE, status: 'farming', token_name: 'Tokens', token_cost: 99 },
+      });
+      if (!res.ok()) throw new Error(`seeding the gating farm returned ${res.status()}`);
+      farmId = ((await res.json()) as { id: string }).id;
+
+      const members = (await (await page.request.get(`${API_BASE}/api/static-groups/${groupId}/members`)).json()) as Array<{
+        userId: string;
+        user?: { discordUsername?: string };
+      }>;
+      const memberId = members.find((m) => m.user?.discordUsername === 'DevMember')?.userId;
+      if (!memberId) throw new Error('DevMember is not in DEVTST');
+      for (const [userId, tokenCount] of [
+        [await currentUserId(page), 40],
+        [memberId, 62],
+      ] as const) {
+        const set = await page.request.patch(`${API_BASE}/api/static-groups/${groupId}/collection-goals/${farmId}/participants/${userId}`, {
+          headers,
+          data: { state: 'need', token_count: tokenCount },
+        });
+        if (!set.ok()) throw new Error(`setting Need returned ${set.status()}`);
+      }
+    } finally {
+      await owner.context.close();
+    }
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      if (demoted) await setRole(owner, demoted, 'member');
+      if (priorSplit !== null) await setSplit(owner, priorSplit);
+      if (farmId) {
+        const del = await owner.page.request.delete(`${API_BASE}/api/static-groups/${owner.groupId}/collection-goals/${farmId}`, { headers: owner.headers });
+        if (!del.ok() && del.status() !== 404) throw new Error(`deleting the gating farm returned ${del.status()}`);
+      }
+    } finally {
+      await owner.context.close();
+    }
+  });
+
+  test('owner pin: the card with a next line and the split row, so the viewer check below is not vacuous', async ({ page }) => {
+    await loginAsOwner(page);
+    await openHome(page);
+    await expect(farmLink(page)).toBeVisible();
+    await expect(tally(page)).toBeVisible();
+    await expect(nextLine(page)).toBeVisible();
+    await expect(splitTitle(page)).toBeVisible();
+    await expect(splitMeta(page)).toBeVisible();
+    await expect(openPlan(page)).toBeEnabled();
+  });
+
+  test('member: the card with a next line and the split row, which opens the plan (hidden, not disabled)', async ({ page }) => {
+    await loginAsMember(page);
+    await openHome(page);
+    await expect(farmLink(page)).toBeVisible();
+    await expect(tally(page)).toBeVisible();
+    await expect(pips(page)).toBeVisible();
+    await expect(nextLine(page)).toBeVisible();
+    await expect(splitTitle(page)).toBeVisible();
+    await expect(splitMeta(page)).toBeVisible();
+    await expectNoDisabledOutside(page, []);
+    await expectPlanOpens(page);
+  });
+
+  test('viewer: the card with its tally and pips, no next line and no count', async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      // Dev login re-seats DevMember as a member, so demote after logging in.
+      await loginAsMember(page);
+      demoted = await currentUserId(page);
+      await setRole(owner, demoted, 'viewer');
+      await openHome(page);
+
+      await expect(farmLink(page)).toBeVisible();
+      await expect(tally(page)).toBeVisible();
+      await expect(pips(page)).toBeVisible();
+      await expect(nextLine(page)).toHaveCount(0);
+      await expect(main(page).getByText(/\d+\/99/)).toHaveCount(0);
+      await expectNoDisabledOutside(page, []);
+      await context.close();
+    } finally {
+      if (demoted) await setRole(owner, demoted, 'member');
+      demoted = null;
+      await owner.context.close();
+    }
+  });
+
+  test('viewer: the split row, which opens the plan (D-13, P-107)', async ({ browser }) => {
+    const owner = await ownerSession(browser);
+    try {
+      const context = await freshContext(browser);
+      const page = await context.newPage();
+      await loginAsMember(page);
+      demoted = await currentUserId(page);
+      await setRole(owner, demoted, 'viewer');
+      await openHome(page);
+
+      await expect(splitTitle(page)).toBeVisible();
+      await expect(splitMeta(page)).toBeVisible();
+      await expectPlanOpens(page);
+      await context.close();
+    } finally {
+      if (demoted) await setRole(owner, demoted, 'member');
+      demoted = null;
+      await owner.context.close();
+    }
+  });
+});
