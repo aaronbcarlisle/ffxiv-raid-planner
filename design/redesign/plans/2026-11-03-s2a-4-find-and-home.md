@@ -46,7 +46,7 @@
   - `backend/**` (no backend change at all, E-4)
   - `utils/discordPlan.ts`
 - There is no migration, and **V1 renders byte-for-byte as it does today** (D-14).
-- **Existing tests stay unedited**, with one exception: `home/TrackCard.test.tsx`, which TB1 rewrites with the card (D-12). This works because of the S-3 testid and DOM-order rulings (E-7, D-5).
+- **Existing tests stay unedited**, with two exceptions: `home/TrackCard.test.tsx`, which TB1 rewrites with the card (D-12), and `home/Home.test.tsx`, where TB1 deletes one assertion, the retired card's heading in the side-stack order test (the plan missed it; D-12 retires the card). This works because of the S-3 testid and DOM-order rulings (E-7, D-5).
 
 **Plugin contract (binding, `CLAUDE.md` § Pitfalls).** Nothing changes, because there is no backend edit.
 
@@ -321,7 +321,7 @@ This is a pure move, checked three ways:
 
 ### R-F-11 · the split row (D-13, E-8, E-11, C-7)
 
-**The fetch.** `Home.tsx` keeps `splitResult: { groupId; data } | null`, filled from its own `fetchSplitClear` call. That call runs in the member branch only when `tier.isActive`.
+**The fetch.** `Home.tsx` keeps `splitResult: { groupId; data } | null`, filled from its own `fetchSplitClear` call. That call runs only when `tier.isActive`, for a member or a viewer. *(As built it is an effect of its own, not the member branch: B2's ledger ruled that setState in that branch loops under unstable mock deps and breaks asks-once. The goals and cells (R-F-10) have an effect of their own too, and both carry the same `group.userRole` gate.)*
 
 **When the row shows.** It's added after the existing kinds when:
 - `splitResult.groupId === group.id`;
@@ -330,7 +330,7 @@ This is a pure move, checked three ways:
 
 **What it shows:**
 - the title "Split clears";
-- the meta `Alts assigned ${x}/${y}`, plus ` · ${n} need attention` when n > 0. Both numbers come from `getSplitClearReadiness`, using legacy's filter;
+- the meta `Alts assigned ${x}/${y}`, plus ` · ${n} need attention` when n > 0. All three come from `getSplitClearReadiness`, using legacy's filter: x is `altCount`, y is `memberCount`, and n is `issueMemberCount` (members with something to fix, as legacy's card counts them, not `issueCount`'s warnings);
 - the action `Button variant="secondary" size="sm"` "Open split plan", which calls `onNavigate('goals', { track: 'tier' })`.
 
 `AttentionItem`'s variant type widens to include it (`Home.tsx:88`).
@@ -758,7 +758,7 @@ No diff touches any path in § Scope's "Not edited" list. Two stores' existing t
 
 1. **Tests first:**
    - **Unit:**
-     - With split clears on and the active tier, the row reads "Alts assigned 3/8 · 2 need attention".
+     - With split clears on and the active tier, the row reads "Alts assigned 3/8 · 2 need attention". *(That shape can't come from the real helper: a member with no alt always warns, so n >= y - x. The reachable shape is 6/8 · 2, which is what the real-helper test pins; "3/8 · 2" is asserted only through a stubbed helper.)*
      - With n = 0, there's no " · …" part.
      - The row is hidden:
        - with split clears off;
@@ -836,9 +836,10 @@ No diff touches any path in § Scope's "Not edited" list. Two stores' existing t
     - the §12.1 amendment;
   - §8's corrections;
   - `PRODUCT_MODEL.md` §6 and `HOME_STRETCH.md`'s W3 S2a row.
-- [ ] **S2a-4b**, one docs PR:
+- [x] **S2a-4b**, one docs PR *(done 2026-11-03, after #430 and #431 merged, main `47501e99`; P-68 stays open, see the matrix)*:
   - the second half: S2-12 as built, P-104…P-107, and the D-67/D-68 markers;
-  - the same two status docs.
+  - the same two status docs;
+  - the design note's corrections (D-11 link scope, §3.5, E-8, D-13 and §3.6).
 - [ ] Update memory `project_home_stretch` (the controller's).
 
 ## Carried, not S2a-4
@@ -863,3 +864,31 @@ Found at write-back, against the code at `c145e38f`. None blocks S2a-4b. Homes a
 - **V1's orchestrion supplement** (`CatalogBrowse.tsx:70-80`, built-in orchestrion rolls added when the live catalog has none) isn't carried into All.
 - **The Share prompt's text sits in the action slot**, not in the row's body line (§3.2).
 - **No `landing.isConnected` guard** in `findActions.tsx`'s focus move: the microtask checks that the removed button is gone and that focus is on `<body>`, but not that the landing target (the row's toggle) is still mounted.
+
+## Carried from S2a-4b (residuals, 2026-11-03)
+
+Found at write-back, against the code at `47501e99`. None blocks S2a-5. Homes are the holistic review (taste and copy calls), a small cleanup PR (defects), or W4 HOME.
+
+**Defects and races**
+- **The card blinks on return to Home.** Home refetches the goals and the cells on every mount, and the card hides while `progressLoading` (`TrackCard.tsx:76`), so a warm store still hides it until the cells land.
+- **`progressError` is shared.** A Finished fetch in flight when the member leaves Progress (`ProgressPage.tsx:288-300` calls the same `fetchProgress`) can fail after Home has mounted, and the card then hides until remount. The fix is a Home-held `{ groupId, error }` taken from Home's own fetch result, as `ProgressPage` holds `settled`.
+- **A late old-static goals response overwrites the unkeyed store** (`fetchGoals` sets `loadedGroupId` with no staleness guard), so the new static's card stays hidden until remount. The card never shows the wrong static (`Home.trackCard.test.tsx` "never shows the old static when its goals land late"); it just doesn't recover.
+- **A load failure on Home is silent.** The card hides, as D-11 says, with no line and no Retry. Progress shows both.
+- **The `error` race in Home's split read.** Home reads the shared store's `error` after its `fetchData` resolves (`Home.tsx:251-254`), and another caller's `fetchData` can change it in between. `ProgressPage` has the mirror-image race: it reads `data === null` (`ProgressPage.tsx:501-502`). The fix is a keyed result from `splitClearStore` that both read.
+- **The split row's render gate doesn't re-check `group.userRole`** (`Home.tsx:395`): the fetch does, but the row stays up after a mid-session role revoke until remount.
+
+**Code and tests**
+- **`CellPicker.tsx` keeps literal state labels** (`:57-60`, "Need", "★ Want", "✓ Have", "– Pass"). R-F-8's "grep finds no other copy" is false for them: they predate the move, and `STATE_TEXT` carries the same words.
+- **`Home.test.tsx` reaches the real goal store (and split-clear store) and jsdom's `fetch`**, since Home's new effects call them and the file mocks neither. Its `mountData` seed (`:410`) no longer feeds anything that test asserts; it fed the retired card.
+- **`Home.tsx`'s split-effect comment misdescribes the store** (`:244-246`): `fetchData` blanks `data` when a read starts (`splitClearStore.ts:54`), it doesn't leave the old one. `error` still decides, and the code is right.
+- **The split row re-derives `mainRosterPlayers`** (`Home.tsx:397`, the same filter as the memo at `:264`).
+- **`home-pointers.spec.ts`'s axe exclusion** (`withoutAccentSubtleDebt`) covers every `button.bg-accent/10` node's `color-contrast`, the whole `accent-subtle` variant. It could be pinned to the two known labels ("Add session", "Import BiS"), as `SPLIT_PLANNER_LIGHT_DEBT` (`helpers/owner.ts:66`) is. The debt is #394.
+- **e2e seeding is written three times**: `seedFarm` in `home-pointers.spec.ts`, `withActiveFarm` in `role-gating.spec.ts` and `withFarm` in `guest.spec.ts`. A `helpers/home.ts` could serve all three.
+- **A leftover split assignment row swaps the planner's empty state, even with every field reset** (`SplitClearPlanner.tsx:68`, `hasExistingAssignments`), so a test seed must leave zero rows, and there is no delete route. B2's walk left seven on DEVTST's local copy, and the preflight's first e2e run failed 7 and skipped 4 until they were deleted by hand.
+
+**Copy and taste (holistic)**
+- **All-Pass copy**: a top farm whose claimed columns are all on Pass reads "0 of 0 have it" with no pips (`FarmPips` returns null when empty). It agrees with the matrix row; a holistic call.
+- **"1 need attention"**: the singular reads wrong. D-13's copy is verbatim, and legacy has the same grammar ("1 member need attention", `StaticHomeTab.tsx:1611`), so it is an owner copy ruling.
+
+**Not walked live**
+- The empty copy with nothing listed, and a past tier (DEVTST has one tier). Unit tests pin both (`Home.splitRow.test.tsx` "keeps the empty copy on a past tier" and "on a past tier shows no row and makes no split-clear request").
