@@ -41,6 +41,7 @@ const ITEM: FindItem = {
   sourceType: 'extreme',
   duty: 'Worqor Lar Dor (Extreme)',
   expansion: 'dt',
+  patch: null,
   token: null,
   pluginReady: false,
   members: [],

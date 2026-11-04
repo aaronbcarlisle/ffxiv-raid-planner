@@ -51,6 +51,7 @@ const ITEM: FindItem = {
   sourceType: 'extreme',
   duty: 'Worqor Lar Dor (Extreme)',
   expansion: 'dt',
+  patch: null,
   token: { name: 'Valigarmanda Totem', cost: 99 },
   pluginReady: false,
   members: [],

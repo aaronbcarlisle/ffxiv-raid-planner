@@ -107,7 +107,7 @@ const farmCard = (page: Page) => main(page).getByRole('heading', { name: 'Farm',
 const cardLink = (page: Page, title: string) => main(page).getByRole('button', { name: title, exact: true });
 const nextLine = (page: Page) => main(page).getByText(/ is next\b/);
 const openPlan = (page: Page) => main(page).getByRole('button', { name: 'Open split plan', exact: true });
-const splitMeta = (page: Page) => main(page).getByText(/^Alts assigned \d+\/\d+( · \d+ need attention)?$/);
+const splitMeta = (page: Page) => main(page).getByText(/^Alts assigned \d+\/\d+( · \d+ needs? attention)?$/);
 const nameOf = (page: Page, id: string) => page.locator(`[data-goal-id="${id}"] [role="rowheader"] button`);
 const panelOf = (page: Page) => page.getByTestId('progress-expansion');
 
@@ -236,7 +236,7 @@ test.describe.serial('Home pointers (S2a-4b)', () => {
       await loginAsOwner(page);
       await openHome(page);
       await expect(main(page).getByText('Split clears', { exact: true })).toBeVisible();
-      await expect(splitMeta(page)).toHaveText(new RegExp(`^Alts assigned ${x}/${y}( · \\d+ need attention)?$`));
+      await expect(splitMeta(page)).toHaveText(new RegExp(`^Alts assigned ${x}/${y}( · \\d+ needs? attention)?$`));
 
       await openPlan(page).click();
       await expectSplitPlanOpen(page);

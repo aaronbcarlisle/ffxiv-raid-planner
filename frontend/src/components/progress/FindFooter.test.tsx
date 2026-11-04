@@ -34,6 +34,7 @@ function item(wantedBy: string[], over: Partial<FindItem> = {}): FindItem {
     sourceType: 'extreme',
     duty: 'Worqor Lar Dor (Extreme)',
     expansion: 'dt',
+    patch: null,
     token: { name: 'Valigarmanda Totem', cost: 99 },
     pluginReady: false,
     members: wantedBy.map(wanter),
