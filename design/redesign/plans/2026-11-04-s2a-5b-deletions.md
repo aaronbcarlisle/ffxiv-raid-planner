@@ -4,7 +4,7 @@
 
 **Plan-vet (2026-11-04).** `xivrp-director` returned **approve with required changes**: 2 Critical, 5 Important, 11 Minor, read in code. All are folded in below. It compiled Tailwind over scratch copies of each PR's state and confirmed the 12 selectors and the per-PR split. It took the dry run's build, test and lint numbers on trust. The Criticals changed R-D-7 (the release-note exception covered V1's entry chunk) and PR W (criterion 9 isn't true "by removal").
 
-**Owner gate:** nothing below runs until the owner confirms § Owner gate.
+**Owner gate:** confirmed by the owner on 2026-11-18 (§ Owner gate): G-27's 2026-10-01 tick stands and the deletions ran as planned. **S2a-5b shipped 2026-11-18** (D1 #442, D2 #443, D3 #444, write-backs this PR); see § Outcome.
 
 **Goal:** the dead code S2-14 names is gone, plus what its deletion orphans, plus `useTrackParam`, which is dead on its own since S2a-4a. Nothing a user can reach in either shell changes.
 
@@ -196,7 +196,7 @@ Where the port differs, for the owner to accept. S2-4, S2-5 and S2-7 ruled much 
 1. **A count needs a status first.** The picker's count is disabled until the member picks one (`CellPicker.tsx:211,214`). Legacy's count sat beside the checkboxes.
 2. **Edit statuses doesn't reach every row.** Others' Not-on-the-roster cells and viewers' claimed cells stay read-only, and finished rows are read-only (`editStatuses.ts:39-46`).
 3. **The manual correction loses its date and can lose its name.** Legacy kept a stored date ("Manual correction on {date}"). "set by {name}" has no date, and it doesn't survive a token-only plugin sync (spec :308, R-S1-8).
-4. **The exchange summary has no V2 home.** Legacy's tooltip ("1 Oracle Totem for … at Uah'shepya in Solution Nine") is gone, and `getExchangeSummary` ends with no reader (R-D-4).
+4. **The exchange NPC and location have no V2 home.** Find's row does show the token and its cost (`FindRow.tsx:44-46`, "{cost} {token}"), but legacy's tooltip also named the NPC and place ("1 Oracle Totem for … at Uah'shepya in Solution Nine"); that part is gone, and `getExchangeSummary` ends with no reader (R-D-4).
 5. **Only tracked farms and claimed columns.** Legacy listed every trial and gave every non-viewer a row. A member with no card and no row has no cell (S2-4, S2-5).
 6. **The Status column is gone** (Obtained · Pending · Ready · Farming · Skip). The cell's "✓ Have" and "Need 62/99" carry most of it; "Ready" and "Pending" have no direct equivalent (P-21's "Can buy" badge was RETIRED-ACK).
 7. **Two records stay separate.** V1 Home and V2's activity feed read `MountFarmProgress`, which Progress edits never reach (spec :98). `PATCH /mount-farms/progress` has no UI caller today, so D3 doesn't change that; the split already exists.
@@ -207,3 +207,27 @@ Where the port differs, for the owner to accept. S2-4, S2-5 and S2-7 ruled much 
 - `mountFarmStore.updateProgress` and `PATCH /mount-farms/progress` have no client today, and the store's `DataSource` and `TrialSummary` types lose their importers in D3. F3, or D1 of the release with the store.
 - The six `gamedata/mount-farms.ts` exports in R-D-4. F3.
 - `eslint.config.js`'s `ring3` and `FRONTEND_STRUCTURE.md` keep `collections/`, which V1 still uses.
+
+## Outcome (2026-11-18)
+
+Owner gate confirmed 2026-11-18: G-27's 2026-10-01 tick stands, deletions as planned. The two recommended follow-ups (a date on "set by {name}"; the exchange NPC and location on a tracked farm) were not accepted into the queue; they stay optional. `CURRENT_VERSION` stays 2.1.80.
+
+| PR | Squash | Internal note | What |
+|---|---|---|---|
+| D1 #442 | `d734ef42` | 2.1.93 | `profile/CollectionsTab.tsx` + test, `collections/CatalogFarmRow.tsx`, `collections/SuggestionFarmCard.tsx`; `eslint-suppressions.json` entry; `collectionBadgeConfig.ts` comment |
+| D2 #443 | `501f5217` | 2.1.94 | `static-group/ObjectiveCommandCenter.tsx` + test, `stores/objectiveCommandStore.ts`, `hooks/useTrackParam.ts` + test; comments in `useProgressView.ts:13`, `useUrlTabState.ts:41` |
+| D3 #444 | `2621b1d8` | 2.1.95 | `components/mount-farms/` (six files); `gamedata/mount-farms.test.ts` minus the two `MountFarmSummary` tests; `eslint.config.js:56` → `(collections|progress)`; `frontend/README.md:48`; comments in `home/Home.tsx:17-19`, `home/StaticActivityFeed.tsx:14` |
+
+**R-D-7 evidence, per PR.** With `releaseNotes.ts` held at `main`'s copy, all 270 non-CSS dist files (69 built assets, `index.html`, 200 `public` files) were identical to `main`'s. `index.css` only lost rules: nothing added, changed or reordered, `:root` unchanged. Lost: D1 `lg:grid-cols-[minmax(0,1fr)_180px_250px]`; D2 `h-[120px]`; D3 `-m-0.5`, `bg-accent/60`, `bg-amber-400`, `bg-amber-500/20`, `bg-blue-500/5`, `border-blue-500/20`, `hover:text-blue-300`, `max-w-[132px]`, `min-w-[156px]`, `w-[96px]`. `index.css` went 185,442 → 185,346 → 185,320 → 184,344 bytes, the dry run's predicted final size.
+
+**Totals after D3.** Unit tests 402 files / 5,818; lint 0 errors / 784 warnings; knip unused files 4 (the four out-of-scope files); e2e on D3: `role-gating` 41/41, `home-pointers` 7/7, `objectives` 14/14, `progress` 61/61, `settings-suggestions` 18/18; live smoke of V1 Home + Goals & Farms and V2 Home + Progress (row open) + Recruit ▸ Listing, console clean. One `redesign-reviewer` pass per PR: 0/0/8, 0/0/3, 0/0/5 (Critical/Important/Minor), no fix wave; one Minor fixed in D3 (`7d2f63b7`, the 2.1.95 note scoped to V2).
+
+**Rulings made during execution.**
+1. R-D-7's base is built in the same checkout as the head (detach to `origin/main`, `vite build --outDir`), not a fresh worktree: a fresh install changed minifier identifier names in 52 chunks with identical source.
+2. D2 and D3 ran on the default implementer model, not haiku as R-D-9 says, because each dispatch also revised the bundle-diff script.
+3. The bundle-diff script stayed uncommitted (slice rule 6). It was hardened after D1's review (class-name sets, a JS-head positive control, an order/subsequence check, nested at-rule parsing) and after D2's (`--css-head` required). Known leftover: its comma-list `--expect-lost` splits D1's selector.
+4. `gh pr checks` shows the draft-time run's skipped jobs while the ready run is still in progress; read the ready run before merging.
+
+**Where the plan's wording was loose.** "`GoalsPage` and `CollectionsHub` stay until D1" (PR W): nothing in this slice deleted them, and they stay for V1 until the release's own D1. § Owner gate item 4 said the exchange summary has no V2 home; Find's row shows the token and cost, so only the NPC and location are gone.
+
+**Carried.** § Carried above is unchanged.

@@ -192,6 +192,8 @@ The whole tab stays in V2, unchanged, until S2a-5a (S2-14 :136). The verdicts gi
 
 ## 11. Code S2a-5b deletes (S2-14 :137-143)
 
+**Shipped 2026-11-18** (main `2621b1d8`, plan `2026-11-04-s2a-5b-deletions.md` § Outcome): D1 #442 (`CollectionsTab` + test, `CatalogFarmRow`, `SuggestionFarmCard`), D2 #443 (`ObjectiveCommandCenter` + test, `objectiveCommandStore`, and `useTrackParam` + test, which the plan added), D3 #444 (the six `mount-farms/` files; `gamedata/mount-farms.test.ts` lost its import and the two `MountFarmSummary` tests). The table below is the pre-deletion measurement and is kept as history. The tallies in §16 are unchanged.
+
 | File | Lines | Importers at `b70d24bb` (grep of `frontend/src`, `frontend/e2e`) | Orphaned? |
 |---|---|---|---|
 | `mount-farms/index.ts` | 1 | none | yes |
@@ -206,24 +208,24 @@ The whole tab stays in V2, unchanged, until S2a-5a (S2-14 :136). The verdicts gi
 | `static-group/ObjectiveCommandCenter.tsx` + test | 279 + 238 | its test only (`ObjectiveCommandCenter.test.tsx:7`) | yes |
 | **Total** | **2,865** | the tree is 1,189 | matches S2-14 :137-140 exactly |
 
-`gamedata/mount-farms.test.ts` (256 lines) is edited, not deleted: its import (`:14`) and its two `MountFarmSummary` tests (`:188-255`) go. Non-import references the deletion must also clear: `frontend/eslint-suppressions.json:52-56` (CollectionsTab's entry) and `frontend/README.md:48` (lists the tree). Deleting ObjectiveCommandCenter orphans `stores/objectiveCommandStore.ts`. S2a-5b deletes it unless P2b's D-66 has adopted it by then. This brings forward the F3 knip sweep that `HOME_STRETCH.md:219` names for the store, and that sweep's item closes with it. `StaticHomeTab.tsx:1442` is a V1 file, so its comment stays (criterion 11). These comments name the deleted files: `home/TrackCard.tsx:10`, `home/Home.tsx:17-19`, `home/StaticActivityFeed.tsx:14`, `collections/SourceFarmCard.tsx:4`, `utils/collectionBadgeConfig.ts:6`, `static-group/StaticHomeTab.tsx:1442`. `knip.json` names none of them. None of the deleted files is reachable in either shell, so retiring them removes nothing a user can reach. G-27 is the exception the spec calls out (§12 A9).
+`gamedata/mount-farms.test.ts` (256 lines) is edited, not deleted: its import (`:14`) and its two `MountFarmSummary` tests (`:188-255`) go. Non-import references the deletion must also clear: `frontend/eslint-suppressions.json:52-56` (CollectionsTab's entry) and `frontend/README.md:48` (lists the tree). Deleting ObjectiveCommandCenter orphans `stores/objectiveCommandStore.ts`. S2a-5b deletes it unless P2b's D-66 has adopted it by then. This brings forward the F3 knip sweep that `HOME_STRETCH.md:219` names for the store, and that sweep's item closes with it. `StaticHomeTab.tsx:1442` is a V1 file, so its comment stays (criterion 11); so does `collections/SourceFarmCard.tsx:4`. **As shipped (R-D-6):** V2-only comments were corrected (`useProgressView.ts:13`, `Home.tsx:17-19`, `StaticActivityFeed.tsx:14`); two comments in shared files were edited against the rule, because each would otherwise state something untrue: `useUrlTabState.ts:41` (named `useTrackParam`) and `collectionBadgeConfig.ts:4-6` (a "used by" list naming `SuggestionFarmCard`), both comment-only and proved to reach nothing by the bundle diff; `home/TrackCard.tsx:10` no longer names a deleted file, so it needed no edit. These comments name the deleted files: `home/TrackCard.tsx:10`, `home/Home.tsx:17-19`, `home/StaticActivityFeed.tsx:14`, `collections/SourceFarmCard.tsx:4`, `utils/collectionBadgeConfig.ts:6`, `static-group/StaticHomeTab.tsx:1442`. `knip.json` names none of them. None of the deleted files is reachable in either shell, so retiring them removes nothing a user can reach. G-27 is the exception the spec calls out (§12 A9).
 
 | ID | V1 affordance | V1 source | Verdict | V2 home (ruling · slice) | Notes |
 |---|---|---|---|---|---|
-| P-112 | G-24: static-wide / My Progress view toggle (`?mf=`) | `mount-farms/MountFarmTab.tsx:61-62,319-339` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b | |
-| P-113 | G-24: expansion tabs and completion bar | `mount-farms/MountFarmTab.tsx:343-374,407-418` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b | |
-| P-114 | G-24: My Progress cards Rewards Obtained · Wanted · Ready · Last Sync | `mount-farms/MountFarmTab.tsx:376-385` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b | |
-| P-115 | G-24: filters All · Needs reward · Wanted · Can buy · Complete; no-match + Clear filter | `mount-farms/MountFarmTab.tsx:170-176,386-445` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b | |
-| P-116 | G-24: Needs attention; Recent Activity (collapsible) | `mount-farms/MountFarmTab.tsx:459-465,506-616` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b | |
-| P-117 | G-25: "Best next farm" + Schedule / Schedule Farm (leads) | `mount-farms/MountFarmTab.tsx:281-315` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b | Nearest live analogues, not ports: Find's footer line (S2-11 :117), Schedule a farm night (S2-9 :67) |
-| P-118 | G-26: per-trial rows (expand) + Schedule icon | `mount-farms/MountFarmSummary.tsx:44-160` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b | |
-| P-119 | G-27: each member's Has and Wants checkboxes and currency count; a lead edits any row, a member their own | `mount-farms/MountFarmDetail.tsx:64-85,160-250` | RE-HOMED | The lead's Edit statuses plus the member's own cell with totem count (S2-7 :48) · S2a-2 | Owner signs before S2a-5b (§15) |
-| P-120 | G-27: source badge (plugin/manual, sync time), manual-override marker | `mount-farms/MountFarmDetail.tsx:30-54,180-188` | RE-HOMED | Cell provenance (S2-7 :47) · S2a-2 | |
-| P-121 | G-28: plugin onboarding banner (dismissible, README link), sync-status strip | `mount-farms/MountFarmTab.tsx:87-95,180-260` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b | |
-| P-122 | Profile `CollectionsTab`: Owned · Wanted · Can buy · Farming metrics, sort, Owned/Want checkboxes, dismiss | `profile/CollectionsTab.tsx:127-499` | RETIRED-SPEC | Deleted (S2-14 :139) · S2a-5b | V1 Profile ▸ Collections is `CollectionsCenterTab` (`pages/Profile.tsx:517`), untouched |
-| P-123 | `CatalogFarmRow`: per-reward row, expand, Track | `collections/CatalogFarmRow.tsx:49-290` | RETIRED-SPEC | Deleted (S2-14 :140) · S2a-5b | Superseded by SourceFarmCard (`SourceFarmCard.tsx:4`) |
-| P-124 | `SuggestionFarmCard`: Make Active Farm, View Farm, Copy Plan | `collections/SuggestionFarmCard.tsx:125-271` | RETIRED-SPEC | Deleted (S2-14 :140) · S2a-5b | Superseded by DutyFarmCard |
-| P-125 | `ObjectiveCommandCenter`: per-objective cards, next action → Roster, Schedule, `goals`/`farms` | `static-group/ObjectiveCommandCenter.tsx:71-95,225-279` | RETIRED-SPEC | Deleted (S2-14 :140) · S2a-5b | |
+| P-112 | G-24: static-wide / My Progress view toggle (`?mf=`) | `mount-farms/MountFarmTab.tsx:61-62,319-339` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b — **shipped, #444 (2026-11-18)** | |
+| P-113 | G-24: expansion tabs and completion bar | `mount-farms/MountFarmTab.tsx:343-374,407-418` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b — **shipped, #444 (2026-11-18)** | |
+| P-114 | G-24: My Progress cards Rewards Obtained · Wanted · Ready · Last Sync | `mount-farms/MountFarmTab.tsx:376-385` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b — **shipped, #444 (2026-11-18)** | |
+| P-115 | G-24: filters All · Needs reward · Wanted · Can buy · Complete; no-match + Clear filter | `mount-farms/MountFarmTab.tsx:170-176,386-445` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b — **shipped, #444 (2026-11-18)** | |
+| P-116 | G-24: Needs attention; Recent Activity (collapsible) | `mount-farms/MountFarmTab.tsx:459-465,506-616` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b — **shipped, #444 (2026-11-18)** | |
+| P-117 | G-25: "Best next farm" + Schedule / Schedule Farm (leads) | `mount-farms/MountFarmTab.tsx:281-315` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b — **shipped, #444 (2026-11-18)** | Nearest live analogues, not ports: Find's footer line (S2-11 :117), Schedule a farm night (S2-9 :67) |
+| P-118 | G-26: per-trial rows (expand) + Schedule icon | `mount-farms/MountFarmSummary.tsx:44-160` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b — **shipped, #444 (2026-11-18)** | |
+| P-119 | G-27: each member's Has and Wants checkboxes and currency count; a lead edits any row, a member their own | `mount-farms/MountFarmDetail.tsx:64-85,160-250` | RE-HOMED | The lead's Edit statuses plus the member's own cell with totem count (S2-7 :48) · S2a-2 | Owner signed before S2a-5b (§15); the legacy `MountFarmDetail` was deleted in S2a-5b (**#444, 2026-11-18**), the owner confirming the tick stood. The port's limits: plan `2026-11-04-s2a-5b-deletions.md` § Owner gate |
+| P-120 | G-27: source badge (plugin/manual, sync time), manual-override marker | `mount-farms/MountFarmDetail.tsx:30-54,180-188` | RE-HOMED | Cell provenance (S2-7 :47) · S2a-2 | The legacy `MountFarmDetail` it replaced was deleted in S2a-5b (**#444, 2026-11-18**) |
+| P-121 | G-28: plugin onboarding banner (dismissible, README link), sync-status strip | `mount-farms/MountFarmTab.tsx:87-95,180-260` | RETIRED-SPEC | Deleted (S2-14 :138) · S2a-5b — **shipped, #444 (2026-11-18)** | |
+| P-122 | Profile `CollectionsTab`: Owned · Wanted · Can buy · Farming metrics, sort, Owned/Want checkboxes, dismiss | `profile/CollectionsTab.tsx:127-499` | RETIRED-SPEC | Deleted (S2-14 :139) · S2a-5b — **shipped, #442 (2026-11-18)** | V1 Profile ▸ Collections is `CollectionsCenterTab` (`pages/Profile.tsx:517`), untouched |
+| P-123 | `CatalogFarmRow`: per-reward row, expand, Track | `collections/CatalogFarmRow.tsx:49-290` | RETIRED-SPEC | Deleted (S2-14 :140) · S2a-5b — **shipped, #442 (2026-11-18)** | Superseded by SourceFarmCard (`SourceFarmCard.tsx:4`) |
+| P-124 | `SuggestionFarmCard`: Make Active Farm, View Farm, Copy Plan | `collections/SuggestionFarmCard.tsx:125-271` | RETIRED-SPEC | Deleted (S2-14 :140) · S2a-5b — **shipped, #442 (2026-11-18)** | Superseded by DutyFarmCard |
+| P-125 | `ObjectiveCommandCenter`: per-objective cards, next action → Roster, Schedule, `goals`/`farms` | `static-group/ObjectiveCommandCenter.tsx:71-95,225-279` | RETIRED-SPEC | Deleted (S2-14 :140) · S2a-5b — **shipped, #443 (2026-11-18)** | |
 | P-126 | Set a farm's queue order (`priority_rank`): API only; no V1 control sends one | `routers/collection_goals.py:884,1069`; `stores/collectionGoalStore.ts:753,775` | RE-HOMED | Change order and Back to automatic in the open farm row (S2-8 :55) · S2a-3c | **Shipped, #411 (2026-10-25)**; the route is #409, the pinned queue #410. Added at S2a-3c: the capability had no V1 control, so no earlier row |
 
 ## 12. G-4 and G-14: designs, signed 2026-10-01 (S2-9 :68, S2-11 :116, §8 :267)
@@ -285,7 +287,7 @@ Q-5, Q-7 and Q-9…Q-12 were already answered by the spec or the code; the direc
 
 - [x] G-4 custom track, §12.1 (P-14, P-43, P-51) — date: 2026-10-01
 - [x] G-14 inline Edit, Mark finished, Reopen, §12.2 (P-28, P-43…P-51) — date: 2026-10-01
-- [x] G-27 port (P-119, P-120), signed before S2a-5b deletes `MountFarmDetail` (§12 A9) — date: 2026-10-01
+- [x] G-27 port (P-119, P-120), signed before S2a-5b deletes `MountFarmDetail` (§12 A9) — date: 2026-10-01 (the tick predated the port; the owner confirmed on 2026-11-18 that it stands, and #444 deleted `MountFarmDetail`)
 - [x] Sweep: S2a-5b deletes the rest of §11 (P-112…P-118, P-121…P-125; 2,865 lines; §12 A9 "ask before sweeping") — date: 2026-10-01
 - [x] §14 answers Q-1, Q-2, Q-3, Q-4, Q-6, Q-8, as recommended or as amended in place — date: 2026-10-01
 
@@ -343,7 +345,7 @@ DEFERRED is empty. What S2a leaves for other waves sits in the Notes column: W4 
 | S2a-3c | 1 |
 | S2a-4 | 31 (S2a-4a: 27, shipped 2026-11-03 except P-68, which S2a-5a C1 shipped 2026-11-04; S2a-4b: 4, P-104…P-107, shipped 2026-11-03) |
 | S2a-5a | 17 (P-89 moved to S2a-4), all shipped 2026-11-04 (#435, #436, #438, #439) |
-| S2a-5b | 12 |
+| S2a-5b | 12, all shipped 2026-11-18 (#442, #443, #444) |
 | No V2 home (the RETIRED-ACK rows) | 7 |
 | **Total** | **126** |
 
@@ -354,3 +356,4 @@ DEFERRED is empty. What S2a leaves for other waves sits in the Notes column: W4 
 - 2026-11-03 · S2a-4a write-backs (#423–#427): 19 of 20 INTERIM rows ended with the tests that show each, P-68 stays open (patch line); P-09, P-13, P-14, P-89 (slice S2a-5a → S2a-4), P-96…P-103 shipped; §12.1 amended (D-8); stale cites corrected (`collection_goals.py:263-440` → `:527-701`, `:205-217` → `:469-511`, `:299` → `:568`, `CollectionsHub.tsx:184-187` → `:159-162`); tallies S2a-4 30 → 31, S2a-5a 18 → 17
 - 2026-11-03 · S2a-4b write-backs (#430, #431): P-104…P-107 ended, each with the tests that show it, and the D-67 and D-68 ship markers; S2a-4 is 31 rows, 30 shipped and P-68 open. No tally changes
 - 2026-11-04 · S2a-5a write-backs (#435, #436, #438, #439): P-68 ended (INTERIM, owner ruling O-1: the patch line), so the RE-HOMED INTERIM count is 1 → 0 and no INTERIM row is open; P-07 shipped (the `?goal=objectives` redirect, held for View As); P-78 amended by O-3 (every active objective, no cap, Not Doing hidden, so members no longer read Not Doing items) and shipped; P-79…P-95 shipped, each with the tests that show it (P-88 and P-91 have none of their own: the Farms section can't mount); P-13 and P-14 notes closed (V2 reaches no `CollectionsHub`; Settings' Add Farm retired); P-107's V2 copy is now "1 needs attention" (O-2, V2 only; noted on the row). §6, §7 and §9 intros and the S2a-4 and S2a-5a tallies amended. No count changes
+- 2026-11-18 · S2a-5b write-backs (#442, #443, #444): §11 and P-112…P-125 marked shipped, with the PR for each row; P-119 and P-120 note that the legacy `MountFarmDetail` is gone; §11's comment rule records R-D-6's two exceptions (`useUrlTabState.ts:41`, `collectionBadgeConfig.ts`) and that `TrackCard.tsx:10` no longer applies; §15's G-27 row notes the owner's 2026-11-18 confirmation; the S2a-5b tally is shipped. No count changes

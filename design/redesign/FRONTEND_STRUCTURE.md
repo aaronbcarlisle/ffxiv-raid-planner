@@ -97,8 +97,8 @@ These domains import only same-tier or inward elements. They are candidates to r
 | `lodestoneStore` | **Ring 0** — *cross-cutting integration seam* (see §4.1.1) |
 | `schedule/` `split-clear/` | **Ring 1** |
 | `scheduleStore` `availabilityStore` `invitationStore` `joinRequestStore` `contentSuggestionStore` `splitClearStore` | **Ring 1** stores |
-| `mount-farms/` `collections/` | **Ring 3** |
-| `mountFarmStore` `collectionGoalStore` `objectiveGoalStore` `objectiveCommandStore` | **Ring 3** stores |
+| `collections/` | **Ring 3** |
+| `mountFarmStore` `collectionGoalStore` `objectiveGoalStore` | **Ring 3** stores |
 | `auth/` | **Person** |
 | `authStore` `playerProfileStore` `personalAvailabilityStore` `staticCharacterStore` `notificationStore` `apiKeyStore` `collectionIntentStore` | **Person** stores |
 | `dnd/` `docs/` | **Shell** |
@@ -127,15 +127,14 @@ Contains components from multiple rings: `CreateTierModal`/`DeleteTierModal` (Ri
 
 Aggregates Ring-0 priority panels (`priority/ModeSelector`, `priority/RoleBasedEditor`, `priority/JobBasedEditor`, `priority/PlayerBasedEditor`, `priority/AdvancedOptions`) and Ring-1 recruitment panels (`static-group/InvitationsPanel`, `static-group/JoinRequestsPanel`, `static-group/ContentSuggestionsPanel`, `static-group/ObjectiveGoalsPanel`) plus Ring-0 static management panels (`static-group/MembersPanel`, `static-group/CreateCollectionGoalModal`), and a Ring-0 player component (`player/WorldSelect`). This is structural: a settings aggregator by design. To be re-homed into the spine at F6.
 
-#### `profile/` — Person primary, **5 outward edges** (measured in Task 1; "surprise")
+#### `profile/` — Person primary, **3 outward edges** (measured in Task 1 as 5; "surprise")
 
-`profile/` was expected clean but measured 5 outward edges:
+`profile/` was expected clean but measured 5 outward edges; the last two, `CollectionsTab` → `mount-farms/FarmProgress` + `mount-farms/farmProgressUtils` (Ring 3), went when S2a-5b deleted both ends (#442, #444, 2026-11-18). The `mount-farms/` directory, `objectiveCommandStore` and `ObjectiveCommandCenter` are gone for the same reason. What remains:
 - `CharacterLinkModal` → `player/WorldSelect` (Ring 0)
 - `ManageBiSModal` → `bis/BiSTargetManagerModal` (Ring 0)
 - `PersonalAvailabilityEditor` → `schedule/availabilityUtils` (Ring 1)
-- `CollectionsTab` → `mount-farms/FarmProgress` + `mount-farms/farmProgressUtils` (Ring 3)
 
-Structurally equivalent to `settings/` (a Person-layer surface pulling in ring content). All 5 are suppressible and will be re-homed at F6.
+Structurally equivalent to `settings/` (a Person-layer surface pulling in ring content). All 3 are suppressible and will be re-homed at F6.
 
 #### `layout/` — Shell primary, **7 outward edges** (shell → outer)
 
@@ -202,8 +201,8 @@ All Ring-0, Ring-1, and Ring-3 component domains and their stores describe the s
 | `tierStore` `lootTrackingStore` `staticGroupStore` `sharedBisStore` | Ring 0 stores | Tier/loot/BiS state for this static's current savage track |
 | `schedule/` `split-clear/` | Ring 1 | The static's session clock and split-clear planner |
 | `scheduleStore` `availabilityStore` `invitationStore` `joinRequestStore` `contentSuggestionStore` `splitClearStore` | Ring 1 stores | Sessions, RSVPs, availability aggregated to the static's heatmap, recruitment state |
-| `mount-farms/` `collections/` | Ring 3 | Farm and collection goal progress for this static |
-| `mountFarmStore` `collectionGoalStore` `objectiveGoalStore` `objectiveCommandStore` | Ring 3 stores | Track progress scoped to the static |
+| `collections/` | Ring 3 | Farm and collection goal progress for this static |
+| `mountFarmStore` `collectionGoalStore` `objectiveGoalStore` | Ring 3 stores | Track progress scoped to the static |
 
 *Legacy Static-layer domain: `group/` (old-IA, rebuilt/deleted at F6) — see §4.3.*
 
