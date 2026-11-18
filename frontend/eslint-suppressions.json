@@ -49,11 +49,6 @@
       "count": 1
     }
   },
-  "src/components/profile/CollectionsTab.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
-    }
-  },
   "src/components/profile/ManageBiSModal.tsx": {
     "boundaries/dependencies": {
       "count": 1
