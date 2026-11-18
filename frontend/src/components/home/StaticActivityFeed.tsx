@@ -11,7 +11,7 @@
  * `lootTrackingStore` — ring0→store is allowed) and the not-ring-typed
  * `utils/staticActivity` + `utils/lootActivity` derivations,
  * and composes shared `ui/` components. It NEVER imports a ring1/ring3 component —
- * notably it reads the mount-farm *store*, not a `components/mount-farms/*` (ring3).
+ * notably it reads the mount-farm *store*, not a ring3 component.
  *
  * The privacy model lives entirely in `deriveActivityItems` (manual = named,
  * plugin = anonymized "A member…", system = aggregate; visibility filter; honors
