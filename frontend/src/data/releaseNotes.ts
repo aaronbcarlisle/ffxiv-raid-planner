@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.93',
+    date: '2026-11-18T00:00:00Z',
+    title: 'Dead collections code removed',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Dead collections code removed',
+        description:
+          'Maintenance: removed the unmounted profile Collections tab and two unused farm cards. Nothing a user can reach changes.',
+        internal: true,
+        pr: 442,
+        prTitle: 'chore(v2): S2a-5b D1 — delete CollectionsTab and two unused farm cards',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.92',
     date: '2026-11-04T00:00:00Z',
     title: 'The Settings dock reads Suggestions in V2',

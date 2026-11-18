@@ -3,7 +3,7 @@
  *
  * Single source of truth used by:
  * - CollectionsCenterTab (Player Hub)
- * - DutyFarmCard / SuggestionFarmCard (Static Suggested Farms)
+ * - DutyFarmCard (Static Suggested Farms)
  * - SourceFarmCard / CatalogBrowse (Static Browse Catalog)
  *
  * Expansion labels follow the rule:
