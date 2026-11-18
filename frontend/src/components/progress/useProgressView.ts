@@ -10,7 +10,7 @@
  *
  * The router's setter changes with every URL change, so it is read through a latest-setter ref: a
  * write after an `await`, or from a stale closure, still builds on the params as they are now.
- * `useTrackParam` stays as it is for other callers; the Progress page writes through this hook.
+ * The Progress page writes through this hook.
  */
 import { useCallback, useLayoutEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';

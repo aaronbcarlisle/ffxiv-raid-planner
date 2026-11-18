@@ -38,7 +38,7 @@ const SEEDED_TAB_PARAMS = [
   'rsub', 'sched', 'stab', 'goal', 'farm', 'coll', 'gsub', 'psub', 'rcsub', 'avail', 'mf', 'rview', 'lview',
   // The V2 Recruiting route's tab (R-RH-H).
   'rtab',
-  // The V2 Progress tab's open farm row (S2a-3a, R-S3-3): `useTrackParam`, not this hook
+  // The V2 Progress tab's open farm row (S2a-3a, R-S3-3): `useProgressView`, not this hook
   // (a goal id is no fixed value list), but it is a sub-tab param in every other way.
   'track',
   // The V2 Progress tab's view, Tracks or Find (S2a-4a, E-1): `useProgressView`, V1 never writes it.
