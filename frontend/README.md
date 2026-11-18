@@ -45,7 +45,6 @@ src/
 │   ├── priority/      # Priority tab panels
 │   ├── history/       # WeeklyLootGrid, SectionedLogView, All Weeks view
 │   ├── schedule/      # ScheduleTab, AvailabilityGrid, CreateSessionModal
-│   ├── mount-farms/   # MountFarmTab, MountFarmDetail, MountFarmSummary
 │   ├── settings/      # SettingsPanel slide-out
 │   ├── admin/         # Admin analytics dashboard pieces
 │   ├── wizard/        # SetupWizard, RosterSlot, step components

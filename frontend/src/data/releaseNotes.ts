@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.95',
+    date: '2026-11-18T00:00:00Z',
+    title: 'Unmounted mount-farm components removed',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Unmounted mount-farm components removed',
+        description:
+          'Maintenance: removed the unmounted legacy mount-farm components. Mount farm tracking lives on the Progress page. Nothing a user can reach changes.',
+        internal: true,
+        pr: 444,
+        prTitle: 'chore(v2): S2a-5b D3 — delete the mount-farm component tree',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.94',
     date: '2026-11-18T00:00:00Z',
     title: 'Dead objectives code removed',

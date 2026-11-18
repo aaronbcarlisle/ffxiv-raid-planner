@@ -14,9 +14,9 @@
  * components + the existing shell `PageHeader`, and reads STORES directly for
  * the data the legacy prop contract never carried (schedule / loot / join
  * requests / mount farm / auth / static-character). It NEVER imports a ring1
- * (`schedule`/`split-clear`) or ring3 (`mount-farms`/`collections`) component —
- * the mount data comes from `mountFarmStore` (a store), never
- * `components/mount-farms/*`.
+ * (`schedule`/`split-clear`) or ring3 (`collections`/`progress`) component —
+ * the mount data comes from `mountFarmStore` (a store), never a ring3
+ * component.
  *
  * Fetch-on-mount mirrors `StaticHomeTab`'s membership-gated effect: members get
  * sessions/loot/progress/page+material balances; group-requests fetch only when

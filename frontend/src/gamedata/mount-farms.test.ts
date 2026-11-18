@@ -1,6 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createElement } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 import {
   MOUNT_FARM_TRIALS,
@@ -11,7 +9,6 @@ import {
   hasCurrencyTracking,
   getTrialsByExpansion,
 } from './mount-farms';
-import { MountFarmSummary } from '../components/mount-farms/MountFarmSummary';
 import { TAB_ICONS } from '../types';
 
 const CURATED_DAWNTRAIL_DUTIES = [
@@ -52,22 +49,6 @@ const CURATED_ULTIMATE_EXCHANGES = [
 ];
 
 describe('Mount Farm catalog', () => {
-  beforeEach(() => {
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn().mockImplementation((query: string) => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      }))
-    );
-  });
-
   it('uses the upstream static Mount Farms nav icon asset', () => {
     expect(TAB_ICONS.mountFarms).toBe('/icons/mount-farms-transparent-bg.png');
   });
@@ -183,74 +164,5 @@ describe('Mount Farm catalog', () => {
       expect(getRewardNoun(trial)).toBe('weapon');
       expect(getExchangeSummary(trial)).not.toMatch(/99/);
     }
-  });
-
-  it('renders Ultimate entries with reward farm copy instead of mount-specific currency copy', () => {
-    const fru = getTrialById('ult-fru');
-    expect(fru).toBeDefined();
-
-    render(createElement(MountFarmSummary, {
-      trials: [fru!],
-      trialSummaryMap: new Map(),
-      currentUserId: null,
-      groupId: 'group-1',
-      canManage: false,
-      viewMode: 'group',
-      onRefresh: () => {},
-    }));
-
-    expect(screen.getByText('Futures Rewritten (Ultimate)')).toBeTruthy();
-    expect(screen.getByText("1 Oracle Totem for Ultimate Edenmorn Weapons at Uah'shepya in Solution Nine")).toBeTruthy();
-    expect(screen.getByText('Ultimate')).toBeTruthy();
-    expect(screen.queryByText(/99/)).toBeNull();
-  });
-
-  it('keeps static member currency cells compact without repeating the full item name', () => {
-    const windward = getTrialById('dt-windward-wilds');
-    expect(windward).toBeDefined();
-
-    render(createElement(MountFarmSummary, {
-      trials: [windward!],
-      trialSummaryMap: new Map([[
-        'dt-windward-wilds',
-        {
-          trialId: 'dt-windward-wilds',
-          totalMembers: 1,
-          membersComplete: 0,
-          membersMissing: 1,
-          membersWanting: 1,
-          membersCanBuy: 0,
-          memberProgress: [{
-            userId: 'user-1',
-            displayName: 'Rin',
-            discordUsername: null,
-            discordAvatar: null,
-            hasMount: false,
-            wantsMount: true,
-            totemCount: 0,
-            notes: null,
-            ownershipSource: 'manual' as const,
-            totemSource: 'manual' as const,
-            updatedAt: '2026-06-08T00:00:00Z',
-            lastImportedAt: null,
-            lastPluginSyncAt: null,
-            lastManualOverrideAt: null,
-            trialId: 'dt-windward-wilds',
-          }],
-        },
-      ]]),
-      currentUserId: 'user-1',
-      groupId: 'group-1',
-      canManage: true,
-      viewMode: 'group',
-      onRefresh: () => {},
-    }));
-
-    fireEvent.click(screen.getByText('The Windward Wilds (Extreme)'));
-
-    expect(screen.getByText('Progress')).toBeTruthy();
-    expect(screen.getByText('0 / 99')).toBeTruthy();
-    expect(screen.getByText('certificates')).toBeTruthy();
-    expect(screen.queryByText(/0\s*\/\s*99\s+Guardian Arkveld Certificate/i)).toBeNull();
   });
 });
