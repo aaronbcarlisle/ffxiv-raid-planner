@@ -182,7 +182,7 @@ The parity matrix's S2a-4 rows (30) are written in at write-back:
 ## 7. Residuals (disclosed)
 
 - Two leads tracking the same item at the same moment can create a duplicate (E-4), as V1 can.
-- The old mount tracker's wants count as wanted (D-2). *(Corrected after S2a-5b, #442–#444, 2026-11-18: that slice deleted the tracker's UI only. They do not stop counting: the backend was out of scope, `MountFarmProgress` and `/mount-farms` stay, and `collection_suggestion_service.py` still reads them through `get_legacy_farm_signals` (`:36` import, `:295` call; the "Hunting (legacy)" scoring at `:106-112`).)*
+- The old mount tracker's wants count as wanted (D-2). *(Corrected after S2a-5b, #442–#444, 2026-11-18: that slice deleted the tracker's UI only. They do not stop counting: the backend was out of scope, `MountFarmProgress` and `/mount-farms` stay, and `collection_suggestion_service.py` still reads `MountFarmProgress` through `get_legacy_farm_signals` (`legacy_mount_farm_bridge.py:36,54`; imported at `collection_suggestion_service.py:36`, called at `:295`; the "Hunting (legacy)" scoring at `:106-112`).)*
 - A farm tracked from Find has no duty or note until a lead sets them in Edit (D-7, P-77).
 - The split row's x/y is always the active tier's (the GET returns active-tier assignments), so it's hidden on a past tier (D-13).
 - Phones: Find's list is one column and the matrix scrolls sideways (S2-15).

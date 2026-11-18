@@ -129,7 +129,7 @@ Aggregates Ring-0 priority panels (`priority/ModeSelector`, `priority/RoleBasedE
 
 #### `profile/` — Person primary, **3 outward edges** (measured in Task 1 as 5; "surprise")
 
-`profile/` was expected clean but measured 5 outward edges; the last two, `CollectionsTab` → `mount-farms/FarmProgress` + `mount-farms/farmProgressUtils` (Ring 3), went when S2a-5b deleted both ends (#442, #444, 2026-11-18). The `mount-farms/` directory, `objectiveCommandStore` and `ObjectiveCommandCenter` are gone for the same reason. What remains:
+`profile/` was expected clean but measured 5 outward edges; the last two, `CollectionsTab` → `mount-farms/FarmProgress` + `mount-farms/farmProgressUtils` (Ring 3), went when S2a-5b deleted both ends (#442, #444, 2026-11-18). S2a-5b also deleted `mount-farms/` (#444) and `ObjectiveCommandCenter` with `objectiveCommandStore` (#443). What remains:
 - `CharacterLinkModal` → `player/WorldSelect` (Ring 0)
 - `ManageBiSModal` → `bis/BiSTargetManagerModal` (Ring 0)
 - `PersonalAvailabilityEditor` → `schedule/availabilityUtils` (Ring 1)
