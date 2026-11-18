@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.94',
+    date: '2026-11-18T00:00:00Z',
+    title: 'Dead objectives code removed',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Dead objectives code removed',
+        description:
+          'Maintenance: removed the unmounted objective command center, its store and an unused URL hook. Nothing a user can reach changes.',
+        internal: true,
+        pr: 443,
+        prTitle: 'chore(v2): S2a-5b D2 — delete ObjectiveCommandCenter, its store and useTrackParam',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.93',
     date: '2026-11-18T00:00:00Z',
     title: 'Dead collections code removed',
