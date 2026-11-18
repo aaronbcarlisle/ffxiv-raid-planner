@@ -68,7 +68,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Unmounted mount-farm components removed',
         description:
-          'Maintenance: removed the unmounted legacy mount-farm components. Mount farm tracking lives on the Progress page. Nothing a user can reach changes.',
+          'Maintenance: removed the unmounted legacy mount-farm components. In V2, mount farm tracking lives on the Progress page; V1 keeps Goals & Farms. Nothing a user can reach changes.',
         internal: true,
         pr: 444,
         prTitle: 'chore(v2): S2a-5b D3 — delete the mount-farm component tree',
