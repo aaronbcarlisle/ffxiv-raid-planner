@@ -1,8 +1,8 @@
 # S2b · affordance-parity matrix (spec §8 gate)
 
-**Status: DRAFT 2026-11-18, not signed.** Drafted against `02993bcb`. No S2b code until the owner signs this matrix (S2b spec §8; `HOME_STRETCH.md:126`). Signing means ticking every box in §9. A row the owner rules differently is edited in place and re-dated.
+**Status: SIGNED 2026-11-18** by the owner, every item as written. Drafted against `02993bcb`; director vet APPROVE-WITH-FOLDS, folds applied. No S2b code before this signature (S2b spec §8; `HOME_STRETCH.md:126`). Signing meant ticking every box in §9. A row the owner rules differently is edited in place and re-dated.
 
-**Owner sign-off:** ⬜ (pending)
+**Owner sign-off:** the owner · date: 2026-11-18 (every §9 box ticked)
 
 **Spec:** [`2026-11-18-s2b-settings-hub-more-design.md`](2026-11-18-s2b-settings-hub-more-design.md). Rulings are cited `S2-n`. Structure and verdict vocabulary follow [`2026-09-30-s2a-parity-matrix.md`](2026-09-30-s2a-parity-matrix.md).
 **Paths:** files under `frontend/src/components/` are written from the component folder (`group/MorePage.tsx:97`); `pages/`, `hooks/`, `stores/`, `lib/` from `frontend/src/`; `backend/…` from the repo root.
@@ -144,16 +144,16 @@ Nothing shared with V1 is deleted: `MorePage`, `PluginPage`, `GearSyncDashboard`
 
 Rows the spec's rulings cover need one tick. The **RETIRED-ACK** rows and the controller's own calls are listed one by one.
 
-- [ ] **§1–§6, every KEPT, RE-HOMED, NEW and RETIRED-SPEC row** as written.
-- [ ] **A-1 (M-04)** Loot History's "items logged" and "last entry" figures on the More card are not shown anywhere else in V2. Loot ▸ History shows the entries themselves.
-- [ ] **A-2 (M-06)** Members and viewers no longer see an Integrations card. They could never open the tab; it showed them the Discord link status and "Plugin sync: Via API key".
-- [ ] **A-3 (G-03, G-07)** The Gear Sync dashboard's data-coverage % and its Recent Sync Activity list are dropped in V2. The Roster header line and per-player badges replace them.
-- [ ] **A-4 (S-08b)** "Hide unclaimed banners" and "Hide BiS banners" are not on V2's Settings page (HS-35 #17). Classic keeps them.
-- [ ] **A-5 (S-19)** Members and viewers gain a read-only Static profile (the name and Public state) and nothing else from that tab.
-- [ ] **A-6 (U-12)** "View in Jobs & Gear" is dropped: the section it sat in now lives on that tab.
-- [ ] **C-1 (M-16, M-18, G-12)** Under V2: `more` (URL or recalled) redirects to Home; `plugin` redirects to the Sync card, or `/docs/plugin` for a guest. A guest has no Settings, so under V2 the phone bar shows a guest no fifth entry.
-- [ ] **C-2 (spec §6)** Four slices, about eight PRs, not the "2–3 PRs" in the S2b row.
-- [ ] **C-3 (S2-18)** The Danger zone is visible to the owner only (and an admin acting as owner, except under View As). Leads do not see the section: static delete is owner-only in the backend.
-- [ ] **C-4 (S2-26)** Roster's sync badges read as stale after 7 days, matching the header line (the old dashboard used 3 days), and the lens counts a plugin sync or a Lodestone sync.
-- [ ] **C-5 (S-23)** Until CC-5 pair (h) is ruled, Loot's Rules link goes to `settings/priority`.
-- [ ] **V1 delta (n) (H-NEW-8)** and the shell-neutral docs pages (H-NEW-6), both already accepted on 2026-11-18.
+- [x] **§1–§6, every KEPT, RE-HOMED, NEW and RETIRED-SPEC row** as written.
+- [x] **A-1 (M-04)** Loot History's "items logged" and "last entry" figures on the More card are not shown anywhere else in V2. Loot ▸ History shows the entries themselves.
+- [x] **A-2 (M-06)** Members and viewers no longer see an Integrations card. They could never open the tab; it showed them the Discord link status and "Plugin sync: Via API key".
+- [x] **A-3 (G-03, G-07)** The Gear Sync dashboard's data-coverage % and its Recent Sync Activity list are dropped in V2. The Roster header line and per-player badges replace them.
+- [x] **A-4 (S-08b)** "Hide unclaimed banners" and "Hide BiS banners" are not on V2's Settings page (HS-35 #17). Classic keeps them.
+- [x] **A-5 (S-19)** Members and viewers gain a read-only Static profile (the name and Public state) and nothing else from that tab.
+- [x] **A-6 (U-12)** "View in Jobs & Gear" is dropped: the section it sat in now lives on that tab.
+- [x] **C-1 (M-16, M-18, G-12)** Under V2: `more` (URL or recalled) redirects to Home; `plugin` redirects to the Sync card, or `/docs/plugin` for a guest. A guest has no Settings, so under V2 the phone bar shows a guest no fifth entry.
+- [x] **C-2 (spec §6)** Four slices, about eight PRs, not the "2–3 PRs" in the S2b row.
+- [x] **C-3 (S2-18)** The Danger zone is visible to the owner only (and an admin acting as owner, except under View As). Leads do not see the section: static delete is owner-only in the backend.
+- [x] **C-4 (S2-26)** Roster's sync badges read as stale after 7 days, matching the header line (the old dashboard used 3 days), and the lens counts a plugin sync or a Lodestone sync.
+- [x] **C-5 (S-23)** Until CC-5 pair (h) is ruled, Loot's Rules link goes to `settings/priority`.
+- [x] **V1 delta (n) (H-NEW-8)** and the shell-neutral docs pages (H-NEW-6), both already accepted on 2026-11-18.
