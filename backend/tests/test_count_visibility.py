@@ -375,6 +375,38 @@ class TestParticipantResponses:
         assert response.json()["token_count"] == 5
         assert response.json()["priority_rank"] == 9
 
+    @pytest.mark.parametrize("actor", ["owner", "lead"])
+    async def test_bulk_need_response_hides_a_flagged_members_count(
+        self, async_client, session, actor
+    ):
+        """S2a spec §7 criterion 12: the bulk Need's created rows carry the record's count,
+        so they pass the same gate. A second farm on the same item has no rows yet."""
+        w = await _world(session)
+        second = await create_collection_goal(session, w.group, w.users["owner"], title="Second")
+        second.catalog_item_id = w.catalog.id
+        second.token_cost = COST
+        await session.commit()
+
+        response = await async_client.post(
+            f"/api/static-groups/{w.group.id}/collection-participants/mark-need",
+            json={
+                "cells": [
+                    {"goal_id": second.id, "user_id": w.users[name].id}
+                    for name in ("hidden", "shown")
+                ]
+            },
+            headers=_headers(w.users[actor]),
+        )
+        assert response.status_code == 200, response.text
+        created = {row["user_id"]: row for row in response.json()["created"]}
+        assert set(created) == {w.users["hidden"].id, w.users["shown"].id}
+
+        hidden = created[w.users["hidden"].id]
+        assert hidden["token_count"] is None
+        assert (hidden["record"] or {}).get("token_count") is None
+        shown = created[w.users["shown"].id]
+        assert shown["token_count"] == GOAL_COUNTS["shown"]
+
 
 class TestMountFarmReads:
     async def _get(self, client, w, reader: User) -> dict:
